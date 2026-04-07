@@ -147,30 +147,23 @@ El proyecto ha avanzado a través de las fases iniciales de setup, base de datos
 - `20240408000000_add_warmup_to_matches.sql`
 - `20240408000001_add_warmup_to_tournaments.sql`
 - `20240408000002_add_bg_opacity_to_themes.sql`
+- `20240408000003_add_mobile_bg_to_themes.sql`
 
 ---
 
-## [2026-04-07 (noche - sprint 2)] — Optimización de Fondo y Efecto Overlay
+## [2026-04-07 (noche - sprint 3)] — Fondos Duales (Desktop/Móvil)
 
 ### Tareas Completadas
 
-- **Personalización de Fondo**:
-    - Nueva migración `20240408000002`: columna `background_opacity` (0-100) en `leaderboard_themes`.
-    - `ThemeEditor`: Añadido slider dinámico para controlar la opacidad con preview en tiempo real.
-    - Soporte para persistir `logo_url` y `background_opacity` en el Server Action `updateTheme`.
-
-- **Optimización de Video/Iframe**:
-    - Corregido el problema de cobertura en móviles. Se implementó una técnica de escalado agresivo (`300%` en mobile) centrada para asegurar que videos de 16:9 cubran el viewport vertical sin dejar franjas negras.
-    - Los fondos de YouTube, Twitch y Kick ahora responden a la opacidad configurada por el usuario.
-
-- **Estética "Streamer Overlay"**:
-    - Contenedor del Leaderboard: Añadido `drop-shadow` con el color primario del torneo para generar un efecto de "brillo exterior" (glow).
-    - El diseño ahora se siente como una pantalla flotante sobre el video de fondo, mejorando la inmersión del espectador.
-    - Ajustado el padding vertical (`py-12 md:py-24`) para mejorar el centrado estético sin romper el scroll en leaderboards largos.
+- **Soporte para Fondos Duales**:
+    - Nueva migración `20240408000003`: columna `background_mobile_value` en `leaderboard_themes`.
+    - `ThemeEditor`: Añadido apartado específico para subir un video vertical (9:16) para móviles.
+    - `LeaderboardClient`: Implementada detección dinámica de dispositivo con `window.matchMedia`. El sistema ahora intercambia el fondo instantáneamente según el ancho de pantalla (breakpoint 768px).
+    - **Backfill Inteligente**: Si no se configura un fondo móvil, el sistema utiliza el fondo principal escalado como respaldo.
 
 ### Decisiones Técnicas
-- **Scaling Hack**: Para iframes (que no soportan `object-fit: cover`), se optó por un contenedor sobredimensionado y centrado. Esto garantiza que el video siempre sobrepase los bordes de la pantalla (especialmente en móviles portrait), eliminando las barras negras reportadas por el usuario.
-- **Filtros CSS**: Se usó `filter: drop-shadow` en lugar de `box-shadow` en el contenedor principal para que el brillo siga la forma de los elementos hijos y se sienta más orgánico sobre el video.
+- **Detección Lado Cliente**: Se utiliza un listener de `resize` en `LeaderboardClient` para que el cambio de fondo sea reactivo incluso si el usuario cambia la orientación de su dispositivo o redimensiona la ventana en PC.
+- **Keys en React**: Se añadieron `key={activeBackground}` a los elementos de video e imagen para forzar el re-montado del componente cuando el fondo cambia, asegurando que el nuevo recurso se cargue y reproduzca correctamente de inmediato.
 
 
 

@@ -81,24 +81,30 @@ export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId
 
           {/* Fondo de Video / Imagen */}
           <div className="pt-4 border-t border-white/5">
-            <label className="block text-sm text-white/70 mb-2 font-medium">Fondo Principal (PC / Horizontal)</label>
+            <label className="block text-sm text-white/70 mb-2 font-medium">
+              Fondo Principal (PC / Horizontal - 16:9)
+            </label>
             <input 
               type="text" 
-              placeholder="https://ejemplo.com/fondo_pc.mp4"
+              placeholder="Recomendado: 1920x1080 (.mp4, .jpg, Youtube...)"
               value={backgroundValue} 
               onChange={(e) => setBackgroundValue(e.target.value)}
               className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-white/30 outline-none mb-4"
             />
             
-            <label className="block text-sm text-white/70 mb-2 font-medium">Fondo para Móviles (Opcional - Vertical)</label>
+            <label className="block text-sm text-white/70 mb-2 font-medium">
+              Fondo para Móviles (Vertical - 9:16)
+            </label>
             <input 
               type="text" 
-              placeholder="https://ejemplo.com/fondo_movil.mp4"
+              placeholder="Recomendado: 1080x1920 (TikTok/Reels format)"
               value={backgroundMobileValue} 
               onChange={(e) => setBackgroundMobileValue(e.target.value)}
               className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-white/30 outline-none"
             />
-            <p className="text-xs text-white/40 mt-2">Sugerencia: Usa un video vertical (9:16) para móviles. Si no se pone, se ajustará el principal.</p>
+            <p className="text-xs text-white/40 mt-2">
+              <strong>Tip de formato:</strong> Usa 16:9 para PCs y 9:16 para celulares. El sistema detectará el dispositivo del espectador automáticamente.
+            </p>
           </div>
 
           {/* Opacidad del Fondo — Slider */}
