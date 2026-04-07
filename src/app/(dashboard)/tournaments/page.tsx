@@ -118,14 +118,14 @@ export default async function TournamentsPage() {
   const tournaments = 'data' in result ? result.data : []
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between gap-3 mb-6 sm:mb-8">
         <div>
-          <h1 className="font-orbitron text-2xl font-bold text-white tracking-wide">
+          <h1 className="font-orbitron text-xl sm:text-2xl font-bold text-white tracking-wide">
             Mis Torneos
           </h1>
-          <p className="text-white/30 text-sm mt-1">
+          <p className="text-white/30 text-xs sm:text-sm mt-1">
             {tournaments.length > 0
               ? `${tournaments.length} torneo${tournaments.length !== 1 ? 's' : ''}`
               : 'Gestiona tus competencias'}
@@ -133,11 +133,11 @@ export default async function TournamentsPage() {
         </div>
         <Link
           href="/tournaments/new"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white
+          className="shrink-0 inline-flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white
             bg-gradient-to-r from-neon-cyan to-neon-purple hover:opacity-90 active:scale-[0.97]
             transition-all duration-150 shadow-lg shadow-neon-cyan/10"
         >
-          + Nuevo Torneo
+          + <span className="hidden sm:inline">Nuevo </span>Torneo
         </Link>
       </div>
 

@@ -217,7 +217,7 @@ export function LeaderboardClient({
         {logoUrl && (
           <img src={logoUrl} alt="Torneo Logo" className="h-24 object-contain mb-4 drop-shadow-2xl" />
         )}
-        <h1 className="font-orbitron font-bold text-4xl md:text-5xl uppercase tracking-wider mb-4"
+        <h1 className="font-orbitron font-bold text-2xl sm:text-4xl md:text-5xl uppercase tracking-wider mb-4 px-4"
             style={{ color: primaryColor, textShadow: `0 0 20px ${primaryColor}40` }}>
           {tournamentName}
         </h1>
@@ -228,10 +228,11 @@ export function LeaderboardClient({
         {status === 'ended' && <span className="inline-block mt-4 text-xs font-bold bg-white/10 px-3 py-1 rounded text-white/50 uppercase">Torneo Finalizado</span>}
       </div>
 
-      <div className="flex justify-center gap-2 mb-8 flex-wrap">
+      {/* Tabs — scrollable on mobile */}
+      <div className="flex gap-1 mb-6 sm:mb-8 sm:justify-center overflow-x-auto pb-1 px-2 sm:px-0 scrollbar-hide">
         <button
           onClick={() => setActiveTab('ranking')}
-          className={`px-5 py-2.5 rounded-xl font-orbitron text-sm transition-all shadow-lg ${
+          className={`shrink-0 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg ${
             activeTab === 'ranking' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'
           }`}
           style={{ borderColor: activeTab === 'ranking' ? primaryColor : 'transparent', borderWidth: 1 }}
@@ -240,7 +241,7 @@ export function LeaderboardClient({
         </button>
         <button
           onClick={() => setActiveTab('participants')}
-          className={`px-5 py-2.5 rounded-xl font-orbitron text-sm transition-all shadow-lg ${
+          className={`shrink-0 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg ${
             activeTab === 'participants' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'
           }`}
           style={{ borderColor: activeTab === 'participants' ? primaryColor : 'transparent', borderWidth: 1 }}
@@ -249,12 +250,12 @@ export function LeaderboardClient({
         </button>
         <button
           onClick={() => setActiveTab('matches')}
-          className={`px-5 py-2.5 rounded-xl font-orbitron text-sm transition-all shadow-lg ${
+          className={`shrink-0 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg ${
             activeTab === 'matches' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'
           }`}
           style={{ borderColor: activeTab === 'matches' ? primaryColor : 'transparent', borderWidth: 1 }}
         >
-          Resumen de Partidas
+          Partidas
         </button>
       </div>
 
@@ -286,9 +287,9 @@ export function LeaderboardClient({
                         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                         className="border-b border-white/5 hover:bg-white/[0.02] group"
                       >
-                        <td className="px-6 py-4">
-                          <div className="flex items-center justify-center gap-2">
-                            <span className={`font-orbitron font-bold text-xl ${
+                        <td className="px-3 sm:px-6 py-3 sm:py-4">
+                          <div className="flex items-center justify-center gap-1 sm:gap-2">
+                            <span className={`font-orbitron font-bold text-base sm:text-xl ${
                               s.rank === 1 ? 'text-gold' : 
                               s.rank === 2 ? 'text-gray-300' : 
                               s.rank === 3 ? 'text-orange-400' : 'text-white/60'
@@ -299,19 +300,19 @@ export function LeaderboardClient({
                             {rankDiff < 0 && <span className="text-[10px] text-red-400">▼{Math.abs(rankDiff)}</span>}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            {s.avatarUrl && <img src={s.avatarUrl} alt="" className="w-8 h-8 rounded-full" />}
+                        <td className="px-3 sm:px-6 py-3 sm:py-4">
+                          <div className="flex items-center gap-2 sm:gap-3">
+                            {s.avatarUrl && <img src={s.avatarUrl} alt="" className="w-7 h-7 sm:w-8 sm:h-8 rounded-full" />}
                             <div>
-                               <div className="flex items-center gap-2">
-                                 <span className="font-orbitron font-medium text-lg tracking-wide text-white">{s.teamName}</span>
+                               <div className="flex items-center gap-1 sm:gap-2">
+                                 <span className="font-orbitron font-medium text-sm sm:text-lg tracking-wide text-white">{s.teamName}</span>
                                  {s.streams && s.streams.length > 0 && (
                                    <button
                                      onClick={() => setActiveTab('participants')}
                                      title={`Ver streams de ${s.teamName} en tab Participantes`}
-                                     className="ml-2 text-red-500/60 hover:text-red-400 transition-colors"
+                                     className="ml-1 text-red-500/60 hover:text-red-400 transition-colors"
                                    >
-                                     <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                     <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="currentColor" viewBox="0 0 24 24">
                                        <path d="M17 10.5V7a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1v-3.5l4 4v-11l-4 4z"/>
                                      </svg>
                                    </button>
@@ -320,16 +321,16 @@ export function LeaderboardClient({
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-center font-orbitron font-bold text-2xl text-neon-cyan">
+                        <td className="px-3 sm:px-6 py-3 sm:py-4 text-center font-orbitron font-bold text-xl sm:text-2xl text-neon-cyan">
                           {s.totalPoints}
                         </td>
-                        <td className="px-6 py-4 text-center text-white/80 font-medium">
+                        <td className="px-3 sm:px-6 py-3 sm:py-4 text-center text-white/80 font-medium text-sm sm:text-base">
                           {s.totalKills}
                         </td>
-                        <td className="px-6 py-4 text-center text-white/60">
+                        <td className="hidden md:table-cell px-6 py-4 text-center text-white/60">
                           {s.potTopCount}
                         </td>
-                        <td className="px-6 py-4 text-center text-white/60">
+                        <td className="hidden md:table-cell px-6 py-4 text-center text-white/60">
                           {s.killRate.toFixed(1)}
                         </td>
                       </motion.tr>

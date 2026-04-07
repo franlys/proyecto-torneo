@@ -20,22 +20,21 @@ export async function createSubmission(
   // Check if match exists and tournament is active
   const { data: match, error: matchErr } = await supabase
     .from('matches')
-    .select('tournament_id, is_completed, tournaments(status)')
+    .select('tournament_id, is_completed, is_warmup, tournaments(status)')
     .eq('id', parsed.data.matchId)
     .single()
 
   if (matchErr || !match) return { error: 'Partida no encontrada' }
   if (match.is_completed) return { error: 'La partida ya está completada' }
   
-  // Note: match.tournaments is an array or object depending on relationship.
-  // Using 'as any' just to bypass strict type checking for the join structure here,
-  // but better to check the runtime structure:
-  const tStatus = Array.isArray(match.tournaments) 
-    ? match.tournaments[0]?.status 
-    : (match.tournaments as any)?.status
-
-  if (tStatus !== 'active') {
-    return { error: 'El torneo no está activo' }
+  // Skip status check for warmup matches; only enforce active status for official matches
+  if (!match.is_warmup) {
+    const tStatus = Array.isArray(match.tournaments) 
+      ? match.tournaments[0]?.status 
+      : (match.tournaments as any)?.status
+    if (tStatus !== 'active') {
+      return { error: 'El torneo no está activo' }
+    }
   }
 
   // Ensure team is not already submitted for this match
@@ -120,11 +119,25 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
   const { data: teams } = await supabase.from('teams').select('id, name, avatar_url, vip_score').eq('tournament_id', tournamentId)
   if (!teams) return
 
-  // Fetch all approved submissions
-  const { data: subs } = await supabase.from('submissions')
+  // Fetch all approved submissions — EXCLUDING warmup matches
+  const { data: warmupMatchIds } = await supabase.from('matches')
+    .select('id')
+    .eq('tournament_id', tournamentId)
+    .eq('is_warmup', true)
+
+  const warmupIds = (warmupMatchIds || []).map((m: any) => m.id)
+
+  let subsQuery = supabase.from('submissions')
     .select('*')
     .eq('tournament_id', tournamentId)
     .eq('status', 'approved')
+
+  // Exclude warmup match submissions from standings calculation
+  if (warmupIds.length > 0) {
+    subsQuery = subsQuery.not('match_id', 'in', `(${warmupIds.join(',')})`)
+  }
+
+  const { data: subs } = await subsQuery
   
   const mappedTeams = teams.map((t: any) => ({
     id: t.id, name: t.name, avatarUrl: t.avatar_url, vipScore: t.vip_score
