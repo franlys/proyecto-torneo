@@ -111,3 +111,45 @@ El proyecto ha avanzado a través de las fases iniciales de setup, base de datos
 2. **Cálculo VIP**: Lógica basada en kills individuales para determinar el MVP/VIP del torneo.
 3. **Producción**: Configurar las URLs de redirección en Supabase Auth una vez confirmado el dominio final de Vercel.
 
+---
+
+## [2026-04-07 (noche)] — Warmup Matches + Responsive Design
+
+### Tareas Completadas
+
+- **Sistema de Partidas de Calentamiento (Warmup)**:
+  - Nueva migración `20240408000000`: campo `is_warmup BOOLEAN DEFAULT FALSE` en tabla `matches`.
+  - Nueva migración `20240408000001`: campos `warmup_enabled` y `warmup_match_count` en tabla `tournaments`.
+  - `recalculateStandings`: ahora excluye automáticamente los envíos de partidas de calentamiento del cálculo de standings oficial.
+  - `createSubmission`: permite envíos en partidas warmup independientemente del estado del torneo (`draft`/`active`).
+
+- **Responsive Design — Dashboard**:
+  - Creado `DashboardShell.tsx` (Client Component): contiene toda la lógica de sidebar/drawer.
+  - `layout.tsx` simplificado para delegar el render al Shell (Server/Client boundary limpio).
+  - Sidebar de escritorio: oculto en móviles (`hidden lg:flex`).
+  - Header móvil fijo con botón hamburguesa.
+  - Drawer lateral animado con Framer Motion (`spring: stiffness 300, damping 30`).
+  - Backdrop con click-fuera para cerrar el drawer.
+
+- **Responsive Design — Torneos Page**:
+  - Padding adaptado: `p-4 sm:p-8`.
+  - Header: tipografía escalada `text-xl sm:text-2xl`.
+  - Botón "Nuevo Torneo" condensa el texto en móviles (`+ Torneo` en mobile, `+ Nuevo Torneo` en sm+).
+
+- **Responsive Design — Leaderboard Público**:
+  - Título del torneo: `text-2xl sm:text-4xl md:text-5xl`.
+  - Tabs: con scroll horizontal en móviles (`overflow-x-auto`, `shrink-0`), texto más compacto.
+  - Tabla: padding reducido en móviles, columnas "Top 1" y "Kill Rate" ocultas en pantallas < md.
+  - Nombre de equipo: `text-sm sm:text-lg` para evitar overflow.
+  - Rankings: `text-base sm:text-xl`.
+
+### Migraciones SQL Creadas (pendientes de aplicar en Supabase)
+- `20240408000000_add_warmup_to_matches.sql`
+- `20240408000001_add_warmup_to_tournaments.sql`
+
+### Decisiones Técnicas
+- **Shell Pattern**: Se separó el layout en Server (auth check) + Client (interactividad del drawer) para cumplir las reglas de arquitectura Server/Client del proyecto.
+- **Columnas ocultas en móvil**: Top 1 y Kill Rate son métricas secundarias — en móvil se priorizan Puntos y Kills que son los valores más relevantes para el espectador casual.
+- **Warmup aislado**: Al excluir los match IDs warmup con `.not('match_id', 'in', ...)`, se garantiza que el motor de puntuación no necesita cambios; solo filtra inputs.
+
+

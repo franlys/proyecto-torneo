@@ -7,7 +7,9 @@ export async function updateTheme(
   themeData: {
     primary_color?: string
     background_type?: string
-    background_value?: string
+    background_value?: string | null
+    background_opacity?: number
+    logo_url?: string | null
   }
 ): Promise<{ success: boolean } | { error: string }> {
   const supabase = await createClient()

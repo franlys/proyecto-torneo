@@ -133,13 +133,21 @@ export function LeaderboardClient({
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 md:p-8 relative z-10">
+    <div 
+      className="w-full max-w-7xl mx-auto p-4 md:p-8 relative z-10 py-12 md:py-24"
+      style={{ 
+        filter: `drop-shadow(0 0 50px ${primaryColor}15)`,
+      }}
+    >
       
       {/* Background Handler */}
       {backgroundValue && (
-        <div className="fixed inset-0 w-full h-full -z-10 bg-black overflow-hidden">
+        <div className="fixed inset-0 w-full h-full -z-10 bg-black overflow-hidden pointer-events-none">
           {youtubeId ? (
-            <div className="absolute inset-0 w-full h-full scale-125 pointer-events-none opacity-50">
+            <div 
+              className="absolute top-1/2 left-1/2 w-[300%] h-[300%] md:w-[150%] md:h-[150%] -translate-x-1/2 -translate-y-1/2"
+              style={{ opacity: (theme?.background_opacity ?? 40) / 100 }}
+            >
               <iframe
                 src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&mute=1&loop=1&playlist=${youtubeId}&controls=0&modestbranding=1&rel=0&showinfo=0`}
                 className="w-full h-full border-0"
@@ -147,7 +155,10 @@ export function LeaderboardClient({
               />
             </div>
           ) : twitchUser ? (
-             <div className="absolute inset-0 w-full h-full scale-110 pointer-events-none opacity-50">
+             <div 
+               className="absolute top-1/2 left-1/2 w-[300%] h-[300%] md:w-[150%] md:h-[150%] -translate-x-1/2 -translate-y-1/2"
+               style={{ opacity: (theme?.background_opacity ?? 40) / 100 }}
+             >
                <iframe
                  src={`https://player.twitch.tv/?channel=${twitchUser}&parent=${host}&muted=true&autoplay=true&controls=false`}
                  className="w-full h-full border-0"
@@ -155,7 +166,10 @@ export function LeaderboardClient({
                />
              </div>
           ) : kickUser ? (
-             <div className="absolute inset-0 w-full h-full scale-110 pointer-events-none opacity-50">
+             <div 
+               className="absolute top-1/2 left-1/2 w-[300%] h-[300%] md:w-[150%] md:h-[150%] -translate-x-1/2 -translate-y-1/2"
+               style={{ opacity: (theme?.background_opacity ?? 40) / 100 }}
+             >
                <iframe
                  src={`https://player.kick.com/${kickUser}?muted=true&autoplay=true`}
                  className="w-full h-full border-0"
@@ -165,15 +179,19 @@ export function LeaderboardClient({
             <video 
               src={backgroundValue} 
               autoPlay loop muted playsInline 
-              className="w-full h-full object-cover opacity-50 block" 
+              className="w-full h-full object-cover block" 
+              style={{ opacity: (theme?.background_opacity ?? 40) / 100 }}
             />
           ) : (
             <div 
-              className="w-full h-full bg-cover bg-center opacity-40 block" 
-              style={{ backgroundImage: `url(${backgroundValue})` }} 
+              className="w-full h-full bg-cover bg-center block" 
+              style={{ 
+                backgroundImage: `url(${backgroundValue})`,
+                opacity: (theme?.background_opacity ?? 40) / 100 
+              }} 
             />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-dark-bg via-dark-bg/80 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-dark-bg via-transparent to-transparent pointer-events-none" />
         </div>
       )}
 

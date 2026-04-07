@@ -7,6 +7,7 @@ import Link from 'next/link'
 export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId: string, initialTheme: any, slug: string }) {
   const [primaryColor, setPrimaryColor] = useState(initialTheme?.primary_color || '#00F5FF')
   const [backgroundValue, setBackgroundValue] = useState(initialTheme?.background_value || '')
+  const [backgroundOpacity, setBackgroundOpacity] = useState<number>(initialTheme?.background_opacity ?? 40)
   const [logoUrl, setLogoUrl] = useState(initialTheme?.logo_url || '')
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -27,6 +28,7 @@ export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId
     const res = await updateTheme(tournamentId, { 
       primary_color: primaryColor,
       background_value: backgroundValue || null,
+      background_opacity: backgroundOpacity,
       logo_url: logoUrl || null
     })
     setSaving(false)
@@ -44,6 +46,7 @@ export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId
       {/* Settings Form */}
       <div className="bg-dark-card border border-white/5 rounded-2xl p-6 shadow-xl">
         <form onSubmit={handleSave} className="space-y-6">
+          {/* Color Primario */}
           <div>
             <label className="block text-sm text-white/70 mb-3 font-medium">Color Principal (Acentos)</label>
             <div className="flex flex-wrap gap-3 mb-4">
@@ -74,18 +77,47 @@ export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId
             </div>
           </div>
 
+          {/* Fondo de Video / Imagen */}
           <div className="pt-4 border-t border-white/5">
-            <label className="block text-sm text-white/70 mb-2 font-medium">Fondo Remoto (URL de foto o vídeo)</label>
+            <label className="block text-sm text-white/70 mb-2 font-medium">Fondo Remoto (URL de foto, vídeo o stream)</label>
             <input 
               type="text" 
-              placeholder="https://ejemplo.com/fondo.mp4"
+              placeholder="https://twitch.tv/canal o https://ejemplo.com/fondo.mp4"
               value={backgroundValue} 
               onChange={(e) => setBackgroundValue(e.target.value)}
               className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-white/30 outline-none"
             />
-            <p className="text-xs text-white/40 mt-2">Puedes colocar el link de un .jpg, .png o .mp4 para que se despliegue en la vista pública.</p>
+            <p className="text-xs text-white/40 mt-2">Soporta: .mp4, .jpg, .png, YouTube, Twitch, Kick.com</p>
           </div>
 
+          {/* Opacidad del Fondo — Slider */}
+          <div className="pt-4 border-t border-white/5">
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm text-white/70 font-medium">Opacidad del Fondo</label>
+              <span className="font-orbitron text-sm font-bold" style={{ color: primaryColor }}>{backgroundOpacity}%</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={backgroundOpacity}
+              onChange={(e) => setBackgroundOpacity(Number(e.target.value))}
+              className="w-full h-2 rounded-full appearance-none cursor-pointer"
+              style={{
+                background: `linear-gradient(to right, ${primaryColor}80 0%, ${primaryColor} ${backgroundOpacity}%, rgba(255,255,255,0.1) ${backgroundOpacity}%)`,
+              }}
+            />
+            <div className="flex justify-between text-xs text-white/30 mt-1">
+              <span>Muy tenue (overlay)</span>
+              <span>Visible</span>
+            </div>
+            <p className="text-xs text-white/40 mt-2">
+              Recomienda: 20-40% para efecto overlay de stream. 50-70% para fondo estático.
+            </p>
+          </div>
+
+          {/* Logo */}
           <div className="pt-4 border-t border-white/5">
             <label className="block text-sm text-white/70 mb-2 font-medium">Logo del Torneo (URL)</label>
             <input 
@@ -111,13 +143,25 @@ export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId
         </form>
       </div>
 
-      {/* Preview Map */}
+      {/* Preview */}
       <div>
         <div className="bg-black border border-white/10 rounded-2xl p-6 relative overflow-hidden"
              style={{ boxShadow: `0 20px 40px -20px ${primaryColor}20` }}>
           <div className="absolute top-0 w-full h-1" style={{ backgroundColor: primaryColor }} />
           
-          <h3 className="text-white/40 text-xs font-semibold uppercase tracking-widest mb-6">Preview en Vivo</h3>
+          <h3 className="text-white/40 text-xs font-semibold uppercase tracking-widest mb-4">Preview en Vivo</h3>
+
+          {/* Opacity demo */}
+          <div className="mb-4 relative h-16 rounded-lg overflow-hidden border border-white/10">
+            <div className="absolute inset-0 bg-gradient-to-r from-neon-purple/50 to-neon-cyan/30" />
+            <div 
+              className="absolute inset-0 bg-black transition-opacity"
+              style={{ opacity: 1 - backgroundOpacity / 100 }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-xs text-white/80 font-medium">Fondo al {backgroundOpacity}% de opacidad</span>
+            </div>
+          </div>
           
           <div className="space-y-4">
             <div className="flex justify-between items-center bg-white/[0.03] p-3 rounded-lg border border-white/5">
