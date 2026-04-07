@@ -8,13 +8,14 @@ export default async function TeamPortalPage({
   params: Promise<{ slug: string; teamId: string }>
 }) {
   const { slug, teamId } = await params
+  const normalizedSlug = slug.toLowerCase()
   const supabase = await createClient()
 
   // Fetch the tournament
   const { data: tournament, error: tErr } = await supabase
     .from('tournaments')
     .select('id, name, status, kill_rate_enabled, pot_top_enabled')
-    .eq('slug', slug)
+    .eq('slug', normalizedSlug)
     .single()
 
   if (tErr || !tournament) notFound()

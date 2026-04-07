@@ -8,13 +8,14 @@ export default async function PublicLeaderboardPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
+  const normalizedSlug = slug.toLowerCase()
   const supabase = await createClient()
 
   // Fetch the tournament
   const { data: tournament, error: tErr } = await supabase
     .from('tournaments')
     .select('*, leaderboard_themes(*)')
-    .eq('slug', slug)
+    .eq('slug', normalizedSlug)
     .single()
 
   if (tErr || !tournament) notFound()

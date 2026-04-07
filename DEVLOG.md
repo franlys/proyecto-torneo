@@ -165,5 +165,19 @@ El proyecto ha avanzado a través de las fases iniciales de setup, base de datos
 - **Detección Lado Cliente**: Se utiliza un listener de `resize` en `LeaderboardClient` para que el cambio de fondo sea reactivo incluso si el usuario cambia la orientación de su dispositivo o redimensiona la ventana en PC.
 - **Keys en React**: Se añadieron `key={activeBackground}` a los elementos de video e imagen para forzar el re-montado del componente cuando el fondo cambia, asegurando que el nuevo recurso se cargue y reproduzca correctamente de inmediato.
 
+---
+
+## [2026-04-07 (noche - sprint 4)] — Corrección de Errores 404 (Case Sensitivity)
+
+### Tareas Completadas
+
+- **Normalización de Slugs**:
+    - `src/app/t/[slug]/page.tsx`: Se añadió `slug.toLowerCase()` antes de la consulta a Supabase.
+    - `src/app/t/[slug]/team/[teamId]/page.tsx`: Se aplicó la misma normalización para el portal de equipos.
+    - **Resultado**: Los enlaces compartidos ahora funcionan correctamente aunque el navegador o el usuario usen mayúsculas (ej. `/t/TORNEO-123` ahora carga igual que `/t/torneo-123`).
+
+### Notas de Depuración
+- El error 404 reportado por el usuario en móviles se debía a que los teclados móviles suelen capitalizar la primera letra al escribir o pegar enlaces. Al ser Supabase sensible a mayúsculas en las consultas `.eq()`, la búsqueda fallaba silenciosamente disparando el `notFound()`.
+
 
 
