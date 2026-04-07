@@ -7,6 +7,7 @@ import Link from 'next/link'
 export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId: string, initialTheme: any, slug: string }) {
   const [primaryColor, setPrimaryColor] = useState(initialTheme?.primary_color || '#00F5FF')
   const [backgroundValue, setBackgroundValue] = useState(initialTheme?.background_value || '')
+  const [backgroundMobileValue, setBackgroundMobileValue] = useState(initialTheme?.background_mobile_value || '')
   const [backgroundOpacity, setBackgroundOpacity] = useState<number>(initialTheme?.background_opacity ?? 40)
   const [logoUrl, setLogoUrl] = useState(initialTheme?.logo_url || '')
   const [saving, setSaving] = useState(false)
@@ -26,11 +27,12 @@ export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId
     setSuccess(false)
     
     const res = await updateTheme(tournamentId, { 
-      primary_color: primaryColor,
-      background_value: backgroundValue || null,
-      background_opacity: backgroundOpacity,
-      logo_url: logoUrl || null
-    })
+    primary_color: primaryColor,
+    background_value: backgroundValue || null,
+    background_mobile_value: backgroundMobileValue || null,
+    background_opacity: backgroundOpacity,
+    logo_url: logoUrl || null
+  })
     setSaving(false)
     
     if ('error' in res) {
@@ -79,15 +81,24 @@ export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId
 
           {/* Fondo de Video / Imagen */}
           <div className="pt-4 border-t border-white/5">
-            <label className="block text-sm text-white/70 mb-2 font-medium">Fondo Remoto (URL de foto, vídeo o stream)</label>
+            <label className="block text-sm text-white/70 mb-2 font-medium">Fondo Principal (PC / Horizontal)</label>
             <input 
               type="text" 
-              placeholder="https://twitch.tv/canal o https://ejemplo.com/fondo.mp4"
+              placeholder="https://ejemplo.com/fondo_pc.mp4"
               value={backgroundValue} 
               onChange={(e) => setBackgroundValue(e.target.value)}
+              className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-white/30 outline-none mb-4"
+            />
+            
+            <label className="block text-sm text-white/70 mb-2 font-medium">Fondo para Móviles (Opcional - Vertical)</label>
+            <input 
+              type="text" 
+              placeholder="https://ejemplo.com/fondo_movil.mp4"
+              value={backgroundMobileValue} 
+              onChange={(e) => setBackgroundMobileValue(e.target.value)}
               className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-white/30 outline-none"
             />
-            <p className="text-xs text-white/40 mt-2">Soporta: .mp4, .jpg, .png, YouTube, Twitch, Kick.com</p>
+            <p className="text-xs text-white/40 mt-2">Sugerencia: Usa un video vertical (9:16) para móviles. Si no se pone, se ajustará el principal.</p>
           </div>
 
           {/* Opacidad del Fondo — Slider */}

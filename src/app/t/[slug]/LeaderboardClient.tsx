@@ -32,7 +32,17 @@ export function LeaderboardClient({
   const [standings, setStandings] = useState(initialStandings)
   const [activeTab, setActiveTab] = useState<'ranking' | 'participants' | 'matches'>('ranking')
   const [watchingStream, setWatchingStream] = useState<string | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
   const supabase = createClient()
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   useEffect(() => {
     const channel = supabase.channel(`public:team_standings:tournament_id=eq.${tournamentId}`)
@@ -101,18 +111,20 @@ export function LeaderboardClient({
 
   const primaryColor = theme?.primary_color || '#00F5FF'
   const backgroundValue = theme?.background_value
+  const backgroundMobileValue = theme?.background_mobile_value
+  const activeBackground = (isMobile && backgroundMobileValue) ? backgroundMobileValue : backgroundValue
   const logoUrl = theme?.logo_url
 
-  const isVideoBackground = backgroundValue?.toLowerCase().match(/\.(mp4|webm|ogg)$/)
+  const isVideoBackground = activeBackground?.toLowerCase().match(/\.(mp4|webm|ogg)$/)
   
   // YouTube Detection
-  const youtubeId = backgroundValue?.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=))([\w\-]{11})/)?.[1]
+  const youtubeId = activeBackground?.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=))([\w\-]{11})/)?.[1]
   
   // Twitch Detection
-  const twitchUser = backgroundValue?.match(/(?:twitch\.tv\/)([\w\-]+)/)?.[1]
+  const twitchUser = activeBackground?.match(/(?:twitch\.tv\/)([\w\-]+)/)?.[1]
 
   // Kick Detection
-  const kickUser = backgroundValue?.match(/(?:kick\.com\/)([\w\-]+)/)?.[1]
+  const kickUser = activeBackground?.match(/(?:kick\.com\/)([\w\-]+)/)?.[1]
 
   const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost'
 
@@ -141,7 +153,7 @@ export function LeaderboardClient({
     >
       
       {/* Background Handler */}
-      {backgroundValue && (
+      {activeBackground && (
         <div className="fixed inset-0 w-full h-full -z-10 bg-black overflow-hidden pointer-events-none">
           {youtubeId ? (
             <div 
@@ -177,16 +189,18 @@ export function LeaderboardClient({
              </div>
           ) : isVideoBackground ? (
             <video 
-              src={backgroundValue} 
+              key={activeBackground}
+              src={activeBackground} 
               autoPlay loop muted playsInline 
               className="w-full h-full object-cover block" 
               style={{ opacity: (theme?.background_opacity ?? 40) / 100 }}
             />
           ) : (
             <div 
+              key={activeBackground}
               className="w-full h-full bg-cover bg-center block" 
               style={{ 
-                backgroundImage: `url(${backgroundValue})`,
+                backgroundImage: `url(${activeBackground})`,
                 opacity: (theme?.background_opacity ?? 40) / 100 
               }} 
             />

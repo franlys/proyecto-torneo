@@ -146,10 +146,31 @@ El proyecto ha avanzado a través de las fases iniciales de setup, base de datos
 ### Migraciones SQL Creadas (pendientes de aplicar en Supabase)
 - `20240408000000_add_warmup_to_matches.sql`
 - `20240408000001_add_warmup_to_tournaments.sql`
+- `20240408000002_add_bg_opacity_to_themes.sql`
+
+---
+
+## [2026-04-07 (noche - sprint 2)] — Optimización de Fondo y Efecto Overlay
+
+### Tareas Completadas
+
+- **Personalización de Fondo**:
+    - Nueva migración `20240408000002`: columna `background_opacity` (0-100) en `leaderboard_themes`.
+    - `ThemeEditor`: Añadido slider dinámico para controlar la opacidad con preview en tiempo real.
+    - Soporte para persistir `logo_url` y `background_opacity` en el Server Action `updateTheme`.
+
+- **Optimización de Video/Iframe**:
+    - Corregido el problema de cobertura en móviles. Se implementó una técnica de escalado agresivo (`300%` en mobile) centrada para asegurar que videos de 16:9 cubran el viewport vertical sin dejar franjas negras.
+    - Los fondos de YouTube, Twitch y Kick ahora responden a la opacidad configurada por el usuario.
+
+- **Estética "Streamer Overlay"**:
+    - Contenedor del Leaderboard: Añadido `drop-shadow` con el color primario del torneo para generar un efecto de "brillo exterior" (glow).
+    - El diseño ahora se siente como una pantalla flotante sobre el video de fondo, mejorando la inmersión del espectador.
+    - Ajustado el padding vertical (`py-12 md:py-24`) para mejorar el centrado estético sin romper el scroll en leaderboards largos.
 
 ### Decisiones Técnicas
-- **Shell Pattern**: Se separó el layout en Server (auth check) + Client (interactividad del drawer) para cumplir las reglas de arquitectura Server/Client del proyecto.
-- **Columnas ocultas en móvil**: Top 1 y Kill Rate son métricas secundarias — en móvil se priorizan Puntos y Kills que son los valores más relevantes para el espectador casual.
-- **Warmup aislado**: Al excluir los match IDs warmup con `.not('match_id', 'in', ...)`, se garantiza que el motor de puntuación no necesita cambios; solo filtra inputs.
+- **Scaling Hack**: Para iframes (que no soportan `object-fit: cover`), se optó por un contenedor sobredimensionado y centrado. Esto garantiza que el video siempre sobrepase los bordes de la pantalla (especialmente en móviles portrait), eliminando las barras negras reportadas por el usuario.
+- **Filtros CSS**: Se usó `filter: drop-shadow` en lugar de `box-shadow` en el contenedor principal para que el brillo siga la forma de los elementos hijos y se sienta más orgánico sobre el video.
+
 
 

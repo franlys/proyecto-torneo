@@ -8,6 +8,7 @@ export async function updateTheme(
     primary_color?: string
     background_type?: string
     background_value?: string | null
+    background_mobile_value?: string | null
     background_opacity?: number
     logo_url?: string | null
   }
