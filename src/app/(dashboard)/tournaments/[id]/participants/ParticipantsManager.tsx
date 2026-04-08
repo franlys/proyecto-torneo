@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import type { Team, Participant, TournamentMode } from '@/types'
-import { createTeam, addParticipant, deleteTeam, deleteParticipant, updateParticipantKills } from '@/lib/actions/participants'
+import { createTeam, addParticipant, deleteTeam, deleteParticipant, updateTeam, updateParticipant } from '@/lib/actions/participants'
+import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
 export function ParticipantsManager({
@@ -31,6 +32,12 @@ export function ParticipantsManager({
   const [playerName, setPlayerName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [uploadingId, setUploadingId] = useState<string | null>(null)
+  
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const currentUploadRef = useRef<{ id: string, type: 'team' | 'participant' } | null>(null)
+  
+  const supabase = createClient()
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -82,7 +89,6 @@ export function ParticipantsManager({
   const handleRemoveTeam = async (teamId: string) => {
     if (!confirm('¿Estás seguro de eliminar este participante/equipo?')) return
     
-    // Optimistic UI could be done here
     const res = await deleteTeam(tournamentId, teamId)
     if ('error' in res) {
       alert(res.error)
@@ -90,6 +96,53 @@ export function ParticipantsManager({
       setTeams(teams.filter(t => t.id !== teamId))
       setParticipants(participants.filter(p => p.teamId !== teamId))
     }
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !currentUploadRef.current) return
+
+    const { id, type } = currentUploadRef.current
+    setUploadingId(id)
+    
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${id}-${type}-avatar.${fileExt}`
+      const filePath = `avatars/${fileName}`
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('evidences')
+        .upload(filePath, file, { upsert: true })
+
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('evidences')
+        .getPublicUrl(filePath)
+
+      if (type === 'team') {
+        const res = await updateTeam(tournamentId, id, { avatarUrl: publicUrl })
+        if ('error' in res) throw new Error(res.error)
+        setTeams(teams.map(t => t.id === id ? { ...t, avatarUrl: publicUrl } : t))
+      } else {
+        const res = await updateParticipant(tournamentId, id, { avatarUrl: publicUrl })
+        if ('error' in res) throw new Error(res.error)
+        setParticipants(participants.map(p => p.id === id ? { ...p, avatarUrl: publicUrl } : p))
+      }
+
+      toast.success('Imagen actualizada con éxito')
+    } catch (err: any) {
+      toast.error('Error al subir imagen: ' + err.message)
+    } finally {
+      setUploadingId(null)
+      currentUploadRef.current = null
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const triggerUpload = (id: string, type: 'team' | 'participant') => {
+    currentUploadRef.current = { id, type }
+    fileInputRef.current?.click()
   }
 
   // Find participants for a team
@@ -170,23 +223,46 @@ export function ParticipantsManager({
               <div key={team.id} className="bg-dark-card border border-white/5 rounded-xl p-4 group
                 hover:border-white/10 transition-colors">
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-orbitron font-medium text-white">
-                        {team.name}
-                      </h3>
-                      {team.streamUrl && (
-                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-500/10 border border-red-500/20 rounded text-[10px] text-red-500 font-bold uppercase tracking-wider animate-pulse">
-                          <span className="w-1 h-1 rounded-full bg-red-500"></span>
-                          Stream
+                  <div className="flex items-center gap-4 flex-1">
+                    <div 
+                      onClick={() => triggerUpload(team.id, 'team')}
+                      className="relative w-12 h-12 rounded-xl bg-white/5 border border-white/10 overflow-hidden cursor-pointer hover:border-neon-purple/50 transition-all shrink-0"
+                    >
+                      {team.avatarUrl ? (
+                        <img src={team.avatarUrl} alt={team.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xl grayscale opacity-30 hover:opacity-100 transition-opacity">🛡️</div>
+                      )}
+                      {uploadingId === team.id && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                          <div className="w-4 h-4 border-2 border-neon-purple border-t-transparent rounded-full animate-spin" />
                         </div>
                       )}
+                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                      </div>
                     </div>
-                    {!isIndividual && (
-                       <p className="text-xs text-white/40">
-                         {roster.length} / {maxPerTeam} jugadores
-                       </p>
-                    )}
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-orbitron font-medium text-white">
+                          {team.name}
+                        </h3>
+                        {team.streamUrl && (
+                          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-500/10 border border-red-500/20 rounded text-[10px] text-red-500 font-bold uppercase tracking-wider animate-pulse">
+                            <span className="w-1 h-1 rounded-full bg-red-500"></span>
+                            Stream
+                          </div>
+                        )}
+                      </div>
+                      {!isIndividual && (
+                         <p className="text-xs text-white/40">
+                           {roster.length} / {maxPerTeam} jugadores
+                         </p>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {/* Copy Portal Link - Always visible */}
@@ -238,7 +314,26 @@ export function ParticipantsManager({
                         {roster.map(p => (
                           <div key={p.id} className="group/item flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/[0.02] border border-white/5 rounded-xl px-4 py-3 hover:bg-white/[0.04] transition-all">
                             <div className="flex items-center gap-3">
-                              <div className={`w-2.5 h-2.5 rounded-full shadow-[0_0_8px] ${p.streamUrl ? 'bg-red-500 shadow-red-500/50 animate-pulse' : 'bg-white/10 shadow-transparent'}`} />
+                              <div 
+                                onClick={() => triggerUpload(p.id, 'participant')}
+                                className="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 overflow-hidden cursor-pointer hover:border-neon-cyan/50 transition-all shrink-0"
+                              >
+                                {p.avatarUrl ? (
+                                  <img src={p.avatarUrl} alt={p.displayName} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-xs grayscale opacity-30">👤</div>
+                                )}
+                                {uploadingId === p.id && (
+                                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                    <div className="w-3 h-3 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin" />
+                                  </div>
+                                )}
+                                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/item:opacity-100 flex items-center justify-center transition-opacity">
+                                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                  </svg>
+                                </div>
+                              </div>
                               <div className="min-w-0">
                                 <span className="text-sm font-bold text-white/90 truncate block">
                                   {p.displayName} 
@@ -248,28 +343,10 @@ export function ParticipantsManager({
                             </div>
                             
                             <div className="flex items-center gap-4">
-                              {/* Kill Manager */}
-                              <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-lg p-1 pr-2">
-                                <span className="text-[9px] font-black text-white/20 uppercase px-2">Kills Totales</span>
-                                <input
-                                  type="number"
-                                  defaultValue={p.totalKills}
-                                  onBlur={async (e) => {
-                                    const val = parseInt(e.target.value)
-                                    if (isNaN(val) || val === p.totalKills) return
-                                    
-                                    const res = await updateParticipantKills(tournamentId, p.id, val)
-                                    if ('error' in res) {
-                                      toast.error(res.error)
-                                      e.target.value = p.totalKills.toString()
-                                    } else {
-                                      toast.success(`Kills de ${p.displayName} actualizadas a ${val}`)
-                                      // Actualizar localmente si es necesario, aunque el onBlur ya refleja el cambio visual 
-                                      // y el componente se recargará con real-time si está configurado.
-                                    }
-                                  }}
-                                  className="w-14 bg-white/5 border-none text-center text-sm font-bold text-neon-purple focus:ring-1 focus:ring-neon-purple/50 rounded transition-all"
-                                />
+                              {/* Kill Display (Read Only) */}
+                              <div className="flex items-center gap-2 bg-black/40 border border-white/5 rounded-lg px-3 py-1.5">
+                                <span className="text-[9px] font-black text-white/20 uppercase tracking-tighter">Bajas Totales</span>
+                                <span className="text-sm font-black text-neon-purple leading-none">{p.totalKills}</span>
                               </div>
 
                               <div className="flex items-center gap-1.5 border-l border-white/5 pl-4">
@@ -370,6 +447,15 @@ export function ParticipantsManager({
           })}
         </div>
       )}
+
+      {/* Hidden File Input for Avatars */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleImageUpload}
+        accept="image/*"
+        className="hidden"
+      />
     </div>
   )
 }

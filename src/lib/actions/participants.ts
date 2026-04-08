@@ -259,3 +259,97 @@ export async function updateParticipantKills(
 
   return { success: true }
 }
+
+export async function updateTeam(
+  tournamentId: string,
+  teamId: string,
+  data: Partial<CreateTeamInput>
+): Promise<{ data: Team } | { error: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const { data: tournament } = await supabase
+    .from('tournaments')
+    .select('creator_id')
+    .eq('id', tournamentId)
+    .single()
+
+  if (!tournament || tournament.creator_id !== user.id) {
+    return { error: 'Sin permisos' }
+  }
+
+  const { data: team, error: updateErr } = await supabase
+    .from('teams')
+    .update({
+      name: data.name,
+      avatar_url: data.avatarUrl,
+      stream_url: data.streamUrl,
+    })
+    .eq('id', teamId)
+    .eq('tournament_id', tournamentId)
+    .select()
+    .single()
+
+  if (updateErr) return { error: updateErr.message }
+
+  return {
+    data: {
+      id: team.id,
+      tournamentId: team.tournament_id,
+      name: team.name,
+      avatarUrl: team.avatar_url,
+      streamUrl: team.stream_url,
+      vipScore: team.vip_score,
+    }
+  }
+}
+
+export async function updateParticipant(
+  tournamentId: string,
+  participantId: string,
+  data: Partial<CreateParticipantInput>
+): Promise<{ data: Participant } | { error: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const { data: tournament } = await supabase
+    .from('tournaments')
+    .select('creator_id')
+    .eq('id', tournamentId)
+    .single()
+
+  if (!tournament || tournament.creator_id !== user.id) {
+    return { error: 'Sin permisos' }
+  }
+
+  const { data: participant, error: updateErr } = await supabase
+    .from('participants')
+    .update({
+      display_name: data.displayName,
+      avatar_url: (data as any).avatarUrl,
+      stream_url: data.streamUrl,
+      is_captain: data.isCaptain,
+    })
+    .eq('id', participantId)
+    .eq('tournament_id', tournamentId)
+    .select()
+    .single()
+
+  if (updateErr) return { error: updateErr.message }
+
+  return {
+    data: {
+      id: participant.id,
+      tournamentId: participant.tournament_id,
+      teamId: participant.team_id,
+      displayName: participant.display_name,
+      avatarUrl: participant.avatar_url,
+      contactId: participant.contact_id,
+      streamUrl: participant.stream_url,
+      isCaptain: participant.is_captain,
+      totalKills: participant.total_kills || 0,
+    }
+  }
+}

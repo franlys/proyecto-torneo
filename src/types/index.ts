@@ -57,6 +57,7 @@ export interface Participant {
   tournamentId: string;
   teamId?: string;
   displayName: string;
+  avatarUrl?: string;
   contactId?: string;
   streamUrl?: string;
   isCaptain: boolean;

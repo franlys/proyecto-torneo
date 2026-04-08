@@ -81,6 +81,7 @@ export const teamSchema = z.object({
 export const participantSchema = z.object({
   displayName: z.string().min(2, 'Display name must be at least 2 characters').max(100),
   contactId: z.string().max(255).optional(),
+  avatarUrl: z.string().url().optional().or(z.literal('')),
   streamUrl: z.string().url().optional().or(z.literal('')),
   teamId: z.string().uuid().optional(),
   isCaptain: z.boolean().default(false),
