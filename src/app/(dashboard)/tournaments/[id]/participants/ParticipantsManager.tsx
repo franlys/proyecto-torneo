@@ -224,27 +224,33 @@ export function ParticipantsManager({
                 hover:border-white/10 transition-colors">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-4 flex-1">
-                    <div 
+                    <button 
+                      type="button"
                       onClick={() => triggerUpload(team.id, 'team')}
-                      className="relative w-12 h-12 rounded-xl bg-white/5 border border-white/10 overflow-hidden cursor-pointer hover:border-neon-purple/50 transition-all shrink-0"
+                      className="relative w-14 h-14 rounded-xl bg-white/5 border border-white/10 overflow-hidden cursor-pointer hover:border-neon-purple/50 hover:ring-2 hover:ring-neon-purple/20 transition-all shrink-0 group/logo"
+                      title="Subir logo del equipo"
                     >
                       {team.avatarUrl ? (
                         <img src={team.avatarUrl} alt={team.name} className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xl grayscale opacity-30 hover:opacity-100 transition-opacity">🛡️</div>
+                        <div className="w-full h-full flex items-center justify-center text-xl grayscale opacity-30 group-hover/logo:opacity-10 transition-opacity">🛡️</div>
                       )}
-                      {uploadingId === team.id && (
-                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                          <div className="w-4 h-4 border-2 border-neon-purple border-t-transparent rounded-full animate-spin" />
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      
+                      {/* Overlay always visible but subtle */}
+                      <div className="absolute inset-0 bg-black/40 opacity-40 group-hover/logo:opacity-70 flex flex-col items-center justify-center transition-all">
+                        <svg className="w-5 h-5 text-white mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
+                        <span className="text-[7px] font-black text-white uppercase tracking-tighter opacity-0 group-hover/logo:opacity-100">Logo</span>
                       </div>
-                    </div>
+
+                      {uploadingId === team.id && (
+                        <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-20">
+                          <div className="w-5 h-5 border-2 border-neon-purple border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      )}
+                    </button>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-orbitron font-medium text-white">
@@ -314,26 +320,31 @@ export function ParticipantsManager({
                         {roster.map(p => (
                           <div key={p.id} className="group/item flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/[0.02] border border-white/5 rounded-xl px-4 py-3 hover:bg-white/[0.04] transition-all">
                             <div className="flex items-center gap-3">
-                              <div 
+                              <button 
+                                type="button"
                                 onClick={() => triggerUpload(p.id, 'participant')}
-                                className="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 overflow-hidden cursor-pointer hover:border-neon-cyan/50 transition-all shrink-0"
+                                className="relative w-11 h-11 rounded-full bg-white/5 border border-white/10 overflow-hidden cursor-pointer hover:border-neon-cyan/50 hover:ring-2 hover:ring-neon-cyan/20 transition-all shrink-0 group/avatar"
+                                title="Subir foto del jugador"
                               >
                                 {p.avatarUrl ? (
                                   <img src={p.avatarUrl} alt={p.displayName} className="w-full h-full object-cover" />
                                 ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-xs grayscale opacity-30">👤</div>
+                                  <div className="w-full h-full flex items-center justify-center text-xs grayscale opacity-30 group-hover/avatar:opacity-10 transition-opacity">👤</div>
                                 )}
-                                {uploadingId === p.id && (
-                                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                                    <div className="w-3 h-3 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin" />
-                                  </div>
-                                )}
-                                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/item:opacity-100 flex items-center justify-center transition-opacity">
-                                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                
+                                {/* Overlay for photo */}
+                                <div className="absolute inset-0 bg-black/40 opacity-40 group-hover/avatar:opacity-70 flex items-center justify-center transition-all">
+                                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                                   </svg>
                                 </div>
-                              </div>
+
+                                {uploadingId === p.id && (
+                                  <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-20">
+                                    <div className="w-4 h-4 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin" />
+                                  </div>
+                                )}
+                              </button>
                               <div className="min-w-0">
                                 <span className="text-sm font-bold text-white/90 truncate block">
                                   {p.displayName} 
