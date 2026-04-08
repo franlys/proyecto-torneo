@@ -67,7 +67,7 @@ export function TeamDetails({
     let cumulativeKills = 0
 
     return sortedMatches.map((m) => {
-      const sub = teamSubmissions.find((s) => s.matchId === m.id)
+      const sub = teamSubmissions.find((s) => String(s.matchId) === String(m.id))
       const kills = sub?.killCount || 0
       
       // Individual player kills for this match
@@ -101,15 +101,21 @@ export function TeamDetails({
 
   // 4. Calculate Metrics
   const teamKD = useMemo(() => {
-    const matchesPlayed = teamSubmissions.length || 1
     const totalKills = teamSubmissions.reduce((acc, sub) => acc + (sub.killCount || 0), 0)
-    return (totalKills / matchesPlayed).toFixed(2)
+    // KD in this context is AVG Kills per match
+    const matchesWithData = teamSubmissions.length || 1
+    return (totalKills / matchesWithData).toFixed(2)
   }, [teamSubmissions])
 
   const kd = useMemo(() => {
-    if (!selectedPlayer) return 0
+    if (!selectedPlayer) return "0.00"
+    // Calculate AVG kills for this specific player across all team submissions
+    const playerKillsTotal = teamSubmissions.reduce((acc, sub) => {
+      const breakdown = sub.playerKills as any || {}
+      return acc + (breakdown[selectedPlayer.id] || 0)
+    }, 0)
     const matchesPlayed = teamSubmissions.length || 1
-    return ((selectedPlayer.totalKills || 0) / matchesPlayed).toFixed(2)
+    return (playerKillsTotal / matchesPlayed).toFixed(2)
   }, [selectedPlayer, teamSubmissions])
 
   const avgPlacement = useMemo(() => {
@@ -248,7 +254,7 @@ export function TeamDetails({
                  
                  <div className="grid grid-cols-2 gap-3 mb-6">
                     <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5">
-                       <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">KD (AVG Kills)</p>
+                       <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">KD (Promedio)</p>
                        <p className="text-2xl font-orbitron font-black text-white">{kd}</p>
                     </div>
                     <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5">

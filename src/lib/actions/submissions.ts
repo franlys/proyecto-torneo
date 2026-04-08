@@ -325,7 +325,7 @@ export async function processAIValidation(
 
     // 2. Download file from Storage
     const { data: fileData, error: downloadErr } = await supabase.storage
-      .from('evidence')
+      .from('evidences')
       .download(storagePath)
 
     if (downloadErr || !fileData) {

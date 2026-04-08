@@ -141,7 +141,7 @@ export default async function PublicLeaderboardPage({
     createdAt: m.created_at
   }))
 
-  const { data: submissions } = await supabase
+  const { data: rawSubmissions } = await supabase
     .from('submissions')
     .select(`
       *,
@@ -151,12 +151,39 @@ export default async function PublicLeaderboardPage({
     .eq('tournament_id', tournament.id)
     .eq('status', 'approved')
 
+  const submissions = (rawSubmissions || []).map((s: any) => ({
+    id: s.id,
+    tournamentId: s.tournament_id,
+    matchId: s.match_id,
+    teamId: s.team_id,
+    submittedBy: s.submitted_by,
+    killCount: s.kill_count,
+    playerKills: s.player_kills,
+    rank: s.rank,
+    potTop: s.pot_top,
+    status: s.status,
+    rejectionReason: s.rejection_reason,
+    submittedAt: s.submitted_at,
+    teams: s.teams,
+    evidenceFiles: (s.evidence_files || []).map((ev: any) => ({
+      storagePath: ev.storage_path,
+      mimeType: ev.mime_type
+    }))
+  }))
+
   // Fetch scoring rule
-  const { data: scoringRule } = await supabase
+  const { data: rawScoringRule } = await supabase
     .from('scoring_rules')
     .select('*')
     .eq('tournament_id', tournament.id)
     .single()
+
+  const scoringRule = rawScoringRule ? {
+    id: rawScoringRule.id,
+    tournamentId: rawScoringRule.tournament_id,
+    killPoints: rawScoringRule.kill_points,
+    placementPoints: rawScoringRule.placement_points
+  } : null
 
   // Flatten and map participants for LeaderboardClient
   const allParticipants = allTeams?.flatMap(t => 

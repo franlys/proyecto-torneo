@@ -62,6 +62,10 @@ export function LeaderboardClient({
     setIsMounted(true)
     setHost(window.location.hostname)
   }, [])
+
+  useEffect(() => {
+    setExpandedTeamId(null)
+  }, [activeTab])
   const supabase = createClient()
 
   // Top Fragger Individual: Calculado comparando cada jugador de manera individual
