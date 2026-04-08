@@ -73,6 +73,10 @@ export interface Submission {
   status: SubmissionStatus;
   rejectionReason?: string;
   submittedAt: string;
+  aiStatus?: 'pending' | 'processing' | 'completed' | 'failed';
+  aiData?: any;
+  aiConfidence?: number;
+  aiError?: string;
 }
 
 export interface Match {

@@ -25,7 +25,7 @@ export default async function PublicLeaderboardPage({
   // Fetch ALL teams with their participants (for the Participants tab)
   const { data: allTeams } = await supabase
     .from('teams')
-    .select('id, name, avatar_url, stream_url, participants(id, display_name, is_captain, stream_url)')
+    .select('id, name, avatar_url, stream_url, participants(id, team_id, display_name, is_captain, stream_url, total_kills)')
     .eq('tournament_id', tournament.id)
     .order('created_at', { ascending: true })
 
@@ -139,6 +139,26 @@ export default async function PublicLeaderboardPage({
     .eq('tournament_id', tournament.id)
     .eq('status', 'approved')
 
+  // Fetch scoring rule
+  const { data: scoringRule } = await supabase
+    .from('scoring_rules')
+    .select('*')
+    .eq('tournament_id', tournament.id)
+    .single()
+
+  // Flatten and map participants for LeaderboardClient
+  const allParticipants = allTeams?.flatMap(t => 
+    (t.participants || []).map((p: any) => ({
+      id: p.id,
+      tournamentId: tournament.id,
+      teamId: p.team_id,
+      displayName: p.display_name,
+      isCaptain: p.is_captain,
+      streamUrl: p.stream_url,
+      totalKills: p.total_kills || 0
+    }))
+  ) || []
+
   return (
     <main className="min-h-screen bg-dark-bg text-white font-inter">
       <LeaderboardClient 
@@ -156,6 +176,8 @@ export default async function PublicLeaderboardPage({
         matches={matches || []}
         submissions={submissions || []}
         rulesText={tournament.rules_text}
+        scoringRule={scoringRule}
+        participants={allParticipants}
       />
     </main>
   )

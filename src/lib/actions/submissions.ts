@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { submissionSchema } from '@/lib/validations/schemas'
 import type { CreateSubmissionInput } from '@/lib/validations/schemas'
 import type { Submission } from '@/types'
+import { analyzeSubmissionImage } from '../services/ai-vision'
 
 export async function createSubmission(
   data: CreateSubmissionInput
@@ -82,6 +83,11 @@ export async function createSubmission(
       // A cron or manual check can clean up orphaned submissions.
       return { error: 'Envío creado, pero hubo un error al registrar la evidencia: ' + evErr.message }
     }
+
+    // NEW: Trigger AI Validation asynchronously (Wait for it in this action for demo purposes or fire and forget)
+    // For now, we'll let it run and update the DB in the background
+    processAIValidation(submission.id, parsed.data.evidence.storagePath, parsed.data.evidence.mimeType)
+      .catch(err => console.error('Background AI validation failed:', err))
   }
 
   return {
@@ -275,4 +281,67 @@ export async function getSubmissions(
 
   if (error) return { error: error.message }
   return { data }
+}
+
+/**
+ * Background AI Validation Process
+ */
+export async function processAIValidation(
+  submissionId: string,
+  storagePath: string,
+  mimeType: string
+) {
+  const supabase = await createClient()
+
+  try {
+    // 1. Mark as processing
+    await supabase
+      .from('submissions')
+      .update({ ai_status: 'processing' })
+      .eq('id', submissionId)
+
+    // 2. Download file from Storage
+    const { data: fileData, error: downloadErr } = await supabase.storage
+      .from('evidence')
+      .download(storagePath)
+
+    if (downloadErr || !fileData) {
+      throw new Error(`Error descargando evidencia: ${downloadErr?.message}`)
+    }
+
+    // 3. Convert to buffer
+    const arrayBuffer = await fileData.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+
+    // 4. Run AI Analysis
+    const aiResult = await analyzeSubmissionImage(buffer, mimeType)
+
+    if ('error' in aiResult) {
+       throw new Error(aiResult.error)
+    }
+
+    // 5. Update Submission with AI results
+    await supabase
+      .from('submissions')
+      .update({
+        ai_status: 'completed',
+        ai_data: {
+          team_name: aiResult.teamName,
+          kill_count: aiResult.killCount,
+          rank: aiResult.rank,
+        },
+        ai_confidence: aiResult.confidence,
+      })
+      .eq('id', submissionId)
+
+  } catch (error: any) {
+    console.error(`AI Validation Failed for ${submissionId}:`, error)
+    await supabase
+      .from('submissions')
+      .update({
+        ai_status: 'failed',
+        ai_error: error.message || 'Error desconocido'
+      })
+      .eq('id', submissionId)
+  }
 }

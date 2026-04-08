@@ -1,4 +1,5 @@
 import { getTournament, activateTournament } from '@/lib/actions/tournaments'
+import { exportTournamentDataCsv } from '@/lib/actions/export'
 import { DeleteTournamentButton } from './DeleteTournamentButton'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -124,6 +125,10 @@ function ActivateButton({ id }: { id: string }) {
     </form>
   )
 }
+
+// ─── Export & Reports Component (Client Wrap) ──────────────────────────────────
+
+import { ExportButton } from './ExportButton'
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -263,6 +268,17 @@ export default async function TournamentOverviewPage({
             }
           />
           <QuickAction
+            href={`/tournaments/${id}/matches`}
+            label="Partidas"
+            desc="Nombres de rondas y mapas"
+            icon={
+              <svg className="w-4 h-4 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+              </svg>
+            }
+          />
+          <QuickAction
             href={`/t/${tournament.slug}`}
             label="Ver leaderboard público"
             desc={`/t/${tournament.slug}`}
@@ -275,6 +291,19 @@ export default async function TournamentOverviewPage({
               </svg>
             }
           />
+        </div>
+      </div>
+
+      {/* Export & Reports */}
+      <div className="mb-8 p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
+        <h2 className="text-sm font-orbitron font-black text-white uppercase tracking-tighter mb-4">
+          Reportes y Exportación
+        </h2>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <ExportButton id={id} tournamentName={tournament.name} />
+          <div className="flex-1 text-xs text-white/30 flex items-center">
+            Genera un reporte oficial en formato CSV con los resultados finales, kills por equipo y estadísticas individuales (MVP).
+          </div>
         </div>
       </div>
 

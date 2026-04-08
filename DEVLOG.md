@@ -289,11 +289,28 @@ Los organizadores necesitaban una forma de agrupar varios mapas o juegos bajo un
     - **Análisis de Ronda**: El header del recap indica si se está visualizando un "Resumen de Ronda" o un "Encuentro Global".
     - **Cálculo de Totales**: El sistema suma automáticamente los resultados de todas las rondas de un encuentro para mostrar el desempeño acumulado de la serie.
 
-### Decisiones Técnicas
-- **Self-referencing Table**: Se optó por mantener una sola tabla `matches` con referencia circular (`parent_match_id`). Esto simplifica las búsquedas de envíos (`submissions` siguen apuntando a un `match_id`), siendo este ID una ronda específica si existe jerarquía.
-- **Auto-generation**: Al crear un torneo, el sistema pre-configura toda la estructura de rondas, ahorrando trabajo manual al administrador.
+### Sprint 10: Visibilidad de Reglas y Gestión Manual (Refinamiento)
+- **Reglas Públicas**: Implementada pestaña 'rules' en `LeaderboardClient` con renderizado de `rules_text`.
+- **MVP Manual**: Añadida capacidad de editar `total_kills` de participantes directamente en el Dashboard.
+- **Sincronización**: Git push a rama principal para despliegue en Vercel.
+
+### Sprint 11: Gestión de Partidas y Reportes Pro
+- **Editor de Partidas**: Nueva interfaz para renombrar encuentros, rondas y asignar mapas (Erangel, Miramar, etc.).
+- **Exportación**: Generación de reportes CSV con resultados finales y estadísticas MVP.
+
+### Sprint 12: Dashboard Interactivo de Análisis (Visual WOW)
+- **Deep Dive Tables**: Refactor completo del leaderboard público. Ahora cada equipo se expande con una animación fluida al hacer clic.
+- **Gráficas de Progreso**: Integración de `AreaChart` dinámico mostrando la evolución acumulada de puntos y kills por ronda.
+- **Análisis de Jugadores**: Desglose detallado de estadísticas individuales dentro de la vista expandida del equipo.
+
+### Sprint 13: Motor de Validación con IA Vision
+- **Integración con Gemini 1.5 Flash**: Implementación del servicio de OCR y análisis de imágenes gratuito.
+- **Validación Automática**: Los resultados enviados por jugadores son analizados en segundo plano al subir la evidencia.
+- **Dashboard de Aprobación**: Nueva interfaz para administradores que contrastan los datos del jugador vs las extracciones de la IA.
+- **Indicadores de Confianza**: Sistema de badges (Alta Confianza / Revisión Manual) basado en el análisis probabilístico del modelo visual.
 
 ### Próximos Pasos
-1. **Exportación**: Generar reportes PDF/Excel para organizadores.
-2. **Dashboard de Gestión de Partidas**: Mejorar la vista de administrador para editar ronds/mapas individualmente post-creación.
+1. **Galería de Campeones**: Hall of Fame para torneos finalizados.
+2. **Auto-Aprobación**: Lógica opcional para aprobar automáticamente si la IA tiene 100% de confianza.
+3. **Optimización de OCR**: Refinar prompts para diferentes tipos de juegos (BR, Kill Race, etc.).
 

@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState, Fragment } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Orbitron } from 'next/font/google'
 import { createClient } from '@/lib/supabase/client'
-import type { TeamStanding, Participant } from '@/types'
+import type { TeamStanding, Participant, Match, Submission, ScoringRule } from '@/types'
 import { MatchRecap } from './MatchRecap'
+import { TeamDetails } from './TeamDetails'
 
 const orbitron = Orbitron({ subsets: ['latin'] })
 
@@ -24,6 +25,8 @@ export function LeaderboardClient({
   potTopEnabled,
   vipEnabled,
   rulesText,
+  scoringRule,
+  participants,
 }: {
   tournamentId: string
   tournamentName: string
@@ -33,15 +36,19 @@ export function LeaderboardClient({
   initialStandings: any[]
   teams?: any[]
   theme?: any
-  matches?: any[]
-  submissions?: any[]
+  matches?: Match[]
+  submissions?: Submission[]
   killRateEnabled?: boolean
   potTopEnabled?: boolean
   vipEnabled?: boolean
   rulesText?: string
+  scoringRule?: ScoringRule
+  participants: Participant[]
 }) {
+  const primaryColor = theme?.primaryColor || '#00F5FF'
   const [standings, setStandings] = useState(initialStandings)
   const [activeTab, setActiveTab] = useState<'ranking' | 'participants' | 'matches' | 'rules'>('ranking')
+  const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null)
   const [watchingStream, setWatchingStream] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const supabase = createClient()
@@ -426,66 +433,121 @@ export function LeaderboardClient({
                   {standings.map((s) => {
                     const rankDiff = (s.previousRank || s.rank) - s.rank
                     return (
+                      <Fragment key={s.teamId}>
                       <motion.tr
-                        key={s.teamId}
                         layout
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
                         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                        className="border-b border-white/5 hover:bg-white/[0.02] group"
+                        className={`border-b border-white/5 hover:bg-white/[0.04] transition-colors cursor-pointer group ${
+                          expandedTeamId === s.teamId ? 'bg-white/[0.03]' : ''
+                        }`}
+                        onClick={() => setExpandedTeamId(expandedTeamId === s.teamId ? null : s.teamId)}
                       >
-                        <td className="px-3 sm:px-6 py-3 sm:py-4">
+                        <td className="px-3 sm:px-6 py-4 sm:py-6">
                           <div className="flex items-center justify-center gap-1 sm:gap-2">
-                            <span className={`font-orbitron font-bold text-base sm:text-xl ${
-                              s.rank === 1 ? 'text-gold' : 
-                              s.rank === 2 ? 'text-gray-300' : 
-                              s.rank === 3 ? 'text-orange-400' : 'text-white/60'
-                            }`}>
-                              #{s.rank}
-                            </span>
-                            {rankDiff > 0 && <span className="text-[10px] text-green-400">▲{rankDiff}</span>}
-                            {rankDiff < 0 && <span className="text-[10px] text-red-400">▼{Math.abs(rankDiff)}</span>}
+                             <div className="flex flex-col items-center">
+                                <span className={`font-orbitron font-black text-base sm:text-2xl ${
+                                  s.rank === 1 ? 'text-gold drop-shadow-[0_0_10px_rgba(255,215,0,0.3)]' : 
+                                  s.rank === 2 ? 'text-gray-300' : 
+                                  s.rank === 3 ? 'text-orange-400' : 'text-white/40'
+                                }`}>
+                                  {s.rank}
+                                </span>
+                                <div className="flex items-center gap-1 mt-1">
+                                   {rankDiff > 0 && <span className="text-[9px] font-bold text-green-400 flex items-center">▲{rankDiff}</span>}
+                                   {rankDiff < 0 && <span className="text-[9px] font-bold text-red-400 flex items-center">▼{Math.abs(rankDiff)}</span>}
+                                </div>
+                             </div>
                           </div>
                         </td>
-                        <td className="px-3 sm:px-6 py-3 sm:py-4">
-                          <div className="flex items-center gap-2 sm:gap-3">
-                            {s.avatarUrl && <img src={s.avatarUrl} alt="" className="w-7 h-7 sm:w-8 sm:h-8 rounded-full" />}
-                            <div>
-                               <div className="flex items-center gap-1 sm:gap-2">
-                                 <span className="font-orbitron font-medium text-sm sm:text-lg tracking-wide text-white">{s.teamName}</span>
+                        <td className="px-3 sm:px-6 py-4 sm:py-6">
+                          <div className="flex items-center gap-3 sm:gap-5">
+                            <div className="relative">
+                               {s.avatarUrl ? (
+                                 <img src={s.avatarUrl} alt="" className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl object-cover border-2 border-white/10 shadow-xl" />
+                               ) : (
+                                 <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 font-orbitron font-black text-xl italic">
+                                   {s.teamName.substring(0, 1)}
+                                 </div>
+                               )}
+                               {expandedTeamId === s.teamId && (
+                                 <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-neon-cyan border-2 border-dark-card flex items-center justify-center">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                                 </div>
+                               )}
+                            </div>
+                            <div className="flex-1">
+                               <div className="flex items-center gap-3">
+                                 <span className="font-orbitron font-black text-sm sm:text-xl tracking-tight text-white group-hover:text-neon-cyan transition-colors">{s.teamName}</span>
                                  {s.streams && s.streams.length > 0 && (
-                                   <button
-                                     onClick={() => setActiveTab('participants')}
-                                     title={`Ver streams de ${s.teamName} en tab Participantes`}
-                                     className="ml-1 text-red-500/60 hover:text-red-400 transition-colors"
-                                   >
-                                     <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                                       <path d="M17 10.5V7a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1v-3.5l4 4v-11l-4 4z"/>
-                                     </svg>
-                                   </button>
+                                   <div className="flex items-center gap-1 text-[8px] bg-red-500/20 text-red-500 font-bold px-1.5 py-0.5 rounded border border-red-500/30 uppercase tracking-tighter">
+                                      LIVE
+                                   </div>
                                  )}
+                               </div>
+                               <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest">Ver Detalles</span>
+                                  <svg className={`w-3 h-3 text-white/20 transition-transform ${expandedTeamId === s.teamId ? 'rotate-90 text-neon-cyan' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
+                                  </svg>
                                </div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-3 sm:px-6 py-3 sm:py-4 text-center font-orbitron font-bold text-xl sm:text-2xl text-neon-cyan">
+                        <td className="px-3 sm:px-6 py-4 sm:py-6 text-center font-orbitron font-black text-2xl sm:text-4xl text-neon-cyan">
                           {s.totalPoints}
                         </td>
-                        <td className="px-3 sm:px-6 py-3 sm:py-4 text-center text-white/80 font-medium text-sm sm:text-base">
-                          {s.totalKills}
+                        <td className="px-3 sm:px-6 py-4 sm:py-6 text-center">
+                           <div className="flex flex-col items-center">
+                              <span className="text-white font-black text-lg sm:text-xl">{s.totalKills}</span>
+                              <span className="text-[8px] text-white/40 uppercase font-black tracking-widest mt-1">TOTAL KILLS</span>
+                           </div>
                         </td>
                         {potTopEnabled && (
-                          <td className="hidden md:table-cell px-6 py-4 text-center text-white/60">
-                            {s.potTopCount}
+                          <td className="hidden md:table-cell px-6 py-4 text-center">
+                             <div className="flex flex-col items-center">
+                                <span className="text-gold font-black text-lg">{s.potTopCount}</span>
+                                <span className="text-[8px] text-white/40 uppercase font-black tracking-widest mt-1">VICTORIAS</span>
+                             </div>
                           </td>
                         )}
                         {killRateEnabled && (
-                          <td className="hidden md:table-cell px-6 py-4 text-center text-white/60 font-mono text-xs">
-                            {s.killRate.toFixed(1)}
+                          <td className="hidden md:table-cell px-6 py-4 text-center">
+                             <div className="flex flex-col items-center">
+                                <span className="text-white/60 font-mono text-xs">{s.killRate.toFixed(1)}</span>
+                                <span className="text-[8px] text-white/20 uppercase font-black tracking-tighter mt-1">AVG K/M</span>
+                             </div>
                           </td>
                         )}
                       </motion.tr>
+
+                      {/* Expansion Row */}
+                      <AnimatePresence>
+                        {expandedTeamId === s.teamId && (
+                          <motion.tr
+                            key={`details-${s.teamId}`}
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="bg-black/40 overflow-hidden"
+                          >
+                            <td colSpan={6} className="p-0">
+                               <TeamDetails 
+                                 teamId={s.teamId}
+                                 teamName={s.teamName}
+                                 matches={matches || []}
+                                 submissions={submissions || []}
+                                 scoringRule={scoringRule!}
+                                 participants={participants}
+                                 primaryColor={primaryColor}
+                               />
+                            </td>
+                          </motion.tr>
+                        )}
+                      </AnimatePresence>
+                      </Fragment>
                     )
                   })}
                 </AnimatePresence>

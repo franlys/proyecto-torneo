@@ -16,6 +16,10 @@ type PendingSubmission = {
   submitted_at: string
   teams?: { name: string } | { name: string }[]
   matches?: { name: string; match_number: number } | { name: string; match_number: number }[]
+  ai_status?: 'pending' | 'processing' | 'completed' | 'failed'
+  ai_data?: { team_name?: string; kill_count?: number; rank?: number }
+  ai_confidence?: number
+  ai_error?: string
 }
 
 export function SubmissionsManager({
@@ -79,6 +83,7 @@ export function SubmissionsManager({
                   <th className="px-6 py-4 font-medium">Partida</th>
                   <th className="px-6 py-4 font-medium text-center">Kills</th>
                   <th className="px-6 py-4 font-medium text-center">Pot Top</th>
+                  <th className="px-6 py-4 font-medium">Validación IA</th>
                   <th className="px-6 py-4 font-medium">Estado</th>
                   <th className="px-6 py-4 font-medium text-right">Acciones</th>
                 </tr>
@@ -94,6 +99,40 @@ export function SubmissionsManager({
                         <span className="inline-flex max-w-fit mx-auto px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-gold/20 text-gold border border-gold/30">Sí</span>
                       ) : (
                         <span className="text-white/20">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      {sub.ai_status === 'processing' && (
+                        <div className="flex items-center gap-2 text-white/40">
+                          <div className="w-3 h-3 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
+                          <span className="text-[10px] uppercase font-bold tracking-widest">Analizando...</span>
+                        </div>
+                      )}
+                      {sub.ai_status === 'failed' && (
+                        <div className="flex items-center gap-2 text-red-400/60" title={sub.ai_error}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          <span className="text-[10px] uppercase font-bold tracking-widest">Error IA</span>
+                        </div>
+                      )}
+                      {sub.ai_status === 'completed' && sub.ai_data && (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                             <div className={`w-1.5 h-1.5 rounded-full ${sub.ai_data.kill_count === sub.kill_count ? 'bg-green-400' : 'bg-orange-400'}`} />
+                             <span className="text-[10px] text-white/60 font-medium">Kills detectadas: <b className="text-white">{sub.ai_data.kill_count}</b></span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                             {sub.ai_confidence && sub.ai_confidence > 0.8 ? (
+                               <span className="text-[8px] bg-green-500/10 text-green-400 px-1 rounded border border-green-500/20 uppercase font-black tracking-tighter">Alta Confianza</span>
+                             ) : (
+                               <span className="text-[8px] bg-orange-500/10 text-orange-400 px-1 rounded border border-orange-500/20 uppercase font-black tracking-tighter">Revisión Manual</span>
+                             )}
+                          </div>
+                        </div>
+                      )}
+                      {!sub.ai_status && (
+                        <span className="text-white/10 text-[10px] uppercase tracking-widest font-bold">Sin análisis</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
