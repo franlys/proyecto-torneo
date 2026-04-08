@@ -45,7 +45,7 @@ export function LeaderboardClient({
   scoringRule?: ScoringRule
   participants: Participant[]
 }) {
-  const primaryColor = theme?.primaryColor || '#00F5FF'
+  const primaryColor = theme?.primary_color || theme?.primaryColor || '#00F5FF'
   const [standings, setStandings] = useState(initialStandings)
   const [activeTab, setActiveTab] = useState<'ranking' | 'participants' | 'matches' | 'rules'>('ranking')
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null)
@@ -142,7 +142,6 @@ export function LeaderboardClient({
     }
   }, [tournamentId, supabase])
 
-  const primaryColor = theme?.primary_color || '#00F5FF'
   const backgroundValue = theme?.background_value
   const backgroundMobileValue = theme?.background_mobile_value
   const activeBackground = (isMobile && backgroundMobileValue) ? backgroundMobileValue : backgroundValue
