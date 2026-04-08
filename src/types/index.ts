@@ -77,6 +77,7 @@ export interface Submission {
   aiData?: any;
   aiConfidence?: number;
   aiError?: string;
+  playerKills?: Record<string, number>;
 }
 
 export interface Match {

@@ -92,6 +92,7 @@ export const submissionSchema = z.object({
   matchId: z.string().uuid(),
   submittedBy: z.string().uuid(),
   killCount: z.number().int().min(0, 'Kills cannot be negative'),
+  playerKills: z.record(z.string().uuid(), z.number().int().min(0)).optional(),
   potTop: z.boolean().default(false),
   evidence: z.object({
     storagePath: z.string(),

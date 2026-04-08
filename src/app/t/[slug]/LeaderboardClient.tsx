@@ -655,7 +655,12 @@ export function LeaderboardClient({
           )}
         </div>
       ) : activeTab === 'matches' ? (
-        <MatchRecap matches={matches || []} submissions={submissions || []} primaryColor={primaryColor} />
+        <MatchRecap 
+          matches={matches || []} 
+          submissions={submissions || []} 
+          participants={participants}
+          primaryColor={primaryColor} 
+        />
       ) : (
         <motion.div 
           initial={{ opacity: 0, y: 20 }}

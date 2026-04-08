@@ -314,6 +314,12 @@ Los organizadores necesitaban una forma de agrupar varios mapas o juegos bajo un
 - **Implementación de Guardián de Montado**: Introducción de un estado `isMounted` en `LeaderboardClient.tsx` para asegurar que el cálculo de `isMobile` y colores dinámicos ocurra solo después de la hidratación.
 - **Reparación de Activación de Torneo**: Corrección en el flujo de activación desde el Dashboard, asegurando que los botones respondan correctamente tras estabilizar el estado global de la aplicación.
 
+### Sprint 14: Estadísticas Individuales y Dashboard Pro
+- **Kills por Jugador**: Rediseño del flujo de envío de evidencias para permitir el desglose de bajas por cada miembro del equipo.
+- **Base de Datos Dinámica**: Incorporación de soporte JSONB para guardar el histórico de rendimiento individual por partida.
+- **Dashboard Analítico Público**: Integración de acordeones animados en el leaderboard con gráficas de rendimiento acumulado y seguimiento en tiempo real para espectadores.
+- **Refactorización de Tipos**: Migración total a camelCase en componentes de visualización para asegurar consistencia y facilitar el mantenimiento.
+
 ### Próximos Pasos
 1. **Galería de Campeones**: Hall of Fame para torneos finalizados.
 2. **Auto-Aprobación**: Lógica opcional para aprobar automáticamente si la IA tiene 100% de confianza.

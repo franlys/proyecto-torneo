@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Participant } from '@/types'
 
 interface SubmissionData {
   id: string
@@ -16,6 +17,7 @@ interface SubmissionData {
     storagePath: string
     mimeType: string
   }>
+  playerKills?: Record<string, number>
 }
 
 interface MatchData {
@@ -31,10 +33,11 @@ interface MatchData {
 interface MatchRecapProps {
   matches: MatchData[]
   submissions: SubmissionData[]
+  participants: Participant[]
   primaryColor: string
 }
 
-export function MatchRecap({ matches, submissions, primaryColor }: MatchRecapProps) {
+export function MatchRecap({ matches, submissions, participants, primaryColor }: MatchRecapProps) {
   // 1. Identify Encounters (Parents)
   const encounters = (matches || []).filter(m => !m.parentMatchId).sort((a, b) => a.matchNumber - b.matchNumber)
   
@@ -266,6 +269,23 @@ export function MatchRecap({ matches, submissions, primaryColor }: MatchRecapPro
                               </div>
                             )}
                           </div>
+
+                          {/* Individual breakdown if available */}
+                          {sub.playerKills && Object.keys(sub.playerKills).length > 0 && (
+                            <div className="mt-4 pt-4 border-t border-white/5">
+                               <p className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-2">Contribución Individual</p>
+                               <div className="flex flex-wrap gap-2">
+                                  {Object.entries(sub.playerKills).map(([pId, kills]) => (
+                                    <div key={pId} className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/[0.03] border border-white/5">
+                                       <span className="text-[9px] font-bold text-white/50">
+                                          {participants.find(p => p.id === pId)?.displayName || 'Jugador'}
+                                       </span>
+                                       <span className="text-[9px] font-black text-neon-cyan">{kills}</span>
+                                    </div>
+                                  ))}
+                               </div>
+                            </div>
+                          )}
                         </div>
                       </motion.div>
                     )

@@ -58,6 +58,7 @@ export async function createSubmission(
       team_id: parsed.data.teamId,
       submitted_by: parsed.data.submittedBy,
       kill_count: parsed.data.killCount,
+      player_kills: parsed.data.playerKills || {},
       pot_top: parsed.data.potTop,
       status: 'pending',
     })
@@ -98,6 +99,7 @@ export async function createSubmission(
       matchId: submission.match_id,
       submittedBy: submission.submitted_by,
       killCount: submission.kill_count,
+      playerKills: submission.player_kills,
       potTop: submission.pot_top,
       status: submission.status,
       rejectionReason: submission.rejection_reason,
@@ -180,6 +182,25 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
 
   // Upsert uses conflict on unique (tournament_id, team_id)
   await supabase.from('team_standings').upsert(standingRows, { onConflict: 'tournament_id,team_id' })
+
+  // ─── NEW: Update Individual Participant Kills ─────────────────────────────
+  
+  // Aggregate kills per participant from ALL approved submissions in this tournament
+  const playerKillsMap: Record<string, number> = {}
+  
+  subs.forEach((s: any) => {
+    const breakdown = s.player_kills || {}
+    Object.entries(breakdown).forEach(([pId, kills]) => {
+      playerKillsMap[pId] = (playerKillsMap[pId] || 0) + (kills as number)
+    })
+  })
+
+  // Update participants total_kills
+  for (const [pId, totalKills] of Object.entries(playerKillsMap)) {
+    await supabase.from('participants')
+      .update({ total_kills: totalKills })
+      .eq('id', pId)
+  }
 }
 
 export async function approveSubmission(
