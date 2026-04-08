@@ -196,7 +196,7 @@ export function LeaderboardClient({
 
   return (
     <div 
-      className="w-full max-w-7xl mx-auto p-4 md:p-8 relative z-10 py-12 md:py-24"
+      className="w-full max-w-7xl mx-auto p-4 md:p-8 relative z-10 min-h-[90vh] flex flex-col justify-center py-10"
       style={{ 
         filter: `drop-shadow(0 0 50px ${primaryColor}15)`,
       }}
@@ -204,7 +204,7 @@ export function LeaderboardClient({
       
       {/* Background Handler */}
       {activeBackground && (
-        <div className="fixed inset-0 w-all h-all -z-10 bg-black overflow-hidden pointer-events-none">
+        <div className="fixed inset-0 w-full h-full -z-10 overflow-hidden pointer-events-none">
           {youtubeId ? (
             <div 
               className="absolute top-1/2 left-1/2 min-w-full min-h-full w-[177.77vh] h-[56.25vw] -translate-x-1/2 -translate-y-1/2"
@@ -255,7 +255,7 @@ export function LeaderboardClient({
               }} 
             />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-dark-bg via-dark-bg/40 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60 pointer-events-none" />
         </div>
       )}
 
@@ -295,7 +295,7 @@ export function LeaderboardClient({
         )}
       </AnimatePresence>
 
-      <div className="text-center mb-12 flex flex-col items-center">
+        <div className="text-center mb-12 flex flex-col items-center">
         <Link 
           href="/hall-of-fame"
           className="mb-8 px-4 py-1.5 rounded-full border border-gold/30 bg-gold/5 text-[9px] font-black uppercase tracking-[0.3em] text-gold hover:bg-gold/10 transition-all flex items-center gap-2"
