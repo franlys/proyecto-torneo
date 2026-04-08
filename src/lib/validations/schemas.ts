@@ -29,6 +29,7 @@ const tournamentBaseSchema = z.object({
   vipEnabled: z.boolean().default(false),
   tiebreakerMatchEnabled: z.boolean().default(false),
   killRaceTimeLimitMinutes: z.number().int().positive().optional(),
+  defaultRoundsPerMatch: z.number().int().min(1).max(5).default(1),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   scoringRule: scoringRuleSchema,

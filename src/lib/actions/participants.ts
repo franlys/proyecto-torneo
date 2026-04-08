@@ -148,6 +148,7 @@ export async function addParticipant(
       contactId: participant.contact_id,
       streamUrl: participant.stream_url,
       isCaptain: participant.is_captain,
+      totalKills: participant.total_kills || 0,
     }
   }
 }
@@ -222,7 +223,39 @@ export async function getTeamsWithParticipants(tournamentId: string) {
     contactId: p.contact_id,
     streamUrl: p.stream_url,
     isCaptain: p.is_captain,
+    totalKills: p.total_kills || 0,
   }))
 
   return { teams: mappedTeams, participants: mappedParticipants }
+}
+
+export async function updateParticipantKills(
+  tournamentId: string,
+  participantId: string,
+  kills: number
+): Promise<{ success: boolean } | { error: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  // Verify tournament ownership
+  const { data: tournament, error: authErr } = await supabase
+    .from('tournaments')
+    .select('creator_id')
+    .eq('id', tournamentId)
+    .single()
+
+  if (authErr || !tournament || tournament.creator_id !== user.id) {
+    return { error: 'Sin permisos para este torneo' }
+  }
+
+  const { error: updateErr } = await supabase
+    .from('participants')
+    .update({ total_kills: kills })
+    .eq('id', participantId)
+    .eq('tournament_id', tournamentId)
+
+  if (updateErr) return { error: updateErr.message }
+
+  return { success: true }
 }

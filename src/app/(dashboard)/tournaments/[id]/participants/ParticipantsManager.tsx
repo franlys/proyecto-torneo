@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import type { Team, Participant, TournamentMode } from '@/types'
-import { createTeam, addParticipant, deleteTeam, deleteParticipant } from '@/lib/actions/participants'
+import { createTeam, addParticipant, deleteTeam, deleteParticipant, updateParticipantKills } from '@/lib/actions/participants'
+import { toast } from 'sonner'
 
 export function ParticipantsManager({
   tournamentId,
@@ -229,30 +230,77 @@ export function ParticipantsManager({
                 {!isIndividual && (
                   <div className="mt-4 pt-4 border-t border-white/5">
                     {roster.length > 0 && (
-                      <ul className="space-y-2 mb-4">
+                      <div className="space-y-3 mb-6">
+                        <div className="flex items-center gap-2 mb-2 px-1">
+                          <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Roster & Estadísticas Individuales</span>
+                          <div className="h-px flex-1 bg-white/5" />
+                        </div>
                         {roster.map(p => (
-                          <li key={p.id} className="flex justify-between items-center text-sm px-3 py-2 bg-white/[0.02] rounded-lg">
-                            <div className="flex items-center gap-2 text-white/80">
-                              {p.displayName} 
-                              {p.isCaptain && <span className="text-neon-cyan text-xs ml-1">(Capitán)</span>}
-                              {p.streamUrl && (
-                                <a href={p.streamUrl} target="_blank" rel="noreferrer" title="Ver stream" className="inline-flex items-center ml-1 text-red-500 hover:text-red-400">
-                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" className="animate-pulse"/></svg>
-                                </a>
-                              )}
+                          <div key={p.id} className="group/item flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/[0.02] border border-white/5 rounded-xl px-4 py-3 hover:bg-white/[0.04] transition-all">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-2.5 h-2.5 rounded-full shadow-[0_0_8px] ${p.streamUrl ? 'bg-red-500 shadow-red-500/50 animate-pulse' : 'bg-white/10 shadow-transparent'}`} />
+                              <div className="min-w-0">
+                                <span className="text-sm font-bold text-white/90 truncate block">
+                                  {p.displayName} 
+                                </span>
+                                {p.isCaptain && <span className="text-[9px] font-black text-neon-cyan uppercase tracking-widest">Capitán de Equipo</span>}
+                              </div>
                             </div>
-                            <button
-                              onClick={async () => {
-                                if(confirm('¿Eliminar jugador?')) {
-                                  await deleteParticipant(tournamentId, p.id);
-                                  setParticipants(participants.filter(x => x.id !== p.id))
-                                }
-                              }}
-                              className="text-white/30 hover:text-red-400"
-                            >×</button>
-                          </li>
+                            
+                            <div className="flex items-center gap-4">
+                              {/* Kill Manager */}
+                              <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-lg p-1 pr-2">
+                                <span className="text-[9px] font-black text-white/20 uppercase px-2">Kills Totales</span>
+                                <input
+                                  type="number"
+                                  defaultValue={p.totalKills}
+                                  onBlur={async (e) => {
+                                    const val = parseInt(e.target.value)
+                                    if (isNaN(val) || val === p.totalKills) return
+                                    
+                                    const res = await updateParticipantKills(tournamentId, p.id, val)
+                                    if ('error' in res) {
+                                      toast.error(res.error)
+                                      e.target.value = p.totalKills.toString()
+                                    } else {
+                                      toast.success(`Kills de ${p.displayName} actualizadas a ${val}`)
+                                      // Actualizar localmente si es necesario, aunque el onBlur ya refleja el cambio visual 
+                                      // y el componente se recargará con real-time si está configurado.
+                                    }
+                                  }}
+                                  className="w-14 bg-white/5 border-none text-center text-sm font-bold text-neon-purple focus:ring-1 focus:ring-neon-purple/50 rounded transition-all"
+                                />
+                              </div>
+
+                              <div className="flex items-center gap-1.5 border-l border-white/5 pl-4">
+                                {p.streamUrl && (
+                                  <a href={p.streamUrl} target="_blank" rel="noreferrer" title="Ver stream" className="p-2 text-red-500/60 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all">
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17 10.5V7a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h12a1 1 0 001-1v-3.5l4 4v-11l-4 4z"/></svg>
+                                  </a>
+                                )}
+                                <button
+                                  onClick={async () => {
+                                    if(confirm(`¿Eliminar a ${p.displayName} del equipo?`)) {
+                                      const res = await deleteParticipant(tournamentId, p.id);
+                                      if ('error' in res) toast.error(res.error)
+                                      else {
+                                        setParticipants(participants.filter(x => x.id !== p.id))
+                                        toast.success('Jugador eliminado')
+                                      }
+                                    }
+                                  }}
+                                  className="p-2 text-white/20 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                                  title="Eliminar Jugador"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     )}
 
                     {!isFull ? (

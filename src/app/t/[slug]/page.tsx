@@ -155,6 +155,7 @@ export default async function PublicLeaderboardPage({
         theme={theme}
         matches={matches || []}
         submissions={submissions || []}
+        rulesText={tournament.rules_text}
       />
     </main>
   )

@@ -30,6 +30,7 @@ export interface Tournament {
   vipEnabled: boolean;
   tiebreakerMatchEnabled: boolean;
   killRaceTimeLimitMinutes?: number;
+  defaultRoundsPerMatch: number;
   startDate?: string;
   endDate?: string;
 }
@@ -72,6 +73,19 @@ export interface Submission {
   status: SubmissionStatus;
   rejectionReason?: string;
   submittedAt: string;
+}
+
+export interface Match {
+  id: string;
+  tournamentId: string;
+  name: string;
+  matchNumber: number;
+  isCompleted: boolean;
+  isWarmup: boolean;
+  parentMatchId?: string;
+  roundNumber: number;
+  mapName?: string;
+  createdAt: string;
 }
 
 export interface TeamStanding {

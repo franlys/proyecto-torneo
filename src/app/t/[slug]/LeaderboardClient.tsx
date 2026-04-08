@@ -23,6 +23,7 @@ export function LeaderboardClient({
   killRateEnabled,
   potTopEnabled,
   vipEnabled,
+  rulesText,
 }: {
   tournamentId: string
   tournamentName: string
@@ -37,9 +38,10 @@ export function LeaderboardClient({
   killRateEnabled?: boolean
   potTopEnabled?: boolean
   vipEnabled?: boolean
+  rulesText?: string
 }) {
   const [standings, setStandings] = useState(initialStandings)
-  const [activeTab, setActiveTab] = useState<'ranking' | 'participants' | 'matches'>('ranking')
+  const [activeTab, setActiveTab] = useState<'ranking' | 'participants' | 'matches' | 'rules'>('ranking')
   const [watchingStream, setWatchingStream] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const supabase = createClient()
@@ -394,6 +396,15 @@ export function LeaderboardClient({
         >
           Partidas
         </button>
+        <button
+          onClick={() => setActiveTab('rules')}
+          className={`shrink-0 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg ${
+            activeTab === 'rules' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'
+          }`}
+          style={{ borderColor: activeTab === 'rules' ? primaryColor : 'transparent', borderWidth: 1 }}
+        >
+          Reglas
+        </button>
       </div>
 
       {activeTab === 'ranking' ? (
@@ -569,8 +580,49 @@ export function LeaderboardClient({
             ))
           )}
         </div>
-      ) : (
+      ) : activeTab === 'matches' ? (
         <MatchRecap matches={matches || []} submissions={submissions || []} primaryColor={primaryColor} />
+      ) : (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-dark-card/60 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl"
+        >
+          <div className="flex items-center gap-4 mb-8">
+            <div className="w-12 h-12 rounded-2xl bg-neon-cyan/10 border border-neon-cyan/30 flex items-center justify-center text-2xl shadow-[0_0_15px_rgba(0,245,255,0.1)]">
+              📜
+            </div>
+            <div>
+              <h2 className={`${orbitron.className} text-2xl font-black text-white uppercase tracking-tighter`}>
+                Reglamento Oficial
+              </h2>
+              <p className="text-white/40 text-xs uppercase tracking-widest font-bold">Normativas y Conducta del Torneo</p>
+            </div>
+          </div>
+          
+          <div className="prose prose-invert max-w-none">
+            {rulesText ? (
+              <p className="text-white/70 leading-relaxed whitespace-pre-wrap font-sans text-base sm:text-lg bg-white/[0.02] p-6 rounded-2xl border border-white/5">
+                {rulesText}
+              </p>
+            ) : (
+              <div className="py-12 text-center border border-dashed border-white/10 rounded-2xl">
+                <p className="text-white/20 italic">No se han definido reglas específicas para este torneo aún.</p>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-8 pt-8 border-t border-white/5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="bg-white/[0.03] p-4 rounded-xl border border-white/5">
+              <span className="text-[10px] font-black text-neon-cyan uppercase tracking-[0.2em] block mb-2">Formato de Juego</span>
+              <span className="text-white font-orbitron font-bold text-sm uppercase">{format.replace(/_/g, ' ')}</span>
+            </div>
+            <div className="bg-white/[0.03] p-4 rounded-xl border border-white/5">
+              <span className="text-[10px] font-black text-neon-cyan uppercase tracking-[0.2em] block mb-2">Estado del Torneo</span>
+              <span className="text-white font-orbitron font-bold text-sm uppercase">{status}</span>
+            </div>
+          </div>
+        </motion.div>
       )}
     </div>
   )

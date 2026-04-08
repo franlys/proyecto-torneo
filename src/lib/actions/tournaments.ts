@@ -40,6 +40,7 @@ function mapTournamentRow(row: Record<string, unknown>): Tournament {
     vipEnabled: row.vip_enabled as boolean,
     tiebreakerMatchEnabled: row.tiebreaker_match_enabled as boolean,
     killRaceTimeLimitMinutes: row.kill_race_time_limit_minutes as number | undefined,
+    defaultRoundsPerMatch: row.default_rounds_per_match as number,
     startDate: row.start_date as string | undefined,
     endDate: row.end_date as string | undefined,
   }
@@ -93,6 +94,7 @@ export async function createTournament(
       vip_enabled: input.vipEnabled,
       tiebreaker_match_enabled: input.tiebreakerMatchEnabled,
       kill_race_time_limit_minutes: input.killRaceTimeLimitMinutes ?? null,
+      default_rounds_per_match: input.defaultRoundsPerMatch,
       start_date: input.startDate || null,
       end_date: input.endDate || null,
     })
@@ -116,17 +118,41 @@ export async function createTournament(
     return { error: srErr.message }
   }
 
-  // Create matches automatically
-  const matchRows = Array.from({ length: input.totalMatches }, (_, i) => ({
-    tournament_id: tournament.id,
-    match_number: i + 1,
-    name: `Partida ${i + 1}`,
-  }))
+  // Create matches and rounds automatically
+  for (let i = 0; i < input.totalMatches; i++) {
+    const matchNumber = i + 1;
+    // 1. Create Parent Match (Encounter)
+    const { data: parentMatch, error: pmErr } = await supabase
+      .from('matches')
+      .insert({
+        tournament_id: tournament.id,
+        match_number: matchNumber,
+        name: `Encuentro ${matchNumber}`,
+      })
+      .select()
+      .single();
 
-  const { error: mErr } = await supabase.from('matches').insert(matchRows)
-  if (mErr) {
-    await supabase.from('tournaments').delete().eq('id', tournament.id)
-    return { error: mErr.message }
+    if (pmErr) {
+      await supabase.from('tournaments').delete().eq('id', tournament.id);
+      return { error: pmErr.message };
+    }
+
+    // 2. Create Rounds (Child Matches) if more than 1 round is configured
+    if (input.defaultRoundsPerMatch > 1) {
+      const rounds = Array.from({ length: input.defaultRoundsPerMatch }, (_, rIdx) => ({
+        tournament_id: tournament.id,
+        parent_match_id: parentMatch.id,
+        match_number: matchNumber,
+        round_number: rIdx + 1,
+        name: `Ronda ${rIdx + 1}`,
+      }));
+
+      const { error: rErr } = await supabase.from('matches').insert(rounds);
+      if (rErr) {
+        await supabase.from('tournaments').delete().eq('id', tournament.id);
+        return { error: rErr.message };
+      }
+    }
   }
 
   return { data: mapTournamentRow(tournament as Record<string, unknown>) }
@@ -178,6 +204,8 @@ export async function updateTournament(
     updatePayload.tiebreaker_match_enabled = input.tiebreakerMatchEnabled
   if (input.killRaceTimeLimitMinutes !== undefined)
     updatePayload.kill_race_time_limit_minutes = input.killRaceTimeLimitMinutes
+  if (input.defaultRoundsPerMatch !== undefined)
+    updatePayload.default_rounds_per_match = input.defaultRoundsPerMatch
   if (input.startDate !== undefined) updatePayload.start_date = input.startDate || null
   if (input.endDate !== undefined) updatePayload.end_date = input.endDate || null
 

@@ -265,7 +265,35 @@ El usuario solicitó una estética más profesional (menos diálogos de navegado
 - **Independencia de Métricas**: El MVP individual ahora se calcula recorriendo la lista de participantes, permitiendo que un jugador destaque incluso si su equipo no está en el top del ranking por puntos.
 - **Consistencia Visual**: Uso extensivo de la fuente `Orbitron` y efectos de resplandor (`drop-shadow`) para consolidar la marca eSports.
 
+---
+
+## [2026-04-08 (mañana - sprint 9)] — Sistema de Multirondas (BO3, BO5, Maps)
+
+### Problema Reportado
+Los organizadores necesitaban una forma de agrupar varios mapas o juegos bajo un mismo "Encuentro" (Match), evitando la creación manual de partidas sueltas y permitiendo una visualización estructurada de series competitivas.
+
+### Tareas Completadas
+
+- **Infraestructura Jerárquica (Matches & Rounds)**:
+    - **Migración DB (`20240409000000`)**: Añadidas columnas `parent_match_id` y `round_number` a la tabla `matches`.
+    - **Lógica de Creación**: Actualizado el Server Action `createTournament` para generar automáticamente encuentros padres e hijos según la configuración del torneo.
+    - **Configuración Global**: Añadido campo `default_rounds_per_match` en `TournamentForm` (Sección Configuración).
+
+- **Portal de Equipos con Sub-Rondas**:
+    - **Selector Dinámico**: El formulario de envío de evidencias ahora detecta si un encuentro tiene múltiples rondas y despliega un selector secundario de mapa/ronda.
+    - **Validación Granular**: Se permite un envío por equipo por **Ronda**, no solo por encuentro padre.
+
+- **Match Recap Estructurado**:
+    - **Refactor de MatchRecap.tsx**: Agrupación visual por Encuentro.
+    - **Tabs de Ronda**: Cada encuentro muestra sus rondas como sub-tabs dinámicos.
+    - **Análisis de Ronda**: El header del recap indica si se está visualizando un "Resumen de Ronda" o un "Encuentro Global".
+    - **Cálculo de Totales**: El sistema suma automáticamente los resultados de todas las rondas de un encuentro para mostrar el desempeño acumulado de la serie.
+
+### Decisiones Técnicas
+- **Self-referencing Table**: Se optó por mantener una sola tabla `matches` con referencia circular (`parent_match_id`). Esto simplifica las búsquedas de envíos (`submissions` siguen apuntando a un `match_id`), siendo este ID una ronda específica si existe jerarquía.
+- **Auto-generation**: Al crear un torneo, el sistema pre-configura toda la estructura de rondas, ahorrando trabajo manual al administrador.
+
 ### Próximos Pasos
-1. **Rondas**: Implementar soporte para múltiples rondas dentro de una misma partida.
-2. **Exportación**: Generar reportes PDF/Excel para organizadores.
+1. **Exportación**: Generar reportes PDF/Excel para organizadores.
+2. **Dashboard de Gestión de Partidas**: Mejorar la vista de administrador para editar ronds/mapas individualmente post-creación.
 

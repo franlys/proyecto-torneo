@@ -18,8 +18,14 @@ export function TeamPortalClient({
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
+  const [selectedParentId, setSelectedParentId] = useState('')
 
   const supabase = createClient()
+
+  // Identify parent matches (Encuentros)
+  const parentMatches = matches.filter(m => !m.parent_match_id)
+  // Identify rounds for the selected parent
+  const availableRounds = matches.filter(m => m.parent_match_id === selectedParentId)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -27,7 +33,11 @@ export function TeamPortalClient({
     setError('')
 
     const form = e.currentTarget
-    const matchId = (form.elements.namedItem('matchId') as HTMLSelectElement).value
+    
+    // If there are rounds, we use the round ID, otherwise the parent ID
+    const roundSelect = form.elements.namedItem('roundId') as HTMLSelectElement
+    const matchId = roundSelect ? roundSelect.value : (form.elements.namedItem('matchId') as HTMLSelectElement).value
+    
     const submittedBy = (form.elements.namedItem('submittedBy') as HTMLSelectElement).value
     const killCount = parseInt((form.elements.namedItem('killCount') as HTMLInputElement).value, 10)
     const potTop = tournament.pot_top_enabled 
@@ -110,20 +120,40 @@ export function TeamPortalClient({
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div>
-        <label className="block text-sm text-white/50 mb-1.5 ml-1">Partida a registrar</label>
+        <label className="block text-sm text-white/50 mb-1.5 ml-1">Encuentro / Partida</label>
         <select 
           name="matchId" 
           required
+          value={selectedParentId}
+          onChange={(e) => setSelectedParentId(e.target.value)}
           className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan transition-all text-white"
         >
           <option value="">Selecciona una partida...</option>
-          {matches.map(m => (
+          {parentMatches.map(m => (
             <option key={m.id} value={m.id}>
-              {m.name ? m.name : `Ronda ${m.match_number}`}
+              {m.name ? m.name : `Partida ${m.match_number}`}
             </option>
           ))}
         </select>
       </div>
+
+      {availableRounds.length > 0 && (
+        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+          <label className="block text-sm text-white/50 mb-1.5 ml-1">Especifique la Ronda / Mapa</label>
+          <select 
+            name="roundId" 
+            required
+            className="w-full bg-black/40 border border-neon-cyan/30 rounded-lg px-4 py-3 outline-none focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan transition-all text-neon-cyan font-medium"
+          >
+            <option value="">Selecciona la ronda...</option>
+            {availableRounds.map(r => (
+              <option key={r.id} value={r.id}>
+                {r.name} {r.map_name ? `(${r.map_name})` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div>
         <label className="block text-sm text-white/50 mb-1.5 ml-1">¿Quién está subiendo esto?</label>

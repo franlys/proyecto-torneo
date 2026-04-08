@@ -308,6 +308,24 @@ export function TournamentForm({ onSuccess }: TournamentFormProps) {
               {err(errors.totalMatches?.message)}
             </div>
 
+            {/* Rounds per Match */}
+            <div>
+              <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
+                Rondas por Partida *
+                <span className="ml-2 text-white/30 normal-case font-normal">(Ej: 3 para BO3)</span>
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={5}
+                {...register('defaultRoundsPerMatch', { valueAsNumber: true })}
+                className="w-32 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm
+                  focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/20 focus:outline-none
+                  transition-all duration-150"
+              />
+              {err(errors.defaultRoundsPerMatch?.message)}
+            </div>
+
             {/* Kill Race Time Limit */}
             {format === 'kill_race' && (
               <div>
