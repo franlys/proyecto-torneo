@@ -34,6 +34,7 @@ export interface Tournament {
   startDate?: string;
   endDate?: string;
   championImageUrl?: string;
+  logoUrl?: string;
 }
 
 export interface ScoringRule {

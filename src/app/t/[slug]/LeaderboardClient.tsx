@@ -14,6 +14,7 @@ const orbitron = Orbitron({ subsets: ['latin'] })
 export function LeaderboardClient({
   tournamentId,
   tournamentName,
+  tournamentLogoUrl,
   description,
   format,
   status,
@@ -31,6 +32,7 @@ export function LeaderboardClient({
 }: {
   tournamentId: string
   tournamentName: string
+  tournamentLogoUrl?: string
   description?: string
   format: string
   status: string
@@ -299,13 +301,24 @@ export function LeaderboardClient({
           <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse" />
           Ver Hall of Fame
         </Link>
-        {logoUrl && (
-          <img src={logoUrl} alt="Torneo Logo" className="h-24 object-contain mb-4 drop-shadow-2xl" />
+        
+        {tournamentLogoUrl ? (
+          <div className="mb-6">
+            <img 
+              src={tournamentLogoUrl} 
+              alt={tournamentName} 
+              className="max-h-32 md:max-h-48 object-contain drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]" 
+            />
+            {/* Hidden h1 for SEO while showing logo */}
+            <h1 className="sr-only">{tournamentName}</h1>
+          </div>
+        ) : (
+          <h1 className="font-orbitron font-bold text-2xl sm:text-4xl md:text-5xl uppercase tracking-wider mb-4 px-4"
+              style={{ color: primaryColor, textShadow: `0 0 20px ${primaryColor}40` }}>
+            {tournamentName}
+          </h1>
         )}
-        <h1 className="font-orbitron font-bold text-2xl sm:text-4xl md:text-5xl uppercase tracking-wider mb-4 px-4"
-            style={{ color: primaryColor, textShadow: `0 0 20px ${primaryColor}40` }}>
-          {tournamentName}
-        </h1>
+
         {description && <p className="text-white/60 text-lg max-w-2xl mx-auto">{description}</p>}
         {/* Status badge */}
         {status === 'draft' && <span className="inline-block mt-4 text-xs font-bold bg-white/10 px-3 py-1 rounded text-white/50 uppercase">Pre-torneo</span>}

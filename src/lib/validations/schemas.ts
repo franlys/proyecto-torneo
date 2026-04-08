@@ -32,6 +32,7 @@ const tournamentBaseSchema = z.object({
   defaultRoundsPerMatch: z.number().int().min(1).max(5).default(1),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  logoUrl: z.string().url().optional().or(z.literal('')).or(z.null()),
   scoringRule: scoringRuleSchema,
 })
 

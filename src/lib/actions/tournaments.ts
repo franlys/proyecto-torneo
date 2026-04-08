@@ -45,6 +45,7 @@ function mapTournamentRow(row: Record<string, unknown>): Tournament {
     startDate: row.start_date as string | undefined,
     endDate: row.end_date as string | undefined,
     championImageUrl: row.champion_image_url as string | undefined,
+    logoUrl: row.logo_url as string | undefined,
   }
 }
 
@@ -210,6 +211,7 @@ export async function updateTournament(
     updatePayload.default_rounds_per_match = input.defaultRoundsPerMatch
   if (input.startDate !== undefined) updatePayload.start_date = input.startDate || null
   if (input.endDate !== undefined) updatePayload.end_date = input.endDate || null
+  if (input.logoUrl !== undefined) updatePayload.logo_url = input.logoUrl || null
 
   const { data: updated, error: updateErr } = await supabase
     .from('tournaments')

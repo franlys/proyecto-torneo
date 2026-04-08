@@ -176,6 +176,7 @@ export default async function PublicLeaderboardPage({
       <LeaderboardClient 
         tournamentId={tournament.id}
         tournamentName={tournament.name}
+        tournamentLogoUrl={tournament.logo_url}
         description={tournament.description}
         format={tournament.format}
         status={tournament.status}

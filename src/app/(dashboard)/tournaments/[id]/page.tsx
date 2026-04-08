@@ -102,6 +102,7 @@ function QuickAction({
 // ─── Activate button (Client Component) ─────────────────────────────────────────
 import { ActivateTournamentButton } from './ActivateTournamentButton'
 import { FinishTournamentButton } from './FinishTournamentButton'
+import { TournamentBranding } from './TournamentBranding'
 
 
 // ─── Export & Reports Component (Client Wrap) ──────────────────────────────────
@@ -176,6 +177,9 @@ export default async function TournamentOverviewPage({
           Ver público
         </Link>
       </div>
+
+      {/* Corporate Branding */}
+      <TournamentBranding id={id} initialLogoUrl={tournament.logoUrl} tournamentName={tournament.name} />
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
