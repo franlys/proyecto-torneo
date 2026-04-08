@@ -1,8 +1,9 @@
 export const dynamic = 'force-dynamic'
 
 import { notFound } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { LeaderboardClient } from './LeaderboardClient'
+import { recalculateStandings } from '@/lib/actions/submissions'
 
 export default async function PublicLeaderboardPage({
   params,
@@ -29,33 +30,11 @@ export default async function PublicLeaderboardPage({
     .eq('tournament_id', tournament.id)
     .order('created_at', { ascending: true })
 
-  // Backfill standings for any team that doesn't have a row yet
-  if (allTeams && allTeams.length > 0) {
-    const { data: existingStandings } = await supabase
-      .from('team_standings')
-      .select('team_id')
-      .eq('tournament_id', tournament.id)
-
-    const existingIds = new Set((existingStandings || []).map((s: any) => s.team_id))
-    const missingTeams = allTeams.filter((t: any) => !existingIds.has(t.id))
-
-    if (missingTeams.length > 0) {
-      await supabase.from('team_standings').upsert(
-        missingTeams.map((t: any, i: number) => ({
-          tournament_id: tournament.id,
-          team_id: t.id,
-          total_points: 0,
-          total_kills: 0,
-          kill_rate: 0,
-          pot_top_count: 0,
-          vip_score: 0,
-          rank: 99 + i,
-          previous_rank: 99 + i,
-          updated_at: new Date().toISOString(),
-        })),
-        { onConflict: 'tournament_id,team_id' }
-      )
-    }
+  // AUTO-SYNC: Recalculate standings on every page load to ensure data is always fresh
+  // We use the admin client to bypass RLS for this system background task
+  if (tournament?.id) {
+    const adminSupabase = await createAdminClient()
+    await recalculateStandings(adminSupabase, tournament.id)
   }
 
   // Fetch real standings (if any approved submissions exist)

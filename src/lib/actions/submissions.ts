@@ -116,7 +116,11 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
     .select('id, total_matches, format, scoring_rules(kill_points, placement_points)')
     .eq('id', tournamentId).single()
   
-  if (!tourney) return
+  console.log(`[STANDINGS] Recalculating for Tournament: ${tournamentId}`)
+  if (!tourney) {
+    console.error(`[STANDINGS] Tournament not found: ${tournamentId}`)
+    return
+  }
 
   const sRules = Array.isArray(tourney.scoring_rules) ? tourney.scoring_rules[0] : tourney.scoring_rules
   const rule = {
@@ -128,13 +132,19 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
 
   // Fetch all teams
   const { data: teams } = await supabase.from('teams').select('id, name, avatar_url, vip_score').eq('tournament_id', tournamentId)
-  if (!teams) return
+  if (!teams) {
+    console.warn(`[STANDINGS] No teams found for tournament: ${tournamentId}`)
+    return
+  }
+  console.log(`[STANDINGS] Found ${teams.length} teams`)
 
   // FETCH SUBMISSIONS (Including warmup for testing if needed, or stick to approved)
   const { data: subs } = await supabase.from('submissions')
     .select('*')
     .eq('tournament_id', tournamentId)
     .eq('status', 'approved')
+  
+  console.log(`[STANDINGS] Found ${(subs || []).length} approved submissions`)
   
   const mappedTeams = teams.map((t: any) => ({
     id: t.id, name: t.name, avatarUrl: t.avatar_url, vipScore: t.vip_score
@@ -168,6 +178,11 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
     previous_rank: s.previousRank || s.rank,
     updated_at: new Date().toISOString()
   }))
+
+  console.log(`[STANDINGS] Upserting ${standingRows.length} rows to team_standings`)
+  const { error: upsertErr } = await supabase.from('team_standings').upsert(standingRows, { onConflict: 'tournament_id,team_id' })
+  if (upsertErr) console.error(`[STANDINGS] Upsert ERROR:`, upsertErr)
+  else console.log(`[STANDINGS] Successfully updated team_standings`)
 
   // Upsert uses conflict on unique (tournament_id, team_id)
   await supabase.from('team_standings').upsert(standingRows, { onConflict: 'tournament_id,team_id' })

@@ -215,7 +215,7 @@ export function LeaderboardClient({
     const twitchU = url.match(/(?:twitch\.tv\/)([\w\-]+)/)?.[1]
     const kickU = url.match(/(?:kick\.com\/)([\w\-]+)/)?.[1]
 
-    if (ytId) return <iframe src={`https://www.youtube.com/embed/${ytId}?autoplay=1`} className="w-full h-full border-0" allow="autoplay; encrypted-media" allowFullScreen />
+    if (ytId) return <iframe src={`https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0`} className="w-full h-full border-0" allow="autoplay; encrypted-media" allowFullScreen />
     if (twitchU) return <iframe src={`https://player.twitch.tv/?channel=${twitchU}&parent=${host}&autoplay=true`} className="w-full h-full border-0" allowFullScreen />
     if (kickU) return <iframe src={`https://player.kick.com/${kickU}?autoplay=true`} className="w-full h-full border-0" />
     
@@ -233,7 +233,7 @@ export function LeaderboardClient({
               style={{ opacity: (theme?.background_opacity ?? 40) / 100 }}
             >
               <iframe
-                src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&mute=1&loop=1&playlist=${youtubeId}&controls=0&modestbranding=1&rel=0&showinfo=0`}
+                src={`https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&mute=1&loop=1&playlist=${youtubeId}&controls=0&modestbranding=1&rel=0&showinfo=0&privacy_mode=1`}
                 className="w-full h-full border-0 pointer-events-none scale-[1.05]"
                 allow="autoplay; encrypted-media"
               />
