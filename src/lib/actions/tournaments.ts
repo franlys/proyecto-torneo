@@ -44,6 +44,7 @@ function mapTournamentRow(row: Record<string, unknown>): Tournament {
     defaultRoundsPerMatch: row.default_rounds_per_match as number,
     startDate: row.start_date as string | undefined,
     endDate: row.end_date as string | undefined,
+    championImageUrl: row.champion_image_url as string | undefined,
   }
 }
 
@@ -286,6 +287,47 @@ export async function activateTournament(
   return { success: true }
 }
 
+export async function finishTournament(
+  id: string,
+  championImageUrl?: string
+): Promise<{ success: true } | { error: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  // Verify ownership
+  const { data: tournament, error: fetchErr } = await supabase
+    .from('tournaments')
+    .select('creator_id, status')
+    .eq('id', id)
+    .single()
+
+  if (fetchErr || !tournament) return { error: 'Torneo no encontrado' }
+  if (tournament.creator_id !== user.id) return { error: 'Sin permisos' }
+  if (tournament.status !== 'active') {
+    return { error: 'Solo se pueden finalizar torneos activos' }
+  }
+
+  const { error: finishErr } = await supabase
+    .from('tournaments')
+    .update({ 
+      status: 'finished',
+      champion_image_url: championImageUrl || null,
+      end_date: new Date().toISOString()
+    })
+    .eq('id', id)
+
+  if (finishErr) return { error: finishErr.message }
+  
+  revalidatePath(`/tournaments/${id}`)
+  revalidatePath('/tournaments')
+  revalidatePath('/hall-of-fame')
+  
+  return { success: true }
+}
+
 export async function getTournaments(): Promise<
   { data: Tournament[] } | { error: string }
 > {
@@ -370,4 +412,48 @@ export async function deleteTournament(
   if (deleteErr) return { error: deleteErr.message }
 
   return { success: true }
+}
+
+export async function getHallOfFame(): Promise<
+  { data: any[] } | { error: string }
+> {
+  const supabase = await createClient()
+
+  // 1. Get finished tournaments
+  const { data: tournaments, error: tErr } = await supabase
+    .from('tournaments')
+    .select(`
+      *,
+      team_standings (
+        team_id,
+        rank,
+        total_points,
+        total_kills,
+        teams (
+          name,
+          avatar_url
+        )
+      )
+    `)
+    .eq('status', 'finished')
+    .order('end_date', { ascending: false })
+
+  if (tErr) return { error: tErr.message }
+
+  // 2. Map and filter only the winner for each
+  const result = (tournaments || []).map(t => {
+    const winner = t.team_standings?.find((s: any) => s.rank === 1)
+    return {
+      ...mapTournamentRow(t as Record<string, unknown>),
+      winner: winner ? {
+        teamId: winner.team_id,
+        name: winner.teams?.name,
+        avatarUrl: winner.teams?.avatar_url,
+        totalPoints: winner.total_points,
+        totalKills: winner.total_kills
+      } : null
+    }
+  })
+
+  return { data: result }
 }

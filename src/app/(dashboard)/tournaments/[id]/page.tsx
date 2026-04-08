@@ -101,6 +101,7 @@ function QuickAction({
 
 // ─── Activate button (Client Component) ─────────────────────────────────────────
 import { ActivateTournamentButton } from './ActivateTournamentButton'
+import { FinishTournamentButton } from './FinishTournamentButton'
 
 
 // ─── Export & Reports Component (Client Wrap) ──────────────────────────────────
@@ -284,9 +285,20 @@ export default async function TournamentOverviewPage({
         </div>
       </div>
 
+      {/* Active action (Finish) */}
+      {tournament.status === 'active' && (
+        <div className="bg-dark-card border border-gold/10 rounded-2xl p-6 mb-8">
+          <h2 className="text-sm font-semibold text-white mb-1">Finalizar Torneo</h2>
+          <p className="text-xs text-white/30 mb-4">
+            Al finalizar el torneo, se calculará el podio definitivo y se enviará a la Galería de Campeones.
+          </p>
+          <FinishTournamentButton id={id} />
+        </div>
+      )}
+
       {/* Activate button (only for draft) */}
       {tournament.status === 'draft' && (
-        <div className="bg-dark-card border border-neon-cyan/10 rounded-2xl p-6">
+        <div className="bg-dark-card border border-neon-cyan/10 rounded-2xl p-6 mb-8">
           <h2 className="text-sm font-semibold text-white mb-1">¿Listo para comenzar?</h2>
           <p className="text-xs text-white/30 mb-4">
             Activar el torneo bloqueará la configuración. Asegúrate de haber agregado participantes y definido las reglas.

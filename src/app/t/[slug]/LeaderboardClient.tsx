@@ -3,6 +3,7 @@
 import React, { useEffect, useState, Fragment } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Orbitron } from 'next/font/google'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { TeamStanding, Participant, Match, Submission, ScoringRule } from '@/types'
 import { MatchRecap } from './MatchRecap'
@@ -48,7 +49,7 @@ export function LeaderboardClient({
   const [isMounted, setIsMounted] = useState(false)
   const primaryColor = theme?.primary_color || theme?.primaryColor || '#00F5FF'
   const [standings, setStandings] = useState(initialStandings)
-  const [activeTab, setActiveTab] = useState<'ranking' | 'participants' | 'matches' | 'rules'>('ranking')
+  const [activeTab, setActiveTab] = useState<'ranking' | 'participants' | 'matches' | 'rules' | 'statistics'>('ranking')
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null)
   const [watchingStream, setWatchingStream] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
@@ -291,6 +292,13 @@ export function LeaderboardClient({
       </AnimatePresence>
 
       <div className="text-center mb-12 flex flex-col items-center">
+        <Link 
+          href="/hall-of-fame"
+          className="mb-8 px-4 py-1.5 rounded-full border border-gold/30 bg-gold/5 text-[9px] font-black uppercase tracking-[0.3em] text-gold hover:bg-gold/10 transition-all flex items-center gap-2"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse" />
+          Ver Hall of Fame
+        </Link>
         {logoUrl && (
           <img src={logoUrl} alt="Torneo Logo" className="h-24 object-contain mb-4 drop-shadow-2xl" />
         )}
@@ -414,6 +422,15 @@ export function LeaderboardClient({
           style={{ borderColor: activeTab === 'matches' ? primaryColor : 'transparent', borderWidth: 1 }}
         >
           Partidas
+        </button>
+        <button
+          onClick={() => setActiveTab('statistics')}
+          className={`shrink-0 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg ${
+            activeTab === 'statistics' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'
+          }`}
+          style={{ borderColor: activeTab === 'statistics' ? primaryColor : 'transparent', borderWidth: 1 }}
+        >
+          Estadísticas
         </button>
         <button
           onClick={() => setActiveTab('rules')}
@@ -621,31 +638,37 @@ export function LeaderboardClient({
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                     {team.participants.map((p: any) => (
                       <div key={p.id} className="flex items-center justify-between bg-white/[0.03] border border-white/5 rounded-lg px-3 py-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 max-w-[60%]">
                           <div className={`w-2 h-2 rounded-full ${p.streamUrl ? 'bg-red-500 animate-pulse' : 'bg-white/20'}`} />
-                          <span className="text-sm text-white/80">{p.displayName}</span>
-                          {p.isCaptain && <span className="text-[9px] font-bold text-neon-cyan uppercase tracking-wider border border-neon-cyan/30 px-1 py-0.5 rounded">Cap</span>}
+                          <span className="text-sm text-white/80 truncate">{p.displayName}</span>
+                          {p.isCaptain && <span className="text-[9px] font-bold text-neon-cyan uppercase tracking-wider border border-neon-cyan/30 px-1 py-0.5 rounded shrink-0">Cap</span>}
                         </div>
-                        {p.streamUrl && (
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => handleWatchTeam(p.streamUrl)}
-                              title="Ver stream en app"
-                              className="p-1 bg-red-600/20 hover:bg-red-600/40 rounded text-red-400 transition-colors"
-                            >
-                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                            </button>
-                            <a
-                              href={p.streamUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              title="Ir al canal"
-                              className="p-1 bg-white/5 hover:bg-white/10 rounded text-white/40 transition-colors"
-                            >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                            </a>
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                             <span className="text-xs font-orbitron font-bold text-white block leading-none">{p.totalKills || 0}</span>
+                             <span className="text-[7px] text-white/30 uppercase font-black tracking-tighter">Kills</span>
                           </div>
-                        )}
+                          {p.streamUrl && (
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => handleWatchTeam(p.streamUrl)}
+                                title="Ver stream en app"
+                                className="p-1 bg-red-600/20 hover:bg-red-600/40 rounded text-red-400 transition-colors"
+                              >
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                              </button>
+                              <a
+                                href={p.streamUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                title="Ir al canal"
+                                className="p-1 bg-white/5 hover:bg-white/10 rounded text-white/40 transition-colors"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                              </a>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -653,6 +676,76 @@ export function LeaderboardClient({
               </div>
             ))
           )}
+        </div>
+      ) : activeTab === 'statistics' ? (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+             {standings.map((team, idx) => (
+                <div 
+                  key={team.teamId}
+                  className={`group relative overflow-hidden rounded-2xl border transition-all cursor-pointer ${
+                    expandedTeamId === team.teamId 
+                      ? 'border-neon-cyan bg-white/[0.05] ring-1 ring-neon-cyan/20' 
+                      : 'border-white/5 bg-white/[0.02] hover:border-white/20'
+                  }`}
+                  onClick={() => setExpandedTeamId(expandedTeamId === team.teamId ? null : team.teamId)}
+                >
+                  <div className="p-6 flex items-center justify-between relative z-10">
+                     <div className="flex items-center gap-4">
+                        <div className="relative">
+                           <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 overflow-hidden">
+                              {team.teams?.avatar_url ? (
+                                <img src={team.teams.avatar_url} alt={team.teams.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-xl">🛡️</div>
+                              )}
+                           </div>
+                           <div className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-black/60 border border-white/10 flex items-center justify-center text-[10px] font-black text-white">
+                              {idx + 1}
+                           </div>
+                        </div>
+                        <div>
+                           <h4 className="font-orbitron font-bold text-white group-hover:text-neon-cyan transition-colors">{team.teams?.name}</h4>
+                           <p className="text-[10px] text-white/40 uppercase tracking-widest font-black">Analizar Equipo</p>
+                        </div>
+                     </div>
+                     <div className="text-right">
+                        <div className="text-xl font-black text-white leading-none">{team.total_points}</div>
+                        <div className="text-[8px] text-white/30 uppercase font-bold tracking-tighter">Puntos</div>
+                     </div>
+                  </div>
+                  
+                  {/* Small progress bar */}
+                  <div className="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-transparent via-neon-cyan to-transparent w-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+             ))}
+          </div>
+
+          <AnimatePresence>
+            {expandedTeamId && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden bg-dark-card/50 backdrop-blur-xl border border-neon-cyan/20 rounded-[32px] shadow-2xl"
+              >
+                {standings
+                  .filter(s => s.teamId === expandedTeamId)
+                  .map(s => (
+                    <TeamDetails
+                      key={s.teamId}
+                      teamId={s.teamId}
+                      teamName={s.teams?.name}
+                      matches={matches || []}
+                      submissions={submissions || []}
+                      scoringRule={scoringRule!}
+                      participants={participants}
+                      primaryColor={primaryColor}
+                    />
+                  ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       ) : activeTab === 'matches' ? (
         <MatchRecap 

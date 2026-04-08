@@ -33,6 +33,7 @@ export interface Tournament {
   defaultRoundsPerMatch: number;
   startDate?: string;
   endDate?: string;
+  championImageUrl?: string;
 }
 
 export interface ScoringRule {

@@ -1,9 +1,7 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -11,8 +9,11 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
+  BarChart,
+  Bar,
+  Cell
 } from 'recharts'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Match, Submission, ScoringRule, Participant } from '@/types'
 
 interface TeamDetailsProps {
@@ -34,6 +35,8 @@ export function TeamDetails({
   participants,
   primaryColor,
 }: TeamDetailsProps) {
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
+
   // 1. Filter approved submissions for this team
   const teamSubmissions = useMemo(
     () => submissions.filter((s) => s.teamId === teamId && s.status === 'approved'),
@@ -46,9 +49,13 @@ export function TeamDetails({
     [participants, teamId]
   )
 
-  // 3. Prepare Chart Data (Cumulative)
+  const selectedPlayer = useMemo(
+    () => teamParticipants.find(p => p.id === selectedPlayerId),
+    [teamParticipants, selectedPlayerId]
+  )
+
+  // 3. Prepare Chart Data (Cumulative for Team, Per-Round for Player)
   const chartData = useMemo(() => {
-    // Sort matches by number/type
     const sortedMatches = [...matches].sort((a, b) => a.matchNumber - b.matchNumber)
     
     let cumulativePoints = 0
@@ -57,6 +64,12 @@ export function TeamDetails({
     return sortedMatches.map((m) => {
       const sub = teamSubmissions.find((s) => s.matchId === m.id)
       const kills = sub?.killCount || 0
+      
+      // Individual player kills for this match
+      let playerKillsInMatch = 0
+      if (selectedPlayerId && sub?.playerKills) {
+        playerKillsInMatch = (sub.playerKills as any)[selectedPlayerId] || 0
+      }
       
       // Points calculation
       const killPoints = kills * (scoringRule?.killPoints || 0)
@@ -67,119 +80,185 @@ export function TeamDetails({
       cumulativeKills += kills
 
       return {
-        name: m.mapName || `R${m.matchNumber}`,
+        name: m.mapName || `Match ${m.matchNumber}`,
         points: cumulativePoints,
         kills: cumulativeKills,
         roundPoints: roundPoints,
         roundKills: kills,
+        playerKills: playerKillsInMatch
       }
     })
-  }, [matches, teamSubmissions, scoringRule])
+  }, [matches, teamSubmissions, scoringRule, selectedPlayerId])
+
+  // 4. Calculate Player Metrics
+  const kd = useMemo(() => {
+    if (!selectedPlayer) return 0
+    const matchesPlayed = teamSubmissions.length || 1
+    return ((selectedPlayer.totalKills || 0) / matchesPlayed).toFixed(2)
+  }, [selectedPlayer, teamSubmissions])
 
   return (
     <div className="p-4 sm:p-8 bg-white/[0.01] border-t border-white/5 space-y-8">
       {/* Analytics Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Chart Column */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-             <h3 className="text-[10px] font-orbitron font-black text-white/40 uppercase tracking-[0.3em]">Progreso Acumulado</h3>
+        <div className="lg:col-span-2 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+             <div>
+                <h3 className="text-[10px] font-orbitron font-black text-white/40 uppercase tracking-[0.3em] mb-1">
+                  {selectedPlayerId ? `Rendimiento: ${selectedPlayer?.displayName}` : 'Progreso de Equipo'}
+                </h3>
+                <p className="text-[9px] text-white/20 uppercase font-bold tracking-widest">
+                  {selectedPlayerId ? 'Bajas confirmadas por ronda' : 'Puntos y bajas acumuladas'}
+                </p>
+             </div>
+             
              <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest">
-                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-neon-cyan" /> Puntos</div>
-                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-neon-purple" /> Kills</div>
+                {!selectedPlayerId ? (
+                  <>
+                    <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-neon-cyan" /> Puntos</div>
+                    <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-neon-purple" /> Kills</div>
+                  </>
+                ) : (
+                  <button 
+                    onClick={() => setSelectedPlayerId(null)}
+                    className="px-3 py-1 rounded-full border border-white/10 hover:border-white/30 transition-colors text-white/40 hover:text-white"
+                  >
+                    Volver a Equipo
+                  </button>
+                )}
              </div>
           </div>
           
-          <div className="h-[250px] w-full bg-black/20 rounded-2xl p-4 border border-white/5">
+          <div className="h-[300px] w-full bg-black/20 rounded-3xl p-6 border border-white/5 shadow-inner">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="colorPoints" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#00F5FF" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#00F5FF" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                <XAxis 
-                  dataKey="name" 
-                  stroke="rgba(255,255,255,0.3)" 
-                  fontSize={10} 
-                  tickLine={false} 
-                  axisLine={false}
-                  dy={10}
-                />
-                <YAxis 
-                   stroke="rgba(255,255,255,0.3)" 
-                   fontSize={10} 
-                   tickLine={false} 
-                   axisLine={false}
-                />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#0A0A0B', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '10px' }}
-                  itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="points" 
-                  stroke="#00F5FF" 
-                  strokeWidth={3}
-                  fillOpacity={1} 
-                  fill="url(#colorPoints)" 
-                  animationDuration={1500}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="kills" 
-                  stroke="#B400FF" 
-                  strokeWidth={2} 
-                  dot={{ r: 4, fill: '#B400FF', strokeWidth: 0 }}
-                  animationDuration={2000}
-                />
-              </AreaChart>
+              {selectedPlayerId ? (
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <XAxis dataKey="name" stroke="rgba(255,255,255,0.3)" fontSize={10} tickLine={false} axisLine={false} dy={10} />
+                  <YAxis stroke="rgba(255,255,255,0.3)" fontSize={10} tickLine={false} axisLine={false} />
+                  <Tooltip 
+                    cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                    contentStyle={{ backgroundColor: '#0A0A0B', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '10px' }}
+                    itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                  />
+                  <Bar dataKey="playerKills" radius={[4, 4, 0, 0]} animationDuration={1000}>
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={primaryColor} fillOpacity={0.8} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              ) : (
+                <AreaChart data={chartData}>
+                  <defs>
+                    <linearGradient id="colorPoints" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={primaryColor} stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor={primaryColor} stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <XAxis dataKey="name" stroke="rgba(255,255,255,0.3)" fontSize={10} tickLine={false} axisLine={false} dy={10} />
+                  <YAxis stroke="rgba(255,255,255,0.3)" fontSize={10} tickLine={false} axisLine={false} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#0A0A0B', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '10px' }}
+                    itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                  />
+                  <Area type="monotone" dataKey="points" stroke={primaryColor} strokeWidth={3} fillOpacity={1} fill="url(#colorPoints)" animationDuration={1500} />
+                  <Area type="monotone" dataKey="kills" stroke="#B400FF" strokeWidth={2} fill="transparent" animationDuration={2000} />
+                </AreaChart>
+              )}
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Individual Stats Column */}
         <div className="space-y-4">
-          <h3 className="text-[10px] font-orbitron font-black text-white/40 uppercase tracking-[0.3em]">Estadísticas de Jugadores</h3>
-          <div className="space-y-2">
-            {teamParticipants.length === 0 ? (
-              <p className="text-[10px] text-white/20 uppercase tracking-widest italic py-4">No hay jugadores registrados</p>
+          <h3 className="text-[10px] font-orbitron font-black text-white/40 uppercase tracking-[0.3em]">
+            {selectedPlayerId ? 'Perfil de Jugador' : 'Estadísticas de Jugadores'}
+          </h3>
+          
+          <AnimatePresence mode="wait">
+            {selectedPlayerId && selectedPlayer ? (
+              <motion.div
+                key="player-card"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="p-6 rounded-2xl bg-gradient-to-br from-white/[0.05] to-transparent border border-white/10"
+              >
+                 <div className="flex items-center gap-4 mb-6">
+                    <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-3xl">
+                      👤
+                    </div>
+                    <div>
+                       <h4 className="font-orbitron font-bold text-white text-xl leading-none mb-1">{selectedPlayer.displayName}</h4>
+                       <p className="text-[10px] text-neon-cyan uppercase font-black tracking-widest">{selectedPlayer.isCaptain ? 'Capitán de Equipo' : 'Operador'}</p>
+                    </div>
+                 </div>
+                 
+                 <div className="grid grid-cols-2 gap-3 mb-6">
+                    <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5">
+                       <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">KD (AVG Kills)</p>
+                       <p className="text-2xl font-orbitron font-black text-white">{kd}</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5">
+                       <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">Kills Totales</p>
+                       <p className="text-2xl font-orbitron font-black text-white">{selectedPlayer.totalKills || 0}</p>
+                    </div>
+                 </div>
+
+                 <button 
+                  onClick={() => setSelectedPlayerId(null)}
+                  className="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-white/40 hover:text-white transition-all border border-white/5"
+                 >
+                   Cerrar Perfil
+                 </button>
+              </motion.div>
             ) : (
-              teamParticipants.map((p, idx) => (
-                <motion.div 
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.1 }}
-                  key={p.id} 
-                  className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.05] transition-all group"
-                >
-                   <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-[10px] text-white/40 font-black">
-                        {p.isCaptain ? '👑' : idx + 1}
-                      </div>
-                      <span className="text-sm font-medium text-white group-hover:text-neon-cyan transition-colors">{p.displayName}</span>
-                   </div>
-                   <div className="text-right">
-                      <span className="text-lg font-orbitron font-black text-white">{p.totalKills || 0}</span>
-                      <span className="text-[8px] text-white/30 uppercase block font-bold tracking-tighter">Kills Totales</span>
-                   </div>
-                </motion.div>
-              ))
+              <div className="space-y-2">
+                {teamParticipants.length === 0 ? (
+                  <p className="text-[10px] text-white/20 uppercase tracking-widest italic py-4 text-center">No hay jugadores registrados</p>
+                ) : (
+                  teamParticipants.map((p, idx) => (
+                    <motion.div 
+                      key={p.id} 
+                      onClick={() => setSelectedPlayerId(p.id)}
+                      className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.08] hover:border-white/20 cursor-pointer transition-all group"
+                    >
+                       <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-[10px] text-white/40 font-black group-hover:bg-neon-cyan group-hover:text-black transition-colors">
+                            {p.isCaptain ? '👑' : idx + 1}
+                          </div>
+                          <span className="text-sm font-medium text-white group-hover:text-neon-cyan transition-colors">{p.displayName}</span>
+                       </div>
+                       <div className="text-right flex items-center gap-3">
+                          <div className="text-right">
+                            <span className="text-lg font-orbitron font-black text-white block leading-none">{p.totalKills || 0}</span>
+                            <span className="text-[8px] text-white/30 uppercase font-bold tracking-tighter">Kills</span>
+                          </div>
+                          <svg className="w-3 h-3 text-white/20 group-hover:text-neon-cyan transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                       </div>
+                    </motion.div>
+                  ))
+                )}
+              </div>
             )}
-          </div>
+          </AnimatePresence>
           
           {/* AI Banner */}
-          <div className="mt-6 p-4 rounded-2xl bg-gradient-to-br from-neon-purple/20 to-transparent border border-neon-purple/30">
-             <div className="flex items-center gap-2 mb-2">
-                <div className="w-2 h-2 rounded-full bg-neon-purple animate-pulse" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-white">IA Vision Verified</span>
-             </div>
-             <p className="text-[10px] text-white/40 leading-relaxed uppercase tracking-tighter font-medium">
-                Los datos de este equipo han sido validados automáticamente mediante el escaneo de capturas de pantalla de resultados oficiales.
-             </p>
-          </div>
+          {!selectedPlayerId && (
+            <div className="mt-6 p-4 rounded-2xl bg-gradient-to-br from-neon-purple/20 to-transparent border border-neon-purple/30">
+               <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-neon-purple animate-pulse" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white font-orbitron">IA Verified</span>
+               </div>
+               <p className="text-[9px] text-white/40 leading-relaxed uppercase tracking-widest font-bold">
+                  Detección automática de OCR activada para este equipo.
+               </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
