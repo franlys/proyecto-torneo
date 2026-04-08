@@ -72,6 +72,7 @@ export interface Submission {
   matchId: string;
   submittedBy: string;
   killCount: number;
+  rank?: number;
   potTop: boolean;
   status: SubmissionStatus;
   rejectionReason?: string;

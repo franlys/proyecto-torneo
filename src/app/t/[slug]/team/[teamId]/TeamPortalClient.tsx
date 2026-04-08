@@ -22,6 +22,8 @@ export function TeamPortalClient({
   
   // New state for individual kills
   const [playerKills, setPlayerKills] = useState<Record<string, number>>({})
+  const [rank, setRank] = useState<number | ''>('')
+  const [potTop, setPotTop] = useState(false)
 
   const supabase = createClient()
 
@@ -54,6 +56,17 @@ export function TeamPortalClient({
     }))
   }
 
+  const handleRankChange = (value: string) => {
+    const num = parseInt(value, 10)
+    if (isNaN(num)) {
+      setRank('')
+    } else {
+      setRank(num)
+      if (num === 1) setPotTop(true)
+      else setPotTop(false)
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
@@ -66,9 +79,11 @@ export function TeamPortalClient({
     const matchId = roundSelect ? roundSelect.value : (form.elements.namedItem('matchId') as HTMLSelectElement).value
     
     const submittedBy = (form.elements.namedItem('submittedBy') as HTMLSelectElement).value
-    const potTop = tournament.pot_top_enabled 
-      ? (form.elements.namedItem('potTop') as HTMLInputElement).checked 
-      : false
+    
+    // Use state-based potTop and rank
+    const finalRank = rank === '' ? undefined : rank
+    const finalPotTop = potTop
+    
     const fileBase = form.elements.namedItem('evidenceFile') as HTMLInputElement
     const file = fileBase?.files?.[0]
 
@@ -100,7 +115,8 @@ export function TeamPortalClient({
         submittedBy: submittedBy,
         killCount: teamTotalKills,
         playerKills: playerKills, // NEW: Individual breakdown
-        potTop: potTop,
+        rank: finalRank,
+        potTop: finalPotTop,
         evidence: {
           storagePath: uploadData.path,
           fileName: file.name,
@@ -232,23 +248,53 @@ export function TeamPortalClient({
         </div>
       </div>
       
-      {/* Victory Checkbox */}
-      {tournament.pot_top_enabled && (
-        <div className="flex items-center justify-center pt-2">
-          <label className="flex items-center gap-4 px-6 py-4 rounded-2xl bg-gold/5 border border-gold/20 hover:bg-gold/10 cursor-pointer transition-all group">
+      {/* Placement & Victory */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+        <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 flex flex-col justify-center">
+          <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-3 ml-1">Posición / Top Logrado</label>
+          <div className="flex items-center gap-4">
+            <input 
+              type="number"
+              min="1"
+              max="100"
+              placeholder="Ej. 1"
+              value={rank}
+              onChange={(e) => handleRankChange(e.target.value)}
+              required
+              className="w-24 bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan transition-all text-white font-orbitron text-center text-lg"
+            />
+            <div className="flex-1">
+              <p className="text-[10px] text-white/30 font-medium leading-relaxed uppercase tracking-tighter">
+                Indica en qué lugar quedó tu equipo (ej: Top 1 si ganaste, Top 2 para segundo, etc.)
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {tournament.pot_top_enabled && (
+          <label className={`flex items-center gap-4 px-6 py-5 rounded-2xl border transition-all group cursor-pointer ${
+            potTop ? 'bg-gold/10 border-gold shadow-[0_0_15px_rgba(255,215,0,0.1)]' : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.04]'
+          }`}>
             <div className="relative">
-              <input type="checkbox" name="potTop" className="peer sr-only" />
-              <div className="w-6 h-6 border-2 border-gold/40 peer-checked:bg-gold peer-checked:border-gold rounded-lg flex items-center justify-center transition-all shadow-lg group-hover:scale-110">
-                <svg className="w-4 h-4 text-black opacity-0 peer-checked:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+              <input 
+                type="checkbox" 
+                checked={potTop}
+                onChange={(e) => setPotTop(e.target.checked)}
+                className="peer sr-only" 
+              />
+              <div className={`w-6 h-6 border-2 rounded-lg flex items-center justify-center transition-all shadow-lg group-hover:scale-110 ${
+                potTop ? 'bg-gold border-gold' : 'border-white/10'
+              }`}>
+                <svg className={`w-4 h-4 text-black ${potTop ? 'opacity-100' : 'opacity-0'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
               </div>
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-orbitron font-black text-gold uppercase tracking-tighter">¿Victoria de Partida?</span>
-              <span className="text-[10px] text-gold/40 font-bold uppercase tracking-widest">Booyah! / Winner Winner</span>
+              <span className={`text-sm font-orbitron font-black uppercase tracking-tighter ${potTop ? 'text-gold' : 'text-white/40'}`}>¿Victoria de Partida?</span>
+              <span className={`text-[10px] font-bold uppercase tracking-widest ${potTop ? 'text-gold/60' : 'text-white/20'}`}>Booyah! / Winner Winner</span>
             </div>
           </label>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* File Upload */}
       <div>

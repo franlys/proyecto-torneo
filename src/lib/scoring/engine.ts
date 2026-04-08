@@ -117,10 +117,18 @@ export function computeStandings(
   const standings = config.teams.map((team) => {
     const subs = byTeam.get(team.id) ?? []
     const totalKills = subs.reduce((sum, s) => sum + s.killCount, 0)
+    
+    // Sum placement points for each approved submission
+    const totalPlacementPoints = subs.reduce((sum, s) => {
+      const pos = s.rank || (s.potTop ? 1 : 0)
+      const points = pos > 0 ? (rule.placementPoints[String(pos)] ?? 0) : 0
+      return sum + points
+    }, 0)
+
     const potTopCount = calculatePotTopCount(subs)
     const killRate = calculateKillRate(totalKills, config.totalMatches)
     const killPoints = totalKills * rule.killPoints
-    const totalPoints = calculateTotalWithVip(killPoints, team.vipScore)
+    const totalPoints = calculateTotalWithVip(killPoints + totalPlacementPoints, team.vipScore)
     return {
       teamId: team.id,
       teamName: team.name,

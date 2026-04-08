@@ -59,7 +59,8 @@ export async function createSubmission(
       submitted_by: parsed.data.submittedBy,
       kill_count: parsed.data.killCount,
       player_kills: parsed.data.playerKills || {},
-      pot_top: parsed.data.potTop,
+      rank: parsed.data.rank || (parsed.data.potTop ? 1 : null),
+      pot_top: parsed.data.potTop || parsed.data.rank === 1,
       status: 'pending',
     })
     .select()
@@ -100,6 +101,7 @@ export async function createSubmission(
       submittedBy: submission.submitted_by,
       killCount: submission.kill_count,
       playerKills: submission.player_kills,
+      rank: submission.rank,
       potTop: submission.pot_top,
       status: submission.status,
       rejectionReason: submission.rejection_reason,
@@ -153,7 +155,7 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
   
   const mappedSubs = (subs || []).map((s: any) => ({
     id: s.id, tournamentId: s.tournament_id, teamId: s.team_id, matchId: s.match_id,
-    submittedBy: s.submitted_by, killCount: s.kill_count, potTop: s.pot_top, status: s.status,
+    submittedBy: s.submitted_by, killCount: s.kill_count, rank: s.rank, potTop: s.pot_top, status: s.status,
     submittedAt: s.submitted_at
   }))
 
