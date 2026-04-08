@@ -307,3 +307,34 @@ export async function getTournament(
     },
   }
 }
+
+export async function deleteTournament(
+  id: string
+): Promise<{ success: true } | { error: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  // Verify ownership before deleting
+  const { data: tournament, error: fetchErr } = await supabase
+    .from('tournaments')
+    .select('creator_id, name, status')
+    .eq('id', id)
+    .single()
+
+  if (fetchErr || !tournament) return { error: 'Torneo no encontrado' }
+  if (tournament.creator_id !== user.id) return { error: 'Sin permisos para eliminar este torneo' }
+
+  // Delete tournament — FK cascade in Supabase will remove:
+  // matches, submissions, team_standings, scoring_rules, teams, leaderboard_themes
+  const { error: deleteErr } = await supabase
+    .from('tournaments')
+    .delete()
+    .eq('id', id)
+
+  if (deleteErr) return { error: deleteErr.message }
+
+  return { success: true }
+}

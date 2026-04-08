@@ -346,8 +346,8 @@ export function TournamentForm({ onSuccess }: TournamentFormProps) {
               },
               {
                 field: 'vipEnabled' as const,
-                label: 'VIP Score',
-                desc: 'Puntuación especial asignada manualmente',
+                label: 'Top Fragger (MVP)',
+                desc: 'Métrica especial para destacar al mejor jugador del equipo',
               },
               {
                 field: 'tiebreakerMatchEnabled' as const,

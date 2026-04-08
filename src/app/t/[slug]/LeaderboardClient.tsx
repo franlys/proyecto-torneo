@@ -17,6 +17,9 @@ export function LeaderboardClient({
   theme,
   matches,
   submissions,
+  killRateEnabled,
+  potTopEnabled,
+  vipEnabled,
 }: {
   tournamentId: string
   tournamentName: string
@@ -28,12 +31,24 @@ export function LeaderboardClient({
   theme?: any
   matches?: any[]
   submissions?: any[]
+  killRateEnabled?: boolean
+  potTopEnabled?: boolean
+  vipEnabled?: boolean
 }) {
   const [standings, setStandings] = useState(initialStandings)
   const [activeTab, setActiveTab] = useState<'ranking' | 'participants' | 'matches'>('ranking')
   const [watchingStream, setWatchingStream] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const supabase = createClient()
+
+  // Top Fragger MVP: calculado INDEPENDIENTE del ranking por puntos.
+  // Un equipo puede ser MVP sin estar en el top de la tabla.
+  const mvpTeam = vipEnabled
+    ? standings.reduce((best: any, s: any) =>
+        (s.vipScore ?? 0) > (best?.vipScore ?? 0) ? s : best
+      , null as any)
+    : null
+  const mvpHasScore = mvpTeam && (mvpTeam.vipScore ?? 0) > 0
 
   useEffect(() => {
     const checkMobile = () => {
@@ -260,6 +275,58 @@ export function LeaderboardClient({
         {status === 'ended' && <span className="inline-block mt-4 text-xs font-bold bg-white/10 px-3 py-1 rounded text-white/50 uppercase">Torneo Finalizado</span>}
       </div>
 
+      {/* ── Top Fragger MVP Card ─────────────────────────────────────────────── */}
+      {/* COMPLETAMENTE SEPARADO de la tabla de posiciones por equipo.           */}
+      {/* Un equipo en puesto #5 puede ser el Top Fragger del torneo.            */}
+      {vipEnabled && mvpHasScore && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: 'spring', stiffness: 280, damping: 28, delay: 0.15 }}
+          className="mb-8 mx-auto max-w-xl"
+        >
+          {/* Label de sección */}
+          <p className="text-center text-[10px] font-bold uppercase tracking-[0.3em] text-white/30 mb-3">
+            ⚡ Reconocimiento Individual
+          </p>
+          <div className="relative overflow-hidden rounded-2xl border border-neon-purple/40 bg-gradient-to-br from-neon-purple/10 via-dark-card to-black/60 p-5 shadow-lg shadow-neon-purple/10">
+            {/* Glow decoration */}
+            <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-neon-purple/20 blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-8 -left-8 w-24 h-24 rounded-full bg-neon-cyan/10 blur-2xl pointer-events-none" />
+
+            <div className="relative flex items-center gap-4">
+              {/* Crown icon */}
+              <div className="shrink-0 w-14 h-14 rounded-xl bg-neon-purple/20 border border-neon-purple/40 flex items-center justify-center text-2xl shadow-inner shadow-neon-purple/10">
+                🎯
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-neon-purple/70 mb-0.5">
+                  🏆 Top Fragger MVP
+                </p>
+                <p className="font-orbitron font-bold text-lg sm:text-2xl text-white truncate tracking-wide">
+                  {mvpTeam.teamName}
+                </p>
+                <p className="text-xs text-white/40 mt-0.5">
+                  Este logro es <span className="text-white/60 font-semibold">individual</span> — no refleja la posición en tabla de equipos
+                </p>
+              </div>
+              {/* Score badge */}
+              <div className="shrink-0 text-right">
+                <div className="inline-flex flex-col items-center px-3 py-2 rounded-xl bg-neon-purple/20 border border-neon-purple/50">
+                  <span className="font-orbitron font-black text-2xl text-neon-purple leading-none">
+                    {mvpTeam.vipScore}
+                  </span>
+                  <span className="text-[9px] text-neon-purple/60 uppercase tracking-widest mt-0.5">pts</span>
+                </div>
+                <p className="text-[10px] text-white/20 mt-1">
+                  Puesto en tabla: <span className="text-white/40">#{mvpTeam.rank}</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* Tabs — scrollable on mobile */}
       <div className="flex gap-1 mb-6 sm:mb-8 sm:justify-center overflow-x-auto pb-1 px-2 sm:px-0 scrollbar-hide">
         <button
@@ -301,8 +368,9 @@ export function LeaderboardClient({
                   <th className="px-6 py-4">Equipo</th>
                   <th className="px-6 py-4 text-center">PTS</th>
                   <th className="px-6 py-4 text-center">Kills</th>
-                  <th className="px-6 py-4 text-center">Top 1</th>
-                  <th className="px-6 py-4 text-center">Kill Rate</th>
+                  {potTopEnabled && <th className="hidden md:table-cell px-6 py-4 text-center">Top 1</th>}
+                  {killRateEnabled && <th className="hidden md:table-cell px-6 py-4 text-center">Kill Rate</th>}
+                  {vipEnabled && <th className="px-6 py-4 text-center">Top Fragger</th>}
                 </tr>
               </thead>
               <tbody>
@@ -359,12 +427,23 @@ export function LeaderboardClient({
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-center text-white/80 font-medium text-sm sm:text-base">
                           {s.totalKills}
                         </td>
-                        <td className="hidden md:table-cell px-6 py-4 text-center text-white/60">
-                          {s.potTopCount}
-                        </td>
-                        <td className="hidden md:table-cell px-6 py-4 text-center text-white/60">
-                          {s.killRate.toFixed(1)}
-                        </td>
+                        {potTopEnabled && (
+                          <td className="hidden md:table-cell px-6 py-4 text-center text-white/60">
+                            {s.potTopCount}
+                          </td>
+                        )}
+                        {killRateEnabled && (
+                          <td className="hidden md:table-cell px-6 py-4 text-center text-white/60 font-mono text-xs">
+                            {s.killRate.toFixed(1)}
+                          </td>
+                        )}
+                        {vipEnabled && (
+                          <td className="px-3 sm:px-6 py-3 sm:py-4 text-center">
+                            <span className="inline-flex items-center px-2 py-1 rounded bg-neon-purple/20 text-neon-purple font-orbitron font-bold text-sm border border-neon-purple/30">
+                              {s.vipScore}
+                            </span>
+                          </td>
+                        )}
                       </motion.tr>
                     )
                   })}

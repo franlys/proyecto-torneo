@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { LeaderboardClient } from './LeaderboardClient'
@@ -8,7 +10,7 @@ export default async function PublicLeaderboardPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const normalizedSlug = slug.toLowerCase()
+  const normalizedSlug = slug.trim().toLowerCase()
   const supabase = await createClient()
 
   // Fetch the tournament
@@ -145,6 +147,9 @@ export default async function PublicLeaderboardPage({
         description={tournament.description}
         format={tournament.format}
         status={tournament.status}
+        killRateEnabled={tournament.kill_rate_enabled}
+        potTopEnabled={tournament.pot_top_enabled}
+        vipEnabled={tournament.vip_enabled}
         initialStandings={formattedStandings}
         teams={formattedTeams}
         theme={theme}

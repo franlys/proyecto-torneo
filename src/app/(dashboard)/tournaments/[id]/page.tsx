@@ -1,5 +1,5 @@
-import { getTournament } from '@/lib/actions/tournaments'
-import { activateTournament } from '@/lib/actions/tournaments'
+import { getTournament, activateTournament } from '@/lib/actions/tournaments'
+import { DeleteTournamentButton } from './DeleteTournamentButton'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Tournament } from '@/types'
@@ -288,6 +288,16 @@ export default async function TournamentOverviewPage({
           <ActivateButton id={id} />
         </div>
       )}
+
+      {/* ── Danger Zone ──────────────────────────────────────────────── */}
+      <div className="border border-red-500/10 rounded-2xl p-6">
+        <h2 className="text-sm font-semibold text-red-400/80 mb-1">Zona de peligro</h2>
+        <p className="text-xs text-white/30 mb-4">
+          Eliminar este torneo borrará permanentemente todos sus equipos, partidas, estadísticas y puntuaciones.
+          Esta acción no se puede deshacer.
+        </p>
+        <DeleteTournamentButton id={id} name={tournament.name} />
+      </div>
     </div>
   )
 }

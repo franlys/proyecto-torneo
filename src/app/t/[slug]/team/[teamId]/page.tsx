@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { TeamPortalClient } from './TeamPortalClient'
@@ -8,7 +10,8 @@ export default async function TeamPortalPage({
   params: Promise<{ slug: string; teamId: string }>
 }) {
   const { slug, teamId } = await params
-  const normalizedSlug = slug.toLowerCase()
+  const normalizedSlug = slug.trim().toLowerCase()
+  const normalizedTeamId = teamId.trim().toLowerCase()
   const supabase = await createClient()
 
   // Fetch the tournament
@@ -24,7 +27,7 @@ export default async function TeamPortalPage({
   const { data: team, error: teamErr } = await supabase
     .from('teams')
     .select('*')
-    .eq('id', teamId)
+    .eq('id', normalizedTeamId)
     .single()
 
   if (teamErr || !team) notFound()

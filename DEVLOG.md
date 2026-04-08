@@ -167,17 +167,82 @@ El proyecto ha avanzado a través de las fases iniciales de setup, base de datos
 
 ---
 
-## [2026-04-07 (noche - sprint 4)] — Corrección de Errores 404 (Case Sensitivity)
+---
+
+## [2026-04-08 (madrugada)] — Hardening 404 & Actualización Terminología (Top Fragger)
 
 ### Tareas Completadas
 
-- **Normalización de Slugs**:
-    - `src/app/t/[slug]/page.tsx`: Se añadió `slug.toLowerCase()` antes de la consulta a Supabase.
-    - `src/app/t/[slug]/team/[teamId]/page.tsx`: Se aplicó la misma normalización para el portal de equipos.
-    - **Resultado**: Los enlaces compartidos ahora funcionan correctamente aunque el navegador o el usuario usen mayúsculas (ej. `/t/TORNEO-123` ahora carga igual que `/t/torneo-123`).
+- **Refuerzo Anti-404**:
+    - **Normalización Agresiva**: Se implementó `.trim().toLowerCase()` en todos los parámetros de ruta (`slug` e `teamId`). Esto previene errores por espacios accidentales al copiar/pegar o capitalización automática de teclados móviles.
+    - **Bypass de Cache (edge)**: Se añadió `export const dynamic = 'force-dynamic'` a las rutas públicas relevantes. Esto asegura que Vercel no sirva una página 404 estática si el torneo fue creado o actualizado recientemente.
+- **Cambio de Terminología (VIP → Top Fragger)**:
+    - Se reemplazó la etiqueta "VIP" por **"Top Fragger"** en el `TournamentForm` y en el `LeaderboardClient`.
+    - **UI Dinámica**: Las columnas de "Top Fragger" y "Pot Top" en el leaderboard ahora son condicionales; solo aparecen si la métrica está habilitada en la configuración del torneo.
+    - Se utilizó tipografía Orbitron y badges con efectos neon para mantener la estética gamer.
 
-### Notas de Depuración
-- El error 404 reportado por el usuario en móviles se debía a que los teclados móviles suelen capitalizar la primera letra al escribir o pegar enlaces. Al ser Supabase sensible a mayúsculas en las consultas `.eq()`, la búsqueda fallaba silenciosamente disparando el `notFound()`.
+### Decisiones Técnicas
+- **Force Dynamic**: Dado que el leaderboard es una herramienta de consulta en tiempo real, forzar el renderizado dinámico garantiza consistencia de datos sin depender de los tiempos de revalidación de ISR que a veces causaban 404s en enlaces nuevos.
+- **Métricas Condicionales**: Se limpió la interfaz del leaderboard para no mostrar columnas vacías (0.0) si el organizador no utiliza ciertas métricas (Kill Rate, Pot Top, etc.).
 
 
 
+
+---
+
+## [2026-04-08 (madrugada - sprint 6)] - Top Fragger MVP Card y Match Recap Clarity
+
+### Problema Reportado
+El usuario senalo que el 'Top Fragger' podia mezclarse con el ranking de equipos por puntos, y que los resumenes de partida podian confundir datos entre rondas distintas.
+
+### Tareas Completadas
+
+- **Tarjeta Top Fragger MVP (Independiente)**:
+    - Anadida entre el header del torneo y los tabs en LeaderboardClient.tsx.
+    - Logica: Calcula con Array.reduce el equipo con mayor vipScore, desvinculado de rank o totalPoints.
+    - Muestra el puesto en tabla (Puesto en tabla: #X) para dejar claro que MVP no es igual a #1 en puntos.
+    - Solo aparece si vipEnabled = true y vipScore > 0 en algun equipo.
+    - Animacion Framer Motion spring (skill emilkowalski-design).
+
+- **MatchRecap.tsx - Refactoring Completo**:
+    - Re-escrito con interfaces TypeScript explicitas, sin any.
+    - Header por partida: nombre, equipos registrados, kills totales en esa ronda.
+    - Top Fragger de la Partida: badge separado con kills de esa ronda, etiquetado 'Top Fragger - Esta Partida'.
+    - Cards ordenadas por kills descendente. Lider de kills lleva ribbon visual.
+    - Warm-up matches diferenciados con badge naranja.
+
+### Arquitectura de Metricas (3 contextos separados)
+1. Ranking de Equipos - Tab Posiciones: puntos + kills acumulados del torneo.
+2. Top Fragger MVP del Torneo - Tarjeta flotante: vip_score asignado manualmente, independiente del ranking.
+3. Top Fragger de la Partida - Tab Partidas/header: kills de esa ronda solamente.
+
+### Skills Aplicados
+frontend-design, ui-ux-pro-max, emilkowalski-design, vercel-react-best-practices, vercel-composition-patterns.
+
+---
+
+## [2026-04-08 (madrugada - sprint 7)] - Borrado de Torneos
+
+### Tarea
+Faltaba funcionalidad para eliminar torneos. Solo existia la opcion de crearlos.
+
+### Implementacion
+
+- **Server Action deleteTournament** en tournaments.ts:
+    - Verifica autenticacion y ownership antes de borrar.
+    - El borrado en cascada de Supabase (FK) elimina: matches, submissions, team_standings, scoring_rules, teams, leaderboard_themes.
+
+- **TournamentCard.tsx** (nuevo Client Component):
+    - Boton de papelera visible al hacer hover sobre la card.
+    - Confirmacion nativa del browser antes de ejecutar el borrado.
+    - Llama a router.refresh() para actualizar la lista sin recargar la pagina.
+    - page.tsx queda como Server Component puro.
+
+- **DeleteTournamentButton.tsx** en /[id]:
+    - Seccion 'Zona de Peligro' al final de la pagina de detalle del torneo.
+    - Tras borrar exitoso redirige a /tournaments y refresca la lista.
+    - Estados de loading con spinner animado.
+
+### Seguridad
+- Doble verificacion: client (confirm dialog) + server (ownership check via creator_id).
+- El server action valida que el user.id coincida con creator_id antes de borrar.
