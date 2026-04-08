@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
 import { createTournamentSchema, updateTournamentSchema } from '@/lib/validations/schemas'
 import type { Tournament, ScoringRule } from '@/types'
 import type { CreateTournamentInput, UpdateTournamentInput } from '@/lib/validations/schemas'
@@ -278,6 +279,10 @@ export async function activateTournament(
     .eq('id', id)
 
   if (activateErr) return { error: activateErr.message }
+  
+  revalidatePath(`/tournaments/${id}`)
+  revalidatePath('/tournaments')
+  
   return { success: true }
 }
 

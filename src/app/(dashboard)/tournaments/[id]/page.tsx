@@ -99,32 +99,9 @@ function QuickAction({
   )
 }
 
-// ─── Activate button (server action) ─────────────────────────────────────────
+// ─── Activate button (Client Component) ─────────────────────────────────────────
+import { ActivateTournamentButton } from './ActivateTournamentButton'
 
-function ActivateButton({ id }: { id: string }) {
-  async function activate() {
-    'use server'
-    await activateTournament(id)
-  }
-
-  return (
-    <form action={activate}>
-      <button
-        type="submit"
-        className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl
-          font-semibold text-sm text-white bg-gradient-to-r from-neon-cyan to-neon-purple
-          hover:opacity-90 active:scale-[0.97] transition-all duration-150
-          shadow-lg shadow-neon-cyan/10"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-            d="M5 3l14 9-14 9V3z" />
-        </svg>
-        Activar Torneo
-      </button>
-    </form>
-  )
-}
 
 // ─── Export & Reports Component (Client Wrap) ──────────────────────────────────
 
@@ -314,7 +291,7 @@ export default async function TournamentOverviewPage({
           <p className="text-xs text-white/30 mb-4">
             Activar el torneo bloqueará la configuración. Asegúrate de haber agregado participantes y definido las reglas.
           </p>
-          <ActivateButton id={id} />
+          <ActivateTournamentButton id={id} />
         </div>
       )}
 

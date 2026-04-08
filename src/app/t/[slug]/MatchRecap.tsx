@@ -5,27 +5,27 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 interface SubmissionData {
   id: string
-  match_id: string
-  kill_count: number
-  pot_top: boolean
+  matchId: string
+  killCount: number
+  potTop: boolean
   teams?: {
     name?: string
-    avatar_url?: string
+    avatarUrl?: string
   }
-  evidence_files?: Array<{
-    storage_path: string
-    mime_type: string
+  evidenceFiles?: Array<{
+    storagePath: string
+    mimeType: string
   }>
 }
 
 interface MatchData {
   id: string
   name?: string
-  match_number: number
-  is_warmup?: boolean
-  parent_match_id?: string
-  round_number?: number
-  map_name?: string
+  matchNumber: number
+  isWarmup?: boolean
+  parentMatchId?: string
+  roundNumber?: number
+  mapName?: string
 }
 
 interface MatchRecapProps {
@@ -36,32 +36,32 @@ interface MatchRecapProps {
 
 export function MatchRecap({ matches, submissions, primaryColor }: MatchRecapProps) {
   // 1. Identify Encounters (Parents)
-  const encounters = matches.filter(m => !m.parent_match_id).sort((a, b) => a.match_number - b.match_number)
+  const encounters = (matches || []).filter(m => !m.parentMatchId).sort((a, b) => a.matchNumber - b.matchNumber)
   
   const [activeEncounterId, setActiveEncounterId] = useState<string | null>(encounters[0]?.id || null)
   
   // 2. Identify Rounds for the active encounter
-  const rounds = matches
-    .filter(m => m.parent_match_id === activeEncounterId)
-    .sort((a, b) => (a.round_number || 0) - (b.round_number || 0))
+  const rounds = (matches || [])
+    .filter(m => m.parentMatchId === activeEncounterId)
+    .sort((a, b) => (a.roundNumber || 0) - (b.roundNumber || 0))
     
   const [activeRoundId, setActiveRoundId] = useState<string | null>(null)
 
   // Effectively active match (either the round or the parent if no rounds)
   const currentMatchId = activeRoundId || rounds[0]?.id || activeEncounterId
-  const activeMatchData = matches.find(m => m.id === currentMatchId)
+  const activeMatchData = (matches || []).find(m => m.id === currentMatchId)
   
   // Submissions for the current selection
-  const activeSubmissions = submissions.filter(s => s.match_id === currentMatchId)
+  const activeSubmissions = (submissions || []).filter(s => s.matchId === currentMatchId)
 
   // Top Fragger of this specific round
   const matchTopFragger = activeSubmissions.length > 0
     ? activeSubmissions.reduce((best, s) =>
-        s.kill_count > (best?.kill_count ?? -1) ? s : best
+        s.killCount > (best?.killCount ?? -1) ? s : best
       , activeSubmissions[0])
     : null
 
-  const totalKillsInSelection = activeSubmissions.reduce((sum, s) => sum + (s.kill_count ?? 0), 0)
+  const totalKillsInSelection = activeSubmissions.reduce((sum, s) => sum + (s.killCount ?? 0), 0)
 
   // Reset active round when encounter changes
   const handleEncounterChange = (id: string) => {
@@ -85,12 +85,12 @@ export function MatchRecap({ matches, submissions, primaryColor }: MatchRecapPro
             }`}
             style={{ borderColor: activeEncounterId === m.id ? primaryColor : undefined }}
           >
-            {m.is_warmup && (
+            {m.isWarmup && (
               <span className="text-[9px] uppercase tracking-wider text-orange-400 font-black px-1.5 py-0.5 bg-orange-400/10 rounded">
                 Warm-up
               </span>
             )}
-            {m.name || `Encuentro ${m.match_number}`}
+            {m.name || `Encuentro ${m.matchNumber}`}
           </button>
         ))}
       </div>
@@ -110,7 +110,7 @@ export function MatchRecap({ matches, submissions, primaryColor }: MatchRecapPro
                      : 'bg-white/5 border-white/5 text-white/30 hover:text-white/60'
                  }`}
                >
-                 {r.name} {r.map_name ? `(${r.map_name})` : ''}
+                 {r.name} {r.mapName ? `(${r.mapName})` : ''}
                </button>
              ))}
            </div>
@@ -132,9 +132,9 @@ export function MatchRecap({ matches, submissions, primaryColor }: MatchRecapPro
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <p className="text-[10px] uppercase tracking-[0.25em] text-neon-cyan font-bold">
-                      {activeMatchData.parent_match_id ? 'Análisis de Ronda' : 'Resumen Global'}
+                      {activeMatchData.parentMatchId ? 'Análisis de Ronda' : 'Resumen Global'}
                     </p>
-                    {activeMatchData.is_warmup && (
+                    {activeMatchData.isWarmup && (
                       <span className="text-[9px] uppercase tracking-wider text-orange-400 font-bold bg-orange-400/20 px-1.5 py-0.5 rounded">
                         Calentamiento
                       </span>
@@ -150,7 +150,7 @@ export function MatchRecap({ matches, submissions, primaryColor }: MatchRecapPro
                 </div>
 
                 {/* Top Fragger de ESTA selección */}
-                {matchTopFragger && (matchTopFragger.kill_count ?? 0) > 0 && (
+                {matchTopFragger && (matchTopFragger.killCount ?? 0) > 0 && (
                   <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-neon-purple/10 border border-neon-purple/20 shadow-lg shadow-neon-purple/5">
                     <div className="w-10 h-10 rounded-xl bg-neon-purple/20 border border-neon-purple/40 flex items-center justify-center text-xl">🎯</div>
                     <div>
@@ -161,7 +161,7 @@ export function MatchRecap({ matches, submissions, primaryColor }: MatchRecapPro
                         {matchTopFragger.teams?.name ?? '—'}
                       </p>
                       <p className="text-[10px] text-white/40">
-                         Logró <span className="text-neon-purple font-bold">{matchTopFragger.kill_count}</span> bajas
+                         Logró <span className="text-neon-purple font-bold">{matchTopFragger.killCount}</span> bajas
                       </p>
                     </div>
                   </div>
@@ -180,16 +180,16 @@ export function MatchRecap({ matches, submissions, primaryColor }: MatchRecapPro
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {activeSubmissions
                   .slice()
-                  .sort((a, b) => (b.kill_count ?? 0) - (a.kill_count ?? 0))
+                  .sort((a, b) => (b.killCount ?? 0) - (a.killCount ?? 0))
                   .map((sub, idx) => {
-                    const media = sub.evidence_files && sub.evidence_files.length > 0
-                      ? sub.evidence_files[0]
+                    const media = sub.evidenceFiles && sub.evidenceFiles.length > 0
+                      ? sub.evidenceFiles[0]
                       : null
-                    const isVideo = media?.mime_type?.startsWith('video/')
+                    const isVideo = media?.mimeType?.startsWith('video/')
                     const mediaUrl = media
-                      ? `https://otssvwinchttedisfqtr.supabase.co/storage/v1/object/public/evidences/${media.storage_path}`
+                      ? `https://otssvwinchttedisfqtr.supabase.co/storage/v1/object/public/evidences/${media.storagePath}`
                       : null
-                    const isMatchMvp = matchTopFragger?.id === sub.id && (sub.kill_count ?? 0) > 0
+                    const isMatchMvp = matchTopFragger?.id === sub.id && (sub.killCount ?? 0) > 0
 
                     return (
                       <motion.div
@@ -231,8 +231,8 @@ export function MatchRecap({ matches, submissions, primaryColor }: MatchRecapPro
                         {/* Content */}
                         <div className="p-5">
                           <div className="flex items-center gap-3 mb-4">
-                            {sub.teams?.avatar_url ? (
-                              <img src={sub.teams.avatar_url} className="w-10 h-10 rounded-xl border border-white/10 shadow-lg" alt="" />
+                            {sub.teams?.avatarUrl ? (
+                              <img src={sub.teams.avatarUrl} className="w-10 h-10 rounded-xl border border-white/10 shadow-lg" alt="" />
                             ) : (
                               <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-lg">🛡️</div>
                             )}
@@ -248,11 +248,11 @@ export function MatchRecap({ matches, submissions, primaryColor }: MatchRecapPro
                             <div className="bg-white/[0.04] p-3 rounded-2xl border border-white/5 transition-colors group-hover:bg-white/[0.08]">
                               <span className="text-white/30 block text-[9px] font-black uppercase tracking-tighter mb-1">Kills Ronda</span>
                               <span className="text-white text-xl font-black font-orbitron leading-none">
-                                {sub.kill_count}
+                                {sub.killCount}
                               </span>
                             </div>
                             
-                            {sub.pot_top ? (
+                            {sub.potTop ? (
                               <div className="bg-gold/10 p-3 rounded-2xl border border-gold/20 flex flex-col justify-center">
                                 <span className="text-gold block text-[9px] font-black uppercase tracking-tighter mb-0.5">Posición</span>
                                 <span className="text-gold font-black text-sm uppercase flex items-center gap-1.5">

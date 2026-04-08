@@ -45,12 +45,17 @@ export function LeaderboardClient({
   scoringRule?: ScoringRule
   participants: Participant[]
 }) {
+  const [isMounted, setIsMounted] = useState(false)
   const primaryColor = theme?.primary_color || theme?.primaryColor || '#00F5FF'
   const [standings, setStandings] = useState(initialStandings)
   const [activeTab, setActiveTab] = useState<'ranking' | 'participants' | 'matches' | 'rules'>('ranking')
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null)
   const [watchingStream, setWatchingStream] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
   const supabase = createClient()
 
   // Top Fragger Individual: Calculado comparando cada jugador de manera individual
@@ -157,6 +162,14 @@ export function LeaderboardClient({
 
   // Kick Detection
   const kickUser = activeBackground?.match(/(?:kick\.com\/)([\w\-]+)/)?.[1]
+
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0b] flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-white/10 border-t-neon-cyan rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost'
 

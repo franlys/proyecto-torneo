@@ -309,6 +309,11 @@ Los organizadores necesitaban una forma de agrupar varios mapas o juegos bajo un
 - **Dashboard de Aprobación**: Nueva interfaz para administradores que contrastan los datos del jugador vs las extracciones de la IA.
 - **Indicadores de Confianza**: Sistema de badges (Alta Confianza / Revisión Manual) basado en el análisis probabilístico del modelo visual.
 
+### Hotfix: Hydration & Interactivity
+- **Corrección de Errores React (#418, #423, #425)**: Se identificó un fallo crítico donde el leaderboard público perdía interactividad en dispositivos móviles debido a discrepancias entre el HTML del servidor y el renderizado del cliente (Hydration).
+- **Implementación de Guardián de Montado**: Introducción de un estado `isMounted` en `LeaderboardClient.tsx` para asegurar que el cálculo de `isMobile` y colores dinámicos ocurra solo después de la hidratación.
+- **Reparación de Activación de Torneo**: Corrección en el flujo de activación desde el Dashboard, asegurando que los botones respondan correctamente tras estabilizar el estado global de la aplicación.
+
 ### Próximos Pasos
 1. **Galería de Campeones**: Hall of Fame para torneos finalizados.
 2. **Auto-Aprobación**: Lógica opcional para aprobar automáticamente si la IA tiene 100% de confianza.
