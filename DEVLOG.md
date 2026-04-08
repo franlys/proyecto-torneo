@@ -221,28 +221,51 @@ frontend-design, ui-ux-pro-max, emilkowalski-design, vercel-react-best-practices
 
 ---
 
-## [2026-04-08 (madrugada - sprint 7)] - Borrado de Torneos
+## [2026-04-08 (madrugada - sprint 7)] - Gestión de Torneos y Notificaciones Pro
 
-### Tarea
-Faltaba funcionalidad para eliminar torneos. Solo existia la opcion de crearlos.
+### Tareas Completadas
 
-### Implementacion
+- **Gestión de Torneos (CRUD)**:
+    - Implementación de `deleteTournament` (Server Action) con verificación de propiedad (`creator_id`).
+    - Creación de `TournamentCard` (Client Component) con botón de borrado en hover y confirmación.
+    - Añadida "Zona de Peligro" en la vista de detalle del torneo para borrado permanente.
+- **Hardening de Rutas**:
+    - Normalización estricta (`.trim().toLowerCase()`) en slugs y IDs.
+    - Uso de `export const dynamic = 'force-dynamic'` para evitar caché de estados 404.
 
-- **Server Action deleteTournament** en tournaments.ts:
-    - Verifica autenticacion y ownership antes de borrar.
-    - El borrado en cascada de Supabase (FK) elimina: matches, submissions, team_standings, scoring_rules, teams, leaderboard_themes.
+---
 
-- **TournamentCard.tsx** (nuevo Client Component):
-    - Boton de papelera visible al hacer hover sobre la card.
-    - Confirmacion nativa del browser antes de ejecutar el borrado.
-    - Llama a router.refresh() para actualizar la lista sin recargar la pagina.
-    - page.tsx queda como Server Component puro.
+## [2026-04-08 (mañana - sprint 8)] - Refinamiento Premium y MVP Individual
 
-- **DeleteTournamentButton.tsx** en /[id]:
-    - Seccion 'Zona de Peligro' al final de la pagina de detalle del torneo.
-    - Tras borrar exitoso redirige a /tournaments y refresca la lista.
-    - Estados de loading con spinner animado.
+### Problema Reportado
+El usuario solicitó una estética más profesional (menos diálogos de navegador) y una separación clara de las métricas de "Top Fragger", las cuales deben ser individuales y no por equipo. También se reportaron problemas con el fondo de video en pantallas verticales.
 
-### Seguridad
-- Doble verificacion: client (confirm dialog) + server (ownership check via creator_id).
-- El server action valida que el user.id coincida con creator_id antes de borrar.
+### Tareas Completadas
+
+- **Sistema de Notificaciones Premium**:
+    - **Sonner Integration**: Reemplazo de `alert()` por notificaciones "toast" con estética eSports (neon gradients, glassmorphism).
+    - **ConfirmModal (Framer Motion)**: Reemplazo de `window.confirm()` con un modal personalizado, animado y temático para acciones destructivas.
+    - **ToastProvider**: Centralizado en `layout.tsx` para feedback global de acciones.
+
+- **Revolución del "Top Fragger" (MVP Individual)**:
+    - **Migración DB**: Añadido `total_kills` a la tabla `participants` (migración `20240408000004`).
+    - **Hero Section Individual**: Nuevo podio visual encima de la tabla de posiciones que destaca a los 3 mejores jugadores del torneo (no equipos).
+    - **Campos**: Muestra Nombre de Jugador, Equipo, Kills Totales y botón directo a su stream personal.
+    - **Limpieza de Tabla**: Eliminada la columna "Top Fragger" de la tabla de equipos para evitar redundancia y confusión de métricas.
+
+- **Fondo de Video Pro (Full Coverage)**:
+    - **CSS Fix**: Implementada lógica de `min-w-full min-h-full` con centrado absoluto vía `translate` para que los fondos de iframe (YouTube/Twitch) se comporten como `object-cover`.
+    - Centrado garantizado en laptops con pantallas verticales y dispositivos móviles.
+
+- **Refinado de UI/UX**:
+    - **TournamentCard**: Reestructurado el header (Flexbox) para evitar que el botón de borrar se solape con el badge de estado en títulos largos.
+    - **Data Realtime**: Actualizada la suscripción de Supabase para incluir los kills individuales en tiempo real.
+
+### Decisiones Técnicas
+- **Independencia de Métricas**: El MVP individual ahora se calcula recorriendo la lista de participantes, permitiendo que un jugador destaque incluso si su equipo no está en el top del ranking por puntos.
+- **Consistencia Visual**: Uso extensivo de la fuente `Orbitron` y efectos de resplandor (`drop-shadow`) para consolidar la marca eSports.
+
+### Próximos Pasos
+1. **Rondas**: Implementar soporte para múltiples rondas dentro de una misma partida.
+2. **Exportación**: Generar reportes PDF/Excel para organizadores.
+

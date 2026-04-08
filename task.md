@@ -1,40 +1,25 @@
 # Task Tracking — Tournament Leaderboard Platform
 
-## Estado actual
-
-**Última actualización**: Setup inicial del proyecto
-
-## Progreso
+## Sprint 7: Premium Refinement & Individual Metrics
 
 | Tarea | Estado | Notas |
 |-------|--------|-------|
-| 1. Setup del proyecto | ✅ Completo | Scaffolding, config, archivos de instrucciones |
-| 2. Schema DB y migraciones | ✅ Completo | |
-| 3. Autenticación | ✅ Completo | |
-| 4. Scoring Engine + PBT | ✅ Completo | |
-| 5. Checkpoint — Scoring Engine | ✅ Completo | |
-| 6. Dashboard — Torneos | ✅ Completo | Creación y configuración de torneos |
-| 7. Dashboard — Participantes | ✅ Completo | Gestión de equipos y participantes |
-| 8. Dashboard — Submissions | ✅ Completo | Envío de scores por participantes |
-| 9. Dashboard — Aprobación | ✅ Completo | Moderación de capturas y scores |
-| 10. Checkpoint — Dashboard | ✅ Completo | |
-| 11. Leaderboard público + Realtime | ✅ Completo | Vista pública de resultados |
-| 12. Personalización visual | ✅ Completo | Temas y branding del torneo |
-| 13. Formatos especiales | ⏳ Pendiente | Kill Race, BR, Eliminación |
-| 14. Tests de integración y smoke | ⏳ Pendiente | |
-| 15. Checkpoint final | ⏳ Pendiente | |
-| 16. Deploy a Vercel | ⏳ Pendiente | |
+| Background Video Fix | ✅ Completo | Centrado absoluto y `object-cover` real para iframes. |
+| Premium Toast System | ✅ Completo | Implementado Sonoma con tema dark y eSports. |
+| Custom Confirm Modal | ✅ Completo | Reemplazo de window.confirm con modal de Framer Motion. |
+| CRUD Torneos Refinement | ✅ Completo | Botón borrar elegante, Danger Zone y layouts corregidos. |
+| Individual Top Fragger | ✅ Completo | Refactorización de métrica de equipo a individuo (Top 5 MVP). |
+| Player Stream Links | ✅ Completo | Botones de stream directo en el hero de Top Fragger. |
+| DB Update | ✅ Completo | Migración `add_kills_to_participants` ejecutada. |
 
-## Próxima tarea
+## Futuro Próximo
 
-**Tarea 2**: Schema de base de datos y migraciones Supabase
-- 2.1 Crear enums y tablas principales
-- 2.2 Configurar RLS y políticas de seguridad
-- 2.3 Crear clientes Supabase y tipos TypeScript
+- [ ] Soporte para múltiples rondas/partidas con pesos distintos.
+- [ ] Exportación de resultados a Excel/PDF.
+- [ ] Integración de Chat en vivo en el Leaderboard.
 
-## Notas
+## Notas Técnicas
 
-- El workspace usa Next.js 14 con App Router
-- TypeScript strict mode habilitado
-- Paleta eSports configurada en tailwind.config.ts
-- Vitest configurado con jsdom para tests de componentes
+- Usar `toast.error()` o `toast.success()` para feedback de acciones.
+- El componente `ConfirmModal` es reutilizable para cualquier acción destructiva.
+- Las kills ahora se trackean a nivel de `participant_id` en la tabla `participants`.

@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Orbitron } from 'next/font/google'
 import { createClient } from '@/lib/supabase/client'
-import type { TeamStanding } from '@/types'
+import type { TeamStanding, Participant } from '@/types'
 import { MatchRecap } from './MatchRecap'
+
+const orbitron = Orbitron({ subsets: ['latin'] })
 
 export function LeaderboardClient({
   tournamentId,
@@ -41,14 +44,20 @@ export function LeaderboardClient({
   const [isMobile, setIsMobile] = useState(false)
   const supabase = createClient()
 
-  // Top Fragger MVP: calculado INDEPENDIENTE del ranking por puntos.
-  // Un equipo puede ser MVP sin estar en el top de la tabla.
-  const mvpTeam = vipEnabled
-    ? standings.reduce((best: any, s: any) =>
-        (s.vipScore ?? 0) > (best?.vipScore ?? 0) ? s : best
-      , null as any)
-    : null
-  const mvpHasScore = mvpTeam && (mvpTeam.vipScore ?? 0) > 0
+  // Top Fragger Individual: Calculado comparando cada jugador de manera individual
+  const allParticipants = (teams || []).flatMap((t: any) => 
+    (t.participants || []).map((p: Participant) => ({
+      ...p,
+      teamId: t.id,
+      teamName: t.name,
+      teamAvatar: t.avatarUrl
+    }))
+  )
+  
+  const topFraggers = [...allParticipants]
+    .sort((a, b) => (b.totalKills || 0) - (a.totalKills || 0))
+    .filter(p => (p.totalKills || 0) > 0)
+    .slice(0, 5)
 
   useEffect(() => {
     const checkMobile = () => {
@@ -72,7 +81,7 @@ export function LeaderboardClient({
         async (payload) => {
           const { data } = await supabase
             .from('team_standings')
-            .select('*, teams(name, avatar_url, vip_score, stream_url, participants(display_name, stream_url))')
+            .select('*, teams(name, avatar_url, vip_score, stream_url, participants(id, display_name, stream_url, total_kills))')
             .eq('tournament_id', tournamentId)
             .order('rank', { ascending: true })
 
@@ -80,7 +89,7 @@ export function LeaderboardClient({
             // Fetch teams to merge in stream info
             const { data: teamsData } = await supabase
               .from('teams')
-              .select('id, name, avatar_url, stream_url, participants(display_name, stream_url)')
+              .select('id, name, avatar_url, stream_url, participants(id, display_name, stream_url, total_kills)')
               .eq('tournament_id', tournamentId)
 
             const standingsMap = new Map(data.map((s: any) => [s.team_id, s]))
@@ -169,37 +178,37 @@ export function LeaderboardClient({
       
       {/* Background Handler */}
       {activeBackground && (
-        <div className="fixed inset-0 w-full h-full -z-10 bg-black overflow-hidden pointer-events-none">
+        <div className="fixed inset-0 w-all h-all -z-10 bg-black overflow-hidden pointer-events-none">
           {youtubeId ? (
             <div 
-              className="absolute top-1/2 left-1/2 w-[300%] h-[300%] md:w-[150%] md:h-[150%] -translate-x-1/2 -translate-y-1/2"
+              className="absolute top-1/2 left-1/2 min-w-full min-h-full w-[177.77vh] h-[56.25vw] -translate-x-1/2 -translate-y-1/2"
               style={{ opacity: (theme?.background_opacity ?? 40) / 100 }}
             >
               <iframe
                 src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&mute=1&loop=1&playlist=${youtubeId}&controls=0&modestbranding=1&rel=0&showinfo=0`}
-                className="w-full h-full border-0"
+                className="w-full h-full border-0 pointer-events-none"
                 allow="autoplay; encrypted-media"
               />
             </div>
           ) : twitchUser ? (
              <div 
-               className="absolute top-1/2 left-1/2 w-[300%] h-[300%] md:w-[150%] md:h-[150%] -translate-x-1/2 -translate-y-1/2"
+               className="absolute top-1/2 left-1/2 min-w-full min-h-full w-[177.77vh] h-[56.25vw] -translate-x-1/2 -translate-y-1/2"
                style={{ opacity: (theme?.background_opacity ?? 40) / 100 }}
              >
                <iframe
                  src={`https://player.twitch.tv/?channel=${twitchUser}&parent=${host}&muted=true&autoplay=true&controls=false`}
-                 className="w-full h-full border-0"
+                 className="w-full h-full border-0 pointer-events-none"
                  allowFullScreen
                />
              </div>
           ) : kickUser ? (
              <div 
-               className="absolute top-1/2 left-1/2 w-[300%] h-[300%] md:w-[150%] md:h-[150%] -translate-x-1/2 -translate-y-1/2"
+               className="absolute top-1/2 left-1/2 min-w-full min-h-full w-[177.77vh] h-[56.25vw] -translate-x-1/2 -translate-y-1/2"
                style={{ opacity: (theme?.background_opacity ?? 40) / 100 }}
              >
                <iframe
                  src={`https://player.kick.com/${kickUser}?muted=true&autoplay=true`}
-                 className="w-full h-full border-0"
+                 className="w-full h-full border-0 pointer-events-none"
                />
              </div>
           ) : isVideoBackground ? (
@@ -207,7 +216,7 @@ export function LeaderboardClient({
               key={activeBackground}
               src={activeBackground} 
               autoPlay loop muted playsInline 
-              className="w-full h-full object-cover block" 
+              className="w-full h-full object-cover block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" 
               style={{ opacity: (theme?.background_opacity ?? 40) / 100 }}
             />
           ) : (
@@ -220,7 +229,7 @@ export function LeaderboardClient({
               }} 
             />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-dark-bg via-transparent to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-dark-bg via-dark-bg/40 to-transparent pointer-events-none" />
         </div>
       )}
 
@@ -275,54 +284,83 @@ export function LeaderboardClient({
         {status === 'ended' && <span className="inline-block mt-4 text-xs font-bold bg-white/10 px-3 py-1 rounded text-white/50 uppercase">Torneo Finalizado</span>}
       </div>
 
-      {/* ── Top Fragger MVP Card ─────────────────────────────────────────────── */}
-      {/* COMPLETAMENTE SEPARADO de la tabla de posiciones por equipo.           */}
-      {/* Un equipo en puesto #5 puede ser el Top Fragger del torneo.            */}
-      {vipEnabled && mvpHasScore && (
-        <motion.div
+      {/* Top Fragger Hero Section (Individual) */}
+      {topFraggers.length > 0 && (
+        <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 280, damping: 28, delay: 0.15 }}
-          className="mb-8 mx-auto max-w-xl"
+          className="mb-12"
         >
-          {/* Label de sección */}
-          <p className="text-center text-[10px] font-bold uppercase tracking-[0.3em] text-white/30 mb-3">
-            ⚡ Reconocimiento Individual
-          </p>
-          <div className="relative overflow-hidden rounded-2xl border border-neon-purple/40 bg-gradient-to-br from-neon-purple/10 via-dark-card to-black/60 p-5 shadow-lg shadow-neon-purple/10">
-            {/* Glow decoration */}
-            <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-neon-purple/20 blur-2xl pointer-events-none" />
-            <div className="absolute -bottom-8 -left-8 w-24 h-24 rounded-full bg-neon-cyan/10 blur-2xl pointer-events-none" />
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-neon-cyan/50 to-transparent" />
+            <h2 className={`${orbitron.className} text-xl font-black text-neon-cyan uppercase tracking-widest flex items-center gap-3`}>
+              <span className="p-1 px-2 rounded bg-neon-cyan/20 text-[10px] sm:text-xs font-sans">Individual</span>
+              Top Fragger MVP
+            </h2>
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-neon-cyan/50 to-transparent" />
+          </div>
 
-            <div className="relative flex items-center gap-4">
-              {/* Crown icon */}
-              <div className="shrink-0 w-14 h-14 rounded-xl bg-neon-purple/20 border border-neon-purple/40 flex items-center justify-center text-2xl shadow-inner shadow-neon-purple/10">
-                🎯
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-neon-purple/70 mb-0.5">
-                  🏆 Top Fragger MVP
-                </p>
-                <p className="font-orbitron font-bold text-lg sm:text-2xl text-white truncate tracking-wide">
-                  {mvpTeam.teamName}
-                </p>
-                <p className="text-xs text-white/40 mt-0.5">
-                  Este logro es <span className="text-white/60 font-semibold">individual</span> — no refleja la posición en tabla de equipos
-                </p>
-              </div>
-              {/* Score badge */}
-              <div className="shrink-0 text-right">
-                <div className="inline-flex flex-col items-center px-3 py-2 rounded-xl bg-neon-purple/20 border border-neon-purple/50">
-                  <span className="font-orbitron font-black text-2xl text-neon-purple leading-none">
-                    {mvpTeam.vipScore}
-                  </span>
-                  <span className="text-[9px] text-neon-purple/60 uppercase tracking-widest mt-0.5">pts</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {topFraggers.slice(0, 3).map((player, idx) => (
+              <motion.div
+                key={player.id}
+                whileHover={{ scale: 1.02, y: -5 }}
+                className={`relative group bg-dark-card/40 backdrop-blur-xl border rounded-2xl p-5 overflow-hidden transition-all duration-300 ${
+                  idx === 0 ? 'border-neon-cyan/50 shadow-[0_0_20px_rgba(0,245,255,0.15)]' : 'border-white/5'
+                }`}
+              >
+                {/* Accent background */}
+                <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full blur-3xl opacity-20 ${
+                  idx === 0 ? 'bg-neon-cyan' : 'bg-neon-purple'
+                }`} />
+
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className="relative">
+                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-2xl border-2 ${
+                      idx === 0 ? 'bg-neon-cyan/10 border-neon-cyan/50' : 'bg-white/5 border-white/10'
+                    }`}>
+                      {idx === 0 ? '👑' : idx === 1 ? '🥈' : '🥉'}
+                    </div>
+                    {idx === 0 && (
+                      <div className="absolute -top-2 -left-2 bg-neon-cyan text-black font-black text-[10px] px-1.5 py-0.5 rounded-full animate-bounce">
+                        MVP
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-orbitron font-bold text-white text-lg truncate group-hover:text-neon-cyan transition-colors">
+                      {player.displayName}
+                    </h4>
+                    <p className="text-white/40 text-xs truncate">Equipo: {(player as any).teamName}</p>
+                  </div>
+
+                  <div className="text-right">
+                    <div className="text-2xl font-black text-white leading-none">{(player as any).totalKills || 0}</div>
+                    <div className="text-[10px] font-bold text-white/30 uppercase tracking-tighter">Kills</div>
+                  </div>
                 </div>
-                <p className="text-[10px] text-white/20 mt-1">
-                  Puesto en tabla: <span className="text-white/40">#{mvpTeam.rank}</span>
-                </p>
-              </div>
-            </div>
+
+                <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between gap-3">
+                  {player.streamUrl ? (
+                    <button
+                      onClick={() => handleWatchTeam(player.streamUrl!)}
+                      className="flex-1 flex items-center justify-center gap-2 py-2 bg-red-600/20 border border-red-500/30 text-red-400 rounded-lg text-xs font-bold hover:bg-red-600/30 transition-all shadow-lg shadow-red-500/5 group/btn"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                      Live Stream
+                      <svg className="w-3 h-3 group-hover/btn:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
+                    </button>
+                  ) : (
+                    <div className="flex-1 py-2 text-center text-[10px] text-white/20 font-medium uppercase tracking-widest border border-dashed border-white/10 rounded-lg">
+                      Sin Stream Live
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            ))}
           </div>
         </motion.div>
       )}
@@ -370,7 +408,6 @@ export function LeaderboardClient({
                   <th className="px-6 py-4 text-center">Kills</th>
                   {potTopEnabled && <th className="hidden md:table-cell px-6 py-4 text-center">Top 1</th>}
                   {killRateEnabled && <th className="hidden md:table-cell px-6 py-4 text-center">Kill Rate</th>}
-                  {vipEnabled && <th className="px-6 py-4 text-center">Top Fragger</th>}
                 </tr>
               </thead>
               <tbody>
@@ -435,13 +472,6 @@ export function LeaderboardClient({
                         {killRateEnabled && (
                           <td className="hidden md:table-cell px-6 py-4 text-center text-white/60 font-mono text-xs">
                             {s.killRate.toFixed(1)}
-                          </td>
-                        )}
-                        {vipEnabled && (
-                          <td className="px-3 sm:px-6 py-3 sm:py-4 text-center">
-                            <span className="inline-flex items-center px-2 py-1 rounded bg-neon-purple/20 text-neon-purple font-orbitron font-bold text-sm border border-neon-purple/30">
-                              {s.vipScore}
-                            </span>
                           </td>
                         )}
                       </motion.tr>

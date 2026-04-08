@@ -58,6 +58,7 @@ export interface Participant {
   contactId?: string;
   streamUrl?: string;
   isCaptain: boolean;
+  totalKills: number;
 }
 
 export interface Submission {

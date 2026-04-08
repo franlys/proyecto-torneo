@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { deleteTournament } from '@/lib/actions/tournaments'
 import type { Tournament } from '@/types'
+import { ConfirmModal } from '@/components/ui/ConfirmModal'
+import { toast } from 'sonner'
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
@@ -58,99 +60,114 @@ function FormatBadge({ format }: { format: Tournament['format'] }) {
 export function TournamentCard({ tournament }: { tournament: Tournament }) {
   const router = useRouter()
   const [deleting, setDeleting] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
-  async function handleDelete(e: React.MouseEvent) {
-    e.preventDefault() // prevent Link navigation
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.preventDefault()
     e.stopPropagation()
+    setShowConfirm(true)
+  }
 
-    const confirmed = window.confirm(
-      `¿Eliminar "${tournament.name}"?\n\nEsta acción es permanente y borrará todos los equipos, partidas y estadísticas del torneo.`
-    )
-    if (!confirmed) return
-
+  const handleConfirmDelete = async () => {
+    setShowConfirm(false)
     setDeleting(true)
+    
     try {
       const result = await deleteTournament(tournament.id)
       if ('error' in result) {
-        alert(`Error: ${result.error}`)
+        toast.error(`Error: ${result.error}`)
         setDeleting(false)
         return
       }
+      toast.success('Torneo eliminado correctamente')
       router.refresh()
     } catch {
-      alert('Error inesperado al eliminar el torneo.')
+      toast.error('Error inesperado al eliminar el torneo.')
       setDeleting(false)
     }
   }
 
   return (
-    <div className={`group bg-dark-card border border-white/5 rounded-2xl
-      hover:border-neon-purple/30 hover:bg-white/[0.03]
-      transition-all duration-150 ${deleting ? 'opacity-50 pointer-events-none' : ''}`}>
+    <>
+      <div className={`group bg-dark-card border border-white/5 rounded-2xl
+        hover:border-neon-purple/30 hover:bg-white/[0.03]
+        transition-all duration-150 ${deleting ? 'opacity-50 pointer-events-none' : ''}`}>
 
-      {/* ── Header: título + badge + botón borrar en la misma fila ── */}
-      <div className="flex items-start gap-2 px-5 pt-5 pb-3">
-        {/* Título — ocupa todo el espacio disponible */}
-        <Link
-          href={`/tournaments/${tournament.id}`}
-          className="flex-1 min-w-0"
-        >
-          <h3 className="font-semibold text-white text-sm leading-snug group-hover:text-neon-cyan
-            transition-colors duration-150 line-clamp-2">
-            {tournament.name}
-          </h3>
+        {/* ── Header: título + badge + botón borrar en la misma fila ── */}
+        <div className="flex items-start gap-2 px-5 pt-5 pb-3">
+          {/* Título — ocupa todo el espacio disponible */}
+          <Link
+            href={`/tournaments/${tournament.id}`}
+            className="flex-1 min-w-0"
+          >
+            <h3 className="font-semibold text-white text-sm leading-snug group-hover:text-neon-cyan
+              transition-colors duration-150 line-clamp-2">
+              {tournament.name}
+            </h3>
+          </Link>
+
+          {/* Badge de estado — tamaño fijo */}
+          <StatusBadge status={tournament.status} />
+
+          {/* Botón borrar — alineado con el badge, nunca encima */}
+          <button
+            onClick={handleDeleteClick}
+            disabled={deleting}
+            title="Eliminar torneo"
+            className="shrink-0 p-1.5 rounded-lg
+              text-white/0 group-hover:text-white/25
+              hover:!text-red-400 hover:bg-red-400/10
+              transition-all duration-150
+              disabled:cursor-not-allowed"
+            aria-label="Eliminar torneo"
+          >
+            {deleting ? (
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            )}
+          </button>
+        </div>
+
+        {/* ── Body — toda esta área es clickable hacia el detalle ── */}
+        <Link href={`/tournaments/${tournament.id}`} className="block px-5 pb-5">
+          <div className="flex flex-wrap gap-2 mb-4">
+            <FormatBadge format={tournament.format} />
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium
+              bg-white/5 text-white/40 border border-white/10 capitalize">
+              {tournament.level}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between text-xs text-white/30">
+            <span>{tournament.totalMatches} partidas</span>
+            {tournament.startDate && (
+              <span>
+                {new Date(tournament.startDate).toLocaleDateString('es-ES', {
+                  day: 'numeric', month: 'short', year: 'numeric',
+                })}
+              </span>
+            )}
+          </div>
         </Link>
-
-        {/* Badge de estado — tamaño fijo */}
-        <StatusBadge status={tournament.status} />
-
-        {/* Botón borrar — alineado con el badge, nunca encima */}
-        <button
-          onClick={handleDelete}
-          disabled={deleting}
-          title="Eliminar torneo"
-          className="shrink-0 p-1.5 rounded-lg
-            text-white/0 group-hover:text-white/25
-            hover:!text-red-400 hover:bg-red-400/10
-            transition-all duration-150
-            disabled:cursor-not-allowed"
-          aria-label="Eliminar torneo"
-        >
-          {deleting ? (
-            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-          ) : (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          )}
-        </button>
       </div>
 
-      {/* ── Body — toda esta área es clickable hacia el detalle ── */}
-      <Link href={`/tournaments/${tournament.id}`} className="block px-5 pb-5">
-        <div className="flex flex-wrap gap-2 mb-4">
-          <FormatBadge format={tournament.format} />
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium
-            bg-white/5 text-white/40 border border-white/10 capitalize">
-            {tournament.level}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between text-xs text-white/30">
-          <span>{tournament.totalMatches} partidas</span>
-          {tournament.startDate && (
-            <span>
-              {new Date(tournament.startDate).toLocaleDateString('es-ES', {
-                day: 'numeric', month: 'short', year: 'numeric',
-              })}
-            </span>
-          )}
-        </div>
-      </Link>
-    </div>
+      <ConfirmModal
+        isOpen={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        onConfirm={handleConfirmDelete}
+        title="¿Eliminar torneo?"
+        description={`Esta acción eliminará "${tournament.name}" de forma permanente. Se perderán todos los equipos, partidas y estadísticas registradas.`}
+        confirmText="Eliminar permanentemente"
+        isDestructive
+        isLoading={deleting}
+      />
+    </>
   )
 }
