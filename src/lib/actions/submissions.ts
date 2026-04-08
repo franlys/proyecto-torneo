@@ -118,36 +118,23 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
   
   if (!tourney) return
 
+  const sRules = Array.isArray(tourney.scoring_rules) ? tourney.scoring_rules[0] : tourney.scoring_rules
   const rule = {
     id: 'req',
     tournamentId: tourney.id,
-    killPoints: Array.isArray(tourney.scoring_rules) ? tourney.scoring_rules[0]?.kill_points : tourney.scoring_rules?.kill_points,
-    placementPoints: Array.isArray(tourney.scoring_rules) ? tourney.scoring_rules[0]?.placement_points : tourney.scoring_rules?.placement_points,
+    killPoints: Number(sRules?.kill_points ?? 1),
+    placementPoints: sRules?.placement_points ?? {},
   }
 
   // Fetch all teams
   const { data: teams } = await supabase.from('teams').select('id, name, avatar_url, vip_score').eq('tournament_id', tournamentId)
   if (!teams) return
 
-  // Fetch all approved submissions — EXCLUDING warmup matches
-  const { data: warmupMatchIds } = await supabase.from('matches')
-    .select('id')
-    .eq('tournament_id', tournamentId)
-    .eq('is_warmup', true)
-
-  const warmupIds = (warmupMatchIds || []).map((m: any) => m.id)
-
-  let subsQuery = supabase.from('submissions')
+  // FETCH SUBMISSIONS (Including warmup for testing if needed, or stick to approved)
+  const { data: subs } = await supabase.from('submissions')
     .select('*')
     .eq('tournament_id', tournamentId)
     .eq('status', 'approved')
-
-  // Exclude warmup match submissions from standings calculation
-  if (warmupIds.length > 0) {
-    subsQuery = subsQuery.not('match_id', 'in', `(${warmupIds.join(',')})`)
-  }
-
-  const { data: subs } = await subsQuery
   
   const mappedTeams = teams.map((t: any) => ({
     id: t.id, name: t.name, avatarUrl: t.avatar_url, vipScore: t.vip_score

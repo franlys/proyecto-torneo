@@ -183,7 +183,7 @@ export default async function PublicLeaderboardPage({
     tournamentId: rawScoringRule.tournament_id,
     killPoints: rawScoringRule.kill_points,
     placementPoints: rawScoringRule.placement_points
-  } : null
+  } : undefined
 
   // Flatten and map participants for LeaderboardClient
   const allParticipants = allTeams?.flatMap(t => 
