@@ -73,7 +73,11 @@ export function TeamDetails({
       
       // Points calculation
       const killPoints = kills * (scoringRule?.killPoints || 0)
-      const placementPoints = sub?.potTop ? (scoringRule?.placementPoints?.['1'] || 0) : 0
+      
+      // NEW: Use rank for placement points
+      const pos = sub?.rank || (sub?.potTop ? 1 : 0)
+      const placementPoints = pos > 0 ? (scoringRule?.placementPoints?.[String(pos)] || 0) : 0
+      
       const roundPoints = killPoints + placementPoints
 
       cumulativePoints += roundPoints
@@ -102,6 +106,19 @@ export function TeamDetails({
     const matchesPlayed = teamSubmissions.length || 1
     return ((selectedPlayer.totalKills || 0) / matchesPlayed).toFixed(2)
   }, [selectedPlayer, teamSubmissions])
+
+  const avgPlacement = useMemo(() => {
+    const subsWithRank = teamSubmissions.filter(s => s.rank || s.potTop)
+    if (subsWithRank.length === 0) return '—'
+    const sum = subsWithRank.reduce((acc, s) => acc + (s.rank || 1), 0)
+    return (sum / subsWithRank.length).toFixed(1)
+  }, [teamSubmissions])
+
+  const bestPlacement = useMemo(() => {
+    const ranks = teamSubmissions.map(s => s.rank || (s.potTop ? 1 : Infinity)).filter(r => r !== Infinity)
+    if (ranks.length === 0) return '—'
+    return Math.min(...ranks)
+  }, [teamSubmissions])
 
   return (
     <div className="p-4 sm:p-8 bg-white/[0.01] border-t border-white/5 space-y-8">
@@ -140,9 +157,13 @@ export function TeamDetails({
             {/* Team Summary Overlay (Only when no player selected) */}
             {!selectedPlayerId && (
               <div className="absolute top-4 right-4 z-10 flex gap-2">
+                 <div className="px-4 py-2 rounded-xl bg-black/60 backdrop-blur-md border border-white/5 flex flex-col items-center">
+                    <span className="text-[7px] font-black text-white/30 uppercase tracking-widest leading-none mb-1">Mejor Pos.</span>
+                    <span className="text-sm font-orbitron font-black text-neon-cyan leading-none">#{bestPlacement}</span>
+                 </div>
                  <div className="px-4 py-2 rounded-xl bg-black/60 backdrop-blur-md border border-neon-cyan/20 flex flex-col items-center">
-                    <span className="text-[7px] font-black text-neon-cyan uppercase tracking-widest leading-none mb-1">Team KD</span>
-                    <span className="text-sm font-orbitron font-black text-white leading-none">{teamKD}</span>
+                    <span className="text-[7px] font-black text-neon-cyan uppercase tracking-widest leading-none mb-1">Pos. Media</span>
+                    <span className="text-sm font-orbitron font-black text-white leading-none">#{avgPlacement}</span>
                  </div>
               </div>
             )}

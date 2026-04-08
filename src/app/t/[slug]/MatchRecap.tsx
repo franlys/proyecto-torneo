@@ -8,6 +8,7 @@ interface SubmissionData {
   id: string
   matchId: string
   killCount: number
+  rank?: number
   potTop: boolean
   teams?: {
     name?: string
@@ -255,11 +256,26 @@ export function MatchRecap({ matches, submissions, participants, primaryColor }:
                               </span>
                             </div>
                             
-                            {sub.potTop ? (
-                              <div className="bg-gold/10 p-3 rounded-2xl border border-gold/20 flex flex-col justify-center">
-                                <span className="text-gold block text-[9px] font-black uppercase tracking-tighter mb-0.5">Posición</span>
-                                <span className="text-gold font-black text-sm uppercase flex items-center gap-1.5">
-                                  Top 1 <span className="text-lg">🏆</span>
+                            {sub.rank || sub.potTop ? (
+                              <div className={`p-3 rounded-2xl border flex flex-col justify-center ${
+                                sub.rank === 1 || sub.potTop 
+                                  ? 'bg-gold/10 border-gold/20' 
+                                  : sub.rank === 2 
+                                    ? 'bg-slate-300/10 border-slate-300/20'
+                                    : sub.rank === 3
+                                      ? 'bg-orange-500/10 border-orange-500/20'
+                                      : 'bg-white/[0.04] border-white/5'
+                              }`}>
+                                <span className={`block text-[9px] font-black uppercase tracking-tighter mb-0.5 ${
+                                  sub.rank === 1 || sub.potTop ? 'text-gold' : 'text-white/40'
+                                }`}>Posición</span>
+                                <span className={`font-black text-sm uppercase flex items-center gap-1.5 ${
+                                  sub.rank === 1 || sub.potTop ? 'text-gold' : 'text-white/80'
+                                }`}>
+                                  Top {sub.rank || 1} 
+                                  <span className="text-lg">
+                                    {sub.rank === 1 || sub.potTop ? '🏆' : sub.rank === 2 ? '🥈' : sub.rank === 3 ? '🥉' : '🎖️'}
+                                  </span>
                                 </span>
                               </div>
                             ) : (
