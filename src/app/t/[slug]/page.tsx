@@ -172,7 +172,7 @@ export default async function PublicLeaderboardPage({
   ) || []
 
   return (
-    <main className="min-h-screen bg-dark-bg text-white font-inter">
+    <main className="min-h-screen bg-transparent text-white font-inter">
       <LeaderboardClient 
         tournamentId={tournament.id}
         tournamentName={tournament.name}
