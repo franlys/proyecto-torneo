@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { TeamStanding, Participant, Match, Submission, ScoringRule } from '@/types'
 import { MatchRecap } from './MatchRecap'
 import { TeamDetails } from './TeamDetails'
+import { NumberTicker } from '@/components/ui/NumberTicker'
 
 const orbitron = Orbitron({ subsets: ['latin'] })
 
@@ -478,10 +479,16 @@ export function LeaderboardClient({
                       <Fragment key={s.teamId}>
                       <motion.tr
                         layout
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                        exit={{ opacity: 0, scale: 0.98 }}
+                        transition={{ 
+                          type: 'spring', 
+                          stiffness: 400, 
+                          damping: 40,
+                          opacity: { duration: 0.2 },
+                          layout: { duration: 0.6 }
+                        }}
                         className={`border-b border-white/5 hover:bg-white/[0.04] transition-colors cursor-pointer group ${
                           expandedTeamId === s.teamId ? 'bg-white/[0.03]' : ''
                         }`}
@@ -497,9 +504,31 @@ export function LeaderboardClient({
                                 }`}>
                                   {s.rank}
                                 </span>
-                                <div className="flex items-center gap-1 mt-1">
-                                   {rankDiff > 0 && <span className="text-[9px] font-bold text-green-400 flex items-center">▲{rankDiff}</span>}
-                                   {rankDiff < 0 && <span className="text-[9px] font-bold text-red-400 flex items-center">▼{Math.abs(rankDiff)}</span>}
+                                <div className="flex items-center gap-1 mt-1 h-3">
+                                   <AnimatePresence mode="wait">
+                                     {rankDiff > 0 && (
+                                       <motion.span 
+                                         key="up"
+                                         initial={{ opacity: 0, y: 5 }}
+                                         animate={{ opacity: 1, y: 0 }}
+                                         exit={{ opacity: 0, y: -5 }}
+                                         className="text-[9px] font-bold text-green-400 flex items-center"
+                                       >
+                                         ▲{rankDiff}
+                                       </motion.span>
+                                     )}
+                                     {rankDiff < 0 && (
+                                       <motion.span 
+                                         key="down"
+                                         initial={{ opacity: 0, y: -5 }}
+                                         animate={{ opacity: 1, y: 0 }}
+                                         exit={{ opacity: 0, y: 5 }}
+                                         className="text-[9px] font-bold text-red-400 flex items-center"
+                                       >
+                                         ▼{Math.abs(rankDiff)}
+                                       </motion.span>
+                                     )}
+                                   </AnimatePresence>
                                 </div>
                              </div>
                           </div>
@@ -539,11 +568,13 @@ export function LeaderboardClient({
                           </div>
                         </td>
                         <td className="px-3 sm:px-6 py-4 sm:py-6 text-center font-orbitron font-black text-2xl sm:text-4xl text-neon-cyan">
-                          {s.totalPoints}
+                          <NumberTicker value={s.totalPoints} />
                         </td>
                         <td className="px-3 sm:px-6 py-4 sm:py-6 text-center">
                            <div className="flex flex-col items-center">
-                              <span className="text-white font-black text-lg sm:text-xl">{s.totalKills}</span>
+                              <span className="text-white font-black text-lg sm:text-xl">
+                                <NumberTicker value={s.totalKills} />
+                              </span>
                               <span className="text-[8px] text-white/40 uppercase font-black tracking-widest mt-1">TOTAL KILLS</span>
                            </div>
                         </td>
@@ -558,7 +589,9 @@ export function LeaderboardClient({
                         {killRateEnabled && (
                           <td className="hidden md:table-cell px-6 py-4 text-center">
                              <div className="flex flex-col items-center">
-                                <span className="text-white/60 font-mono text-xs">{s.killRate.toFixed(1)}</span>
+                                <span className="text-white/60 font-mono text-xs">
+                                  <NumberTicker value={s.killRate} precision={1} />
+                                </span>
                                 <span className="text-[8px] text-white/20 uppercase font-black tracking-tighter mt-1">AVG K/M</span>
                              </div>
                           </td>
