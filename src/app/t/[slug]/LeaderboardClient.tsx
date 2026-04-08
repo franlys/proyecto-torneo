@@ -693,11 +693,11 @@ export function LeaderboardClient({
                   <div className="p-6 flex items-center justify-between relative z-10">
                      <div className="flex items-center gap-4">
                         <div className="relative">
-                           <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 overflow-hidden">
-                              {team.teams?.avatar_url ? (
-                                <img src={team.teams.avatar_url} alt={team.teams.name} className="w-full h-full object-cover" />
+                           <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 overflow-hidden shadow-inner">
+                              {team.avatarUrl ? (
+                                <img src={team.avatarUrl} alt={team.teamName} className="w-full h-full object-cover" />
                               ) : (
-                                <div className="w-full h-full flex items-center justify-center text-xl">🛡️</div>
+                                <div className="w-full h-full flex items-center justify-center text-xl bg-gradient-to-br from-white/5 to-transparent">🛡️</div>
                               )}
                            </div>
                            <div className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-black/60 border border-white/10 flex items-center justify-center text-[10px] font-black text-white">
@@ -705,7 +705,7 @@ export function LeaderboardClient({
                            </div>
                         </div>
                         <div>
-                           <h4 className="font-orbitron font-bold text-white group-hover:text-neon-cyan transition-colors">{team.teams?.name}</h4>
+                           <h4 className="font-orbitron font-bold text-white group-hover:text-neon-cyan transition-colors truncate max-w-[150px]">{team.teamName}</h4>
                            <p className="text-[10px] text-white/40 uppercase tracking-widest font-black">Analizar Equipo</p>
                         </div>
                      </div>
@@ -735,7 +735,7 @@ export function LeaderboardClient({
                     <TeamDetails
                       key={s.teamId}
                       teamId={s.teamId}
-                      teamName={s.teams?.name}
+                      teamName={s.teamName}
                       matches={matches || []}
                       submissions={submissions || []}
                       scoringRule={scoringRule!}

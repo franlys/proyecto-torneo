@@ -129,6 +129,18 @@ export default async function PublicLeaderboardPage({
     .eq('tournament_id', tournament.id)
     .order('match_number', { ascending: true })
 
+  const formattedMatches = (matches || []).map((m: any) => ({
+    id: m.id,
+    tournamentId: m.tournament_id,
+    name: m.name || `Match ${m.match_number}`,
+    matchNumber: m.match_number,
+    mapName: m.map_name,
+    isCompleted: m.is_completed,
+    isWarmup: m.is_warmup,
+    roundNumber: m.round_number || 1,
+    createdAt: m.created_at
+  }))
+
   const { data: submissions } = await supabase
     .from('submissions')
     .select(`
@@ -173,7 +185,7 @@ export default async function PublicLeaderboardPage({
         initialStandings={formattedStandings}
         teams={formattedTeams}
         theme={theme}
-        matches={matches || []}
+        matches={formattedMatches}
         submissions={submissions || []}
         rulesText={tournament.rules_text}
         scoringRule={scoringRule}
