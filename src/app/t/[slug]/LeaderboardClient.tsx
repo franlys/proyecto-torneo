@@ -195,14 +195,8 @@ export function LeaderboardClient({
   }
 
   return (
-    <div 
-      className="w-full max-w-7xl mx-auto p-4 md:p-8 relative z-10 min-h-[90vh] flex flex-col justify-center py-10"
-      style={{ 
-        filter: `drop-shadow(0 0 50px ${primaryColor}15)`,
-      }}
-    >
-      
-      {/* Background Handler */}
+    <>
+      {/* ── Background Handler (Root Level) ─────────────────────────── */}
       {activeBackground && (
         <div className="fixed inset-0 w-full h-full -z-10 overflow-hidden pointer-events-none">
           {youtubeId ? (
@@ -212,88 +206,100 @@ export function LeaderboardClient({
             >
               <iframe
                 src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&mute=1&loop=1&playlist=${youtubeId}&controls=0&modestbranding=1&rel=0&showinfo=0`}
-                className="w-full h-full border-0 pointer-events-none"
+                className="w-full h-full border-0 pointer-events-none scale-[1.05]"
                 allow="autoplay; encrypted-media"
               />
             </div>
-          ) : twitchUser ? (
-             <div 
-               className="absolute top-1/2 left-1/2 min-w-full min-h-full w-[177.77vh] h-[56.25vw] -translate-x-1/2 -translate-y-1/2"
-               style={{ opacity: (theme?.background_opacity ?? 40) / 100 }}
-             >
-               <iframe
-                 src={`https://player.twitch.tv/?channel=${twitchUser}&parent=${host}&muted=true&autoplay=true&controls=false`}
-                 className="w-full h-full border-0 pointer-events-none"
-                 allowFullScreen
-               />
-             </div>
-          ) : kickUser ? (
-             <div 
-               className="absolute top-1/2 left-1/2 min-w-full min-h-full w-[177.77vh] h-[56.25vw] -translate-x-1/2 -translate-y-1/2"
-               style={{ opacity: (theme?.background_opacity ?? 40) / 100 }}
-             >
-               <iframe
-                 src={`https://player.kick.com/${kickUser}?muted=true&autoplay=true`}
-                 className="w-full h-full border-0 pointer-events-none"
-               />
-             </div>
-          ) : isVideoBackground ? (
-            <video 
-              key={activeBackground}
-              src={activeBackground} 
-              autoPlay loop muted playsInline 
-              className="w-full h-full object-cover block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" 
-              style={{ opacity: (theme?.background_opacity ?? 40) / 100 }}
-            />
           ) : (
-            <div 
-              key={activeBackground}
-              className="w-full h-full bg-cover bg-center block" 
-              style={{ 
-                backgroundImage: `url(${activeBackground})`,
-                opacity: (theme?.background_opacity ?? 40) / 100 
-              }} 
-            />
+            <>
+              {twitchUser ? (
+                <div 
+                  className="absolute top-1/2 left-1/2 min-w-full min-h-full w-[177.77vh] h-[56.25vw] -translate-x-1/2 -translate-y-1/2"
+                  style={{ opacity: (theme?.background_opacity ?? 40) / 100 }}
+                >
+                  <iframe
+                    src={`https://player.twitch.tv/?channel=${twitchUser}&parent=${host}&muted=true&autoplay=true&controls=false`}
+                    className="w-full h-full border-0 pointer-events-none scale-[1.05]"
+                    allowFullScreen
+                  />
+                </div>
+              ) : kickUser ? (
+                <div 
+                  className="absolute top-1/2 left-1/2 min-w-full min-h-full w-[177.77vh] h-[56.25vw] -translate-x-1/2 -translate-y-1/2"
+                  style={{ opacity: (theme?.background_opacity ?? 40) / 100 }}
+                >
+                  <iframe
+                    src={`https://player.kick.com/${kickUser}?muted=true&autoplay=true`}
+                    className="w-full h-full border-0 pointer-events-none scale-[1.1]"
+                  />
+                </div>
+              ) : isVideoBackground ? (
+                <video 
+                  key={activeBackground}
+                  src={activeBackground} 
+                  autoPlay loop muted playsInline 
+                  className="w-full h-full object-cover block absolute inset-0" 
+                  style={{ opacity: (theme?.background_opacity ?? 40) / 100 }}
+                />
+              ) : (
+                <div 
+                  key={activeBackground}
+                  className="w-full h-full bg-cover bg-center block" 
+                  style={{ 
+                    backgroundImage: `url(${activeBackground})`,
+                    opacity: (theme?.background_opacity ?? 40) / 100 
+                  }} 
+                />
+              )}
+            </>
           )}
+          {/* Subtle vignette for readability */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60 pointer-events-none" />
         </div>
       )}
 
-      {/* Stream Modal */}
-      <AnimatePresence>
-        {watchingStream && (
-          <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
-            onClick={() => setWatchingStream(null)}
-          >
+      {/* ── Main UI Content (With Glow Effect) ──────────────────────── */}
+      <div 
+        className="w-full max-w-7xl mx-auto p-4 md:p-8 relative z-10 min-h-[90vh] flex flex-col justify-center py-10"
+        style={{ 
+          filter: `drop-shadow(0 0 50px ${primaryColor}15)`,
+        }}
+      >
+        {/* Stream Modal */}
+        <AnimatePresence>
+          {watchingStream && (
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-dark-card w-full max-w-5xl aspect-video rounded-2xl overflow-hidden border border-white/10 relative"
-              onClick={e => e.stopPropagation()}
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
+              onClick={() => setWatchingStream(null)}
             >
-              <div className="absolute top-4 right-4 z-10 flex gap-2">
-                <a
-                  href={watchingStream}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-4 py-2 bg-neon-cyan/20 hover:bg-neon-cyan/40 text-neon-cyan rounded-lg transition-colors text-sm font-medium border border-neon-cyan/50 backdrop-blur-md flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                  Ver en sitio original
-                </a>
-                <button 
-                  onClick={() => setWatchingStream(null)}
-                  className="p-2 bg-black/50 hover:bg-black/80 rounded-lg text-white/50 hover:text-white transition-all backdrop-blur-md border border-white/10"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-              </div>
-              {renderStreamPlayer(watchingStream)}
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-dark-card w-full max-w-5xl aspect-video rounded-2xl overflow-hidden border border-white/10 relative"
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="absolute top-4 right-4 z-10 flex gap-2">
+                  <a
+                    href={watchingStream}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-4 py-2 bg-neon-cyan/20 hover:bg-neon-cyan/40 text-neon-cyan rounded-lg transition-colors text-sm font-medium border border-neon-cyan/50 backdrop-blur-md flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                    Ver en sitio original
+                  </a>
+                  <button 
+                    onClick={() => setWatchingStream(null)}
+                    className="p-2 bg-black/50 hover:bg-black/80 rounded-lg text-white/50 hover:text-white transition-all backdrop-blur-md border border-white/10"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+                {renderStreamPlayer(watchingStream)}
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
 
         <div className="text-center mb-12 flex flex-col items-center">
         <Link 
@@ -843,6 +849,7 @@ export function LeaderboardClient({
           </div>
         </motion.div>
       )}
-    </div>
+      </div>
+    </>
   )
 }
