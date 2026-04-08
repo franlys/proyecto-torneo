@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Participant } from '@/types'
 
@@ -42,7 +42,12 @@ export function MatchRecap({ matches, submissions, participants, primaryColor }:
   // 1. Identify Encounters (Parents)
   const encounters = (matches || []).filter(m => !m.parentMatchId).sort((a, b) => a.matchNumber - b.matchNumber)
   
+  const [isMounted, setIsMounted] = useState(false)
   const [activeEncounterId, setActiveEncounterId] = useState<string | null>(encounters[0]?.id || null)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
   
   // 2. Identify Rounds for the active encounter
   const rounds = (matches || [])
@@ -71,6 +76,14 @@ export function MatchRecap({ matches, submissions, participants, primaryColor }:
   const handleEncounterChange = (id: string) => {
     setActiveEncounterId(id)
     setActiveRoundId(null)
+  }
+
+  if (!isMounted) {
+    return (
+      <div className="w-full h-96 flex items-center justify-center bg-white/[0.02] rounded-3xl border border-dashed border-white/5">
+        <div className="w-6 h-6 border-2 border-white/10 border-t-neon-cyan rounded-full animate-spin" />
+      </div>
+    )
   }
 
   return (

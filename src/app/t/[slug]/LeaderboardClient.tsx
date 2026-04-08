@@ -50,6 +50,7 @@ export function LeaderboardClient({
   participants: Participant[]
 }) {
   const [isMounted, setIsMounted] = useState(false)
+  const [host, setHost] = useState('localhost')
   const primaryColor = theme?.primary_color || theme?.primaryColor || '#00F5FF'
   const [standings, setStandings] = useState(initialStandings)
   const [activeTab, setActiveTab] = useState<'ranking' | 'participants' | 'matches' | 'rules' | 'statistics'>('ranking')
@@ -59,6 +60,7 @@ export function LeaderboardClient({
 
   useEffect(() => {
     setIsMounted(true)
+    setHost(window.location.hostname)
   }, [])
   const supabase = createClient()
 
@@ -175,7 +177,6 @@ export function LeaderboardClient({
     )
   }
 
-  const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost'
 
   const handleWatchTeam = (streamUrl: string) => {
     setWatchingStream(streamUrl)
