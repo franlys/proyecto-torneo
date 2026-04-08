@@ -90,7 +90,13 @@ export function TeamDetails({
     })
   }, [matches, teamSubmissions, scoringRule, selectedPlayerId])
 
-  // 4. Calculate Player Metrics
+  // 4. Calculate Metrics
+  const teamKD = useMemo(() => {
+    const matchesPlayed = teamSubmissions.length || 1
+    const totalKills = teamSubmissions.reduce((acc, sub) => acc + (sub.killCount || 0), 0)
+    return (totalKills / matchesPlayed).toFixed(2)
+  }, [teamSubmissions])
+
   const kd = useMemo(() => {
     if (!selectedPlayer) return 0
     const matchesPlayed = teamSubmissions.length || 1
@@ -130,7 +136,17 @@ export function TeamDetails({
              </div>
           </div>
           
-          <div className="h-[300px] w-full bg-black/20 rounded-3xl p-6 border border-white/5 shadow-inner">
+          <div className="h-[300px] w-full bg-black/20 rounded-3xl p-6 border border-white/5 shadow-inner relative group">
+            {/* Team Summary Overlay (Only when no player selected) */}
+            {!selectedPlayerId && (
+              <div className="absolute top-4 right-4 z-10 flex gap-2">
+                 <div className="px-4 py-2 rounded-xl bg-black/60 backdrop-blur-md border border-neon-cyan/20 flex flex-col items-center">
+                    <span className="text-[7px] font-black text-neon-cyan uppercase tracking-widest leading-none mb-1">Team KD</span>
+                    <span className="text-sm font-orbitron font-black text-white leading-none">{teamKD}</span>
+                 </div>
+              </div>
+            )}
+
             <ResponsiveContainer width="100%" height="100%">
               {selectedPlayerId ? (
                 <BarChart data={chartData}>
