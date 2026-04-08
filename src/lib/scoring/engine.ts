@@ -126,7 +126,7 @@ export function computeStandings(
     }, 0)
 
     const potTopCount = calculatePotTopCount(subs)
-    const killRate = calculateKillRate(totalKills, config.totalMatches)
+    const killRate = calculateKillRate(totalKills, subs.length)
     const killPoints = totalKills * rule.killPoints
     const totalPoints = calculateTotalWithVip(killPoints + totalPlacementPoints, team.vipScore)
     return {
