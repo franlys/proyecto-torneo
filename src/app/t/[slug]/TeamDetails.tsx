@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   XAxis,
   YAxis,
@@ -36,6 +36,11 @@ export function TeamDetails({
   primaryColor,
 }: TeamDetailsProps) {
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   // 1. Filter approved submissions for this team
   const teamSubmissions = useMemo(
@@ -119,6 +124,14 @@ export function TeamDetails({
     if (ranks.length === 0) return '—'
     return Math.min(...ranks)
   }, [teamSubmissions])
+
+  if (!isMounted) {
+    return (
+      <div className="p-4 sm:p-8 bg-white/[0.01] border-t border-white/5 h-[600px] flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-white/10 border-t-neon-cyan rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 sm:p-8 bg-white/[0.01] border-t border-white/5 space-y-8">
