@@ -561,7 +561,7 @@ export function LeaderboardClient({
               </thead>
               <tbody>
                 <AnimatePresence>
-                  {standings.map((s) => {
+                  {standings.map((s, idx) => {
                     const rankDiff = (s.previousRank || s.rank) - s.rank
                     return (
                       <Fragment key={s.teamId}>
