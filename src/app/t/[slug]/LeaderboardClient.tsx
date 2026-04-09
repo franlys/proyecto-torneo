@@ -329,31 +329,28 @@ export function LeaderboardClient({
           )}
         </AnimatePresence>
 
-        <div className="mb-8" />
-        
-        {tournamentLogoUrl ? (
-          <div className="mb-6">
-            <img 
-              src={tournamentLogoUrl} 
-              alt={tournamentName} 
-              className="max-h-32 md:max-h-48 object-contain drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]" 
-            />
-            {/* Hidden h1 for SEO while showing logo */}
-            <h1 className="sr-only">{tournamentName}</h1>
-          </div>
-        ) : (
-          <h1 className="font-orbitron font-bold text-2xl sm:text-4xl md:text-5xl uppercase tracking-wider mb-4 px-4"
-              style={{ color: primaryColor, textShadow: `0 0 20px ${primaryColor}40` }}>
-            {tournamentName}
-          </h1>
-        )}
+        <div className="text-center mb-12 flex flex-col items-center">
+          {tournamentLogoUrl ? (
+            <div className="mb-6">
+              <img 
+                src={tournamentLogoUrl} 
+                alt={tournamentName} 
+                className="max-h-32 md:max-h-48 object-contain drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]" 
+              />
+              <h1 className="sr-only">{tournamentName}</h1>
+            </div>
+          ) : (
+            <h1 className="font-orbitron font-bold text-2xl sm:text-4xl md:text-5xl uppercase tracking-wider mb-4 px-4"
+                style={{ color: primaryColor, textShadow: `0 0 20px ${primaryColor}40` }}>
+              {tournamentName}
+            </h1>
+          )}
 
-        {description && <p className="text-white/60 text-lg max-w-2xl mx-auto">{description}</p>}
-        {/* Status badge */}
-        {status === 'draft' && <span className="inline-block mt-4 text-xs font-bold bg-white/10 px-3 py-1 rounded text-white/50 uppercase">Pre-torneo</span>}
-        {status === 'active' && <span className="inline-block mt-4 text-xs font-bold bg-red-500/20 border border-red-500/30 px-3 py-1 rounded text-red-400 uppercase animate-pulse">● En Vivo</span>}
-        {status === 'ended' && <span className="inline-block mt-4 text-xs font-bold bg-white/10 px-3 py-1 rounded text-white/50 uppercase">Torneo Finalizado</span>}
-      </div>
+          {description && <p className="text-white/60 text-lg max-w-2xl mx-auto">{description}</p>}
+          {status === 'draft' && <span className="inline-block mt-4 text-xs font-bold bg-white/10 px-3 py-1 rounded text-white/50 uppercase">Pre-torneo</span>}
+          {status === 'active' && <span className="inline-block mt-4 text-xs font-bold bg-red-500/20 border border-red-500/30 px-3 py-1 rounded text-red-400 uppercase animate-pulse">● En Vivo</span>}
+          {status === 'ended' && <span className="inline-block mt-4 text-xs font-bold bg-white/10 px-3 py-1 rounded text-white/50 uppercase">Torneo Finalizado</span>}
+        </div>
 
       {/* Top Fragger Hero Section (Individual) */}
       {topFraggers.length > 0 && (
