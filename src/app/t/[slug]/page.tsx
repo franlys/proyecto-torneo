@@ -37,13 +37,6 @@ export default async function PublicLeaderboardPage({
     await recalculateStandings(adminSupabase, tournament.id)
   }
 
-  // Fetch all approved submissions with their evidence files and team info
-  const { data: submissions } = await supabase
-    .from('submissions')
-    .select('*, teams(name, avatar_url), evidence_files(*)')
-    .eq('tournament_id', tournament.id)
-    .eq('status', 'approved')
-    .order('submitted_at', { ascending: false })
 
   // Fetch real standings (if any approved submissions exist)
   const { data: standings } = await supabase
