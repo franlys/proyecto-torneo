@@ -146,13 +146,17 @@ export function LeaderboardClient({
 
             const standingsMap = new Map(data.map((s: any) => [s.team_id, s]))
 
-            const merged = (teamsData || []).map((t: any, idx: number) => {
+            const merged = (teamsData || []).map((t: any) => {
               const s = standingsMap.get(t.id)
+              
+              // Map all stream sources
               const teamStreams: { name: string; url: string }[] = []
               if (t.stream_url) teamStreams.push({ name: 'Equipo', url: t.stream_url })
-              ;(t.participants || []).forEach((p: any) => {
-                if (p.stream_url) teamStreams.push({ name: p.display_name, url: p.stream_url })
-              })
+              if (t.participants) {
+                t.participants.forEach((p: any) => {
+                  if (p.stream_url) teamStreams.push({ name: p.display_name, url: p.stream_url })
+                })
+              }
 
               return {
                 teamId: t.id,
@@ -165,10 +169,11 @@ export function LeaderboardClient({
                 killRate: s ? Number(s.kill_rate) : 0,
                 potTopCount: s ? (s.pot_top_count ?? 0) : 0,
                 vipScore: s ? Number(s.vip_score) : 0,
-                rank: s ? s.rank : (idx + 1),
-                previousRank: s ? s.previous_rank : (idx + 1),
+                rank: s ? s.rank : (data.length + 1),
+                previousRank: s ? s.previous_rank : (data.length + 1),
               }
             }).sort((a: any, b: any) => {
+              // Same sorting as server-side to keep consistency
               if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints
               if (b.totalKills !== a.totalKills) return b.totalKills - a.totalKills
               return a.rank - b.rank
