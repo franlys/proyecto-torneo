@@ -911,7 +911,9 @@ export function LeaderboardClient({
 
                 <div className="relative group p-1 bg-gradient-to-b from-gold/50 via-gold/10 to-transparent rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(255,215,0,0.15)]">
                   <img 
-                    src={championImageUrl} 
+                    src={championImageUrl?.startsWith('http') 
+                      ? championImageUrl 
+                      : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/evidences/${championImageUrl?.replace('evidences/', '')}`}
                     alt="Campeón" 
                     className="max-h-[70vh] rounded-2xl object-contain shadow-2xl transition-transform duration-700 group-hover:scale-[1.02]" 
                   />

@@ -322,7 +322,9 @@ export function MatchRecap({ matches, submissions, participants, primaryColor }:
                                <p className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-2">Evidencia Adjunta</p>
                                <div className="flex gap-2">
                                   {sub.evidenceFiles.map((ef, idx) => {
-                                    const imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/evidences/${ef.storagePath}`
+                                    const imageUrl = ef.storagePath.startsWith('http')
+                                      ? ef.storagePath
+                                      : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/evidences/${ef.storagePath.replace('evidences/', '')}`
                                     return (
                                       <a 
                                         key={idx}

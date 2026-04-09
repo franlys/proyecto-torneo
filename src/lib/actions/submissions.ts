@@ -156,20 +156,31 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
     submittedAt: s.submitted_at
   }))
 
+  // STRATEGY: Only count the LATEST approved submission for each team/match pair
+  // This solves the issue where duplicate records (e.g. from retries or bugs) inflate the scores.
+  const uniqueApprovedSubs = mappedSubs
+    .filter(s => s.status === 'approved')
+    .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())
+    .filter((sub, index, self) => 
+      index === self.findIndex((t) => (
+        t.teamId === sub.teamId && t.matchId === sub.matchId
+      ))
+    )
+
   const { computeStandings, calculateKillRaceStandings } = await import('@/lib/scoring/engine')
 
   let standings = []
   // If we have custom scoring rules in the DB, always use them regardless of format
   if (sRules) {
     console.log(`[STANDINGS] Using custom rules from DB for ${tourney.format} format`)
-    standings = computeStandings(mappedSubs, rule, { totalMatches: tourney.total_matches, teams: mappedTeams })
+    standings = computeStandings(uniqueApprovedSubs, rule, { totalMatches: tourney.total_matches, teams: mappedTeams })
   } 
   else if (tourney.format === 'kill_race') {
     console.log(`[STANDINGS] Falling back to default Kill Race logic`)
-    standings = calculateKillRaceStandings(mappedSubs, mappedTeams)
+    standings = calculateKillRaceStandings(uniqueApprovedSubs, mappedTeams)
   } 
   else {
-    standings = computeStandings(mappedSubs, rule, { totalMatches: tourney.total_matches, teams: mappedTeams })
+    standings = computeStandings(uniqueApprovedSubs, rule, { totalMatches: tourney.total_matches, teams: mappedTeams })
   }
 
   // Upsert to team_standings

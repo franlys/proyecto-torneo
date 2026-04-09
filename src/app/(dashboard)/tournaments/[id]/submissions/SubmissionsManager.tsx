@@ -188,7 +188,9 @@ export function SubmissionsManager({
                              <div className="flex items-center justify-end gap-2">
                                {sub.evidence_files && sub.evidence_files.length > 0 && (
                                    <a 
-                                     href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/evidences/${sub.evidence_files[0].storage_path}`}
+                                     href={sub.evidence_files[0].storage_path.startsWith('http') 
+                                       ? sub.evidence_files[0].storage_path 
+                                       : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/evidences/${sub.evidence_files[0].storage_path.replace('evidences/', '')}`}
                                      target="_blank"
                                      rel="noreferrer"
                                      className="p-1.5 text-white/50 hover:text-neon-cyan hover:bg-neon-cyan/10 rounded transition-colors"
