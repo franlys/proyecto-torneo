@@ -59,6 +59,18 @@ export function TeamDetails({
     [teamParticipants, selectedPlayerId]
   )
 
+  // NUEVO: Mapa de bajas calculado desde los envíos actuales (Fuente de Verdad)
+  const calculatedPlayerKillsMap = useMemo(() => {
+    const map: Record<string, number> = {}
+    teamSubmissions.forEach(sub => {
+      const breakdown = sub.playerKills as any || {}
+      Object.entries(breakdown).forEach(([pId, k]) => {
+        map[pId] = (map[pId] || 0) + (Number(k) || 0)
+      })
+    })
+    return map
+  }, [teamSubmissions])
+
   // 3. Prepare Chart Data (Cumulative for Team, Per-Round for Player)
   const chartData = useMemo(() => {
     const sortedMatches = [...matches].sort((a, b) => a.matchNumber - b.matchNumber)
@@ -259,7 +271,7 @@ export function TeamDetails({
                     </div>
                     <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5">
                        <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">Kills Totales</p>
-                       <p className="text-2xl font-orbitron font-black text-white">{selectedPlayer.totalKills || 0}</p>
+                       <p className="text-2xl font-orbitron font-black text-white">{calculatedPlayerKillsMap[selectedPlayer.id] || 0}</p>
                     </div>
                  </div>
 
@@ -289,7 +301,7 @@ export function TeamDetails({
                        </div>
                        <div className="text-right flex items-center gap-3">
                           <div className="text-right">
-                            <span className="text-lg font-orbitron font-black text-white block leading-none">{p.totalKills || 0}</span>
+                            <span className="text-lg font-orbitron font-black text-white block leading-none">{calculatedPlayerKillsMap[p.id] || 0}</span>
                             <span className="text-[8px] text-white/30 uppercase font-bold tracking-tighter">Kills</span>
                           </div>
                           <svg className="w-3 h-3 text-white/20 group-hover:text-neon-cyan transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">

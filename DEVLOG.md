@@ -418,6 +418,8 @@ Ejecutar el SQL de la migración `20240419000000` en el SQL Editor de Supabase S
 - **Normalizador de Datos**: Se implementó una capa de transformación en `refreshStandingsFromDB` que convierte los campos `snake_case` de la base de datos a `camelCase` para el frontend. Esto restauró los nombres y bajas de los jugadores.
 - **Estado Global del Cliente**: `LeaderboardClient` ahora gestiona `standings`, `teams`, `submissions` y `matches` como un conjunto orquestado. Cualquier cambio en Realtime dispara un refresco completo de este bloque, manteniendo la coherencia entre gráficas, ránkings y listas de partidas.
 - **Sincronización de Tabs**: Se actualizaron los componentes `MatchRecap` y `TeamDetails` para consumir este estado centralizado, eliminando la dependencia de props estáticas del servidor.
+- **Arquitectura de Agregación Dinámica (Source of Truth)**: Se migró el cálculo de bajas individuales de propiedades cacheadas (`total_kills`) a una agregación en tiempo real de los envíos aprobados. Esto garantiza que los MVPs y las estadísticas de los jugadores sean 100% precisas y se sincronicen instantáneamente sin depender de procesos de fondo en la base de datos.
+- **Identidad de MVPs de Ronda**: Se refactorizó el `MatchRecap` para identificar al jugador individual con más bajas en cada ronda, en lugar de mostrar el nombre del equipo.
 
 ---
 

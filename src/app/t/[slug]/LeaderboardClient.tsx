@@ -99,19 +99,35 @@ export function LeaderboardClient({
   }
   const supabase = createClient()
 
-  // Top Fragger Individual: Calculado comparando cada jugador de manera individual desde el estado actual
-  const currentParticipants = useMemo(() => {
+  // 1. Agregación Atómica: Calculamos las bajas reales sumando las partidas aprobadas
+  // Esta es la "Fuente de Verdad" que evita la latencia de la base de datos.
+  const participantsWithCalculatedKills = useMemo(() => {
+    // Mapa de bajas acumuladas por ID de jugador
+    const killsMap: Record<string, number> = {}
+    
+    currentSubmissions
+      .filter(s => s.status === 'approved')
+      .forEach(s => {
+        if (s.playerKills && typeof s.playerKills === 'object') {
+          Object.entries(s.playerKills).forEach(([pId, kills]) => {
+            killsMap[pId] = (killsMap[pId] || 0) + (Number(kills) || 0)
+          })
+        }
+      })
+
+    // Enriquecemos los participantes con sus bajas calculadas
     return (currentTeams || []).flatMap((t: any) => 
       (t.participants || []).map((p: any) => ({
         ...p,
         teamId: t.id,
         teamName: t.name,
-        teamAvatar: t.avatarUrl
+        teamAvatar: t.avatarUrl,
+        totalKills: killsMap[p.id] || 0 // Sobrescribimos con el dato real/calculado
       }))
     )
-  }, [currentTeams])
+  }, [currentTeams, currentSubmissions])
   
-  const topFraggers = [...currentParticipants]
+  const topFraggers = [...participantsWithCalculatedKills]
     .sort((a, b) => (b.totalKills || 0) - (a.totalKills || 0))
     .filter(p => (p.totalKills || 0) > 0)
     .slice(0, 5)
@@ -931,7 +947,7 @@ export function LeaderboardClient({
                       matches={currentMatches}
                       submissions={currentSubmissions}
                       scoringRule={scoringRule!}
-                      participants={currentParticipants}
+                      participants={participantsWithCalculatedKills}
                       primaryColor={primaryColor}
                     />
                   ))}
@@ -943,7 +959,7 @@ export function LeaderboardClient({
         <MatchRecap 
           matches={currentMatches} 
           submissions={currentSubmissions} 
-          participants={currentParticipants}
+          participants={participantsWithCalculatedKills}
           primaryColor={primaryColor} 
         />
       ) : (
