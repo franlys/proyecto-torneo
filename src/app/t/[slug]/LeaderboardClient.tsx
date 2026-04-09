@@ -126,6 +126,15 @@ export function LeaderboardClient({
       }))
     )
   }, [currentTeams, currentSubmissions])
+
+  // NUEVO: Mapa de búsqueda rápida por ID de jugador para las listas
+  const calculatedKillsLookup = useMemo(() => {
+    const map: Record<string, number> = {}
+    participantsWithCalculatedKills.forEach(p => {
+      map[p.id] = p.totalKills || 0
+    })
+    return map
+  }, [participantsWithCalculatedKills])
   
   const topFraggers = [...participantsWithCalculatedKills]
     .sort((a, b) => (b.totalKills || 0) - (a.totalKills || 0))
@@ -853,7 +862,7 @@ export function LeaderboardClient({
                         </div>
                         <div className="flex items-center gap-3">
                           <div className="text-right">
-                             <span className="text-xs font-orbitron font-bold text-white block leading-none">{p.totalKills || 0}</span>
+                             <span className="text-xs font-orbitron font-bold text-white block leading-none">{calculatedKillsLookup[p.id] || 0}</span>
                              <span className="text-[7px] text-white/30 uppercase font-black tracking-tighter">Kills</span>
                           </div>
                           {p.streamUrl && (
