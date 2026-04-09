@@ -127,39 +127,36 @@ export function LeaderboardClient({
 
   // Shared helper: fetch all teams + standings and rebuild the standings state.
   // Used by both Realtime subscriptions so the merge logic is not duplicated.
-  const refreshStandingsFromDB = React.useCallback(async () => {
-    console.log('[REALTIME] Executing full sync for tournament:', tournamentId)
-    
-    const [
-      { data: standingsData }, 
-      { data: teamsData },
-      { data: subsData },
-      { data: matchesData }
-    ] = await Promise.all([
-      supabase
-        .from('team_standings')
-        .select('*')
-        .eq('tournament_id', tournamentId),
-      supabase
-        .from('teams')
-        .select('id, name, avatar_url, stream_url, participants(id, team_id, display_name, avatar_url, stream_url, is_captain, total_kills)')
-        .eq('tournament_id', tournamentId)
-        .order('created_at', { ascending: true }),
-      supabase
-        .from('submissions')
-        .select('*')
-        .eq('tournament_id', tournamentId)
-        .order('submitted_at', { descending: true }),
-      supabase
-        .from('matches')
-        .select('*')
-        .eq('tournament_id', tournamentId)
-        .order('match_number', { ascending: true })
-    ])
-
     if (!teamsData) return
 
-    // Normalización de participantes: de snake_case (DB) a camelCase (Frontend)
+    // 1. Normalización de Partidas (Matches)
+    const normalizedMatches = (matchesData || []).map((m: any) => ({
+      ...m,
+      matchNumber: m.match_number,
+      isCompleted: m.is_completed,
+      isWarmup: m.is_warmup,
+      roundNumber: m.round_number,
+      parentMatchId: m.parent_match_id,
+      mapName: m.map_name,
+      createdAt: m.created_at
+    }))
+
+    // 2. Normalización de Envíos (Submissions)
+    const normalizedSubmissions = (subsData || []).map((s: any) => ({
+      ...s,
+      tournamentId: s.tournament_id,
+      teamId: s.team_id,
+      matchId: s.match_id,
+      submittedBy: s.submitted_by,
+      killCount: s.kill_count,
+      potTop: s.pot_top,
+      submittedAt: s.submitted_at,
+      playerKills: s.player_kills,
+      aiStatus: s.ai_status,
+      aiConfidence: s.ai_confidence
+    }))
+
+    // 3. Normalización de Equipos y Participantes
     const normalizedTeams = teamsData.map((t: any) => ({
       ...t,
       avatarUrl: t.avatar_url,
@@ -171,7 +168,7 @@ export function LeaderboardClient({
         avatarUrl: p.avatar_url,
         streamUrl: p.stream_url,
         isCaptain: p.is_captain,
-        totalKills: p.total_kills || 0
+        totalKills: Number(p.total_kills || 0)
       }))
     }))
 
@@ -211,8 +208,8 @@ export function LeaderboardClient({
 
     setStandings(merged)
     setCurrentTeams(normalizedTeams)
-    if (subsData) setCurrentSubmissions(subsData)
-    if (matchesData) setCurrentMatches(matchesData)
+    setCurrentSubmissions(normalizedSubmissions)
+    setCurrentMatches(normalizedMatches)
   }, [tournamentId, supabase])
  
   useEffect(() => {
