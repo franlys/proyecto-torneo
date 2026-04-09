@@ -367,41 +367,35 @@ Ejecutar el SQL de la migración `20240419000000` en el SQL Editor de Supabase S
 
 ---
 
-## [2026-04-09] — Fix: Equipos Invisibles en Leaderboard Público
+---
 
-### Problema Reportado
-El leaderboard público mostraba solo uno de los dos equipos inscritos, a pesar de que ambos eran visibles en la gestión de participantes del dashboard.
+## [2026-04-09 (tarde)] — Estabilización de UI, Visibilidad Total y Robustez de Evidencias
 
-### Diagnóstico (Root Cause)
+### Tareas Completadas
 
-Se identificaron **tres causas encadenadas**:
+- **Gestión de Participantes (UX Pro)**:
+    - **Tarjetas Colapsables**: Implementada lógica de colapso en `ParticipantsManager.tsx` usando `Set<string>` para el estado. Los organizadores ahora pueden expandir/contraer rosters de equipos individualmente para reducir el ruido visual en torneos grandes.
+    - **Añadir Jugador Simplificado**: Reemplazado el formulario inline por un trigger dedicado por equipo para evitar confusiones de envío.
 
-1. **Política RLS faltante en `team_standings`**: La migración inicial solo definió una política `public_read` (SELECT) para `team_standings`. No existía ninguna política de INSERT/UPDATE para usuarios autenticados. Cuando `createTeam` llamaba a `supabase.from('team_standings').upsert(...)` con la sesión del usuario (cliente regular), la operación **fallaba silenciosamente** — el equipo se creaba en `teams` pero no obtenía su fila inicial en `team_standings`.
+- **Visibilidad Definitiva en Leaderboard**:
+    - **Mount Refresh**: Añadido `useEffect` en `LeaderboardClient.tsx` que realiza un `refreshStandingsFromDB` inmediatamente al montar el componente. Esto soluciona problemas de datos desactualizados por cache de Vercel/Next.js.
+    - **Sync en Tiempo Real de Equipos**: Ahora el tablero no solo escucha cambios en puntos, sino también en la tabla `teams`. Al registrar un equipo nuevo en el dashboard, este aparece instantáneamente en el tablero público sin recargar.
+    - **Fusión Autorizativa**: La lógica de `merged` ahora usa la lista de equipos como base absoluta, garantizando que incluso equipos con 0 puntos y 0 actividad sean visibles y ordenados correctamente al final de la tabla.
 
-2. **`syncStandings` usaba `createClient()` (sesión de usuario)**: El botón de sincronización manual del leaderboard llamaba a `recalculateStandings` con el cliente de sesión, por lo que el upsert masivo de standings también fallaba silenciosamente por la misma razón de RLS.
+- **Integridad de Evidencias y Multimedia**:
+    - **Evidencia Obligatoria**: Actualizado `submissionSchema` en `schemas.ts` para que el campo de evidencia sea mandatorio, evitando envíos de partidas sin respaldo visual.
+    - **Solución Final a 404s**: Implementada normalización agresiva de URLs en `SubmissionsManager`, `MatchRecap` y `LeaderboardClient`. Se eliminó la concatenación manual de strings en favor de `supabase.storage.getPublicUrl()`, resolviendo errores de rutas mal formadas (buckets duplicados o slashes incorrectos).
 
-3. **Suscripción Realtime no escuchaba la tabla `teams`**: La suscripción de Supabase Realtime en `LeaderboardClient.tsx` solo escuchaba cambios en `team_standings`. Si se creaba un equipo nuevo (que aún no tenía fila en `team_standings`), no se disparaba ningún evento, y el leaderboard nunca se actualizaba para mostrar el nuevo equipo en tiempo real.
-
-**Por qué aparecía un equipo y no el otro**: El primer equipo podía haber sido creado antes de que `recalculateStandings` del server (que usa admin client) corrigiera el estado, o tenía una fila pre-existente de una ejecución anterior. El segundo equipo, creado más recientemente sin fila en `team_standings`, solo aparecía si la página se recargaba y el server recalculaba — pero si el Realtime disparaba antes de esa recarga, el cliente sobrescribía `standings` con datos incompletos.
-
-### Solución Implementada
-
-1. **Nueva migración `20240418000000_fix_team_standings_rls.sql`**:
-   - Añade política `creator_manage_standings` que permite al creador del torneo hacer INSERT/UPDATE/DELETE en `team_standings` via RLS.
-   - Backfill idempotente: inserta filas con 0 puntos para todos los equipos existentes que no tengan fila en `team_standings`.
-
-2. **`createTeam` en `participants.ts`**: Ahora usa `createAdminClient()` (service role) para el upsert de `team_standings`, garantizando que la operación nunca falle por restricciones de RLS.
-
-3. **`syncStandings` en `submissions.ts`**: Ahora usa `createAdminClient()` para llamar a `recalculateStandings`. La autenticación del usuario se verifica primero con `createClient()`, pero el recálculo usa el cliente admin.
-
-4. **`LeaderboardClient.tsx` — Realtime doble suscripción**:
-   - Extraída la lógica de refresh a un helper `refreshStandingsFromDB` (useCallback) que siempre parte de `teams` como lista maestra.
-   - Nueva suscripción al canal `teams:${tournamentId}` que reacciona a INSERT/UPDATE/DELETE en la tabla `teams`.
-   - Cuando se agrega un equipo, el leaderboard se actualiza en tiempo real sin necesidad de recargar la página.
+- **Saneamiento Técnico**:
+    - **Determinismo en Standings**: Ajustada la lógica de ordenamiento (`sort`) para usar fallbacks claros (puntos > kills > rank > nombre), eliminando comportamientos aleatorios en equipos empatados a 0.
+    - **Build Recovery**: Corregidos errores de sintaxis JSX que provocaban fallos en el despliegue de Vercel tras refactorizaciones de UI.
 
 ### Archivos Modificados
-- `supabase/migrations/20240418000000_fix_team_standings_rls.sql` (nueva)
-- `src/lib/actions/participants.ts` — `createTeam` usa admin client para standings
-- `src/lib/actions/submissions.ts` — `syncStandings` usa admin client
-- `src/app/t/[slug]/LeaderboardClient.tsx` — Realtime dual subscription + helper compartido
+- `src/app/(dashboard)/tournaments/[id]/participants/ParticipantsManager.tsx` — UI colapsable
+- `src/app/t/[slug]/LeaderboardClient.tsx` — Refresh on mount + teams subscription
+- `src/lib/validations/schemas.ts` — Evidencia obligatoria
+- `src/app/t/[slug]/page.tsx` — Determinismo en ránkings del servidor
+- `src/app/t/[slug]/MatchRecap.tsx` — Fix URLs de evidencias
+
+---
 
