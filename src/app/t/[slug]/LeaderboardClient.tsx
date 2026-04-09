@@ -353,7 +353,7 @@ export function LeaderboardClient({
           {description && <p className="text-white/60 text-lg max-w-2xl mx-auto">{description}</p>}
           {status === 'draft' && <span className="inline-block mt-4 text-xs font-bold bg-white/10 px-3 py-1 rounded text-white/50 uppercase">Pre-torneo</span>}
           {status === 'active' && <span className="inline-block mt-4 text-xs font-bold bg-red-500/20 border border-red-500/30 px-3 py-1 rounded text-red-400 uppercase animate-pulse">● En Vivo</span>}
-          {status === 'ended' && <span className="inline-block mt-4 text-xs font-bold bg-white/10 px-3 py-1 rounded text-white/50 uppercase">Torneo Finalizado</span>}
+          {status === 'finished' && <span className="inline-block mt-4 text-xs font-bold bg-white/10 px-3 py-1 rounded text-white/50 uppercase">Torneo Finalizado</span>}
           
           {championImageUrl && (
             <button
@@ -913,7 +913,7 @@ export function LeaderboardClient({
                   <img 
                     src={championImageUrl?.startsWith('http') 
                       ? championImageUrl 
-                      : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/evidences/${championImageUrl?.replace('evidences/', '')}`}
+                      : `${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '')}/storage/v1/object/public/evidences/${championImageUrl?.replace(/^evidences\//, '')}`}
                     alt="Campeón" 
                     className="max-h-[70vh] rounded-2xl object-contain shadow-2xl transition-transform duration-700 group-hover:scale-[1.02]" 
                   />

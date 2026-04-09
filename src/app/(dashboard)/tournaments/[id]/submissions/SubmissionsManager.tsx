@@ -190,7 +190,7 @@ export function SubmissionsManager({
                                    <a 
                                      href={sub.evidence_files[0].storage_path.startsWith('http') 
                                        ? sub.evidence_files[0].storage_path 
-                                       : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/evidences/${sub.evidence_files[0].storage_path.replace('evidences/', '')}`}
+                                       : `${process.env.NEXT_PUBLIC_SUPABASE_URL.replace(/\/$/, '')}/storage/v1/object/public/evidences/${sub.evidence_files[0].storage_path.replace(/^evidences\//, '')}`}
                                      target="_blank"
                                      rel="noreferrer"
                                      className="p-1.5 text-white/50 hover:text-neon-cyan hover:bg-neon-cyan/10 rounded transition-colors"

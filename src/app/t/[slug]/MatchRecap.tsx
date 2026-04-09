@@ -324,7 +324,7 @@ export function MatchRecap({ matches, submissions, participants, primaryColor }:
                                   {sub.evidenceFiles.map((ef, idx) => {
                                     const imageUrl = ef.storagePath.startsWith('http')
                                       ? ef.storagePath
-                                      : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/evidences/${ef.storagePath.replace('evidences/', '')}`
+                                      : `${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '')}/storage/v1/object/public/evidences/${ef.storagePath.replace(/^evidences\//, '')}`
                                     return (
                                       <a 
                                         key={idx}
