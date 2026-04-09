@@ -321,24 +321,27 @@ export function MatchRecap({ matches, submissions, participants, primaryColor }:
                             <div className="mt-4 pt-4 border-t border-white/5">
                                <p className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-2">Evidencia Adjunta</p>
                                <div className="flex gap-2">
-                                  {sub.evidenceFiles.map((ef, idx) => (
-                                    <a 
-                                      key={idx}
-                                      href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/evidences/${ef.storagePath}`}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="group relative w-full h-24 rounded-xl overflow-hidden border border-white/5 hover:border-neon-cyan/50 transition-all bg-black/40 flex items-center justify-center p-1"
-                                    >
-                                      <img 
-                                        src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/evidences/${ef.storagePath}`} 
-                                        alt="Evidencia"
-                                        className="w-full h-full object-cover rounded-lg opacity-60 group-hover:opacity-100 transition-opacity"
-                                      />
+                                  {sub.evidenceFiles.map((ef, idx) => {
+                                    const imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/evidences/${ef.storagePath}`
+                                    return (
+                                      <a 
+                                        key={idx}
+                                        href={imageUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="group relative w-full h-24 rounded-xl overflow-hidden border border-white/5 hover:border-neon-cyan/50 transition-all bg-black/40 flex items-center justify-center p-1"
+                                      >
+                                        <img 
+                                          src={imageUrl} 
+                                          alt="Evidencia"
+                                          className="w-full h-full object-cover rounded-lg opacity-60 group-hover:opacity-100 transition-opacity"
+                                        />
                                       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-[2px]">
                                         <span className="text-[10px] font-black text-neon-cyan uppercase tracking-tighter shadow-lg">Ver Foto Completa</span>
                                       </div>
-                                    </a>
-                                  ))}
+                                      </a>
+                                    )
+                                  })}
                                </div>
                             </div>
                           )}

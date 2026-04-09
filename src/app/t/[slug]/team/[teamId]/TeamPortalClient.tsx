@@ -100,7 +100,7 @@ export function TeamPortalClient({
       const filePath = `${tournament.id}/${team.id}/${matchId}/${fileName}`
 
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('evidence')
+        .from('evidences')
         .upload(filePath, file)
 
       if (uploadError) {
@@ -126,7 +126,7 @@ export function TeamPortalClient({
       })
 
       if (res && 'error' in res) {
-        await supabase.storage.from('evidence').remove([uploadData.path])
+        await supabase.storage.from('evidences').remove([uploadData.path])
         throw new Error(res.error)
       }
 
