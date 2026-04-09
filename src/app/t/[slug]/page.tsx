@@ -95,6 +95,7 @@ export default async function PublicLeaderboardPage({
       displayName: p.display_name,
       isCaptain: p.is_captain,
       streamUrl: p.stream_url,
+      totalKills: p.total_kills || 0,
     })),
   }))
 
