@@ -21,25 +21,30 @@ export async function analyzeSubmissionImage(
 ): Promise<AIDetectionResult | { error: string }> {
   try {
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash',
+      model: 'gemini-1.5-pro',
       generationConfig: { responseMimeType: 'application/json' }
     })
 
     const prompt = `
-      Eres un experto en arbitraje de torneos de Gaming (Battle Royale). 
-      Analiza esta captura de pantalla de resultados finales y extrae:
-      1. El nombre del equipo o jugador (si es visible).
-      2. El número de bajas (Kills/Eliminaciones).
-      3. La posición final (Rank/Top).
+      Eres un experto arbitro internacional de torneos de Gaming (Battle Royale como Warzone, Free Fire, Fortnite). 
+      Tu tarea es analizar esta captura de pantalla de resultados finales con precisión quirúrgica.
       
-      IMPORTANTE: 
-      - Si no estás seguro, pon confidence bajo.
-      - Retorna los datos estrictamente en este formato JSON:
+      Extrae los siguientes datos:
+      1. El nombre del equipo o jugador (busca campos como "Ganador", "Squad", o nombres en la tabla).
+      2. El número de bajas (busca palabras como "KIlls", "Eliminaciones", "Bajas", "Eliminated").
+      3. La posición final (busca "Rank", "Posición", "Top", "#", "Squad Placement").
+      
+      REGLAS CRÍTICAS:
+      - Si hay varios números, prioriza el que claramente indique el total del equipo o del jugador que sube la prueba.
+      - Si el texto es borroso, usa tu razonamiento contextual para determinar el número más probable.
+      - Si no hay datos legibles, devuelve 0 y confianza baja.
+      
+      Retorna estrictamente este JSON:
       {
         "teamName": string,
         "killCount": number,
         "rank": number,
-        "confidence": number (0 a 1)
+        "confidence": number (0.0 a 1.0)
       }
     `
 
