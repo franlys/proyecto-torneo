@@ -10,6 +10,8 @@ import { MatchRecap } from './MatchRecap'
 import { TeamDetails } from './TeamDetails'
 import { NumberTicker } from '@/components/ui/NumberTicker'
 
+import { syncStandings } from '@/lib/actions/submissions'
+
 const orbitron = Orbitron({ subsets: ['latin'] })
 
 export function LeaderboardClient({
@@ -74,9 +76,8 @@ export function LeaderboardClient({
     setIsSyncing(true)
     setSyncStatus('Sincronizando...')
     try {
-      const resp = await fetch(`/api/sync-standings?tournamentId=${tournamentId}`)
-      const data = await resp.json()
-      if (data.success) {
+      const res = await syncStandings(tournamentId)
+      if (res && 'success' in res) {
         setSyncStatus('¡Marcador actualizado!')
         // Refresh page to get latest formatted results from server side too
         window.location.reload()
@@ -361,69 +362,82 @@ export function LeaderboardClient({
         >
           <div className="flex items-center gap-3 mb-6">
             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-neon-cyan/50 to-transparent" />
-            <h2 className={`${orbitron.className} text-xl font-black text-neon-cyan uppercase tracking-widest flex items-center gap-3`}>
-              <span className="p-1 px-2 rounded bg-neon-cyan/20 text-[10px] sm:text-xs font-sans">Individual</span>
-              Top Fragger MVP
-            </h2>
+            <div className="flex flex-col items-center gap-2">
+              <h2 className={`${orbitron.className} text-xl font-black text-neon-cyan uppercase tracking-widest flex items-center gap-3`}>
+                <span className="p-1 px-2 rounded bg-neon-cyan/20 text-[10px] sm:text-xs font-sans">Individual</span>
+                Top Fragger MVP
+              </h2>
+              {/* Force recalc button for admins/testing */}
+              <button 
+                onClick={() => handleSync()}
+                disabled={isSyncing}
+                className="group flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[8px] font-black text-white/30 uppercase tracking-widest hover:bg-neon-cyan/10 hover:border-neon-cyan/30 hover:text-neon-cyan transition-all disabled:opacity-50"
+              >
+                <svg className={`w-2.5 h-2.5 ${isSyncing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                {syncStatus || (isSyncing ? 'Sincronizando...' : 'Recalcular Ahora')}
+              </button>
+            </div>
             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-neon-cyan/50 to-transparent" />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="flex flex-wrap justify-center gap-4">
             {topFraggers.slice(0, 3).map((player, idx) => (
               <motion.div
                 key={player.id}
                 whileHover={{ scale: 1.02, y: -5 }}
-                className={`relative group bg-dark-card/40 backdrop-blur-xl border rounded-2xl p-5 overflow-hidden transition-all duration-300 ${
+                className={`relative group bg-dark-card/40 backdrop-blur-xl border rounded-2xl p-3.5 mb-2 overflow-hidden transition-all duration-300 w-full md:w-[calc(50%-1rem)] lg:w-[calc(33.33%-1rem)] max-w-sm ${
                   idx === 0 ? 'border-neon-cyan/50 shadow-[0_0_20px_rgba(0,245,255,0.15)]' : 'border-white/5'
                 }`}
               >
                 {/* Accent background */}
-                <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full blur-3xl opacity-20 ${
+                <div className={`absolute -right-4 -top-4 w-20 h-20 rounded-full blur-3xl opacity-10 ${
                   idx === 0 ? 'bg-neon-cyan' : 'bg-neon-purple'
                 }`} />
 
-                <div className="flex items-center gap-4 relative z-10">
+                <div className="flex items-center gap-3 relative z-10">
                   <div className="relative">
-                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-2xl border-2 ${
-                      idx === 0 ? 'bg-neon-cyan/10 border-neon-cyan/50' : 'bg-white/5 border-white/10'
+                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl border ${
+                      idx === 0 ? 'bg-neon-cyan/10 border-neon-cyan/40' : 'bg-white/5 border-white/10'
                     }`}>
                       {idx === 0 ? '👑' : idx === 1 ? '🥈' : '🥉'}
                     </div>
                     {idx === 0 && (
-                      <div className="absolute -top-2 -left-2 bg-neon-cyan text-black font-black text-[10px] px-1.5 py-0.5 rounded-full animate-bounce">
+                      <div className="absolute -top-1.5 -left-1.5 bg-neon-cyan text-black font-black text-[8px] px-1.5 py-0.5 rounded-full animate-bounce">
                         MVP
                       </div>
                     )}
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-orbitron font-bold text-white text-lg truncate group-hover:text-neon-cyan transition-colors">
+                    <h4 className="font-orbitron font-bold text-white text-base truncate group-hover:text-neon-cyan transition-colors">
                       {player.displayName}
                     </h4>
-                    <p className="text-white/40 text-xs truncate">Equipo: {(player as any).teamName}</p>
+                    <p className="text-white/40 text-[10px] truncate uppercase tracking-tighter">Equipo: {(player as any).teamName}</p>
                   </div>
 
                   <div className="text-right">
-                    <div className="text-2xl font-black text-white leading-none">{(player as any).totalKills || 0}</div>
-                    <div className="text-[10px] font-bold text-white/30 uppercase tracking-tighter">Kills</div>
+                    <div className="text-xl font-black text-white leading-none">{(player as any).totalKills || 0}</div>
+                    <div className="text-[9px] font-bold text-white/30 uppercase tracking-tighter">Kills</div>
                   </div>
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between gap-3">
+                <div className="mt-3.5 pt-3 border-t border-white/5 flex items-center justify-between gap-3">
                   {player.streamUrl ? (
                     <button
                       onClick={() => handleWatchTeam(player.streamUrl!)}
-                      className="flex-1 flex items-center justify-center gap-2 py-2 bg-red-600/20 border border-red-500/30 text-red-400 rounded-lg text-xs font-bold hover:bg-red-600/30 transition-all shadow-lg shadow-red-500/5 group/btn"
+                      className="flex-1 flex items-center justify-center gap-2 py-1.5 bg-red-600/20 border border-red-500/20 text-red-400 rounded-lg text-[10px] font-bold hover:bg-red-600/30 transition-all group/btn"
                     >
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                      <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
                       Live Stream
-                      <svg className="w-3 h-3 group-hover/btn:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-2.5 h-2.5 group-hover/btn:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                       </svg>
                     </button>
                   ) : (
-                    <div className="flex-1 py-2 text-center text-[10px] text-white/20 font-medium uppercase tracking-widest border border-dashed border-white/10 rounded-lg">
-                      Sin Stream Live
+                    <div className="flex-1 py-1.5 text-center text-[9px] text-white/10 font-bold uppercase tracking-widest border border-dashed border-white/5 rounded-lg">
+                      Offline
                     </div>
                   )}
                 </div>

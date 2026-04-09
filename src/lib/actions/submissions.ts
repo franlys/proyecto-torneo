@@ -217,6 +217,19 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
   }
 }
 
+export async function syncStandings(tournamentId: string): Promise<{ success: boolean } | { error: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autenticado' }
+    
+    await recalculateStandings(supabase, tournamentId)
+    return { success: true }
+  } catch (err: any) {
+    return { error: err.message }
+  }
+}
+
 export async function approveSubmission(
   submissionId: string
 ): Promise<{ success: boolean } | { error: string }> {
