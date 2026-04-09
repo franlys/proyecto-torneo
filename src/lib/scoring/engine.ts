@@ -121,7 +121,15 @@ export function computeStandings(
     // Sum placement points for each approved submission
     const totalPlacementPoints = subs.reduce((sum, s) => {
       const pos = s.rank || (s.potTop ? 1 : 0)
-      const points = pos > 0 ? (rule.placementPoints[String(pos)] ?? 0) : 0
+      
+      // Handle potential string/object issues with placementPoints
+      const pRules = (rule.placementPoints as any) || {}
+      const points = pos > 0 ? (Number(pRules[String(pos)]) || 0) : 0
+      
+      if (points > 0) {
+        console.log(`[ENGINE] Team ${team.name} Match: Pos ${pos} -> +${points} pts`)
+      }
+      
       return sum + points
     }, 0)
 
@@ -129,6 +137,11 @@ export function computeStandings(
     const killRate = calculateKillRate(totalKills, subs.length)
     const killPoints = totalKills * rule.killPoints
     const totalPoints = calculateTotalWithVip(killPoints + totalPlacementPoints, team.vipScore)
+
+    if (totalPlacementPoints > 0) {
+      console.log(`[ENGINE] Team ${team.name} Total Placement Pts: ${totalPlacementPoints}`)
+    }
+
     return {
       teamId: team.id,
       teamName: team.name,

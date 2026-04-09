@@ -159,9 +159,16 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
   const { computeStandings, calculateKillRaceStandings } = await import('@/lib/scoring/engine')
 
   let standings = []
-  if (tourney.format === 'kill_race') {
+  // If we have custom scoring rules in the DB, always use them regardless of format
+  if (sRules) {
+    console.log(`[STANDINGS] Using custom rules from DB for ${tourney.format} format`)
+    standings = computeStandings(mappedSubs, rule, { totalMatches: tourney.total_matches, teams: mappedTeams })
+  } 
+  else if (tourney.format === 'kill_race') {
+    console.log(`[STANDINGS] Falling back to default Kill Race logic`)
     standings = calculateKillRaceStandings(mappedSubs, mappedTeams)
-  } else {
+  } 
+  else {
     standings = computeStandings(mappedSubs, rule, { totalMatches: tourney.total_matches, teams: mappedTeams })
   }
 
