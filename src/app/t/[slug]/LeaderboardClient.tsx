@@ -805,7 +805,7 @@ export function LeaderboardClient({
                         </div>
                      </div>
                      <div className="text-right">
-                        <div className="text-xl font-black text-white leading-none">{team.total_points}</div>
+                        <div className="text-xl font-black text-white leading-none">{team.totalPoints}</div>
                         <div className="text-[8px] text-white/30 uppercase font-bold tracking-tighter">Puntos</div>
                      </div>
                   </div>
