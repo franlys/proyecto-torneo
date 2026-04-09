@@ -205,10 +205,12 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
 
   // ─── NEW: Update Individual Participant Kills ─────────────────────────────
   
-  // Aggregate kills per participant from ALL approved submissions in this tournament
+  // Aggregate kills per participant from ONLY approved submissions in this tournament
   const playerKillsMap: Record<string, number> = {}
   
-  for (const s of (subs || [])) {
+  const approvedSubs = (subs || []).filter(s => s.status === 'approved')
+  
+  for (const s of approvedSubs) {
     if (s.player_kills && typeof s.player_kills === 'object') {
       Object.entries(s.player_kills).forEach(([pId, kills]) => {
         playerKillsMap[pId] = (playerKillsMap[pId] || 0) + Number(kills)
@@ -400,13 +402,17 @@ export async function processAIValidation(
       .eq('id', submissionId)
 
   } catch (error: any) {
-    console.error(`AI Validation Failed for ${submissionId}:`, error)
-    await supabase
-      .from('submissions')
-      .update({
-        ai_status: 'failed',
-        ai_error: error.message || 'Error desconocido'
-      })
-      .eq('id', submissionId)
+    console.error(`[AI] Validation Failed for ${submissionId}:`, error)
+    try {
+      await supabase
+        .from('submissions')
+        .update({
+          ai_status: 'failed',
+          ai_error: error.message || 'Error desconocido'
+        })
+        .eq('id', submissionId)
+    } catch (updateErr) {
+      console.error(`[AI] CRITICAL: Failed to update error status for ${submissionId}`)
+    }
   }
 }

@@ -82,7 +82,7 @@ export default async function PublicLeaderboardPage({
     if ((b.totalKills || 0) !== (a.totalKills || 0)) return (b.totalKills || 0) - (a.totalKills || 0)
     if (a.rank !== b.rank) return a.rank - b.rank
     return a.teamName.localeCompare(b.teamName)
-  })
+  }).map((t, idx) => ({ ...t, rank: idx + 1 })) // FORCED RANK BY POSITION
 
   // Format teams for the participants tab
   const formattedTeams = (allTeams || []).map((t: any) => ({

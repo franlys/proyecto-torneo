@@ -57,6 +57,7 @@ export function LeaderboardClient({
   const [host, setHost] = useState('localhost')
   const primaryColor = theme?.primary_color || theme?.primaryColor || '#00F5FF'
   const [standings, setStandings] = useState(initialStandings)
+  const [currentTeams, setCurrentTeams] = useState(teams || [])
   const [activeTab, setActiveTab] = useState<'ranking' | 'participants' | 'matches' | 'rules' | 'statistics'>('ranking')
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null)
   const [watchingStream, setWatchingStream] = useState<string | null>(null)
@@ -96,17 +97,19 @@ export function LeaderboardClient({
   }
   const supabase = createClient()
 
-  // Top Fragger Individual: Calculado comparando cada jugador de manera individual
-  const allParticipants = (teams || []).flatMap((t: any) => 
-    (t.participants || []).map((p: Participant) => ({
-      ...p,
-      teamId: t.id,
-      teamName: t.name,
-      teamAvatar: t.avatarUrl
-    }))
-  )
+  // Top Fragger Individual: Calculado comparando cada jugador de manera individual desde el estado actual
+  const currentParticipants = useMemo(() => {
+    return (currentTeams || []).flatMap((t: any) => 
+      (t.participants || []).map((p: any) => ({
+        ...p,
+        teamId: t.id,
+        teamName: t.name,
+        teamAvatar: t.avatarUrl
+      }))
+    )
+  }, [currentTeams])
   
-  const topFraggers = [...allParticipants]
+  const topFraggers = [...currentParticipants]
     .sort((a, b) => (b.totalKills || 0) - (a.totalKills || 0))
     .filter(p => (p.totalKills || 0) > 0)
     .slice(0, 5)
@@ -176,6 +179,7 @@ export function LeaderboardClient({
     })
 
     setStandings(merged)
+    setCurrentTeams(teamsData)
   }, [tournamentId, supabase])
  
   useEffect(() => {
@@ -205,9 +209,23 @@ export function LeaderboardClient({
       )
       .subscribe()
 
+    // Subscribe to participants changes (individual kills)
+    const participantsChannel = supabase
+      .channel(`participants:${tournamentId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'participants' },
+        () => {
+          console.log('[REALTIME] Participant stats updated, refreshing...')
+          refreshStandingsFromDB()
+        }
+      )
+      .subscribe()
+
     return () => {
       supabase.removeChannel(standingsChannel)
       supabase.removeChannel(teamsChannel)
+      supabase.removeChannel(participantsChannel)
     }
   }, [tournamentId, supabase, refreshStandingsFromDB])
 
@@ -568,11 +586,11 @@ export function LeaderboardClient({
                           <div className="flex items-center justify-center gap-1 sm:gap-2">
                              <div className="flex flex-col items-center">
                                 <span className={`font-orbitron font-black text-base sm:text-2xl ${
-                                  s.rank === 1 ? 'text-gold drop-shadow-[0_0_10px_rgba(255,215,0,0.3)]' : 
-                                  s.rank === 2 ? 'text-gray-300' : 
-                                  s.rank === 3 ? 'text-orange-400' : 'text-white/40'
+                                  (idx + 1) === 1 ? 'text-gold drop-shadow-[0_0_10px_rgba(255,215,0,0.3)]' : 
+                                  (idx + 1) === 2 ? 'text-gray-300' : 
+                                  (idx + 1) === 3 ? 'text-orange-400' : 'text-white/40'
                                 }`}>
-                                  {s.rank}
+                                  {idx + 1}
                                 </span>
                                 <div className="flex items-center gap-1 mt-1 h-3">
                                    <AnimatePresence mode="wait">
@@ -855,7 +873,7 @@ export function LeaderboardClient({
                       matches={matches || []}
                       submissions={submissions || []}
                       scoringRule={scoringRule!}
-                      participants={participants}
+                      participants={currentParticipants}
                       primaryColor={primaryColor}
                     />
                   ))}
@@ -867,7 +885,7 @@ export function LeaderboardClient({
         <MatchRecap 
           matches={matches || []} 
           submissions={submissions || []} 
-          participants={participants}
+          participants={currentParticipants}
           primaryColor={primaryColor} 
         />
       ) : (
