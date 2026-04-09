@@ -329,31 +329,7 @@ export function LeaderboardClient({
           )}
         </AnimatePresence>
 
-        <div className="text-center mb-12 flex flex-col items-center">
-        <div className="flex flex-col sm:flex-row items-center gap-3 mb-8">
-          <Link 
-            href="/hall-of-fame"
-            className="px-4 py-1.5 rounded-full border border-gold/30 bg-gold/5 text-[9px] font-black uppercase tracking-[0.3em] text-gold hover:bg-gold/10 transition-all flex items-center gap-2"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse" />
-            Ver Hall of Fame
-          </Link>
-
-          <button
-            onClick={handleSync}
-            disabled={isSyncing}
-            className={`px-4 py-1.5 rounded-full border transition-all flex items-center gap-2 ${
-              isSyncing 
-                ? 'bg-neon-cyan/20 border-neon-cyan/50 text-neon-cyan cursor-wait' 
-                : 'bg-white/5 border-white/10 text-white/40 hover:text-neon-cyan hover:border-neon-cyan/50'
-            }`}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${isSyncing ? 'bg-neon-cyan animate-ping text-[8px]' : 'bg-white/20'}`} />
-            <span className="text-[9px] font-black uppercase tracking-[0.3em]">
-              {syncStatus || 'Sincronizar Marcador'}
-            </span>
-          </button>
-        </div>
+        <div className="mb-8" />
         
         {tournamentLogoUrl ? (
           <div className="mb-6">

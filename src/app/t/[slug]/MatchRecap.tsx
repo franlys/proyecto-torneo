@@ -204,7 +204,7 @@ export function MatchRecap({ matches, submissions, participants, primaryColor }:
                       : null
                     const isVideo = media?.mimeType?.startsWith('video/')
                     const mediaUrl = media
-                      ? `https://otssvwinchttedisfqtr.supabase.co/storage/v1/object/public/evidences/${media.storagePath}`
+                      ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/evidences/${media.storagePath}`
                       : null
                     const isMatchMvp = matchTopFragger?.id === sub.id && (sub.killCount ?? 0) > 0
 

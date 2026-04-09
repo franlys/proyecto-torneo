@@ -199,6 +199,25 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
   // Aggregate kills per participant from ALL approved submissions in this tournament
   const playerKillsMap: Record<string, number> = {}
   
+  for (const s of (subs || [])) {
+    if (s.player_kills && typeof s.player_kills === 'object') {
+      Object.entries(s.player_kills).forEach(([pId, kills]) => {
+        playerKillsMap[pId] = (playerKillsMap[pId] || 0) + Number(kills)
+      })
+    }
+  }
+
+  const playerUpdates = Object.entries(playerKillsMap).map(([id, total_kills]) => ({
+    id,
+    total_kills
+  }))
+
+  if (playerUpdates.length > 0) {
+    console.log(`[STANDINGS] Updating total_kills for ${playerUpdates.length} participants`)
+    const { error: pErr } = await supabase.from('participants').upsert(playerUpdates)
+    if (pErr) console.error(`[STANDINGS] Participant KILLS Update ERROR:`, pErr)
+  }
+  
   subs.forEach((s: any) => {
     const breakdown = s.player_kills || {}
     Object.entries(breakdown).forEach(([pId, kills]) => {
