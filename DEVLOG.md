@@ -325,3 +325,83 @@ Los organizadores necesitaban una forma de agrupar varios mapas o juegos bajo un
 2. **Auto-Aprobación**: Lógica opcional para aprobar automáticamente si la IA tiene 100% de confianza.
 3. **Optimización de OCR**: Refinar prompts para diferentes tipos de juegos (BR, Kill Race, etc.).
 
+---
+
+## [2026-04-09] — Fix: Evidencias 404, Avatares Invisibles y IA sin acceso a Storage
+
+### Problemas Reportados
+1. Las evidencias subidas por participantes devuelven `{"statusCode":"404","error":"not_found","message":"Object not found"}`.
+2. Las fotos subidas para avatares de equipo/participante no aparecen en ningún lado.
+3. La validación por IA falla al intentar descargar la imagen de evidencia.
+
+### Diagnóstico (Root Cause)
+
+**Causa única que provoca los tres síntomas**: el bucket `evidences` en Supabase Storage muy probablemente fue creado con `public = false` (bien sea manualmente en el Studio o porque la migración `20240415000000_storage_setup.sql` no se aplicó en producción).
+
+- Con `public = false`, las URLs `/storage/v1/object/public/evidences/...` devuelven 404 aunque el archivo exista.
+- Los uploads funcionan (hay políticas RLS de INSERT para anon y authenticated), por eso el formulario confirma el envío, pero el archivo no se puede leer públicamente.
+- `processAIValidation` usaba `createClient()` (sesión del usuario), que al ejecutarse de forma asíncrona "fire-and-forget" ya no tiene sesión activa → la descarga del archivo fallaba con error de permisos.
+- `SubmissionsManager` construía la URL manualmente (`process.env.NEXT_PUBLIC_SUPABASE_URL + .../evidences/...`) en lugar de usar `supabase.storage.getPublicUrl()`, lo que causaba duplicación del prefijo del bucket en algunos paths.
+
+### Solución Implementada
+
+1. **Nueva migración `20240419000000_fix_storage_bucket_public.sql`**:
+   - `ON CONFLICT (id) DO UPDATE SET public = true` — fuerza el bucket a público incluso si ya existía como privado.
+   - Recrea todas las políticas RLS de storage limpiamente (DROP + CREATE).
+   - Agrega política explícita `service_role` para que el servidor pueda descargar archivos sin depender del contexto de sesión del usuario.
+
+2. **`SubmissionsManager.tsx`**:
+   - Agregado tipo `EvidenceFile` y campo `evidence_files` al tipo `PendingSubmission`.
+   - Nueva función `getEvidenceUrl(path)` que usa `supabase.storage.from('evidences').getPublicUrl(path)` en lugar de concatenar strings manuales. Esto garantiza la URL correcta independientemente del formato del path almacenado.
+
+3. **`processAIValidation` en `submissions.ts`**:
+   - Cambiado `createClient()` → `createAdminClient()`. La descarga del archivo ahora usa el service role, que siempre tiene acceso al bucket independientemente del estado de sesión.
+
+### Archivos Modificados
+- `supabase/migrations/20240419000000_fix_storage_bucket_public.sql` (nueva)
+- `src/app/(dashboard)/tournaments/[id]/submissions/SubmissionsManager.tsx`
+- `src/lib/actions/submissions.ts` — `processAIValidation` usa admin client
+
+### Acción requerida en producción
+Ejecutar el SQL de la migración `20240419000000` en el SQL Editor de Supabase Studio. Esto es suficiente — no requiere redeploy.
+
+---
+
+## [2026-04-09] — Fix: Equipos Invisibles en Leaderboard Público
+
+### Problema Reportado
+El leaderboard público mostraba solo uno de los dos equipos inscritos, a pesar de que ambos eran visibles en la gestión de participantes del dashboard.
+
+### Diagnóstico (Root Cause)
+
+Se identificaron **tres causas encadenadas**:
+
+1. **Política RLS faltante en `team_standings`**: La migración inicial solo definió una política `public_read` (SELECT) para `team_standings`. No existía ninguna política de INSERT/UPDATE para usuarios autenticados. Cuando `createTeam` llamaba a `supabase.from('team_standings').upsert(...)` con la sesión del usuario (cliente regular), la operación **fallaba silenciosamente** — el equipo se creaba en `teams` pero no obtenía su fila inicial en `team_standings`.
+
+2. **`syncStandings` usaba `createClient()` (sesión de usuario)**: El botón de sincronización manual del leaderboard llamaba a `recalculateStandings` con el cliente de sesión, por lo que el upsert masivo de standings también fallaba silenciosamente por la misma razón de RLS.
+
+3. **Suscripción Realtime no escuchaba la tabla `teams`**: La suscripción de Supabase Realtime en `LeaderboardClient.tsx` solo escuchaba cambios en `team_standings`. Si se creaba un equipo nuevo (que aún no tenía fila en `team_standings`), no se disparaba ningún evento, y el leaderboard nunca se actualizaba para mostrar el nuevo equipo en tiempo real.
+
+**Por qué aparecía un equipo y no el otro**: El primer equipo podía haber sido creado antes de que `recalculateStandings` del server (que usa admin client) corrigiera el estado, o tenía una fila pre-existente de una ejecución anterior. El segundo equipo, creado más recientemente sin fila en `team_standings`, solo aparecía si la página se recargaba y el server recalculaba — pero si el Realtime disparaba antes de esa recarga, el cliente sobrescribía `standings` con datos incompletos.
+
+### Solución Implementada
+
+1. **Nueva migración `20240418000000_fix_team_standings_rls.sql`**:
+   - Añade política `creator_manage_standings` que permite al creador del torneo hacer INSERT/UPDATE/DELETE en `team_standings` via RLS.
+   - Backfill idempotente: inserta filas con 0 puntos para todos los equipos existentes que no tengan fila en `team_standings`.
+
+2. **`createTeam` en `participants.ts`**: Ahora usa `createAdminClient()` (service role) para el upsert de `team_standings`, garantizando que la operación nunca falle por restricciones de RLS.
+
+3. **`syncStandings` en `submissions.ts`**: Ahora usa `createAdminClient()` para llamar a `recalculateStandings`. La autenticación del usuario se verifica primero con `createClient()`, pero el recálculo usa el cliente admin.
+
+4. **`LeaderboardClient.tsx` — Realtime doble suscripción**:
+   - Extraída la lógica de refresh a un helper `refreshStandingsFromDB` (useCallback) que siempre parte de `teams` como lista maestra.
+   - Nueva suscripción al canal `teams:${tournamentId}` que reacciona a INSERT/UPDATE/DELETE en la tabla `teams`.
+   - Cuando se agrega un equipo, el leaderboard se actualiza en tiempo real sin necesidad de recargar la página.
+
+### Archivos Modificados
+- `supabase/migrations/20240418000000_fix_team_standings_rls.sql` (nueva)
+- `src/lib/actions/participants.ts` — `createTeam` usa admin client para standings
+- `src/lib/actions/submissions.ts` — `syncStandings` usa admin client
+- `src/app/t/[slug]/LeaderboardClient.tsx` — Realtime dual subscription + helper compartido
+

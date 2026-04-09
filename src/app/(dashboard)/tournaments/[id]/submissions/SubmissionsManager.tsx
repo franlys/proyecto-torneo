@@ -1,7 +1,15 @@
 'use client'
 
 import { useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { approveSubmission, rejectSubmission } from '@/lib/actions/submissions'
+
+type EvidenceFile = {
+  id: string
+  storage_path: string
+  mime_type: string
+  file_name?: string
+}
 
 type PendingSubmission = {
   id: string
@@ -10,16 +18,27 @@ type PendingSubmission = {
   match_id: string
   submitted_by: string
   kill_count: number
+  rank?: number
   pot_top: boolean
   status: 'pending' | 'approved' | 'rejected'
   rejection_reason?: string
   submitted_at: string
   teams?: { name: string } | { name: string }[]
   matches?: { name: string; match_number: number } | { name: string; match_number: number }[]
+  evidence_files?: EvidenceFile[]
   ai_status?: 'pending' | 'processing' | 'completed' | 'failed'
   ai_data?: { team_name?: string; kill_count?: number; rank?: number }
   ai_confidence?: number
   ai_error?: string
+}
+
+function getEvidenceUrl(storagePath: string): string {
+  const supabase = createClient()
+  // Always use getPublicUrl — it generates the correct URL regardless of
+  // whether the path already contains the bucket prefix or not.
+  const clean = storagePath.replace(/^evidences\//, '')
+  const { data } = supabase.storage.from('evidences').getPublicUrl(clean)
+  return data.publicUrl
 }
 
 export function SubmissionsManager({
@@ -187,10 +206,8 @@ export function SubmissionsManager({
                           <td className="px-6 py-4 text-right">
                              <div className="flex items-center justify-end gap-2">
                                {sub.evidence_files && sub.evidence_files.length > 0 && (
-                                   <a 
-                                     href={sub.evidence_files[0].storage_path.startsWith('http') 
-                                       ? sub.evidence_files[0].storage_path 
-                                       : `${process.env.NEXT_PUBLIC_SUPABASE_URL.replace(/\/$/, '')}/storage/v1/object/public/evidences/${sub.evidence_files[0].storage_path.replace(/^evidences\//, '')}`}
+                                   <a
+                                     href={getEvidenceUrl(sub.evidence_files[0].storage_path)}
                                      target="_blank"
                                      rel="noreferrer"
                                      className="p-1.5 text-white/50 hover:text-neon-cyan hover:bg-neon-cyan/10 rounded transition-colors"

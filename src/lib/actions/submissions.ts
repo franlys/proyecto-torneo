@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { submissionSchema } from '@/lib/validations/schemas'
 import type { CreateSubmissionInput } from '@/lib/validations/schemas'
 import type { Submission } from '@/types'
@@ -230,14 +230,18 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
 
 export async function syncStandings(tournamentId: string): Promise<{ success: boolean } | { error: string }> {
   try {
+    // Verify the user is authenticated before allowing sync
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'No autenticado' }
-    
-    await recalculateStandings(supabase, tournamentId)
+
+    // Use admin client so the upsert to team_standings bypasses RLS.
+    // Without this, the upsert silently fails (no write policy for authenticated users).
+    const adminSupabase = await createAdminClient()
+    await recalculateStandings(adminSupabase, tournamentId)
     return { success: true }
-  } catch (err: any) {
-    return { error: err.message }
+  } catch (err: unknown) {
+    return { error: err instanceof Error ? err.message : 'Error desconocido' }
   }
 }
 
@@ -344,13 +348,15 @@ export async function getSubmissions(
 
 /**
  * Background AI Validation Process
+ * Uses admin client to bypass RLS — the function runs server-side after the
+ * user session is no longer available (fire-and-forget call).
  */
 export async function processAIValidation(
   submissionId: string,
   storagePath: string,
   mimeType: string
 ) {
-  const supabase = await createClient()
+  const supabase = await createAdminClient()
 
   try {
     // 1. Mark as processing

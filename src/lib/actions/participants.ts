@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { teamSchema, participantSchema } from '@/lib/validations/schemas'
 import type { CreateTeamInput, CreateParticipantInput } from '@/lib/validations/schemas'
 import type { Team, Participant } from '@/types'
@@ -44,8 +44,11 @@ export async function createTeam(
 
   if (teamErr) return { error: teamErr.message }
 
-  // Auto-initialize standings so team appears on leaderboard immediately with 0 pts
-  await supabase.from('team_standings').upsert({
+  // Auto-initialize standings using admin client — the regular user session lacks
+  // write permission on team_standings (no INSERT/UPDATE RLS policy for authenticated users).
+  // Using the service role bypasses RLS and guarantees the row is created.
+  const adminSupabase = await createAdminClient()
+  const { error: standingsErr } = await adminSupabase.from('team_standings').upsert({
     tournament_id: tournamentId,
     team_id: team.id,
     total_points: 0,
@@ -57,6 +60,10 @@ export async function createTeam(
     previous_rank: 99,
     updated_at: new Date().toISOString(),
   }, { onConflict: 'tournament_id,team_id' })
+
+  if (standingsErr) {
+    console.error('[createTeam] Failed to initialize team_standings row:', standingsErr.message)
+  }
 
   return {
     data: {

@@ -120,75 +120,90 @@ export function LeaderboardClient({
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
+  // Shared helper: fetch all teams + standings and rebuild the standings state.
+  // Used by both Realtime subscriptions so the merge logic is not duplicated.
+  const refreshStandingsFromDB = React.useCallback(async () => {
+    const [{ data: standingsData }, { data: teamsData }] = await Promise.all([
+      supabase
+        .from('team_standings')
+        .select('*')
+        .eq('tournament_id', tournamentId)
+        .order('rank', { ascending: true }),
+      supabase
+        .from('teams')
+        .select('id, name, avatar_url, stream_url, participants(id, display_name, stream_url, total_kills)')
+        .eq('tournament_id', tournamentId)
+        .order('created_at', { ascending: true }),
+    ])
+
+    // Always build from teamsData (authoritative list) so every team appears
+    // even if it has no standings row yet.
+    if (!teamsData) return
+
+    const standingsMap = new Map((standingsData || []).map((s: any) => [s.team_id, s]))
+
+    const merged = teamsData.map((t: any) => {
+      const s = standingsMap.get(t.id)
+
+      const teamStreams: { name: string; url: string }[] = []
+      if (t.stream_url) teamStreams.push({ name: 'Equipo', url: t.stream_url })
+      if (t.participants) {
+        t.participants.forEach((p: any) => {
+          if (p.stream_url) teamStreams.push({ name: p.display_name, url: p.stream_url })
+        })
+      }
+
+      return {
+        teamId: t.id,
+        teamName: t.name,
+        avatarUrl: t.avatar_url,
+        streamUrl: t.stream_url,
+        streams: teamStreams,
+        totalPoints: s ? Number(s.total_points) : 0,
+        totalKills: s ? (s.total_kills ?? 0) : 0,
+        killRate: s ? Number(s.kill_rate) : 0,
+        potTopCount: s ? (s.pot_top_count ?? 0) : 0,
+        vipScore: s ? Number(s.vip_score) : 0,
+        rank: s ? s.rank : (teamsData.length + 1),
+        previousRank: s ? s.previous_rank : (teamsData.length + 1),
+      }
+    }).sort((a: any, b: any) => {
+      if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints
+      if (b.totalKills !== a.totalKills) return b.totalKills - a.totalKills
+      return a.rank - b.rank
+    })
+
+    setStandings(merged)
+  }, [tournamentId, supabase])
+
   useEffect(() => {
-    const channel = supabase.channel(`public:team_standings:tournament_id=eq.${tournamentId}`)
+    // Subscribe to team_standings changes (score updates)
+    const standingsChannel = supabase
+      .channel(`standings:${tournamentId}`)
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'team_standings',
-          filter: `tournament_id=eq.${tournamentId}`
-        },
-        async (payload) => {
-          const { data } = await supabase
-            .from('team_standings')
-            .select('*, teams(name, avatar_url, vip_score, stream_url, participants(id, display_name, stream_url, total_kills))')
-            .eq('tournament_id', tournamentId)
-            .order('rank', { ascending: true })
+        { event: '*', schema: 'public', table: 'team_standings', filter: `tournament_id=eq.${tournamentId}` },
+        () => refreshStandingsFromDB()
+      )
+      .subscribe()
 
-          if (data) {
-            // Fetch teams to merge in stream info
-            const { data: teamsData } = await supabase
-              .from('teams')
-              .select('id, name, avatar_url, stream_url, participants(id, display_name, stream_url, total_kills)')
-              .eq('tournament_id', tournamentId)
-
-            const standingsMap = new Map(data.map((s: any) => [s.team_id, s]))
-
-            const merged = (teamsData || []).map((t: any) => {
-              const s = standingsMap.get(t.id)
-              
-              // Map all stream sources
-              const teamStreams: { name: string; url: string }[] = []
-              if (t.stream_url) teamStreams.push({ name: 'Equipo', url: t.stream_url })
-              if (t.participants) {
-                t.participants.forEach((p: any) => {
-                  if (p.stream_url) teamStreams.push({ name: p.display_name, url: p.stream_url })
-                })
-              }
-
-              return {
-                teamId: t.id,
-                teamName: t.name,
-                avatarUrl: t.avatar_url,
-                streamUrl: t.stream_url,
-                streams: teamStreams,
-                totalPoints: s ? Number(s.total_points) : 0,
-                totalKills: s ? (s.total_kills ?? 0) : 0,
-                killRate: s ? Number(s.kill_rate) : 0,
-                potTopCount: s ? (s.pot_top_count ?? 0) : 0,
-                vipScore: s ? Number(s.vip_score) : 0,
-                rank: s ? s.rank : (data.length + 1),
-                previousRank: s ? s.previous_rank : (data.length + 1),
-              }
-            }).sort((a: any, b: any) => {
-              // Same sorting as server-side to keep consistency
-              if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints
-              if (b.totalKills !== a.totalKills) return b.totalKills - a.totalKills
-              return a.rank - b.rank
-            })
-
-            setStandings(merged)
-          }
-        }
+    // Subscribe to teams changes (new team added / team deleted / team renamed)
+    // Without this subscription, a newly-created team only becomes visible on next
+    // full page reload — it never triggers a standings event.
+    const teamsChannel = supabase
+      .channel(`teams:${tournamentId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'teams', filter: `tournament_id=eq.${tournamentId}` },
+        () => refreshStandingsFromDB()
       )
       .subscribe()
 
     return () => {
-      supabase.removeChannel(channel)
+      supabase.removeChannel(standingsChannel)
+      supabase.removeChannel(teamsChannel)
     }
-  }, [tournamentId, supabase])
+  }, [tournamentId, supabase, refreshStandingsFromDB])
 
   const backgroundValue = theme?.background_value
   const backgroundMobileValue = theme?.background_mobile_value
