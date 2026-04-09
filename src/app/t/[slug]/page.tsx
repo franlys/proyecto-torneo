@@ -12,7 +12,8 @@ export default async function PublicLeaderboardPage({
 }) {
   const { slug } = await params
   const normalizedSlug = slug.trim().toLowerCase()
-  const supabase = await createClient()
+  const adminSupabase = await createAdminClient()
+  const supabase = adminSupabase // Replace public client with admin for this page
 
   // Fetch the tournament
   const { data: tournament, error: tErr } = await supabase
@@ -31,9 +32,7 @@ export default async function PublicLeaderboardPage({
     .order('created_at', { ascending: true })
 
   // AUTO-SYNC: Recalculate standings on every page load to ensure data is always fresh
-  // We use the admin client to bypass RLS for this system background task
   if (tournament?.id) {
-    const adminSupabase = await createAdminClient()
     await recalculateStandings(adminSupabase, tournament.id)
   }
 
