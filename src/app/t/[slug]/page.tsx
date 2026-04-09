@@ -198,6 +198,7 @@ export default async function PublicLeaderboardPage({
         rulesText={tournament.rules_text}
         scoringRule={scoringRule}
         participants={allParticipants}
+        championImageUrl={tournament.champion_image_url}
       />
     </main>
   )

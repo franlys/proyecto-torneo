@@ -32,6 +32,7 @@ export function LeaderboardClient({
   rulesText,
   scoringRule,
   participants,
+  championImageUrl,
 }: {
   tournamentId: string
   tournamentName: string
@@ -50,6 +51,7 @@ export function LeaderboardClient({
   rulesText?: string
   scoringRule?: ScoringRule
   participants: Participant[]
+  championImageUrl?: string
 }) {
   const [isMounted, setIsMounted] = useState(false)
   const [host, setHost] = useState('localhost')
@@ -58,6 +60,7 @@ export function LeaderboardClient({
   const [activeTab, setActiveTab] = useState<'ranking' | 'participants' | 'matches' | 'rules' | 'statistics'>('ranking')
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null)
   const [watchingStream, setWatchingStream] = useState<string | null>(null)
+  const [showHallOfFame, setShowHallOfFame] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
   const [isSyncing, setIsSyncing] = useState(false)
@@ -351,6 +354,19 @@ export function LeaderboardClient({
           {status === 'draft' && <span className="inline-block mt-4 text-xs font-bold bg-white/10 px-3 py-1 rounded text-white/50 uppercase">Pre-torneo</span>}
           {status === 'active' && <span className="inline-block mt-4 text-xs font-bold bg-red-500/20 border border-red-500/30 px-3 py-1 rounded text-red-400 uppercase animate-pulse">● En Vivo</span>}
           {status === 'ended' && <span className="inline-block mt-4 text-xs font-bold bg-white/10 px-3 py-1 rounded text-white/50 uppercase">Torneo Finalizado</span>}
+          
+          {championImageUrl && (
+            <button
+              onClick={() => setShowHallOfFame(true)}
+              className="mt-6 group relative flex items-center gap-3 px-6 py-3 rounded-2xl bg-gold/10 border border-gold/30 text-gold font-orbitron font-black text-sm uppercase tracking-widest hover:bg-gold/20 hover:border-gold/50 transition-all shadow-[0_0_20px_rgba(255,215,0,0.1)] hover:shadow-[0_0_30px_rgba(255,215,0,0.2)]"
+            >
+              <div className="absolute inset-0 bg-gold/5 blur-xl group-hover:bg-gold/10 transition-colors rounded-2xl" />
+              <span className="relative flex items-center gap-2">
+                <span className="text-lg">🏆</span>
+                Salón de la Fama
+              </span>
+            </button>
+          )}
         </div>
 
       {/* Top Fragger Hero Section (Individual) */}
@@ -870,6 +886,51 @@ export function LeaderboardClient({
           </div>
         </motion.div>
       )}
+        <AnimatePresence>
+          {showHallOfFame && championImageUrl && (
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md"
+              onClick={() => setShowHallOfFame(false)}
+            >
+              <motion.div 
+                initial={{ scale: 0.8, opacity: 0, y: 30 }} 
+                animate={{ scale: 1, opacity: 1, y: 0 }} 
+                exit={{ scale: 0.8, opacity: 0, y: 30 }}
+                className="relative max-w-5xl w-full flex flex-col items-center"
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Decorative Elements */}
+                <div className="absolute -top-20 -z-10 w-64 h-64 bg-gold/20 rounded-full blur-[100px] animate-pulse" />
+                
+                <h2 className="font-orbitron font-black text-2xl sm:text-4xl text-gold mb-8 uppercase tracking-widest text-center flex flex-col items-center gap-2">
+                  <span className="text-4xl sm:text-6xl drop-shadow-[0_0_20px_rgba(255,215,0,0.4)]">🏆</span>
+                  Salón de la Fama
+                  <div className="h-1 w-24 bg-gradient-to-r from-transparent via-gold to-transparent mt-2" />
+                </h2>
+
+                <div className="relative group p-1 bg-gradient-to-b from-gold/50 via-gold/10 to-transparent rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(255,215,0,0.15)]">
+                  <img 
+                    src={championImageUrl} 
+                    alt="Campeón" 
+                    className="max-h-[70vh] rounded-2xl object-contain shadow-2xl transition-transform duration-700 group-hover:scale-[1.02]" 
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+                </div>
+
+                <button 
+                  onClick={() => setShowHallOfFame(false)}
+                  className="mt-8 px-8 py-3 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white rounded-xl font-bold text-sm transition-all border border-white/10 flex items-center gap-3 group"
+                >
+                  <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                  Volver al Marcador
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </>
   )
