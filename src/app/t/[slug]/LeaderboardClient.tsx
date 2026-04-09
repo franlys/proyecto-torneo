@@ -164,18 +164,24 @@ export function LeaderboardClient({
         killRate: s ? Number(s.kill_rate) : 0,
         potTopCount: s ? (s.pot_top_count ?? 0) : 0,
         vipScore: s ? Number(s.vip_score) : 0,
-        rank: s ? s.rank : (teamsData.length + 1),
-        previousRank: s ? s.previous_rank : (teamsData.length + 1),
+        rank: s ? s.rank : (teamsData.length + 100), // Push to bottom if no standings yet
+        previousRank: s ? s.previous_rank : (teamsData.length + 100),
       }
     }).sort((a: any, b: any) => {
-      if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints
-      if (b.totalKills !== a.totalKills) return b.totalKills - a.totalKills
-      return a.rank - b.rank
+      // Prioritize teams WITH points/kills, then by rank, then by name as final fallback
+      if ((b.totalPoints || 0) !== (a.totalPoints || 0)) return (b.totalPoints || 0) - (a.totalPoints || 0)
+      if ((b.totalKills || 0) !== (a.totalKills || 0)) return (b.totalKills || 0) - (a.totalKills || 0)
+      if (a.rank !== b.rank) return a.rank - b.rank
+      return a.teamName.localeCompare(b.teamName)
     })
 
     setStandings(merged)
-  }, [tournamentId, supabase])
-
+  }, [tournamentId, supabase, refreshStandingsFromDB])
+ 
+  useEffect(() => {
+    refreshStandingsFromDB()
+  }, [refreshStandingsFromDB])
+ 
   useEffect(() => {
     // Subscribe to team_standings changes (score updates)
     const standingsChannel = supabase

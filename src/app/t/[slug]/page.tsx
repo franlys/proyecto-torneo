@@ -73,14 +73,15 @@ export default async function PublicLeaderboardPage({
       killRate: s ? Number(s.kill_rate) : 0,
       potTopCount: s ? (s.pot_top_count ?? 0) : 0,
       vipScore: s ? Number(s.vip_score) : 0,
-      rank: s ? s.rank : (idx + 1),
-      previousRank: s ? s.previous_rank : (idx + 1),
+      rank: s ? s.rank : (allTeams.length + 100),
+      previousRank: s ? s.previous_rank : (allTeams.length + 100),
     }
   }).sort((a, b) => {
-    // Sort by points desc, then by kills desc, then by registration order
-    if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints
-    if (b.totalKills !== a.totalKills) return b.totalKills - a.totalKills
-    return a.rank - b.rank
+    // Deterministic sort: Points > Kills > Rank > Name
+    if ((b.totalPoints || 0) !== (a.totalPoints || 0)) return (b.totalPoints || 0) - (a.totalPoints || 0)
+    if ((b.totalKills || 0) !== (a.totalKills || 0)) return (b.totalKills || 0) - (a.totalKills || 0)
+    if (a.rank !== b.rank) return a.rank - b.rank
+    return a.teamName.localeCompare(b.teamName)
   })
 
   // Format teams for the participants tab
