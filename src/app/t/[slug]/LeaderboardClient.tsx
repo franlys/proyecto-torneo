@@ -367,17 +367,6 @@ export function LeaderboardClient({
                 <span className="p-1 px-2 rounded bg-neon-cyan/20 text-[10px] sm:text-xs font-sans">Individual</span>
                 Top Fragger MVP
               </h2>
-              {/* Force recalc button for admins/testing */}
-              <button 
-                onClick={() => handleSync()}
-                disabled={isSyncing}
-                className="group flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[8px] font-black text-white/30 uppercase tracking-widest hover:bg-neon-cyan/10 hover:border-neon-cyan/30 hover:text-neon-cyan transition-all disabled:opacity-50"
-              >
-                <svg className={`w-2.5 h-2.5 ${isSyncing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                {syncStatus || (isSyncing ? 'Sincronizando...' : 'Recalcular Ahora')}
-              </button>
             </div>
             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-neon-cyan/50 to-transparent" />
           </div>
