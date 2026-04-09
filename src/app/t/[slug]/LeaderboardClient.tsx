@@ -127,6 +127,34 @@ export function LeaderboardClient({
 
   // Shared helper: fetch all teams + standings and rebuild the standings state.
   // Used by both Realtime subscriptions so the merge logic is not duplicated.
+  const refreshStandingsFromDB = React.useCallback(async () => {
+    const [
+      { data: standingsData }, 
+      { data: teamsData },
+      { data: subsData },
+      { data: matchesData }
+    ] = await Promise.all([
+      supabase
+        .from('team_standings')
+        .select('*')
+        .eq('tournament_id', tournamentId),
+      supabase
+        .from('teams')
+        .select('id, name, avatar_url, stream_url, participants(id, team_id, display_name, avatar_url, stream_url, is_captain, total_kills)')
+        .eq('tournament_id', tournamentId)
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('submissions')
+        .select('*')
+        .eq('tournament_id', tournamentId)
+        .order('submitted_at', { descending: true }),
+      supabase
+        .from('matches')
+        .select('*')
+        .eq('tournament_id', tournamentId)
+        .order('match_number', { ascending: true })
+    ])
+
     if (!teamsData) return
 
     // 1. Normalización de Partidas (Matches)
