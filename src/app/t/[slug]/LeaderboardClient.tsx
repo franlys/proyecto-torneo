@@ -176,7 +176,7 @@ export function LeaderboardClient({
     })
 
     setStandings(merged)
-  }, [tournamentId, supabase, refreshStandingsFromDB])
+  }, [tournamentId, supabase])
  
   useEffect(() => {
     refreshStandingsFromDB()
