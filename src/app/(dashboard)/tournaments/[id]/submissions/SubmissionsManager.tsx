@@ -114,7 +114,7 @@ export function SubmissionsManager({
                       <tr>
                         <th className="px-6 py-4 font-medium">Equipo/Jugador</th>
                         <th className="px-6 py-4 font-medium text-center">Kills</th>
-                        <th className="px-6 py-4 font-medium text-center">Pot Top</th>
+                        <th className="px-6 py-4 font-medium text-center">Rango / Top</th>
                         <th className="px-6 py-4 font-medium">Validación IA</th>
                         <th className="px-6 py-4 font-medium">Estado</th>
                         <th className="px-6 py-4 font-medium text-right">Acciones</th>
@@ -126,12 +126,18 @@ export function SubmissionsManager({
                           <td className="px-6 py-4 font-medium text-white">{getTeamName(sub)}</td>
                           <td className="px-6 py-4 text-center font-orbitron text-neon-cyan">{sub.kill_count}</td>
                           <td className="px-6 py-4 text-center">
-                            {sub.pot_top ? (
-                              <span className="inline-flex max-w-fit mx-auto px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-gold/20 text-gold border border-gold/30">Sí</span>
-                            ) : (
-                              <span className="text-white/20">-</span>
-                            )}
-                          </td>
+                             {sub.rank ? (
+                               <span className={`inline-flex max-w-fit mx-auto px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${
+                                 sub.rank === 1 ? 'bg-gold/20 text-gold border-gold/30' : 'bg-white/10 text-white/60 border-white/20'
+                               }`}>
+                                 Top {sub.rank}
+                               </span>
+                             ) : sub.pot_top ? (
+                               <span className="inline-flex max-w-fit mx-auto px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-gold/20 text-gold border border-gold/30">Top 1</span>
+                             ) : (
+                               <span className="text-white/20">-</span>
+                             )}
+                           </td>
                           <td className="px-6 py-4">
                             {sub.ai_status === 'processing' && (
                               <div className="flex items-center gap-2 text-white/40">
@@ -179,30 +185,47 @@ export function SubmissionsManager({
                             )}
                           </td>
                           <td className="px-6 py-4 text-right">
-                            {sub.status === 'pending' && (
-                              <div className="flex items-center justify-end gap-2">
-                                <button
-                                  onClick={() => handleApprove(sub.id)}
-                                  disabled={loadingId === sub.id}
-                                  className="p-1.5 text-white/50 hover:text-green-400 hover:bg-green-400/10 rounded transition-colors"
-                                  title="Aprobar"
-                                >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                  </svg>
-                                </button>
-                                <button
-                                  onClick={() => handleReject(sub.id)}
-                                  disabled={loadingId === sub.id}
-                                  className="p-1.5 text-white/50 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
-                                  title="Rechazar"
-                                >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                  </svg>
-                                </button>
-                              </div>
-                            )}
+                             <div className="flex items-center justify-end gap-2">
+                               {sub.evidence_files && sub.evidence_files.length > 0 && (
+                                   <a 
+                                     href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/evidences/${sub.evidence_files[0].storage_path}`}
+                                     target="_blank"
+                                     rel="noreferrer"
+                                     className="p-1.5 text-white/50 hover:text-neon-cyan hover:bg-neon-cyan/10 rounded transition-colors"
+                                     title="Ver Evidencia"
+                                   >
+                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                     </svg>
+                                   </a>
+                               )}
+                               
+                               {sub.status === 'pending' && (
+                                 <>
+                                   <button
+                                     onClick={() => handleApprove(sub.id)}
+                                     disabled={loadingId === sub.id}
+                                     className="p-1.5 text-white/50 hover:text-green-400 hover:bg-green-400/10 rounded transition-colors"
+                                     title="Aprobar"
+                                   >
+                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                     </svg>
+                                   </button>
+                                   <button
+                                     onClick={() => handleReject(sub.id)}
+                                     disabled={loadingId === sub.id}
+                                     className="p-1.5 text-white/50 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
+                                     title="Rechazar"
+                                   >
+                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                     </svg>
+                                   </button>
+                                 </>
+                               )}
+                             </div>
                           </td>
                         </tr>
                       ))}

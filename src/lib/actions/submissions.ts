@@ -323,7 +323,7 @@ export async function getSubmissions(
 
   const { data, error } = await supabase
     .from('submissions')
-    .select('*, teams(name), matches(name, match_number)')
+    .select('*, teams(name), matches(name, match_number), evidence_files(*)')
     .eq('tournament_id', tournamentId)
     .order('submitted_at', { ascending: false })
 
