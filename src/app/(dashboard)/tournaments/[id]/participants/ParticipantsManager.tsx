@@ -378,61 +378,48 @@ export function ParticipantsManager({
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                   </svg>
                                 </button>
-                          const name = nameInput.value.trim()
-                          const streamUrl = streamInput.value.trim()
-                          if (!name) return
-
-                          const isFirst = roster.length === 0
-                          const pRes = await addParticipant(tournamentId, {
-                            displayName: name,
-                            teamId: team.id,
-                            isCaptain: isFirst,
-                            streamUrl: streamUrl || undefined,
-                          })
-
-                          if ('error' in pRes) {
-                            alert(pRes.error)
-                          } else {
-                            setParticipants([...participants, pRes.data])
-                            nameInput.value = ''
-                            streamInput.value = ''
-                          }
-                        }}
-                        className="flex flex-col sm:flex-row gap-2"
-                      >
-                        <input
-                          type="text"
-                          name="pName"
-                          placeholder="Nombre del jugador..."
-                          className="flex-[2] bg-black/40 border border-white/10 rounded-md px-3 py-1.5 text-sm outline-none focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan text-white placeholder:text-white/30"
-                        />
-                        <input
-                          type="url"
-                          name="pStream"
-                          placeholder="Link Stream (Opcional)"
-                          className="flex-[2] bg-black/40 border border-white/10 rounded-md px-3 py-1.5 text-sm outline-none focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan text-white placeholder:text-white/30"
-                        />
-                        <button type="submit" className="flex-[1] px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-md text-sm transition-colors whitespace-nowrap">
-                          Añadir
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {roster.length < maxPerTeam && (
+                        <button
+                          onClick={() => {
+                            const name = prompt('Nombre del jugador:')
+                            if (name) handleAddParticipant(team.id, name)
+                          }}
+                          className="flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-dashed border-white/5 
+                            hover:border-neon-purple/40 hover:bg-white/[0.02] transition-all group/btn"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mb-1 group-hover/btn:scale-110 transition-transform">
+                            <span className="text-white/40 text-lg">+</span>
+                          </div>
+                          <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">Añadir Jugador</span>
                         </button>
-                      </form>
+                      )}
+                    </div>
+                    
+                    {roster.length === maxPerTeam ? (
+                      <div className="text-[10px] text-neon-cyan font-bold italic">Equipo completo</div>
                     ) : (
-                      <p className="text-xs text-neon-cyan/80 mt-2">Equipo completo</p>
+                      <div className="text-[10px] text-white/20">Faltan {maxPerTeam - roster.length} jugadores</div>
                     )}
+
+                    <div className="mt-6 flex items-center gap-3 p-3 bg-black/40 rounded-xl border border-white/5">
+                      <svg className="w-4 h-4 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.172 13.828a4 4 0 015.656 0l4-4a4 4 0 115.656 5.656l-1.101 1.101" />
+                      </svg>
+                      <input 
+                        type="text" 
+                        readOnly 
+                        value={`${window.location.origin}/t/${tournamentSlug}/team/${team.id}`}
+                        className="flex-1 bg-transparent text-[10px] text-white/40 outline-none truncate"
+                      />
+                    </div>
                   </div>
                 )}
-
-                {/* Portal Link Banner - Always visible */}
-                <div className="mt-3 pt-3 border-t border-white/5">
-                  <div className="flex items-center gap-2 bg-white/[0.03] border border-white/5 rounded-lg px-3 py-2">
-                    <svg className="w-3.5 h-3.5 text-white/30 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 005.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                    </svg>
-                    <p className="text-[10px] text-white/30 font-mono truncate flex-1">
-                      {typeof window !== 'undefined' ? `${window.location.origin}/t/${tournamentSlug}/team/${team.id}` : `/t/${tournamentSlug}/team/${team.id}`}
-                    </p>
-                  </div>
-                </div>
               </div>
             )
           })}
