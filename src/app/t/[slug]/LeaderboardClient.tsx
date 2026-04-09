@@ -783,10 +783,10 @@ export function LeaderboardClient({
                                <TeamDetails 
                                  teamId={s.teamId}
                                  teamName={s.teamName}
-                                 matches={matches || []}
-                                 submissions={submissions || []}
+                                 matches={currentMatches || []}
+                                 submissions={currentSubmissions || []}
                                  scoringRule={scoringRule!}
-                                 participants={participants}
+                                 participants={participantsWithCalculatedKills}
                                  primaryColor={primaryColor}
                                />
                             </td>
