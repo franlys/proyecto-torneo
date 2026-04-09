@@ -58,6 +58,8 @@ export function LeaderboardClient({
   const primaryColor = theme?.primary_color || theme?.primaryColor || '#00F5FF'
   const [standings, setStandings] = useState(initialStandings)
   const [currentTeams, setCurrentTeams] = useState(teams || [])
+  const [currentSubmissions, setCurrentSubmissions] = useState(submissions || [])
+  const [currentMatches, setCurrentMatches] = useState(matches || [])
   const [activeTab, setActiveTab] = useState<'ranking' | 'participants' | 'matches' | 'rules' | 'statistics'>('ranking')
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null)
   const [watchingStream, setWatchingStream] = useState<string | null>(null)
@@ -126,52 +128,81 @@ export function LeaderboardClient({
   // Shared helper: fetch all teams + standings and rebuild the standings state.
   // Used by both Realtime subscriptions so the merge logic is not duplicated.
   const refreshStandingsFromDB = React.useCallback(async () => {
-    const [{ data: standingsData }, { data: teamsData }] = await Promise.all([
+    console.log('[REALTIME] Executing full sync for tournament:', tournamentId)
+    
+    const [
+      { data: standingsData }, 
+      { data: teamsData },
+      { data: subsData },
+      { data: matchesData }
+    ] = await Promise.all([
       supabase
         .from('team_standings')
         .select('*')
-        .eq('tournament_id', tournamentId)
-        .order('rank', { ascending: true }),
+        .eq('tournament_id', tournamentId),
       supabase
         .from('teams')
-        .select('id, name, avatar_url, stream_url, participants(id, display_name, stream_url, total_kills)')
+        .select('id, name, avatar_url, stream_url, participants(id, team_id, display_name, avatar_url, stream_url, is_captain, total_kills)')
         .eq('tournament_id', tournamentId)
         .order('created_at', { ascending: true }),
+      supabase
+        .from('submissions')
+        .select('*')
+        .eq('tournament_id', tournamentId)
+        .order('submitted_at', { descending: true }),
+      supabase
+        .from('matches')
+        .select('*')
+        .eq('tournament_id', tournamentId)
+        .order('match_number', { ascending: true })
     ])
 
-    // Always build from teamsData (authoritative list) so every team appears
-    // even if it has no standings row yet.
     if (!teamsData) return
+
+    // Normalización de participantes: de snake_case (DB) a camelCase (Frontend)
+    const normalizedTeams = teamsData.map((t: any) => ({
+      ...t,
+      avatarUrl: t.avatar_url,
+      streamUrl: t.stream_url,
+      participants: (t.participants || []).map((p: any) => ({
+        id: p.id,
+        teamId: p.team_id,
+        displayName: p.display_name,
+        avatarUrl: p.avatar_url,
+        streamUrl: p.stream_url,
+        isCaptain: p.is_captain,
+        totalKills: p.total_kills || 0
+      }))
+    }))
 
     const standingsMap = new Map((standingsData || []).map((s: any) => [s.team_id, s]))
 
-    const merged = teamsData.map((t: any) => {
+    const merged = normalizedTeams.map((t: any) => {
       const s = standingsMap.get(t.id)
 
       const teamStreams: { name: string; url: string }[] = []
-      if (t.stream_url) teamStreams.push({ name: 'Equipo', url: t.stream_url })
+      if (t.streamUrl) teamStreams.push({ name: 'Equipo', url: t.streamUrl })
       if (t.participants) {
         t.participants.forEach((p: any) => {
-          if (p.stream_url) teamStreams.push({ name: p.display_name, url: p.stream_url })
+          if (p.streamUrl) teamStreams.push({ name: p.displayName, url: p.streamUrl })
         })
       }
 
       return {
         teamId: t.id,
         teamName: t.name,
-        avatarUrl: t.avatar_url,
-        streamUrl: t.stream_url,
+        avatarUrl: t.avatarUrl,
+        streamUrl: t.streamUrl,
         streams: teamStreams,
         totalPoints: s ? Number(s.total_points) : 0,
         totalKills: s ? (s.total_kills ?? 0) : 0,
         killRate: s ? Number(s.kill_rate) : 0,
         potTopCount: s ? (s.pot_top_count ?? 0) : 0,
         vipScore: s ? Number(s.vip_score) : 0,
-        rank: s ? s.rank : (teamsData.length + 100), // Push to bottom if no standings yet
-        previousRank: s ? s.previous_rank : (teamsData.length + 100),
+        rank: s ? s.rank : (normalizedTeams.length + 100),
+        previousRank: s ? s.previous_rank : (normalizedTeams.length + 100),
       }
     }).sort((a: any, b: any) => {
-      // Prioritize teams WITH points/kills, then by rank, then by name as final fallback
       if ((b.totalPoints || 0) !== (a.totalPoints || 0)) return (b.totalPoints || 0) - (a.totalPoints || 0)
       if ((b.totalKills || 0) !== (a.totalKills || 0)) return (b.totalKills || 0) - (a.totalKills || 0)
       if (a.rank !== b.rank) return a.rank - b.rank
@@ -179,7 +210,9 @@ export function LeaderboardClient({
     })
 
     setStandings(merged)
-    setCurrentTeams(teamsData)
+    setCurrentTeams(normalizedTeams)
+    if (subsData) setCurrentSubmissions(subsData)
+    if (matchesData) setCurrentMatches(matchesData)
   }, [tournamentId, supabase])
  
   useEffect(() => {
@@ -727,12 +760,12 @@ export function LeaderboardClient({
         </div>
       ) : activeTab === 'participants' ? (
         <div className="space-y-4">
-          {(!teams || teams.length === 0) ? (
+          {(!currentTeams || currentTeams.length === 0) ? (
             <div className="py-16 text-center border border-dashed border-white/10 rounded-2xl">
               <p className="text-white/40">No hay participantes registrados aún</p>
             </div>
           ) : (
-            teams.map((team: any) => (
+            currentTeams.map((team: any) => (
               <div key={team.id} className="bg-dark-card/80 backdrop-blur-md border border-white/5 rounded-2xl p-5 hover:border-white/10 transition-colors">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -870,8 +903,8 @@ export function LeaderboardClient({
                       key={s.teamId}
                       teamId={s.teamId}
                       teamName={s.teamName}
-                      matches={matches || []}
-                      submissions={submissions || []}
+                      matches={currentMatches}
+                      submissions={currentSubmissions}
                       scoringRule={scoringRule!}
                       participants={currentParticipants}
                       primaryColor={primaryColor}
@@ -883,8 +916,8 @@ export function LeaderboardClient({
         </div>
       ) : activeTab === 'matches' ? (
         <MatchRecap 
-          matches={matches || []} 
-          submissions={submissions || []} 
+          matches={currentMatches} 
+          submissions={currentSubmissions} 
           participants={currentParticipants}
           primaryColor={primaryColor} 
         />

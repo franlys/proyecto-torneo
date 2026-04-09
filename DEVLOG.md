@@ -399,3 +399,25 @@ Ejecutar el SQL de la migración `20240419000000` en el SQL Editor de Supabase S
 
 ---
 
+## [2026-04-09 (noche)] — Diagnóstico de Regresiones en Leaderboard (Sistema de Integridad)
+
+### Problemas Detectados
+
+- **Regresión A: Desincronización de Props**: Al implementar el refresco por estados (`currentTeams`), las pestañas de "Partidas" y "Estadísticas" siguieron usando las props estáticas del servidor (`submissions`, `matches`). Al aprobar una partida, los puntos subían en el ranking pero las gráficas permanecían vacías por no recibir el update del estado.
+- **Regresión B: Mismatch Snake vs Camel Case**: Supabase retorna objetos de participantes con `display_name` y `total_kills`. El frontend espera `displayName` y `totalKills`. Al omitir el mapeo manual en la nueva función de refresco, el sistema no encontraba los nombres ni las bajas.
+- **Regresión C: Visibilidad de Pestañas**: La pestaña de "Participantes" quedó anclada a la prop original `teams`, ignorando el estado de Realtime, lo que ocultaba nuevos registros.
+
+### Soluciones Planificadas
+
+1.  **Orquestación Total**: Mover `submissions` y `matches` al estado de React y refrescarlos junto a los equipos.
+2.  **Mapping Decorator**: Crear una utilidad interna para normalizar los ránkings de participantes a CamelCase.
+3.  **Unificación de Fuente de Verdad**: Apuntar todos los renders de pestañas a los estados `current*`.
+
+### Soluciones Aplicadas
+
+- **Normalizador de Datos**: Se implementó una capa de transformación en `refreshStandingsFromDB` que convierte los campos `snake_case` de la base de datos a `camelCase` para el frontend. Esto restauró los nombres y bajas de los jugadores.
+- **Estado Global del Cliente**: `LeaderboardClient` ahora gestiona `standings`, `teams`, `submissions` y `matches` como un conjunto orquestado. Cualquier cambio en Realtime dispara un refresco completo de este bloque, manteniendo la coherencia entre gráficas, ránkings y listas de partidas.
+- **Sincronización de Tabs**: Se actualizaron los componentes `MatchRecap` y `TeamDetails` para consumir este estado centralizado, eliminando la dependencia de props estáticas del servidor.
+
+---
+
