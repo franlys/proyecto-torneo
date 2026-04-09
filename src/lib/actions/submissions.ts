@@ -188,11 +188,9 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
 
   console.log(`[STANDINGS] Upserting ${standingRows.length} rows to team_standings`)
   const { error: upsertErr } = await supabase.from('team_standings').upsert(standingRows, { onConflict: 'tournament_id,team_id' })
-  if (upsertErr) console.error(`[STANDINGS] Upsert ERROR:`, upsertErr)
-  else console.log(`[STANDINGS] Successfully updated team_standings`)
-
-  // Upsert uses conflict on unique (tournament_id, team_id)
-  await supabase.from('team_standings').upsert(standingRows, { onConflict: 'tournament_id,team_id' })
+  if (upsertErr) {
+    console.error(`[STANDINGS] Upsert ERROR:`, upsertErr)
+  }
 
   // ─── NEW: Update Individual Participant Kills ─────────────────────────────
   
@@ -216,20 +214,6 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
     console.log(`[STANDINGS] Updating total_kills for ${playerUpdates.length} participants`)
     const { error: pErr } = await supabase.from('participants').upsert(playerUpdates)
     if (pErr) console.error(`[STANDINGS] Participant KILLS Update ERROR:`, pErr)
-  }
-  
-  subs.forEach((s: any) => {
-    const breakdown = s.player_kills || {}
-    Object.entries(breakdown).forEach(([pId, kills]) => {
-      playerKillsMap[pId] = (playerKillsMap[pId] || 0) + (kills as number)
-    })
-  })
-
-  // Update participants total_kills
-  for (const [pId, totalKills] of Object.entries(playerKillsMap)) {
-    await supabase.from('participants')
-      .update({ total_kills: totalKills })
-      .eq('id', pId)
   }
 }
 
