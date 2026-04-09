@@ -69,21 +69,23 @@ export function MatchRecap({ matches, submissions, participants, primaryColor }:
       , activeSubmissions[0])
     : null
 
-  // NUEVO: Identificar el nombre del JUGADOR MVP de esta ronda
-  const roundPlayerMvpName = useMemo(() => {
+  // NUEVO: Identificar el JUGADOR MVP y sus bajas de esta ronda
+  const roundPlayerMvp = useMemo(() => {
     if (!matchTopFragger || !matchTopFragger.playerKills) return null
     
-    // Encontrar el ID del jugador con más bajas en este envío
     const entries = Object.entries(matchTopFragger.playerKills)
     if (entries.length === 0) return null
     
-    const [topPlayerId] = entries.reduce((best, curr) => 
-      curr[1] > best[1] ? curr : best
+    // Encontrar el ID y bajas del jugador con más bajas en este envío
+    const [topPlayerId, kills] = entries.reduce((best, curr) => 
+      (curr[1] as number) > (best[1] as number) ? curr : best
     )
     
-    // Buscar el nombre en la lista de participantes
     const p = participants.find(part => part.id === topPlayerId)
-    return p ? p.displayName : '—'
+    return {
+      name: p ? p.displayName : '—',
+      kills: kills as number
+    }
   }, [matchTopFragger, participants])
 
   const totalKillsInSelection = activeSubmissions.reduce((sum, s) => sum + (s.killCount ?? 0), 0)
@@ -191,10 +193,10 @@ export function MatchRecap({ matches, submissions, participants, primaryColor }:
                         Top Fragger de la Ronda
                       </p>
                       <p className="font-orbitron font-bold text-base text-white truncate max-w-[150px]">
-                        {roundPlayerMvpName ?? matchTopFragger.teams?.name ?? '—'}
+                        {roundPlayerMvp?.name ?? matchTopFragger.teams?.name ?? '—'}
                       </p>
                       <p className="text-[10px] text-white/40">
-                         Logró <span className="text-neon-purple font-bold">{matchTopFragger.killCount}</span> bajas
+                         Logró <span className="text-neon-purple font-bold">{roundPlayerMvp?.kills ?? matchTopFragger.killCount}</span> bajas
                       </p>
                     </div>
                   </div>
