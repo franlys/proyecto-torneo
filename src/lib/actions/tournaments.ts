@@ -302,7 +302,7 @@ export async function finishTournament(
   // Verify ownership
   const { data: tournament, error: fetchErr } = await supabase
     .from('tournaments')
-    .select('creator_id, status')
+    .select('creator_id, status, slug')
     .eq('id', id)
     .single()
 
@@ -314,7 +314,7 @@ export async function finishTournament(
 
   const { error: finishErr } = await supabase
     .from('tournaments')
-    .update({ 
+    .update({
       status: 'finished',
       champion_image_url: championImageUrl || null,
       end_date: new Date().toISOString()
@@ -322,10 +322,12 @@ export async function finishTournament(
     .eq('id', id)
 
   if (finishErr) return { error: finishErr.message }
-  
+
   revalidatePath(`/tournaments/${id}`)
   revalidatePath('/tournaments')
   revalidatePath('/hall-of-fame')
+  // Invalidate the public leaderboard page so the next visit gets fresh status
+  if (tournament.slug) revalidatePath(`/t/${tournament.slug}`)
   
   return { success: true }
 }
