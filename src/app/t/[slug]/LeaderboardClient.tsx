@@ -53,6 +53,16 @@ export function LeaderboardClient({
   participants: Participant[]
   championImageUrl?: string
 }) {
+  const [isMounted, setIsMounted] = useState(false)
+  const [host, setHost] = useState('localhost')
+  const [standings, setStandings] = useState(initialStandings)
+  const [currentTeams, setCurrentTeams] = useState(teams || [])
+  const [currentSubmissions, setCurrentSubmissions] = useState(submissions || [])
+  const [currentMatches, setCurrentMatches] = useState(matches || [])
+  const [activeTab, setActiveTab] = useState<'ranking' | 'participants' | 'matches' | 'rules' | 'statistics'>('ranking')
+  const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null)
+  const [watchingStream, setWatchingStream] = useState<string | null>(null)
+
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncStatus, setSyncStatus] = useState<string | null>(null)
 
@@ -62,9 +72,6 @@ export function LeaderboardClient({
   const [currentChampionImg, setCurrentChampionImg] = useState(championImageUrl)
   const [isMobile, setIsMobile] = useState(false)
   const [showHallOfFame, setShowHallOfFame] = useState(false)
-
-  const [isSyncing, setIsSyncing] = useState(false)
-  const [syncStatus, setSyncStatus] = useState<string | null>(null)
 
   useEffect(() => {
     setIsMounted(true)
