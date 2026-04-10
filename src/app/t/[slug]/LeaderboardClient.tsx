@@ -53,18 +53,15 @@ export function LeaderboardClient({
   participants: Participant[]
   championImageUrl?: string
 }) {
-  const [isMounted, setIsMounted] = useState(false)
-  const [host, setHost] = useState('localhost')
-  const primaryColor = theme?.primary_color || theme?.primaryColor || '#00F5FF'
-  const [standings, setStandings] = useState(initialStandings)
-  const [currentTeams, setCurrentTeams] = useState(teams || [])
-  const [currentSubmissions, setCurrentSubmissions] = useState(submissions || [])
-  const [currentMatches, setCurrentMatches] = useState(matches || [])
-  const [activeTab, setActiveTab] = useState<'ranking' | 'participants' | 'matches' | 'rules' | 'statistics'>('ranking')
-  const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null)
-  const [watchingStream, setWatchingStream] = useState<string | null>(null)
-  const [showHallOfFame, setShowHallOfFame] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [syncStatus, setSyncStatus] = useState<string | null>(null)
+
+  // Real-time metadata states
+  const [currentTheme, setCurrentTheme] = useState(theme)
+  const [currentStatus, setCurrentStatus] = useState(status)
+  const [currentChampionImg, setCurrentChampionImg] = useState(championImageUrl)
   const [isMobile, setIsMobile] = useState(false)
+  const [showHallOfFame, setShowHallOfFame] = useState(false)
 
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncStatus, setSyncStatus] = useState<string | null>(null)
@@ -73,6 +70,12 @@ export function LeaderboardClient({
     setIsMounted(true)
     setHost(window.location.hostname)
   }, [])
+
+  const primaryColor = currentTheme?.primary_color || currentTheme?.primaryColor || '#00F5FF'
+  const backgroundValue = currentTheme?.background_value
+  const backgroundMobileValue = currentTheme?.background_mobile_value
+  const activeBackground = (isMobile && backgroundMobileValue) ? backgroundMobileValue : backgroundValue
+  const logoUrl = currentTheme?.logo_url
 
   useEffect(() => {
     setExpandedTeamId(null)
@@ -345,17 +348,43 @@ export function LeaderboardClient({
       )
       .subscribe()
 
+    // Subscribe to theme changes
+    const themeChannel = supabase
+      .channel(`theme:${tournamentId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'leaderboard_themes', filter: `tournament_id=eq.${tournamentId}` },
+        (payload: any) => {
+          console.log('[REALTIME] Theme updated:', payload.new)
+          setCurrentTheme(payload.new)
+        }
+      )
+      .subscribe()
+
+    // Subscribe to tournament status/champion updates
+    const tournamentChannel = supabase
+      .channel(`tournament:${tournamentId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tournaments', filter: `id=eq.${tournamentId}` },
+        (payload: any) => {
+          console.log('[REALTIME] Tournament metadata updated:', payload.new)
+          if (payload.new.status) setCurrentStatus(payload.new.status)
+          if (payload.new.champion_image_url !== undefined) {
+             setCurrentChampionImg(payload.new.champion_image_url)
+          }
+        }
+      )
+      .subscribe()
+
     return () => {
       supabase.removeChannel(standingsChannel)
       supabase.removeChannel(teamsChannel)
       supabase.removeChannel(participantsChannel)
+      supabase.removeChannel(themeChannel)
+      supabase.removeChannel(tournamentChannel)
     }
   }, [tournamentId, supabase, refreshStandingsFromDB])
-
-  const backgroundValue = theme?.background_value
-  const backgroundMobileValue = theme?.background_mobile_value
-  const activeBackground = (isMobile && backgroundMobileValue) ? backgroundMobileValue : backgroundValue
-  const logoUrl = theme?.logo_url
 
   const isVideoBackground = activeBackground?.toLowerCase().match(/\.(mp4|webm|ogg)$/)
   
@@ -401,7 +430,7 @@ export function LeaderboardClient({
           {youtubeId ? (
             <div 
               className="absolute top-1/2 left-1/2 min-w-full min-h-full w-[177.77vh] h-[56.25vw] -translate-x-1/2 -translate-y-1/2"
-              style={{ opacity: (theme?.background_opacity ?? 40) / 100 }}
+              style={{ opacity: (currentTheme?.background_opacity ?? 40) / 100 }}
             >
               <iframe
                 src={`https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&mute=1&loop=1&playlist=${youtubeId}&controls=0&modestbranding=1&rel=0&showinfo=0&privacy_mode=1`}
@@ -414,7 +443,7 @@ export function LeaderboardClient({
               {twitchUser ? (
                 <div 
                   className="absolute top-1/2 left-1/2 min-w-full min-h-full w-[177.77vh] h-[56.25vw] -translate-x-1/2 -translate-y-1/2"
-                  style={{ opacity: (theme?.background_opacity ?? 40) / 100 }}
+                  style={{ opacity: (currentTheme?.background_opacity ?? 40) / 100 }}
                 >
                   <iframe
                     src={`https://player.twitch.tv/?channel=${twitchUser}&parent=${host}&muted=true&autoplay=true&controls=false`}
@@ -425,7 +454,7 @@ export function LeaderboardClient({
               ) : kickUser ? (
                 <div 
                   className="absolute top-1/2 left-1/2 min-w-full min-h-full w-[177.77vh] h-[56.25vw] -translate-x-1/2 -translate-y-1/2"
-                  style={{ opacity: (theme?.background_opacity ?? 40) / 100 }}
+                  style={{ opacity: (currentTheme?.background_opacity ?? 40) / 100 }}
                 >
                   <iframe
                     src={`https://player.kick.com/${kickUser}?muted=true&autoplay=true`}
@@ -438,7 +467,7 @@ export function LeaderboardClient({
                   src={activeBackground} 
                   autoPlay loop muted playsInline 
                   className="w-full h-full object-cover block absolute inset-0" 
-                  style={{ opacity: (theme?.background_opacity ?? 40) / 100 }}
+                  style={{ opacity: (currentTheme?.background_opacity ?? 40) / 100 }}
                 />
               ) : (
                 <div 
@@ -446,7 +475,7 @@ export function LeaderboardClient({
                   className="w-full h-full bg-cover bg-center block" 
                   style={{ 
                     backgroundImage: `url(${activeBackground})`,
-                    opacity: (theme?.background_opacity ?? 40) / 100 
+                    opacity: (currentTheme?.background_opacity ?? 40) / 100 
                   }} 
                 />
               )}
@@ -518,11 +547,11 @@ export function LeaderboardClient({
           )}
 
           {description && <p className="text-white/60 text-lg max-w-2xl mx-auto">{description}</p>}
-          {status === 'draft' && <span className="inline-block mt-4 text-xs font-bold bg-white/10 px-3 py-1 rounded text-white/50 uppercase">Pre-torneo</span>}
-          {status === 'active' && <span className="inline-block mt-4 text-xs font-bold bg-red-500/20 border border-red-500/30 px-3 py-1 rounded text-red-400 uppercase animate-pulse">● En Vivo</span>}
-          {status === 'finished' && <span className="inline-block mt-4 text-xs font-bold bg-white/10 px-3 py-1 rounded text-white/50 uppercase">Torneo Finalizado</span>}
+          {currentStatus === 'draft' && <span className="inline-block mt-4 text-xs font-bold bg-white/10 px-3 py-1 rounded text-white/50 uppercase">Pre-torneo</span>}
+          {currentStatus === 'active' && <span className="inline-block mt-4 text-xs font-bold bg-red-500/20 border border-red-500/30 px-3 py-1 rounded text-red-400 uppercase animate-pulse">● En Vivo</span>}
+          {currentStatus === 'finished' && <span className="inline-block mt-4 text-xs font-bold bg-white/10 px-3 py-1 rounded text-white/50 uppercase">Torneo Finalizado</span>}
           
-          {championImageUrl && (
+          {currentChampionImg && (
             <button
               onClick={() => setShowHallOfFame(true)}
               className="mt-6 group relative flex items-center gap-3 px-6 py-3 rounded-2xl bg-gold/10 border border-gold/30 text-gold font-orbitron font-black text-sm uppercase tracking-widest hover:bg-gold/20 hover:border-gold/50 transition-all shadow-[0_0_20px_rgba(255,215,0,0.1)] hover:shadow-[0_0_30px_rgba(255,215,0,0.2)]"
@@ -1048,13 +1077,13 @@ export function LeaderboardClient({
             </div>
             <div className="bg-white/[0.03] p-4 rounded-xl border border-white/5">
               <span className="text-[10px] font-black text-neon-cyan uppercase tracking-[0.2em] block mb-2">Estado del Torneo</span>
-              <span className="text-white font-orbitron font-bold text-sm uppercase">{status}</span>
+              <span className="text-white font-orbitron font-bold text-sm uppercase">{currentStatus}</span>
             </div>
           </div>
         </motion.div>
       )}
         <AnimatePresence>
-          {showHallOfFame && championImageUrl && (
+          {showHallOfFame && currentChampionImg && (
             <motion.div 
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md"
@@ -1078,9 +1107,9 @@ export function LeaderboardClient({
 
                 <div className="relative group p-1 bg-gradient-to-b from-gold/50 via-gold/10 to-transparent rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(255,215,0,0.15)]">
                   <img 
-                    src={championImageUrl?.startsWith('http') 
-                      ? championImageUrl 
-                      : `${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '')}/storage/v1/object/public/evidences/${championImageUrl?.replace(/^evidences\//, '')}`}
+                    src={currentChampionImg?.startsWith('http') 
+                      ? currentChampionImg 
+                      : `${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '')}/storage/v1/object/public/evidences/${currentChampionImg?.replace(/^evidences\//, '')}`}
                     alt="Campeón" 
                     className="max-h-[70vh] rounded-2xl object-contain shadow-2xl transition-transform duration-700 group-hover:scale-[1.02]" 
                   />

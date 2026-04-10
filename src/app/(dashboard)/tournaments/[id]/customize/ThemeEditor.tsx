@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { updateTheme } from '@/lib/actions/themes'
 import Link from 'next/link'
 
 export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId: string, initialTheme: any, slug: string }) {
+  const router = useRouter()
   const [primaryColor, setPrimaryColor] = useState(initialTheme?.primary_color || '#00F5FF')
   const [backgroundValue, setBackgroundValue] = useState(initialTheme?.background_value || '')
   const [backgroundMobileValue, setBackgroundMobileValue] = useState(initialTheme?.background_mobile_value || '')
@@ -39,6 +41,7 @@ export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId
       alert(res.error)
     } else {
       setSuccess(true)
+      router.refresh()
       setTimeout(() => setSuccess(false), 3000)
     }
   }
