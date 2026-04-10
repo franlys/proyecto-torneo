@@ -591,9 +591,22 @@ export function LeaderboardClient({
           {description && <p className="text-white/60 text-lg max-w-2xl mx-auto">{description}</p>}
           {currentStatus === 'draft' && <span className="inline-block mt-4 text-xs font-bold bg-white/10 px-3 py-1 rounded text-white/50 uppercase">Pre-torneo</span>}
           {currentStatus === 'active' && <span className="inline-block mt-4 text-xs font-bold bg-red-500/20 border border-red-500/30 px-3 py-1 rounded text-red-400 uppercase animate-pulse">● En Vivo</span>}
-          {currentStatus === 'finished' && <span className="inline-block mt-4 text-xs font-bold bg-white/10 px-3 py-1 rounded text-white/50 uppercase">Torneo Finalizado</span>}
-          
-          {currentChampionImg && (
+          {currentStatus === 'finished' && (
+            <div className="flex flex-col items-center gap-4 mt-4">
+              <span className="text-xs font-bold bg-gold/10 border border-gold/30 px-3 py-1 rounded text-gold uppercase tracking-widest">
+                🏆 Torneo Finalizado
+              </span>
+              <button
+                onClick={() => setShowHallOfFame(true)}
+                className="group relative flex items-center gap-3 px-8 py-4 rounded-2xl bg-gold/10 border border-gold/40 text-gold font-orbitron font-black text-base uppercase tracking-widest hover:bg-gold/20 hover:border-gold/60 transition-all shadow-[0_0_30px_rgba(255,215,0,0.15)] hover:shadow-[0_0_50px_rgba(255,215,0,0.25)] animate-pulse"
+              >
+                <div className="absolute inset-0 bg-gold/5 blur-xl group-hover:bg-gold/10 transition-colors rounded-2xl" />
+                <span className="relative flex items-center gap-3 text-2xl">🏆</span>
+                <span className="relative">Salón de la Fama</span>
+              </button>
+            </div>
+          )}
+          {currentStatus !== 'finished' && currentChampionImg && (
             <button
               onClick={() => setShowHallOfFame(true)}
               className="mt-6 group relative flex items-center gap-3 px-6 py-3 rounded-2xl bg-gold/10 border border-gold/30 text-gold font-orbitron font-black text-sm uppercase tracking-widest hover:bg-gold/20 hover:border-gold/50 transition-all shadow-[0_0_20px_rgba(255,215,0,0.1)] hover:shadow-[0_0_30px_rgba(255,215,0,0.2)]"
@@ -1125,40 +1138,66 @@ export function LeaderboardClient({
         </motion.div>
       )}
         <AnimatePresence>
-          {showHallOfFame && currentChampionImg && (
-            <motion.div 
+          {showHallOfFame && (
+            <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md"
               onClick={() => setShowHallOfFame(false)}
             >
-              <motion.div 
-                initial={{ scale: 0.8, opacity: 0, y: 30 }} 
-                animate={{ scale: 1, opacity: 1, y: 0 }} 
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0, y: 30 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.8, opacity: 0, y: 30 }}
                 className="relative max-w-5xl w-full flex flex-col items-center"
                 onClick={e => e.stopPropagation()}
               >
-                {/* Decorative Elements */}
+                {/* Decorative glow */}
                 <div className="absolute -top-20 -z-10 w-64 h-64 bg-gold/20 rounded-full blur-[100px] animate-pulse" />
-                
-                <h2 className="font-orbitron font-black text-2xl sm:text-4xl text-gold mb-8 uppercase tracking-widest text-center flex flex-col items-center gap-2">
+
+                <h2 className="font-orbitron font-black text-2xl sm:text-4xl text-gold mb-6 uppercase tracking-widest text-center flex flex-col items-center gap-2">
                   <span className="text-4xl sm:text-6xl drop-shadow-[0_0_20px_rgba(255,215,0,0.4)]">🏆</span>
                   Salón de la Fama
                   <div className="h-1 w-24 bg-gradient-to-r from-transparent via-gold to-transparent mt-2" />
                 </h2>
 
-                <div className="relative group p-1 bg-gradient-to-b from-gold/50 via-gold/10 to-transparent rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(255,215,0,0.15)]">
-                  <img 
-                    src={currentChampionImg?.startsWith('http') 
-                      ? currentChampionImg 
-                      : `${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '')}/storage/v1/object/public/evidences/${currentChampionImg?.replace(/^evidences\//, '')}`}
-                    alt="Campeón" 
-                    className="max-h-[70vh] rounded-2xl object-contain shadow-2xl transition-transform duration-700 group-hover:scale-[1.02]" 
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
-                </div>
+                {/* Champion team name from standings rank 1 */}
+                {standings[0] && (
+                  <div className="flex flex-col items-center gap-3 mb-6">
+                    <span className="text-xs font-bold text-gold/60 uppercase tracking-[0.3em]">Campeón</span>
+                    <div className="flex items-center gap-4">
+                      {standings[0].avatarUrl ? (
+                        <img src={standings[0].avatarUrl} alt="" className="w-16 h-16 rounded-2xl object-cover border-2 border-gold/50 shadow-[0_0_20px_rgba(255,215,0,0.3)]" />
+                      ) : (
+                        <div className="w-16 h-16 rounded-2xl bg-gold/10 border-2 border-gold/30 flex items-center justify-center text-2xl font-black text-gold">
+                          {standings[0].teamName?.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <span className="font-orbitron font-black text-3xl sm:text-5xl text-white drop-shadow-[0_0_15px_rgba(255,215,0,0.4)]">
+                        {standings[0].teamName}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-6 text-sm text-white/60 font-orbitron mt-1">
+                      <span><b className="text-neon-cyan">{standings[0].totalPoints}</b> PTS</span>
+                      <span><b className="text-white">{standings[0].totalKills}</b> KILLS</span>
+                    </div>
+                  </div>
+                )}
 
-                <button 
+                {/* Victory photo (if uploaded) */}
+                {currentChampionImg && (
+                  <div className="relative group p-1 bg-gradient-to-b from-gold/50 via-gold/10 to-transparent rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(255,215,0,0.15)]">
+                    <img
+                      src={currentChampionImg.startsWith('http')
+                        ? currentChampionImg
+                        : `${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '')}/storage/v1/object/public/evidences/${currentChampionImg.replace(/^evidences\//, '')}`}
+                      alt="Foto de victoria"
+                      className="max-h-[50vh] rounded-2xl object-contain shadow-2xl transition-transform duration-700 group-hover:scale-[1.02]"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+                  </div>
+                )}
+
+                <button
                   onClick={() => setShowHallOfFame(false)}
                   className="mt-8 px-8 py-3 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white rounded-xl font-bold text-sm transition-all border border-white/10 flex items-center gap-3 group"
                 >
