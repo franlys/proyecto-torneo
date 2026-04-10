@@ -217,7 +217,7 @@ export function LeaderboardClient({
         .from('submissions')
         .select('*, evidence_files(*)')
         .eq('tournament_id', tournamentId)
-        .order('submitted_at', { descending: true }),
+        .order('submitted_at', { ascending: false }),
       supabase
         .from('matches')
         .select('*')
@@ -350,12 +350,9 @@ export function LeaderboardClient({
     setCurrentMatches(normalizedMatches)
   }, [tournamentId, supabase])
  
-  // NOTE: We intentionally do NOT call refreshStandingsFromDB() on mount.
-  // The server already runs recalculateStandings() on every page load and
-  // provides initialStandings with ALL teams (via admin client, bypassing RLS).
-  // Calling refreshStandingsFromDB() on mount would replace that correct server
-  // data with anon-client data that might race or return partial results.
-  // Realtime subscriptions below handle live updates.
+  useEffect(() => {
+    refreshStandingsFromDB()
+  }, [refreshStandingsFromDB])
 
   useEffect(() => {
     // Subscribe to team_standings changes (score updates)
