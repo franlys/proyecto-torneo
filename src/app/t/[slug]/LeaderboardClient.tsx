@@ -138,7 +138,11 @@ export function LeaderboardClient({
       setTimeout(() => setSyncStatus(null), 3000)
     }
   }
-  const supabase = createClient()
+  // Stable supabase client — created once, not on every render.
+  // If this were inside the component body without useMemo, every render would produce
+  // a new object reference, causing refreshStandingsFromDB (useCallback) to be
+  // recreated each render, which would re-trigger the useEffect on every render.
+  const supabase = useMemo(() => createClient(), [])
 
   // 1. Agregación Atómica: Calculamos las bajas reales sumando las partidas aprobadas
   // Esta es la "Fuente de Verdad" que evita la latencia de la base de datos.
@@ -346,10 +350,13 @@ export function LeaderboardClient({
     setCurrentMatches(normalizedMatches)
   }, [tournamentId, supabase])
  
-  useEffect(() => {
-    refreshStandingsFromDB()
-  }, [refreshStandingsFromDB])
- 
+  // NOTE: We intentionally do NOT call refreshStandingsFromDB() on mount.
+  // The server already runs recalculateStandings() on every page load and
+  // provides initialStandings with ALL teams (via admin client, bypassing RLS).
+  // Calling refreshStandingsFromDB() on mount would replace that correct server
+  // data with anon-client data that might race or return partial results.
+  // Realtime subscriptions below handle live updates.
+
   useEffect(() => {
     // Subscribe to team_standings changes (score updates)
     const standingsChannel = supabase
