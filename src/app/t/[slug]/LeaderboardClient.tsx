@@ -84,6 +84,37 @@ export function LeaderboardClient({
   const activeBackground = (isMobile && backgroundMobileValue) ? backgroundMobileValue : backgroundValue
   const logoUrl = currentTheme?.logo_url
 
+  // Prop Sync: Ensure internal state handles server-side updates/navigation
+  useEffect(() => {
+    if (theme) setCurrentTheme(theme)
+  }, [theme])
+
+  useEffect(() => {
+    if (status) setCurrentStatus(status)
+  }, [status])
+
+  useEffect(() => {
+    if (championImageUrl !== undefined) {
+      setCurrentChampionImg(championImageUrl)
+    }
+  }, [championImageUrl])
+
+  useEffect(() => {
+    if (initialStandings) setStandings(initialStandings)
+  }, [initialStandings])
+
+  useEffect(() => {
+    if (teams) setCurrentTeams(teams)
+  }, [teams])
+
+  useEffect(() => {
+    if (submissions) setCurrentSubmissions(submissions)
+  }, [submissions])
+
+  useEffect(() => {
+    if (matches) setCurrentMatches(matches)
+  }, [matches])
+
   useEffect(() => {
     setExpandedTeamId(null)
   }, [activeTab])
