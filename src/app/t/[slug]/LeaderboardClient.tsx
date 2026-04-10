@@ -225,10 +225,47 @@ export function LeaderboardClient({
       }))
     }))
 
-    const standingsMap = new Map((standingsData || []).map((s: any) => [s.team_id, s]))
+    // 4. Cáculo Dinámico de Posiciones (Single Source of Truth)
+    const calculatedStandingsMap = new Map()
+    
+    // Inicializar mapa de equipos (asegura que todos aparezcan aunque tengan 0 bajas/puntos)
+    normalizedTeams.forEach((t: any) => {
+      calculatedStandingsMap.set(t.id, {
+        teamId: t.id,
+        teamName: t.name,
+        avatarUrl: t.avatarUrl,
+        streamUrl: t.streamUrl,
+        totalPoints: 0,
+        totalKills: 0,
+        potTopCount: 0,
+        submissionsCount: 0,
+        participants: t.participants || []
+      })
+    })
 
-    const merged = normalizedTeams.map((t: any) => {
-      const s = standingsMap.get(t.id)
+    // Agregación de envíos aprobados
+    normalizedSubmissions
+      .filter(s => s.status === 'approved')
+      .forEach(s => {
+        const stats = calculatedStandingsMap.get(s.teamId)
+        if (stats) {
+          const killPts = (s.killCount || 0) * (scoringRule?.killPoints || 0)
+          const placementPts = s.rank && scoringRule?.placementPoints 
+            ? (scoringRule.placementPoints[String(s.rank)] || 0)
+            : (s.potTop ? (scoringRule?.placementPoints?.[ '1'] || 0) : 0)
+          
+          stats.totalPoints += (killPts + placementPts)
+          stats.totalKills += (s.killCount || 0)
+          stats.submissionsCount += 1
+          if (s.potTop || s.rank === 1) stats.potTopCount += 1
+        }
+      })
+
+    const merged = Array.from(calculatedStandingsMap.values()).map((t: any) => {
+      const killRate = t.submissionsCount > 0 ? (t.totalKills / t.submissionsCount) : 0
+      
+      // Intentamos recuperar el rango previo de la DB si existiera (opcional)
+      const dbStanding = (standingsData || []).find((s: any) => s.team_id === t.teamId)
 
       const teamStreams: { name: string; url: string }[] = []
       if (t.streamUrl) teamStreams.push({ name: 'Equipo', url: t.streamUrl })
@@ -239,25 +276,22 @@ export function LeaderboardClient({
       }
 
       return {
-        teamId: t.id,
-        teamName: t.name,
-        avatarUrl: t.avatarUrl,
-        streamUrl: t.streamUrl,
+        ...t,
         streams: teamStreams,
-        totalPoints: s ? Number(s.total_points) : 0,
-        totalKills: s ? (s.total_kills ?? 0) : 0,
-        killRate: s ? Number(s.kill_rate) : 0,
-        potTopCount: s ? (s.pot_top_count ?? 0) : 0,
-        vipScore: s ? Number(s.vip_score) : 0,
-        rank: s ? s.rank : (normalizedTeams.length + 100),
-        previousRank: s ? s.previous_rank : (normalizedTeams.length + 100),
+        killRate,
+        rank: dbStanding ? dbStanding.rank : 999, // Se recalculará en el sort siguiente
+        previousRank: dbStanding ? dbStanding.previous_rank : 999
       }
     }).sort((a: any, b: any) => {
-      if ((b.totalPoints || 0) !== (a.totalPoints || 0)) return (b.totalPoints || 0) - (a.totalPoints || 0)
-      if ((b.totalKills || 0) !== (a.totalKills || 0)) return (b.totalKills || 0) - (a.totalKills || 0)
-      if (a.rank !== b.rank) return a.rank - b.rank
+      // Ordenamiento Dinámico: Puntos > Kills > Victorias > Nombre
+      if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints
+      if (b.totalKills !== a.totalKills) return b.totalKills - a.totalKills
+      if (b.potTopCount !== a.potTopCount) return b.potTopCount - a.potTopCount
       return a.teamName.localeCompare(b.teamName)
-    })
+    }).map((t, index) => ({
+      ...t,
+      rank: index + 1 // Asignamos el rango dinámico real
+    }))
 
     setStandings(merged)
     setCurrentTeams(normalizedTeams)
