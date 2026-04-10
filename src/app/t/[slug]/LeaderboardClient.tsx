@@ -170,7 +170,7 @@ export function LeaderboardClient({
         .order('created_at', { ascending: true }),
       supabase
         .from('submissions')
-        .select('*')
+        .select('*, evidence_files(*)')
         .eq('tournament_id', tournamentId)
         .order('submitted_at', { descending: true }),
       supabase
@@ -206,7 +206,13 @@ export function LeaderboardClient({
       submittedAt: s.submitted_at,
       playerKills: s.player_kills,
       aiStatus: s.ai_status,
-      aiConfidence: s.ai_confidence
+      aiConfidence: s.ai_confidence,
+      evidenceFiles: (s.evidence_files || []).map((f: any) => ({
+        id: f.id,
+        storagePath: f.storage_path,
+        mimeType: f.mime_type,
+        fileSize: f.file_size
+      }))
     }))
 
     // 3. Normalización de Equipos y Participantes
