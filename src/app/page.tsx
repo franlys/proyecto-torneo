@@ -16,7 +16,7 @@ export default async function Home() {
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 h-20 bg-[#0a0a0b]/80 backdrop-blur-xl border-b border-white/5 z-50 px-8 flex items-center justify-between">
         <div className={`${orbitron.className} text-2xl font-black tracking-tighter uppercase`}>
-           ARENA<span className="text-neon-cyan">LABS</span>
+           GONZALEZ<span className="text-neon-cyan">LABS</span>
         </div>
         
         <div className="flex items-center gap-6">
