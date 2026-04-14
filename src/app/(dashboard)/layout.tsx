@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import DashboardShell from './DashboardShell'
+import { getProfile } from '@/lib/actions/auth-helpers'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -12,5 +13,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect('/login')
   }
 
-  return <DashboardShell>{children}</DashboardShell>
+  const profile = await getProfile()
+
+  return (
+    <DashboardShell userRole={profile?.role ?? 'STREAMER'}>
+      {children}
+    </DashboardShell>
+  )
 }
