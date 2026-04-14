@@ -16,7 +16,7 @@ export default async function Home() {
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 h-20 bg-[#0a0a0b]/80 backdrop-blur-xl border-b border-white/5 z-50 px-8 flex items-center justify-between">
         <div className={`${orbitron.className} text-2xl font-black tracking-tighter uppercase`}>
-           GONZALEZ<span className="text-neon-cyan">LABS</span>
+           KRO<span className="text-neon-cyan">NIX</span>
         </div>
         
         <div className="flex items-center gap-6">
@@ -94,9 +94,13 @@ export default async function Home() {
       <MembershipSection user={user} profile={profile} />
 
       {/* Footer */}
-      <footer className="py-12 px-8 border-t border-white/5 text-center">
+      <footer className="py-12 px-8 border-t border-white/5 text-center flex flex-col items-center gap-2">
          <div className="text-white/20 text-[10px] font-black uppercase tracking-[0.3em]">
-            © 2026 ARENA LABS x ARENACRYPTO
+            © 2026 KRONIX · ARENACRYPTO
+         </div>
+         <div className="flex items-center gap-1.5 opacity-30">
+            <span className="text-[9px] font-orbitron uppercase tracking-widest text-white/60">Powered by</span>
+            <span className="text-[10px] font-orbitron font-black uppercase tracking-widest text-neon-cyan">GonzalezLabs</span>
          </div>
       </footer>
     </div>

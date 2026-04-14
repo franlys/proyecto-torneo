@@ -43,7 +43,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
       </form>
       <div className="mt-6 text-center opacity-30 pointer-events-none select-none">
         <span className="text-[9px] uppercase tracking-widest block font-orbitron">Powered by</span>
-        <span className="text-xs font-bold uppercase tracking-wider mt-0.5 block font-orbitron">Gonzalez Labs</span>
+        <span className="text-xs font-bold uppercase tracking-wider mt-0.5 block font-orbitron text-neon-cyan">GonzalezLabs</span>
       </div>
     </div>
   )
@@ -54,8 +54,8 @@ export default function DashboardShell({ children }: { children: React.ReactNode
       <aside className="hidden lg:flex w-60 shrink-0 bg-dark-card border-r border-white/5 flex-col">
         <div className="px-6 py-5 border-b border-white/5">
           <Link href="/tournaments">
-            <span className="font-orbitron text-sm font-bold tracking-widest text-neon-cyan uppercase">Tournament</span>
-            <span className="block font-orbitron text-[10px] tracking-[0.25em] text-white/30 uppercase mt-0.5">Platform</span>
+            <span className="font-orbitron text-sm font-bold tracking-widest text-neon-cyan uppercase">KRO<span className="text-white">NIX</span></span>
+            <span className="block font-orbitron text-[10px] tracking-[0.25em] text-white/30 uppercase mt-0.5">by GonzalezLabs</span>
           </Link>
         </div>
         <NavLinks />

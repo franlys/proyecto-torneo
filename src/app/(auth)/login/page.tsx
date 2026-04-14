@@ -85,7 +85,7 @@ export default function LoginPage() {
         {/* Sello Discreto */}
         <div className="mt-8 pt-4 border-t border-white/5 text-center flex flex-col items-center justify-center opacity-40 select-none">
            <span className="text-[8px] font-orbitron uppercase tracking-widest text-white/70">Powered by</span>
-           <span className="text-[10px] font-orbitron font-bold uppercase tracking-widest text-white mt-0.5">Gonzalez Labs</span>
+           <span className="text-[10px] font-orbitron font-bold uppercase tracking-widest text-white mt-0.5">GonzalezLabs</span>
         </div>
       </div>
     </div>
