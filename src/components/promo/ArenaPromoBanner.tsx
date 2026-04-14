@@ -33,7 +33,7 @@ export function ArenaPromoBanner({ tournamentSlug }: ArenaPromoBannerProps) {
 
         <div className="flex items-center gap-4 w-full md:w-auto">
           <Link 
-            href={`https://arenacrypto.app/tournaments/${tournamentSlug}?ref=stream`}
+            href={`https://arena-crypto.vercel.app/tournaments/${tournamentSlug}?ref=stream`}
             target="_blank"
             className={`flex-1 md:flex-none px-8 py-3 rounded-xl bg-neon-cyan text-black font-black text-xs uppercase tracking-widest hover:shadow-[0_0_25px_rgba(0,245,255,0.4)] hover:scale-[1.02] transition-all active:scale-[0.98] ${orbitron.className}`}
           >

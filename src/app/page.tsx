@@ -54,7 +54,7 @@ export default async function Home() {
              <Link href="/login" className="px-8 py-4 bg-white text-black text-sm font-black uppercase tracking-widest rounded-xl hover:bg-neon-cyan hover:scale-105 transition-all">
                 Empezar como Streamer
              </Link>
-             <a href="https://arenacrypto.app" target="_blank" className="px-8 py-4 bg-white/5 border border-white/10 text-white text-sm font-black uppercase tracking-widest rounded-xl hover:bg-white/10 transition-all">
+             <a href="https://arena-crypto.vercel.app/" target="_blank" className="px-8 py-4 bg-white/5 border border-white/10 text-white text-sm font-black uppercase tracking-widest rounded-xl hover:bg-white/10 transition-all">
                 Ver ArenaCrypto Betting
              </a>
           </div>
