@@ -33,6 +33,19 @@ const tournamentBaseSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   logoUrl: z.string().url().optional().or(z.literal('')).or(z.null()),
+  
+  // Finance Model
+  entryFee: z.number().min(0).default(0),
+  prize1st: z.number().min(0).default(0),
+  prize2nd: z.number().min(0).default(0),
+  prize3rd: z.number().min(0).default(0),
+  prizeMvp: z.number().min(0).default(0),
+  organizerSplit: z.number().min(0).max(100).default(50),
+  streamerSplit: z.number().min(0).max(100).default(50),
+
+  // Arena Betting
+  arenaBettingEnabled: z.boolean().default(false),
+
   scoringRule: scoringRuleSchema,
 })
 

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(supabase status:*)",
+      "Bash(curl -s 'https://otssvwinchttedisfqtr.supabase.co/rest/v1/tournaments?select=id,name,status,slug,champion_image_url&slug=eq.prieba-1-r5rza1' -H 'apikey: sb_publishable_p2fVfPXNLmehYppcTb-2bQ_CLaIvB6G' -H 'Authorization: Bearer sb_publishable_p2fVfPXNLmehYppcTb-2bQ_CLaIvB6G')",
+      "Bash(Start-Sleep -Seconds 90)",
+      "Bash(curl -s \"https://proyecto-torneo-flcf.vercel.app/api/revalidate-tournament?slug=prieba-1-r5rza1\")"
+    ]
+  }
+}

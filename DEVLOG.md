@@ -320,10 +320,32 @@ Los organizadores necesitaban una forma de agrupar varios mapas o juegos bajo un
 - **Dashboard Analítico Público**: Integración de acordeones animados en el leaderboard con gráficas de rendimiento acumulado y seguimiento en tiempo real para espectadores.
 - **Refactorización de Tipos**: Migración total a camelCase en componentes de visualización para asegurar consistencia y facilitar el mantenimiento.
 
+---
+## [2026-04-14] — Alianza Estratégica y Modelo Financiero Pro
+
+### Tareas Completadas
+
+- **Integración con ArenaCrypto (Ecosistema de Apuestas)**:
+    - **Banner de Comunidad**: Implementado `ArenaPromoBanner.tsx` con estética Neon en el leaderboard público.
+    - **Referidos**: Lógica de seguimiento mediante `?ref=stream` para desbloquear apuestas gratuitas en la plataforma aliada.
+    - **Interconexión**: Configurada la base de datos para permitir la lectura segura del "Bridge" desde ArenaCrypto.
+
+- **Modelo Financiero y Splits (Task 18)**:
+    - **Tabla `tournament_financials`**: Nueva migración para registrar la recaudación total ($), premios entregados y el split de ganancias.
+    - **Reparto 50/50**: Implementada lógica automatizada para dividir los excedentes de inscripciones entre el **Organizador** y el **Streamer** (tras descontar premios fijos como $500 para 1er lugar, $300 para 2do, etc.).
+    - **Cierre de Torneo**: Actualizada la función `finishTournament` para realizar el cálculo matemático del desglose financiero y almacenarlo permanentemente.
+
+- **Configuración de Torneo Avanzada**:
+    - **UI Renovada**: `TournamentForm` ahora incluye secciones para establecer el costo de inscripción (`entryFee`) y los montos específicos para los 3 primeros puestos y el Top Fragger.
+    - **Toggle de Apuestas**: Interruptor para habilitar/deshabilitar la visibilidad del torneo en la red de ArenaCrypto.
+
+### Decisiones Técnicas
+- **Arquitectura de Puente (Bridge)**: Se optó por mantener bases de datos independientes pero conectadas mediante un cliente de lectura restringida. Esto evita la redundancia de datos y protege la integridad financiera de ambos proyectos.
+- **Normalización de CSS**: Se agregaron utilidades de color Neon a `globals.css` para unificar el lenguaje visual de la alianza sin romper el branding original de PT.
+
 ### Próximos Pasos
-1. **Galería de Campeones**: Hall of Fame para torneos finalizados.
-2. **Auto-Aprobación**: Lógica opcional para aprobar automáticamente si la IA tiene 100% de confianza.
-3. **Optimización de OCR**: Refinar prompts para diferentes tipos de juegos (BR, Kill Race, etc.).
+1. **Validación de Pagos**: Probar el flujo completo desde la inscripción en PT hasta el pago de apuestas en AC tras el cierre del torneo.
+2. **Escalabilidad de Streams**: Optimizar el `ArenaPromoBanner` para que muestre el código dinámico del streamer dueño del torneo.
 
 ---
 
@@ -423,3 +445,39 @@ Ejecutar el SQL de la migración `20240419000000` en el SQL Editor de Supabase S
 
 ---
 
+## [2026-04-14 (sesión 2)] — Sistema Administrativo, Membresías y Landing Page Premium
+
+### Tareas Completadas
+
+- **Gestión de Usuarios y Roles**:
+    - **Tabla `profiles`**: Implementada vinculación con `auth.users` para gestionar roles (`ADMIN`, `STREAMER`, `USER`).
+    - **Auto-Admin**: El primer usuario registrado en la plataforma recibe automáticamente el rol de Administrador.
+    - **Auth Helpers**: Creada lógica de servidor (`isActiveStreamer`, `isAdmin`) para proteger rutas y acciones.
+
+- **Modelo de Suscripción "Streamer Pro" ($15/mes)**:
+    - **Flujo de Pago Manual**: Los streamers pueden subir evidencias de pago (capturas/TxHash) directamente desde la Home.
+    - **Gatekeeping**: Bloqueo estricto del botón "Crear Torneo". Solo usuarios con `subscription_status = 'ACTIVE'` pueden organizar eventos.
+    - **Panel Admin de Suscripciones**: Interfaz en `/admin/subscriptions` para que el administrador valide y active cuentas tras recibir el pago.
+
+- **Centralización de Códigos (Bridge v2)**:
+    - **Gestión de Streamers**: Los códigos para desbloquear apuestas en ArenaCrypto ahora se generan y gestionan exclusivamente desde Proyecto-Torneos.
+    - **Panel Admin de Torneos**: Interfaz avanzada para ver participantes de cualquier torneo y asignar códigos de streamer (`StreamerCodeManager`).
+
+- **Rediseño Total de la Landing Page**:
+    - **Estética ArenaLabs**: Implementado un diseño oscuro/neon consistente con ArenaCrypto.
+    - **Marketing de Alianza**: Secciones dedicadas a explicar el bridge de apuestas y las ventajas del plan "Streamer Pro".
+    - **Dashboard Contextual**: La Home ahora cambia dinámicamente según el estado del usuario (No logueado, Pendiente de pago, Pro Activo).
+
+### Migraciones SQL Aplicadas
+- `20240504000200_profiles_and_subscriptions.sql` (PT)
+
+### Decisiones Técnicas
+- **Independencia de AC**: ArenaCrypto ahora actúa como cliente pasivo de los códigos generados en PT, reduciendo la fricción para el administrador al gestionar todo desde una sola pestaña.
+- **Seguridad RLS Pro**: Políticas granulares que permiten lectura pública de códigos (para el Bridge) pero limitan la edición exclusivamente a Admins y dueños de torneos.
+
+---
+
+## Próximos Pasos
+1. **Smoke Test**: Verificar el flujo "Registro -> Pago -> Aprobación" en entorno de staging.
+2. **SEO**: Optimizar los meta-tags de la nueva Landing Page para captar streamers interesados.
+3. **Analytics**: Implementar seguimiento de cuántos usuarios saltan de PT a AC vía los banners patrocinados.

@@ -44,3 +44,16 @@
   }
 }
 
+@layer utilities {
+  .text-neon-cyan { color: #00F5FF; }
+  .text-neon-purple { color: #BF00FF; }
+  .bg-neon-cyan { background-color: #00F5FF; }
+  .bg-neon-purple { background-color: #BF00FF; }
+  .border-neon-cyan { border-color: #00F5FF; }
+  .border-neon-purple { border-color: #BF00FF; }
+  
+  .neon-text-cyan {
+    text-shadow: 0 0 5px rgba(0, 245, 255, 0.5), 0 0 10px rgba(0, 245, 255, 0.3);
+  }
+}
+

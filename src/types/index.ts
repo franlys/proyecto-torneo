@@ -35,6 +35,20 @@ export interface Tournament {
   endDate?: string;
   championImageUrl?: string;
   logoUrl?: string;
+
+  // Finance Model
+  entryFee: number;
+  prize1st: number;
+  prize2nd: number;
+  prize3rd: number;
+  prizeMvp: number;
+  organizerSplit: number;
+  streamerSplit: number;
+
+  // Arena Betting
+  arenaBettingEnabled: boolean;
+  arenaBettingStatus: 'open' | 'closed' | 'paused';
+  totalLiveViewers: number;
 }
 
 export interface ScoringRule {

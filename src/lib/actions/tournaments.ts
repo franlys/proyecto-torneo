@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { createTournamentSchema, updateTournamentSchema } from '@/lib/validations/schemas'
 import type { Tournament, ScoringRule } from '@/types'
 import type { CreateTournamentInput, UpdateTournamentInput } from '@/lib/validations/schemas'
+import { isActiveStreamer } from './auth-helpers'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -46,6 +47,18 @@ function mapTournamentRow(row: Record<string, unknown>): Tournament {
     endDate: row.end_date as string | undefined,
     championImageUrl: row.champion_image_url as string | undefined,
     logoUrl: row.logo_url as string | undefined,
+    // Finance Model
+    entryFee: Number(row.entry_fee || 0),
+    prize1st: Number(row.prize_1st || 0),
+    prize2nd: Number(row.prize_2nd || 0),
+    prize3rd: Number(row.prize_3rd || 0),
+    prizeMvp: Number(row.prize_mvp || 0),
+    organizerSplit: Number(row.organizer_split || 50),
+    streamerSplit: Number(row.streamer_split || 50),
+    // Arena Betting
+    arenaBettingEnabled: row.arena_betting_enabled as boolean,
+    arenaBettingStatus: row.arena_betting_status as Tournament['arenaBettingStatus'],
+    totalLiveViewers: row.total_live_viewers as number,
   }
 }
 
@@ -63,6 +76,12 @@ function mapScoringRuleRow(row: Record<string, unknown>): ScoringRule {
 export async function createTournament(
   data: CreateTournamentInput
 ): Promise<{ data: Tournament } | { error: string }> {
+  // 1. Authorization check
+  const isAllowed = await isActiveStreamer()
+  if (!isAllowed) {
+    return { error: 'Requerido: Suscripción Streamer Pro activa ($15/mes) para crear torneos.' }
+  }
+
   const parsed = createTournamentSchema.safeParse(data)
   if (!parsed.success) {
     const first = parsed.error.errors[0]
@@ -100,6 +119,17 @@ export async function createTournament(
       default_rounds_per_match: input.defaultRoundsPerMatch,
       start_date: input.startDate || null,
       end_date: input.endDate || null,
+      // Finance Model
+      entry_fee: input.entryFee || 0,
+      prize_1st: input.prize1st || 0,
+      prize_2nd: input.prize2nd || 0,
+      prize_3rd: input.prize3rd || 0,
+      prize_mvp: input.prizeMvp || 0,
+      organizer_split: input.organizerSplit || 50,
+      streamer_split: input.streamerSplit || 50,
+      // Arena Betting
+      arena_betting_enabled: input.arenaBettingEnabled || false,
+      arena_betting_status: 'closed',
     })
     .select()
     .single()
@@ -212,6 +242,18 @@ export async function updateTournament(
   if (input.startDate !== undefined) updatePayload.start_date = input.startDate || null
   if (input.endDate !== undefined) updatePayload.end_date = input.endDate || null
   if (input.logoUrl !== undefined) updatePayload.logo_url = input.logoUrl || null
+  
+  // Finance Model
+  if (input.entryFee !== undefined) updatePayload.entry_fee = input.entryFee
+  if (input.prize1st !== undefined) updatePayload.prize_1st = input.prize1st
+  if (input.prize2nd !== undefined) updatePayload.prize_2nd = input.prize2nd
+  if (input.prize3rd !== undefined) updatePayload.prize_3rd = input.prize3rd
+  if (input.prizeMvp !== undefined) updatePayload.prize_mvp = input.prizeMvp
+  if (input.organizerSplit !== undefined) updatePayload.organizer_split = input.organizerSplit
+  if (input.streamerSplit !== undefined) updatePayload.streamer_split = input.streamerSplit
+
+  // Arena Betting
+  if (input.arenaBettingEnabled !== undefined) updatePayload.arena_betting_enabled = input.arenaBettingEnabled
 
   const { data: updated, error: updateErr } = await supabase
     .from('tournaments')
@@ -322,6 +364,35 @@ export async function finishTournament(
     .eq('id', id)
 
   if (finishErr) return { error: finishErr.message }
+
+  // --- Financial Calculation ---
+  const { data: teamsCount } = await supabase
+    .from('teams')
+    .select('id', { count: 'exact', head: true })
+    .eq('tournament_id', id)
+
+  const totalTeams = teamsCount || 0
+  const tournamentDetails = await supabase
+    .from('tournaments')
+    .select('entry_fee, prize_1st, prize_2nd, prize_3rd, prize_mvp, organizer_split, streamer_split')
+    .eq('id', id)
+    .single()
+
+  if (tournamentDetails.data) {
+    const t = tournamentDetails.data
+    const totalRevenue = totalTeams * Number(t.entry_fee)
+    const totalPrizes = Number(t.prize_1st) + Number(t.prize_2nd) + Number(t.prize_3rd) + Number(t.prize_mvp)
+    const remainder = totalRevenue - totalPrizes
+    
+    await supabase.from('tournament_financials').insert({
+      tournament_id: id,
+      total_revenue: totalRevenue,
+      total_prizes: totalPrizes,
+      remainder: remainder,
+      organizer_payout: remainder * (Number(t.organizer_split) / 100),
+      streamer_payout: remainder * (Number(t.streamer_split) / 100)
+    })
+  }
 
   revalidatePath(`/tournaments/${id}`)
   revalidatePath('/tournaments')
@@ -460,4 +531,19 @@ export async function getHallOfFame(): Promise<
   })
 
   return { data: result }
+}
+
+export async function updateBettingStatus(
+  id: string,
+  status: 'open' | 'closed' | 'paused'
+): Promise<{ success: true } | { error: string }> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('tournaments')
+    .update({ arena_betting_status: status })
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+  revalidatePath(`/tournaments/${id}`)
+  return { success: true }
 }

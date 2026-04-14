@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { LeaderboardClient } from './LeaderboardClient'
 import { recalculateStandings } from '@/lib/actions/submissions'
+import { ArenaPromoBanner } from '@/components/promo/ArenaPromoBanner'
 
 export default async function PublicLeaderboardPage({
   params,
@@ -181,6 +182,7 @@ export default async function PublicLeaderboardPage({
 
   return (
     <main className="min-h-screen bg-transparent text-white font-inter">
+      <ArenaPromoBanner tournamentSlug={slug} />
       <LeaderboardClient 
         tournamentId={tournament.id}
         tournamentName={tournament.name}

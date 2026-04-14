@@ -75,7 +75,16 @@ export function TournamentForm({ onSuccess }: TournamentFormProps) {
       killRateEnabled: true,
       potTopEnabled: true,
       vipEnabled: false,
-      tiebreakerMatchEnabled: false,
+      killRaceTimeLimitMinutes: 30,
+      defaultRoundsPerMatch: 1,
+      entryFee: 40,
+      prize1st: 500,
+      prize2nd: 300,
+      prize3rd: 100,
+      prizeMvp: 250,
+      organizerSplit: 50,
+      streamerSplit: 50,
+      arenaBettingEnabled: false,
       scoringRule: {
         killPoints: 1,
         placementPoints: { '1': 15, '2': 12, '3': 10, '4': 8, '5': 6, '6': 4, '7': 2, '8': 1 },
@@ -426,21 +435,113 @@ export function TournamentForm({ onSuccess }: TournamentFormProps) {
               rows={8}
               placeholder="Escribe aquí las reglas del torneo..."
               className={`${inputClass} resize-none`}
-            />
-            <div className="flex justify-between mt-1.5">
-              {errors.rulesText ? (
-                <p className="text-red-400 text-xs">{typeof errors.rulesText?.message === 'string' ? errors.rulesText.message : ''}</p>
-              ) : (
-                <span />
-              )}
-              <span
-                className={`text-xs tabular-nums ${
-                  rulesText.length > 4800 ? 'text-red-400' : 'text-white/25'
-                }`}
-              >
-                {rulesText.length} / 5000
-              </span>
             </div>
+          </div>
+        </section>
+        
+        {/* ── Section 6: Finanzas e Integración ── */}
+        <section className="bg-white/[0.02] border border-white/5 rounded-2xl p-6 space-y-8">
+          <div>
+            <SectionHeader title="Modelo Financiero" subtitle="Configura inscripciones, premios y repartición de ganancias" />
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Entry Fee & Prizes */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
+                    Costo de inscripción (por equipo)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40">$</span>
+                    <input
+                      type="number"
+                      {...register('entryFee', { valueAsNumber: true })}
+                      className={`${inputClass} !pl-8`}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-white/40 mb-1.5">1er Puesto</label>
+                    <input type="number" {...register('prize1st', { valueAsNumber: true })} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-white/40 mb-1.5">2do Puesto</label>
+                    <input type="number" {...register('prize2nd', { valueAsNumber: true })} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-white/40 mb-1.5">3er Puesto</label>
+                    <input type="number" {...register('prize3rd', { valueAsNumber: true })} className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-white/40 mb-1.5">MVP (Top Fragger)</label>
+                    <input type="number" {...register('prizeMvp', { valueAsNumber: true })} className={inputClass} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Revenue Splits */}
+              <div className="space-y-4 pt-2">
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <p className="text-xs font-bold text-neon-cyan uppercase tracking-widest mb-4">Repartición del Sobrante</p>
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between text-xs mb-2">
+                        <span className="text-white/60">Organizador</span>
+                        <span className="text-white">{watch('organizerSplit')}%</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0" max="100" 
+                        {...register('organizerSplit', { valueAsNumber: true })}
+                        className="w-full accent-neon-cyan h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer"
+                        onChange={(e) => setValue('streamerSplit', 100 - parseInt(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs mb-2">
+                        <span className="text-white/60">Streamer</span>
+                        <span className="text-white">{watch('streamerSplit')}%</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0" max="100" 
+                        value={watch('streamerSplit')}
+                        readOnly
+                        className="w-full accent-neon-purple h-1.5 bg-white/10 rounded-lg appearance-none opacity-50"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-6 border-t border-white/5">
+            <SectionHeader title="ArenaCrypto Integration" subtitle="Habilita las apuestas de la comunidad" />
+            <button
+              type="button"
+              onClick={() => setValue('arenaBettingEnabled', !watch('arenaBettingEnabled'))}
+              className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all duration-150
+                ${watch('arenaBettingEnabled')
+                  ? 'border-neon-cyan bg-neon-cyan/10'
+                  : 'border-white/10 bg-white/5 hover:border-white/20'
+                }`}
+            >
+              <div className="flex items-center gap-4">
+                <div className={`p-2 rounded-lg ${watch('arenaBettingEnabled') ? 'bg-neon-cyan text-black' : 'bg-white/10 text-white/40'}`}>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-bold text-white uppercase tracking-tight">Habilitar Apuestas Públicas</p>
+                  <p className="text-xs text-white/40">Los fans podrán apostar por sus equipos favoritos en ArenaCrypto.</p>
+                </div>
+              </div>
+              <div className={`w-12 h-6 rounded-full relative transition-colors ${watch('arenaBettingEnabled') ? 'bg-neon-cyan' : 'bg-white/20'}`}>
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${watch('arenaBettingEnabled') ? 'left-7' : 'left-1'}`} />
+              </div>
+            </button>
           </div>
         </section>
 
