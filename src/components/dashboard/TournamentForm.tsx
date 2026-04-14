@@ -435,6 +435,7 @@ export function TournamentForm({ onSuccess }: TournamentFormProps) {
               rows={8}
               placeholder="Escribe aquí las reglas del torneo..."
               className={`${inputClass} resize-none`}
+            />
             </div>
           </div>
         </section>
