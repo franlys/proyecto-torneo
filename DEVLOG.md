@@ -4,6 +4,50 @@ Este archivo sirve como bitácora de progreso, decisiones técnicas y contexto d
 
 ---
 
+## [2026-04-15] — Producción estable, Kronix branding y Panel Admin
+
+### Problemas resueltos en producción
+
+**Fix leaderboard mostrando 1 solo equipo**
+- Causa: instancia inestable del cliente Supabase en `LeaderboardClient.tsx` causaba re-renders que borraban el estado. Además `.order('col', { descending: true })` es sintaxis inválida en Supabase JS v2.
+- Fix: `useMemo(() => createClient(), [])` para estabilizar el cliente + `{ ascending: false }`.
+
+**Fix Hall of Fame no aparecía**
+- Causa: la condición era `{showHallOfFame && currentChampionImg && ...}` — bloqueaba el modal si no había foto de campeón.
+- Fix: cambiado a `{showHallOfFame && ...}`, se muestra siempre que el torneo esté finalizado.
+
+**Fix "EN VIVO" en torneo ya finalizado (caché Vercel)**
+- Causa: `finishTournament` no llamaba `revalidatePath('/t/[slug]')`, la página quedaba cacheada con estado `active`.
+- Fix: añadido `revalidatePath` en `finishTournament` + creado endpoint `/api/revalidate-tournament?slug=xxx` para invalidar manualmente.
+
+**Fix build Vercel — "Expected jsx identifier at FormProvider"**
+- Causa: commit de Gemini (`401300e`) dejó dos errores en `TournamentForm.tsx`: `<textarea>` sin cerrar (`/>` faltante) y un `</div>` huérfano.
+- Fix: restaurada la sección `rulesText` con JSX correcto.
+
+**Fix registro de usuarios — "Database error saving new user"**
+- Causa: el trigger `handle_new_user` lanzaba excepción al ser invocado por el servicio de Auth de Supabase (permisos distintos al rol `postgres` en Studio). Esto bloqueaba el INSERT en `auth.users`.
+- Fix: función del trigger actualizada con `EXCEPTION WHEN OTHERS THEN RETURN new` para no bloquear nunca la creación del usuario. Red de seguridad añadida en `auth/callback/route.ts`: si el perfil no existe post-confirmación, se crea con el admin client.
+
+### Rebrand ArenaLabs → Kronix + GonzalezLabs
+- Logo en sidebar: `KRONIX / by GonzalezLabs`
+- Landing page: `KRO<span>NIX</span>` + footer `© 2026 KRONIX · ARENACRYPTO`
+- Login/Register: sello `POWERED BY GONZALEZLABS`
+- `ArenaPromoBanner.tsx`: URL corregida a `https://arena-crypto.vercel.app/`
+
+### Panel de Administración
+- `DashboardLayout` ahora fetcha el perfil y pasa `userRole` a `DashboardShell`.
+- Sidebar muestra sección "Administración" (Panel Admin + Usuarios) solo si `role === 'ADMIN'`.
+- `/admin`: stats globales (usuarios, torneos, solicitudes pendientes) + tablas de actividad reciente.
+- `/admin/users`: tabla completa con email (via `auth.admin.listUsers()`), rol y suscripción. Dropdown inline `RoleSelect` (Client Component) ejecuta `changeUserRole` Server Action con validación Zod.
+- Acceso protegido con `isAdmin()` — redirige a `/tournaments` si no es admin.
+
+### Notas técnicas
+- `CREATE POLICY IF NOT EXISTS` NO es SQL válido en PostgreSQL. Usar `DROP POLICY IF EXISTS` + `CREATE POLICY`.
+- Supabase Studio no muestra `RAISE NOTICE` en el SQL editor — usar retornos de tabla para debug visible.
+- El primer usuario registrado recibe `role = 'ADMIN'` automáticamente via trigger. Usuarios posteriores reciben `STREAMER`.
+
+---
+
 ## [2026-04-06] — Estado Inicial y Task 6 Completa
 
 ### Resumen del Estado
