@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getProfile } from '@/lib/actions/auth-helpers'
 import { redirect } from 'next/navigation'
 import { updateProfile } from '@/lib/actions/profile'
+import { SubscriptionUpload } from './SubscriptionUpload'
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -87,31 +88,49 @@ export default async function ProfilePage() {
 
       {/* Subscription Card */}
       {profile?.role !== 'ADMIN' && (
-        <div className="bg-white/5 border border-white/10 rounded-xl p-6 space-y-3">
+        <div className="bg-white/5 border border-white/10 rounded-xl p-6 space-y-4">
           <h2 className="text-white/60 text-xs uppercase tracking-widest font-semibold">Suscripción</h2>
+
           {profile?.subscriptionStatus === 'ACTIVE' ? (
-            <div>
-              <p className="text-green-400 text-sm font-semibold">Suscripción activa</p>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-400" />
+                <p className="text-green-400 text-sm font-semibold">Suscripción activa</p>
+              </div>
               {profile.subscriptionExpiry && (
-                <p className="text-white/30 text-xs mt-1">
-                  Expira: {new Date(profile.subscriptionExpiry).toLocaleDateString('es')}
+                <p className="text-white/30 text-xs">
+                  Renovar antes del: {new Date(profile.subscriptionExpiry).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </p>
               )}
+              <p className="text-white/20 text-xs">
+                Para renovar, sube un nuevo comprobante antes de que expire.
+              </p>
+            </div>
+          ) : profile?.subscriptionStatus === 'PENDING' ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+                <p className="text-yellow-400 text-sm font-semibold">Solicitud en revisión</p>
+              </div>
+              <p className="text-white/40 text-sm">
+                Tu comprobante fue recibido. Te notificaremos cuando el administrador lo apruebe.
+              </p>
             </div>
           ) : (
-            <div className="space-y-3">
-              <p className="text-white/50 text-sm">
-                Activa tu suscripción para acceder a todas las funciones de streamer.
-              </p>
-              <div className="p-4 bg-neon-purple/5 border border-neon-purple/20 rounded-lg">
-                <p className="text-neon-purple text-sm font-semibold">Plan Streamer — $15 / mes</p>
-                <p className="text-white/30 text-xs mt-1">
-                  Torneos ilimitados · Leaderboard en vivo · Bridge ArenaCrypto
+            <div className="space-y-4">
+              <div className="p-4 bg-neon-purple/5 border border-neon-purple/20 rounded-xl">
+                <p className="text-neon-purple text-sm font-bold">Plan Streamer Pro — $15 / mes</p>
+                <p className="text-white/40 text-xs mt-1">
+                  Torneos ilimitados · Leaderboard en vivo · Bridge ArenaCrypto · Streamer codes
                 </p>
               </div>
-              <p className="text-white/30 text-xs">
-                Para activar, realiza el pago y sube el comprobante desde el panel de solicitudes.
-              </p>
+              <div className="text-white/40 text-xs space-y-1">
+                <p className="font-semibold text-white/60">Cómo activar:</p>
+                <p>1. Realiza el pago de $15 a la cuenta indicada por el administrador.</p>
+                <p>2. Toma un screenshot del comprobante y súbelo aquí.</p>
+                <p>3. El administrador lo revisará y activará tu cuenta.</p>
+              </div>
+              <SubscriptionUpload />
             </div>
           )}
         </div>

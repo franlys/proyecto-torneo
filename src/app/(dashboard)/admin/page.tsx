@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { isAdmin } from '@/lib/actions/auth-helpers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { SendRemindersButton } from './SendRemindersButton'
 
 export default async function AdminPage() {
   const admin = await isAdmin()
@@ -58,13 +59,20 @@ export default async function AdminPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3 items-center">
         <Link
           href="/admin/users"
           className="px-4 py-2 bg-neon-cyan/10 border border-neon-cyan/20 text-neon-cyan text-sm rounded-lg hover:bg-neon-cyan/20 transition-colors"
         >
           Gestionar usuarios
         </Link>
+        <Link
+          href="/admin/subscriptions"
+          className="px-4 py-2 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-sm rounded-lg hover:bg-yellow-500/20 transition-colors"
+        >
+          Ver solicitudes pendientes
+        </Link>
+        <SendRemindersButton />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

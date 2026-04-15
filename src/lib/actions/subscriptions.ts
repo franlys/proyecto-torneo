@@ -70,6 +70,52 @@ export async function rejectSubscription(requestId: string, userId: string, note
   return { success: true }
 }
 
+export async function activateSubscription(userId: string) {
+  if (!(await isAdmin())) return { error: 'Sin permisos de administrador' }
+
+  const supabase = await createAdminClient()
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      subscription_status: 'ACTIVE',
+      subscription_expiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    })
+    .eq('id', userId)
+
+  if (error) return { error: error.message }
+  revalidatePath('/admin/users')
+  return { success: true }
+}
+
+export async function approveDirectly(userId: string) {
+  if (!(await isAdmin())) return { error: 'Sin permisos de administrador' }
+
+  const supabase = await createAdminClient()
+
+  // Find the most recent PENDING request for this user
+  const { data: req } = await supabase
+    .from('subscription_requests')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('status', 'PENDING')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (req) {
+    await supabase.from('subscription_requests').update({ status: 'APPROVED' }).eq('id', req.id)
+  }
+
+  await supabase.from('profiles').update({
+    subscription_status: 'ACTIVE',
+    subscription_expiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  }).eq('id', userId)
+
+  revalidatePath('/admin/users')
+  revalidatePath('/admin/subscriptions')
+  return { success: true }
+}
+
 export async function deactivateSubscription(userId: string) {
   if (!(await isAdmin())) return { error: 'Sin permisos de administrador' }
 

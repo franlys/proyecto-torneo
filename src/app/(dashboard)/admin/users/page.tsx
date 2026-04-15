@@ -3,6 +3,7 @@ import { isAdmin } from '@/lib/actions/auth-helpers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { RoleSelect } from './RoleSelect'
+import { SubToggle } from './SubToggle'
 
 export default async function AdminUsersPage() {
   const admin = await isAdmin()
@@ -96,6 +97,13 @@ export default async function AdminUsersPage() {
                         <span className="text-xs text-green-400/60">✓ OK</span>
                       ) : (
                         <CreateProfileButton userId={u.id} />
+                      )}
+                    </td>
+                    <td className="px-5 py-3">
+                      {profile && profile.role !== 'ADMIN' ? (
+                        <SubToggle userId={u.id} status={profile.subscription_status} />
+                      ) : (
+                        <span className="text-white/20 text-xs">—</span>
                       )}
                     </td>
                     <td className="px-5 py-3">
