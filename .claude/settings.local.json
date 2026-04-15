@@ -6,7 +6,11 @@
       "Bash(supabase status:*)",
       "Bash(curl -s 'https://otssvwinchttedisfqtr.supabase.co/rest/v1/tournaments?select=id,name,status,slug,champion_image_url&slug=eq.prieba-1-r5rza1' -H 'apikey: sb_publishable_p2fVfPXNLmehYppcTb-2bQ_CLaIvB6G' -H 'Authorization: Bearer sb_publishable_p2fVfPXNLmehYppcTb-2bQ_CLaIvB6G')",
       "Bash(Start-Sleep -Seconds 90)",
-      "Bash(curl -s \"https://proyecto-torneo-flcf.vercel.app/api/revalidate-tournament?slug=prieba-1-r5rza1\")"
+      "Bash(curl -s \"https://proyecto-torneo-flcf.vercel.app/api/revalidate-tournament?slug=prieba-1-r5rza1\")",
+      "Bash(node -e \"const fs=require\\('fs'\\); const code=fs.readFileSync\\('src/components/dashboard/TournamentForm.tsx','utf8'\\); const lines=code.split\\('\\\\n'\\); lines.forEach\\(\\(l,i\\)=>{if\\(l.includes\\('{\\\\\\\\*'\\)||l.includes\\('{\\\\\\\\'\\)\\){console.log\\(i+1,JSON.stringify\\(l\\)\\)}}\\)\")",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(cmd /c \"cd /d c:\\\\Users\\\\elmae\\\\Proyecto-torneos && npm run typecheck 2>&1\")"
     ]
   }
 }

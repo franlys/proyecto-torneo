@@ -69,3 +69,19 @@ export async function rejectSubscription(requestId: string, userId: string, note
   revalidatePath('/admin/subscriptions')
   return { success: true }
 }
+
+export async function deactivateSubscription(userId: string) {
+  if (!(await isAdmin())) return { error: 'Sin permisos de administrador' }
+
+  const supabase = await createAdminClient()
+  const { error } = await supabase
+    .from('profiles')
+    .update({ subscription_status: 'EXPIRED', subscription_expiry: null })
+    .eq('id', userId)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/admin/subscriptions')
+  revalidatePath('/admin/users')
+  return { success: true }
+}
