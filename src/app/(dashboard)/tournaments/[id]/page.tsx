@@ -274,7 +274,7 @@ export default async function TournamentOverviewPage({
             }
           />
           <QuickAction
-            href={`/admin/tournaments/${id}`}
+            href={`/tournaments/${id}/codes`}
             label="Códigos de Streamer"
             desc="Genera y gestiona códigos para ArenaCrypto"
             icon={
