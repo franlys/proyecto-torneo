@@ -48,6 +48,33 @@ Este archivo sirve como bitácora de progreso, decisiones técnicas y contexto d
 
 ---
 
+## [2026-04-15] — Integración Revenue Share con ArenaCrypto
+
+### Actividad del día:
+
+#### Receptor de webhooks de comisiones
+- **`revenue_reports`** — tabla nueva que almacena los reportes de comisión enviados por ArenaCrypto al finalizar cada torneo con apuestas activadas.
+  - Campos: `pt_tournament_id`, `total_volume`, `kronix_volume`, `commission_rate`, `commission_amount`, `received_at`, `source`.
+- **`POST /api/revenue-report`** — endpoint receptor del webhook de AC:
+  - Valida `x-ac-secret` contra `AC_WEBHOOK_SECRET` en env vars.
+  - Inserta el reporte en `revenue_reports`.
+  - Responde `{ ok: true, received: commission_amount }`.
+
+#### Variable de entorno nueva
+- `AC_WEBHOOK_SECRET` — mismo valor que en ArenaCrypto para validar autenticidad del webhook.
+
+#### Contexto del modelo
+- ArenaCrypto paga 1% del volumen apostado con códigos de origen Kronix.
+- El trigger es automático: cuando un torneo con `arena_betting_enabled = true` finaliza, AC calcula la comisión y hace POST a `/api/revenue-report`.
+- Los reportes quedan en `revenue_reports` disponibles para el panel de ingresos de Kronix.
+
+### Estado:
+- **Resuelto**: Receptor de webhook operativo.
+- **Pendiente**: Ejecutar migración `20240505000000_revenue_reports.sql` en Supabase de PT.
+- **Pendiente**: Panel de ingresos en el dashboard admin de Kronix que lea `revenue_reports`.
+
+---
+
 ## [2026-04-06] — Estado Inicial y Task 6 Completa
 
 ### Resumen del Estado

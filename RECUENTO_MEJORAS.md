@@ -43,6 +43,15 @@ Este documento resume todas las intervenciones técnicas realizadas para corregi
 
 ---
 
+## 4. Integración con ArenaCrypto — Revenue Share
+
+- **2026-04-15**: Tabla `revenue_reports` — almacena comisiones recibidas de ArenaCrypto por torneos con apuestas.
+- **2026-04-15**: `POST /api/revenue-report` — endpoint receptor de webhook, valida `x-ac-secret`, registra comisión.
+- **2026-04-15**: Variable `AC_WEBHOOK_SECRET` configurada en Vercel de Proyecto-Torneos.
+- **Pendiente**: Panel de ingresos en dashboard admin para visualizar `revenue_reports`.
+
+---
+
 ## 🚀 Estado Actual
 - **Base de Datos**: Consistente y segura.
 - **Storage**: Operativo para logos y evidencias.
