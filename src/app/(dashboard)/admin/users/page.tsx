@@ -10,14 +10,16 @@ export default async function AdminUsersPage() {
 
   const supabase = await createAdminClient()
 
-  const { data: users } = await supabase
+  // Source of truth: auth.users (todos, tengan perfil o no)
+  const { data: authData } = await supabase.auth.admin.listUsers()
+  const authUsers = authData?.users ?? []
+
+  // Perfiles existentes
+  const { data: profiles } = await supabase
     .from('profiles')
     .select('id, username, role, subscription_status, created_at')
-    .order('created_at', { ascending: false })
 
-  // Get emails from auth.users via admin API
-  const { data: authUsers } = await supabase.auth.admin.listUsers()
-  const emailMap = new Map(authUsers?.users?.map((u) => [u.id, u.email]) ?? [])
+  const profileMap = new Map(profiles?.map((p) => [p.id, p]) ?? [])
 
   return (
     <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
@@ -29,7 +31,7 @@ export default async function AdminUsersPage() {
         </Link>
         <div>
           <h1 className="text-2xl font-bold text-white">Usuarios</h1>
-          <p className="text-white/40 text-sm">{users?.length ?? 0} registrados</p>
+          <p className="text-white/40 text-sm">{authUsers.length} registrados</p>
         </div>
       </div>
 
@@ -43,46 +45,90 @@ export default async function AdminUsersPage() {
                 <th className="text-left px-5 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Rol</th>
                 <th className="text-left px-5 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Suscripción</th>
                 <th className="text-left px-5 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Registro</th>
-                <th className="px-5 py-3"></th>
+                <th className="text-left px-5 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Perfil</th>
+                <th className="px-5 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Rol</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {(users ?? []).map((u) => (
-                <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="px-5 py-3 text-sm text-white/70">{emailMap.get(u.id) ?? '—'}</td>
-                  <td className="px-5 py-3 text-sm text-white/50">{u.username ?? <span className="italic text-white/20">—</span>}</td>
-                  <td className="px-5 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full border ${
-                      u.role === 'ADMIN'
-                        ? 'border-neon-cyan/30 text-neon-cyan bg-neon-cyan/10'
-                        : 'border-white/10 text-white/40'
-                    }`}>
-                      {u.role}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full border ${
-                      u.subscription_status === 'ACTIVE'
-                        ? 'border-green-500/30 text-green-400 bg-green-500/10'
-                        : u.subscription_status === 'PENDING'
-                        ? 'border-yellow-500/30 text-yellow-400 bg-yellow-500/10'
-                        : 'border-white/5 text-white/20'
-                    }`}>
-                      {u.subscription_status}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-xs text-white/30">
-                    {new Date(u.created_at).toLocaleDateString('es')}
-                  </td>
-                  <td className="px-5 py-3">
-                    <RoleSelect userId={u.id} currentRole={u.role} />
-                  </td>
-                </tr>
-              ))}
+              {authUsers.map((u) => {
+                const profile = profileMap.get(u.id)
+                return (
+                  <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
+                    <td className="px-5 py-3 text-sm text-white/70">{u.email ?? '—'}</td>
+                    <td className="px-5 py-3 text-sm text-white/50">
+                      {profile?.username ?? <span className="italic text-white/20">—</span>}
+                    </td>
+                    <td className="px-5 py-3">
+                      {profile ? (
+                        <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                          profile.role === 'ADMIN'
+                            ? 'border-neon-cyan/30 text-neon-cyan bg-neon-cyan/10'
+                            : profile.role === 'STREAMER'
+                            ? 'border-neon-purple/30 text-neon-purple bg-neon-purple/10'
+                            : 'border-white/10 text-white/40'
+                        }`}>
+                          {profile.role}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-yellow-500/60 border border-yellow-500/20 bg-yellow-500/5 px-2 py-0.5 rounded-full">
+                          Sin perfil
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3">
+                      {profile ? (
+                        <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                          profile.subscription_status === 'ACTIVE'
+                            ? 'border-green-500/30 text-green-400 bg-green-500/10'
+                            : profile.subscription_status === 'PENDING'
+                            ? 'border-yellow-500/30 text-yellow-400 bg-yellow-500/10'
+                            : 'border-white/5 text-white/20'
+                        }`}>
+                          {profile.subscription_status}
+                        </span>
+                      ) : <span className="text-white/20 text-xs">—</span>}
+                    </td>
+                    <td className="px-5 py-3 text-xs text-white/30">
+                      {new Date(u.created_at).toLocaleDateString('es')}
+                    </td>
+                    <td className="px-5 py-3">
+                      {profile ? (
+                        <span className="text-xs text-green-400/60">✓ OK</span>
+                      ) : (
+                        <CreateProfileButton userId={u.id} />
+                      )}
+                    </td>
+                    <td className="px-5 py-3">
+                      {profile ? (
+                        <RoleSelect userId={u.id} currentRole={profile.role} />
+                      ) : (
+                        <span className="text-white/20 text-xs">—</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
       </div>
     </div>
+  )
+}
+
+// Inline server action button para crear perfil faltante
+import { createMissingProfile } from '@/lib/actions/admin'
+
+function CreateProfileButton({ userId }: { userId: string }) {
+  return (
+    <form action={createMissingProfile}>
+      <input type="hidden" name="userId" value={userId} />
+      <button
+        type="submit"
+        className="text-xs text-yellow-400 hover:text-yellow-300 border border-yellow-500/20 hover:border-yellow-500/40 bg-yellow-500/5 px-2 py-0.5 rounded-full transition-colors"
+      >
+        Crear perfil
+      </button>
+    </form>
   )
 }
