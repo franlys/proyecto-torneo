@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { createTournamentSchema, updateTournamentSchema } from '@/lib/validations/schemas'
 import type { Tournament, ScoringRule } from '@/types'
 import type { CreateTournamentInput, UpdateTournamentInput } from '@/lib/validations/schemas'
-import { isActiveStreamer } from './auth-helpers'
+import { isActiveStreamer, isAdmin } from './auth-helpers'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -412,11 +412,18 @@ export async function getTournaments(): Promise<
   } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
-  const { data, error } = await supabase
+  const admin = await isAdmin()
+
+  let query = supabase
     .from('tournaments')
     .select('*')
-    .eq('creator_id', user.id)
     .order('created_at', { ascending: false })
+
+  if (!admin) {
+    query = query.eq('creator_id', user.id)
+  }
+
+  const { data, error } = await query
 
   if (error) return { error: error.message }
   return {
@@ -433,12 +440,18 @@ export async function getTournament(
   } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
-  const { data: tournament, error: tErr } = await supabase
+  const admin = await isAdmin()
+
+  let query = supabase
     .from('tournaments')
     .select('*')
     .eq('id', id)
-    .eq('creator_id', user.id)
-    .single()
+
+  if (!admin) {
+    query = query.eq('creator_id', user.id)
+  }
+
+  const { data: tournament, error: tErr } = await query.single()
 
   if (tErr || !tournament) return { error: 'Torneo no encontrado' }
 
