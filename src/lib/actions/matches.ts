@@ -25,6 +25,7 @@ export async function getTournamentMatches(tournamentId: string): Promise<{ data
     matchNumber: m.match_number,
     isCompleted: m.is_completed,
     isWarmup: m.is_warmup,
+    isActive: m.is_active ?? false,
     parentMatchId: m.parent_match_id,
     roundNumber: m.round_number,
     mapName: m.map_name,
@@ -37,28 +38,41 @@ export async function getTournamentMatches(tournamentId: string): Promise<{ data
 export async function updateMatch(
   tournamentId: string,
   matchId: string,
-  data: Partial<Pick<Match, 'name' | 'mapName' | 'isCompleted' | 'isWarmup'>>
+  data: Partial<Pick<Match, 'name' | 'mapName' | 'isCompleted' | 'isWarmup' | 'isActive'>>
 ): Promise<{ success: boolean } | { error: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
-  // Verify ownership
+  // Verify ownership or admin
   const { data: tournament } = await supabase
     .from('tournaments')
     .select('creator_id')
     .eq('id', tournamentId)
     .single()
 
-  if (!tournament || tournament.creator_id !== user.id) {
+  const { isAdmin } = await import('./auth-helpers')
+  const admin = await isAdmin()
+
+  if (!tournament || (!admin && tournament.creator_id !== user.id)) {
     return { error: 'Sin permisos' }
   }
 
-  const updatePayload: any = {}
+  const updatePayload: Record<string, unknown> = {}
   if (data.name !== undefined) updatePayload.name = data.name
   if (data.mapName !== undefined) updatePayload.map_name = data.mapName
   if (data.isCompleted !== undefined) updatePayload.is_completed = data.isCompleted
   if (data.isWarmup !== undefined) updatePayload.is_warmup = data.isWarmup
+  if (data.isActive !== undefined) updatePayload.is_active = data.isActive
+
+  // If activating this match, deactivate all others in the tournament first
+  if (data.isActive === true) {
+    await supabase
+      .from('matches')
+      .update({ is_active: false })
+      .eq('tournament_id', tournamentId)
+      .neq('id', matchId)
+  }
 
   const { error } = await supabase
     .from('matches')
@@ -69,5 +83,6 @@ export async function updateMatch(
   if (error) return { error: error.message }
 
   revalidatePath(`/t/[slug]`, 'page')
+  revalidatePath(`/tournaments/${tournamentId}/matches`)
   return { success: true }
 }

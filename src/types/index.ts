@@ -114,6 +114,7 @@ export interface Match {
   matchNumber: number;
   isCompleted: boolean;
   isWarmup: boolean;
+  isActive: boolean;
   parentMatchId?: string;
   roundNumber: number;
   mapName?: string;

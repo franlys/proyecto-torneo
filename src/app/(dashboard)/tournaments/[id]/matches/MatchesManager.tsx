@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Match } from '@/types'
 import { updateMatch } from '@/lib/actions/matches'
 import { toast } from 'sonner'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 
 export function MatchesManager({
   tournamentId,
@@ -16,27 +16,128 @@ export function MatchesManager({
   const [matches, setMatches] = useState(initialMatches)
   const [saving, setSaving] = useState<string | null>(null)
 
-  // Group by Encounter (parentMatchId is null)
   const encounters = matches.filter(m => !m.parentMatchId)
   const getRounds = (parentId: string) => matches.filter(m => m.parentMatchId === parentId)
 
-  const handleUpdate = async (matchId: string, data: any) => {
+  const handleUpdate = async (matchId: string, data: Partial<Match>) => {
     setSaving(matchId)
     const res = await updateMatch(tournamentId, matchId, data)
     if ('error' in res) {
       toast.error(res.error)
     } else {
-      setMatches(prev => prev.map(m => m.id === matchId ? { ...m, ...data } : m))
+      // If activating, deactivate all others locally too
+      if (data.isActive === true) {
+        setMatches(prev => prev.map(m =>
+          m.id === matchId
+            ? { ...m, ...data }
+            : { ...m, isActive: false }
+        ))
+      } else {
+        setMatches(prev => prev.map(m => m.id === matchId ? { ...m, ...data } : m))
+      }
       toast.success('Cambios guardados')
     }
     setSaving(null)
   }
 
+  const handleStart = async (match: Match) => {
+    if (match.isCompleted) {
+      toast.error('Esta partida ya está finalizada')
+      return
+    }
+    await handleUpdate(match.id, { isActive: true })
+    toast.success(`▶ ${match.name} marcada como EN CURSO — AC abre mercados`)
+  }
+
+  const handleFinish = async (match: Match) => {
+    await handleUpdate(match.id, { isActive: false, isCompleted: true })
+    toast.success(`✓ ${match.name} finalizada — AC cierra y resuelve mercados`)
+  }
+
+  const handleReopen = async (match: Match) => {
+    await handleUpdate(match.id, { isCompleted: false, isActive: false })
+    toast.success(`${match.name} reabierta`)
+  }
+
+  function MatchControls({ match }: { match: Match }) {
+    const isSaving = saving === match.id
+
+    if (match.isWarmup) {
+      return (
+        <span className="text-[10px] text-yellow-500/60 uppercase font-black tracking-widest">
+          Warmup — sin mercados
+        </span>
+      )
+    }
+
+    if (match.isCompleted) {
+      return (
+        <div className="flex items-center gap-2">
+          <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-neon-cyan">
+            <span className="w-1.5 h-1.5 rounded-full bg-neon-cyan" />
+            Finalizada
+          </span>
+          <button
+            onClick={() => handleReopen(match)}
+            disabled={isSaving}
+            className="text-[10px] px-2 py-1 rounded border border-white/10 text-white/30 hover:text-white/60 hover:border-white/20 transition-colors disabled:opacity-40"
+          >
+            Reabrir
+          </button>
+        </div>
+      )
+    }
+
+    if (match.isActive) {
+      return (
+        <div className="flex items-center gap-2">
+          <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-green-400 animate-pulse">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+            En curso · AC live
+          </span>
+          <button
+            onClick={() => handleFinish(match)}
+            disabled={isSaving}
+            className="text-[10px] px-3 py-1.5 rounded-lg border border-gold/30 text-gold bg-gold/10 hover:bg-gold/20 font-black uppercase tracking-widest transition-colors disabled:opacity-40"
+          >
+            {isSaving ? '...' : 'Finalizar'}
+          </button>
+        </div>
+      )
+    }
+
+    // Pending (not active, not completed)
+    return (
+      <button
+        onClick={() => handleStart(match)}
+        disabled={isSaving}
+        className="text-[10px] px-3 py-1.5 rounded-lg border border-neon-cyan/30 text-neon-cyan bg-neon-cyan/10 hover:bg-neon-cyan/20 font-black uppercase tracking-widest transition-colors disabled:opacity-40"
+      >
+        {isSaving ? '...' : '▶ Iniciar'}
+      </button>
+    )
+  }
+
   return (
     <div className="space-y-6 pb-20">
+      {/* Legend */}
+      <div className="flex flex-wrap items-center gap-4 text-[10px] text-white/30 uppercase tracking-widest font-black px-1">
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-white/20" /> Pendiente
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" /> En curso · AC abierto
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-neon-cyan" /> Finalizada · AC resuelto
+        </span>
+      </div>
+
       {encounters.length === 0 ? (
         <div className="py-20 text-center border border-dashed border-white/10 rounded-3xl bg-white/[0.02]">
-          <p className="text-white/40 font-orbitron text-sm uppercase tracking-widest">No hay encuentros generados</p>
+          <p className="text-white/40 font-orbitron text-sm uppercase tracking-widest">
+            No hay partidas generadas
+          </p>
         </div>
       ) : (
         encounters.map((encounter, idx) => {
@@ -48,18 +149,30 @@ export function MatchesManager({
               key={encounter.id}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: idx * 0.1 }}
-              className="bg-dark-card/40 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
+              transition={{ delay: idx * 0.08 }}
+              className={`bg-dark-card/40 backdrop-blur-xl border rounded-3xl overflow-hidden shadow-2xl transition-colors ${
+                encounter.isActive
+                  ? 'border-green-400/30 shadow-green-400/5'
+                  : encounter.isCompleted
+                  ? 'border-neon-cyan/20'
+                  : 'border-white/10'
+              }`}
             >
-              {/* Encounter Header */}
-              <div className="px-8 py-6 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-neon-purple/10 border border-neon-purple/30 flex items-center justify-center text-neon-purple font-orbitron font-black shadow-[0_0_15px_rgba(180,0,255,0.1)]">
+              {/* Header */}
+              <div className="px-8 py-5 border-b border-white/5 bg-white/[0.02] flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-orbitron font-black text-sm shrink-0 border ${
+                    encounter.isActive
+                      ? 'bg-green-400/10 border-green-400/30 text-green-400'
+                      : encounter.isCompleted
+                      ? 'bg-neon-cyan/10 border-neon-cyan/30 text-neon-cyan'
+                      : 'bg-neon-purple/10 border-neon-purple/30 text-neon-purple'
+                  }`}>
                     {encounter.matchNumber}
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <input
-                      className="bg-transparent border-none text-xl font-orbitron font-black text-white p-0 focus:ring-0 w-64 hover:bg-white/5 transition-colors rounded px-2 -ml-2"
+                      className="bg-transparent border-none text-lg font-orbitron font-black text-white p-0 focus:ring-0 w-56 hover:bg-white/5 transition-colors rounded px-2 -ml-2"
                       defaultValue={encounter.name}
                       onBlur={(e) => {
                         if (e.target.value !== encounter.name) {
@@ -67,93 +180,89 @@ export function MatchesManager({
                         }
                       }}
                     />
-                    <p className="text-[10px] text-white/30 uppercase tracking-[0.2em] font-bold mt-1">Encuentro Principal</p>
                   </div>
                 </div>
-                
-                <div className="flex items-center gap-3">
+
+                <div className="flex items-center gap-3 shrink-0">
                   <button
                     onClick={() => handleUpdate(encounter.id, { isWarmup: !encounter.isWarmup })}
                     className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${
-                      encounter.isWarmup 
-                      ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/40' 
-                      : 'bg-white/5 text-white/40 border-white/10 hover:border-white/20'
+                      encounter.isWarmup
+                        ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/40'
+                        : 'bg-white/5 text-white/40 border-white/10 hover:border-white/20'
                     }`}
                   >
-                    {encounter.isWarmup ? '🔥 Warmup Activo' : 'Warmup?'}
+                    {encounter.isWarmup ? '🔥 Warmup' : 'Warmup?'}
                   </button>
+
+                  {!hasRounds && <MatchControls match={encounter} />}
+
                   {saving === encounter.id && (
                     <div className="animate-spin w-4 h-4 border-2 border-neon-purple border-t-transparent rounded-full" />
                   )}
                 </div>
               </div>
 
-              {/* Rounds List */}
-              <div className="p-4 sm:p-8 space-y-4">
+              {/* Body */}
+              <div className="p-6 sm:p-8 space-y-4">
                 {!hasRounds ? (
-                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] text-white/30 uppercase tracking-[0.2em] font-black ml-1">Mapa Actual</label>
-                        <input
-                          placeholder="Ej. Erangel, Miramar..."
-                          className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/50 transition-all outline-none"
-                          defaultValue={encounter.mapName}
-                          onBlur={(e) => handleUpdate(encounter.id, { mapName: e.target.value })}
-                        />
-                      </div>
-                      <div className="flex items-end">
-                        <button
-                          onClick={() => handleUpdate(encounter.id, { isCompleted: !encounter.isCompleted })}
-                          className={`w-full py-3 rounded-xl text-xs font-orbitron font-bold uppercase transition-all border ${
-                            encounter.isCompleted 
-                            ? 'bg-neon-cyan/20 text-neon-cyan border-neon-cyan/40 shadow-[0_0_15px_rgba(0,245,255,0.1)]' 
-                            : 'bg-white/5 text-white/40 border-white/5 hover:border-white/10'
-                          }`}
-                        >
-                          {encounter.isCompleted ? '✓ Finalizada' : 'Marcar Finalizada'}
-                        </button>
-                      </div>
-                   </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] text-white/30 uppercase tracking-[0.2em] font-black ml-1">
+                        Mapa
+                      </label>
+                      <input
+                        placeholder="Ej. Erangel, Miramar..."
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/50 transition-all outline-none"
+                        defaultValue={encounter.mapName}
+                        onBlur={(e) => handleUpdate(encounter.id, { mapName: e.target.value })}
+                      />
+                    </div>
+                  </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-3">
                     {rounds.map((round) => (
-                      <div key={round.id} className="group bg-white/[0.03] hover:bg-white/[0.05] border border-white/5 hover:border-white/10 rounded-2xl p-6 transition-all">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-6">
-                           <div className="flex-1 space-y-4">
-                              <div className="flex items-center gap-3">
-                                <span className="bg-white/10 text-white/60 text-[10px] font-black px-2 py-0.5 rounded shadow-sm">R{round.roundNumber}</span>
-                                <input
-                                  className="bg-transparent border-none text-white font-bold p-0 focus:ring-0 text-lg hover:bg-white/5 transition-colors rounded px-1 -ml-1 w-full"
-                                  defaultValue={round.name}
-                                  onBlur={(e) => {
-                                    if (e.target.value !== round.name) {
-                                      handleUpdate(round.id, { name: e.target.value })
-                                    }
-                                  }}
-                                />
+                      <div
+                        key={round.id}
+                        className={`group border rounded-2xl p-5 transition-all ${
+                          round.isActive
+                            ? 'bg-green-400/5 border-green-400/20'
+                            : round.isCompleted
+                            ? 'bg-neon-cyan/5 border-neon-cyan/10'
+                            : 'bg-white/[0.03] border-white/5 hover:border-white/10'
+                        }`}
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                          <div className="flex-1 space-y-3">
+                            <div className="flex items-center gap-3">
+                              <span className="bg-white/10 text-white/60 text-[10px] font-black px-2 py-0.5 rounded">
+                                R{round.roundNumber}
+                              </span>
+                              <input
+                                className="bg-transparent border-none text-white font-bold p-0 focus:ring-0 text-base hover:bg-white/5 transition-colors rounded px-1 -ml-1 w-full"
+                                defaultValue={round.name}
+                                onBlur={(e) => {
+                                  if (e.target.value !== round.name) {
+                                    handleUpdate(round.id, { name: e.target.value })
+                                  }
+                                }}
+                              />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <input
+                                placeholder="Mapa (opcional)"
+                                className="bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/50 transition-all outline-none"
+                                defaultValue={round.mapName}
+                                onBlur={(e) => handleUpdate(round.id, { mapName: e.target.value })}
+                              />
+                              <div className="flex items-center">
+                                <MatchControls match={round} />
                               </div>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <input
-                                  placeholder="Nombre del Mapa (Opcional)"
-                                  className="bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/50 transition-all outline-none"
-                                  defaultValue={round.mapName}
-                                  onBlur={(e) => handleUpdate(round.id, { mapName: e.target.value })}
-                                />
-                                <button
-                                  onClick={() => handleUpdate(round.id, { isCompleted: !round.isCompleted })}
-                                  className={`py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
-                                    round.isCompleted 
-                                    ? 'bg-neon-cyan/20 text-neon-cyan border-neon-cyan/40 shadow-[0_0_10px_rgba(0,245,255,0.1)]' 
-                                    : 'bg-transparent text-white/30 border-white/10 hover:border-white/20'
-                                  }`}
-                                >
-                                  {round.isCompleted ? '✓ Finalizada' : 'Marcar Finalizada'}
-                                </button>
-                              </div>
-                           </div>
-                           {saving === round.id && (
-                             <div className="animate-spin w-4 h-4 border-2 border-neon-purple border-t-transparent rounded-full" />
-                           )}
+                            </div>
+                          </div>
+                          {saving === round.id && (
+                            <div className="animate-spin w-4 h-4 border-2 border-neon-purple border-t-transparent rounded-full shrink-0" />
+                          )}
                         </div>
                       </div>
                     ))}
