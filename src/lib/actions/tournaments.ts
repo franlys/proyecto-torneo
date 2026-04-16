@@ -59,6 +59,8 @@ function mapTournamentRow(row: Record<string, unknown>): Tournament {
     arenaBettingEnabled: row.arena_betting_enabled as boolean,
     arenaBettingStatus: row.arena_betting_status as Tournament['arenaBettingStatus'],
     totalLiveViewers: row.total_live_viewers as number,
+    // Arena Crypto sync
+    tournamentType: (row.tournament_type as Tournament['tournamentType']) ?? 'battle_royale',
   }
 }
 

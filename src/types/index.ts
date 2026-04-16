@@ -10,6 +10,12 @@ export type CompetitionFormat =
   | 'fase_de_grupos';
 export type TournamentLevel = 'casual' | 'profesional';
 export type TournamentStatus = 'draft' | 'active' | 'finished';
+export type TournamentType =
+  | 'battle_royale'
+  | 'kill_race'
+  | 'deathmatch'
+  | 'eliminacion_directa'
+  | 'custom';
 export type SubmissionStatus = 'pending' | 'approved' | 'rejected';
 
 export interface Tournament {
@@ -49,6 +55,9 @@ export interface Tournament {
   arenaBettingEnabled: boolean;
   arenaBettingStatus: 'open' | 'closed' | 'paused';
   totalLiveViewers: number;
+
+  // Arena Crypto sync
+  tournamentType: TournamentType;
 }
 
 export interface ScoringRule {
