@@ -282,6 +282,41 @@ export async function updateTournament(
   return { data: mapTournamentRow(updated as Record<string, unknown>) }
 }
 
+export async function publishTournament(
+  id: string
+): Promise<{ success: true } | { error: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const { data: tournament, error: fetchErr } = await supabase
+    .from('tournaments')
+    .select('status, creator_id')
+    .eq('id', id)
+    .single()
+
+  if (fetchErr || !tournament) return { error: 'Torneo no encontrado' }
+
+  const { isAdmin } = await import('./auth-helpers')
+  const admin = await isAdmin()
+  if (!admin && tournament.creator_id !== user.id) return { error: 'Sin permisos' }
+
+  if (tournament.status !== 'draft') {
+    return { error: 'Solo se puede anunciar un torneo en estado Borrador' }
+  }
+
+  const { error } = await supabase
+    .from('tournaments')
+    .update({ status: 'pending' })
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath(`/tournaments/${id}`)
+  revalidatePath('/tournaments')
+  return { success: true }
+}
+
 export async function activateTournament(
   id: string
 ): Promise<{ success: true } | { error: string }> {
@@ -300,7 +335,7 @@ export async function activateTournament(
 
   if (fetchErr || !tournament) return { error: 'Torneo no encontrado' }
   if (tournament.creator_id !== user.id) return { error: 'Sin permisos' }
-  if (tournament.status !== 'draft') {
+  if (tournament.status !== 'draft' && tournament.status !== 'pending') {
     return { error: 'El torneo ya está activo o finalizado' }
   }
 

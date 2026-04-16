@@ -9,7 +9,7 @@ export type CompetitionFormat =
   | 'eliminacion_directa'
   | 'fase_de_grupos';
 export type TournamentLevel = 'casual' | 'profesional';
-export type TournamentStatus = 'draft' | 'active' | 'finished';
+export type TournamentStatus = 'draft' | 'pending' | 'active' | 'finished';
 export type TournamentType =
   | 'battle_royale'
   | 'kill_race'

@@ -17,6 +17,15 @@ function StatusBadge({ status }: { status: Tournament['status'] }) {
       </span>
     )
   }
+  if (status === 'pending') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold
+        bg-neon-purple/10 text-neon-purple border border-neon-purple/20">
+        <span className="w-1.5 h-1.5 rounded-full bg-neon-purple animate-pulse" />
+        Anunciado
+      </span>
+    )
+  }
   if (status === 'finished') {
     return (
       <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold
@@ -102,6 +111,7 @@ function QuickAction({
 // ─── Activate button (Client Component) ─────────────────────────────────────────
 import { ActivateTournamentButton } from './ActivateTournamentButton'
 import { FinishTournamentButton } from './FinishTournamentButton'
+import { PublishTournamentButton } from './PublishTournamentButton'
 import { TournamentBranding } from './TournamentBranding'
 
 
@@ -311,8 +321,20 @@ export default async function TournamentOverviewPage({
         </div>
       )}
 
-      {/* Activate button (only for draft) */}
+      {/* Publish button (draft → pending) */}
       {tournament.status === 'draft' && (
+        <div className="bg-dark-card border border-neon-purple/10 rounded-2xl p-6 mb-8">
+          <h2 className="text-sm font-semibold text-white mb-1">Anunciar torneo</h2>
+          <p className="text-xs text-white/30 mb-4">
+            Publica el torneo para que ArenaCrypto abra las apuestas de campeón y MVP antes de que arranque.
+            Podrás seguir editando participantes hasta activarlo.
+          </p>
+          <PublishTournamentButton id={id} />
+        </div>
+      )}
+
+      {/* Activate button (draft or pending → active) */}
+      {(tournament.status === 'draft' || tournament.status === 'pending') && (
         <div className="bg-dark-card border border-neon-cyan/10 rounded-2xl p-6 mb-8">
           <h2 className="text-sm font-semibold text-white mb-1">¿Listo para comenzar?</h2>
           <p className="text-xs text-white/30 mb-4">
