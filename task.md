@@ -1,5 +1,25 @@
 # Task Tracking — Tournament Leaderboard Platform
 
+## Sprint 9: Admin Access, AC Sync & Live Match Control (2026-04-15/16)
+
+| Tarea | Estado | Notas |
+|-------|--------|-------|
+| Fix registro usuarios "Database error saving new user" | ✅ Completo | Trigger silencioso (EXCEPTION WHEN OTHERS) + fallback en auth callback |
+| Perfil admin para elmaestrogonzalez30@gmail.com | ✅ Completo | Insertado manualmente vía SQL con role=ADMIN |
+| Panel de administración `/admin` | ✅ Completo | Stats globales + usuarios recientes + todos los torneos |
+| Gestión de usuarios `/admin/users` | ✅ Completo | `auth.admin.listUsers()` como fuente primaria + RoleSelect + SubToggle |
+| Perfil de usuario `/profile` | ✅ Completo | Editar username + flujo suscripción (upload → pending → active) |
+| Gate de creación de torneos | ✅ Completo | Bloqueo si `subscription_status !== 'ACTIVE'` (excepto ADMIN) |
+| Recordatorios de suscripción | ✅ Completo | `sendSubscriptionReminders()` — magic links a subs que expiran en 7 días |
+| Fix ArenaCrypto banner 404 | ✅ Completo | URL cambiada a homepage con `?ref=kronix&tournament=slug` |
+| Fix códigos de streamer salen del dashboard | ✅ Completo | Nueva ruta `/tournaments/[id]/codes` dentro del grupo `(dashboard)` |
+| Fix "Sin permisos" al generar códigos | ✅ Completo | `canManageCodes()`: creador del torneo también puede gestionar, no solo admin |
+| Admin puede ver torneos ajenos | ✅ Completo | `getTournament/getTournaments` sin filtro `creator_id` para ADMIN + RLS bypass |
+| RLS bypass para ADMIN | ✅ Completo | `is_admin_user()` + políticas `admin_full_access` en todas las tablas |
+| Arena Crypto sync fields | ✅ Completo | `tournament_type`, `rank`, `player_kills` (JSONB+GIN), `is_warmup` en matches |
+| XVI COUP marcado como kill_race | ✅ Completo | `tournament_type = 'kill_race'` via migración + UPDATE |
+| matches.is_active para AC live sync | ✅ Completo | Campo booleano + botones ▶ Iniciar / ✓ Finalizar en MatchesManager |
+
 ## Sprint 8: Producción, Branding & Admin Panel (2026-04-14/15)
 
 | Tarea | Estado | Notas |
@@ -10,10 +30,6 @@
 | Fix build Vercel (JSX error Gemini commit) | ✅ Completo | `TournamentForm.tsx`: self-closing textarea + orphaned `</div>` eliminado |
 | Rebrand ArenaLabs → Kronix + Powered by GonzalezLabs | ✅ Completo | Todos los archivos de UI actualizados |
 | Fix URL ArenaCrypto → arena-crypto.vercel.app | ✅ Completo | `page.tsx`, `ArenaPromoBanner.tsx` |
-| Fix registro usuarios "Database error saving new user" | ✅ Completo | Trigger silencioso (EXCEPTION WHEN OTHERS) + fallback en auth callback |
-| Perfil admin para elmaestrogonzalez30@gmail.com | ✅ Completo | Insertado manualmente vía SQL con role=ADMIN |
-| Panel de administración `/admin` | ✅ Completo | Stats globales + usuarios recientes + todos los torneos |
-| Gestión de usuarios `/admin/users` | ✅ Completo | Tabla con email, rol, suscripción + RoleSelect inline |
 
 ## Sprint 7: Premium Refinement & Individual Metrics
 

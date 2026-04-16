@@ -4,6 +4,39 @@ Este archivo sirve como bitácora de progreso, decisiones técnicas y contexto d
 
 ---
 
+## [2026-04-16] — Arena Crypto Sync, is_active en matches y fixes de acceso
+
+### matches.is_active — Control de partida en vivo para AC
+- **Problema**: AC no podía saber cuál partida estaba en curso. Todos los matches nacían con `is_completed = false`, así AC abriría mercados para todas al mismo tiempo.
+- **Solución**: nuevo campo `is_active BOOLEAN DEFAULT false` en `matches`.
+  - Solo una partida por torneo puede tener `is_active = true` — el action lo enforcea desactivando las demás al activar una.
+  - `MatchesManager` rediseñado con tres estados visuales: **Pendiente** (gris) → **▶ Iniciar** → **En curso** (verde pulsante, "AC live") → **✓ Finalizar** → **Finalizada** (cyan).
+  - El botón "Reabrir" permite corregir errores.
+- **Evento AC**: `is_active = true` → AC abre mercados. `is_completed = true` → AC cierra y resuelve.
+- **Migración**: `20240416000100_matches_is_active.sql`
+
+### Arena Crypto sync fields
+- `tournaments.tournament_type` TEXT con CHECK constraint — mapeado desde `format` existente. XVI COUP = `kill_race`.
+- `submissions.rank` INTEGER — backfill desde `team_standings`.
+- `submissions.player_kills` JSONB DEFAULT '{}' — índice GIN para queries eficientes.
+- `matches.is_warmup` BOOLEAN — ya existía en código, añadido formalmente a la migración de sync.
+- Políticas públicas de lectura para `matches` y `submissions` (idempotentes con DO/EXCEPTION).
+- **Migración**: `20240416000000_arena_crypto_sync_fields.sql`
+- **TypeScript**: `TournamentType` union + `Tournament.tournamentType` + `mapTournamentRow` actualizado.
+
+### Fix: Admin puede ver y gestionar cualquier torneo
+- **Problema**: `getTournament` y `getTournaments` filtraban por `creator_id = user.id` — el admin no veía torneos de otros usuarios. `updateMatch` tampoco permitía al admin modificar partidas ajenas.
+- **Fix código**: `getTournament/getTournaments` omiten el filtro `creator_id` si `isAdmin() === true`. `updateMatch` importa `isAdmin` y bypasea el check de ownership.
+- **Fix DB**: migración `20240415000000_admin_bypass_rls.sql` — función `is_admin_user()` SECURITY DEFINER + políticas `admin_full_access` en tournaments, scoring_rules, teams, participants, matches, submissions, leaderboard_themes, streamer_codes.
+
+### Fix: Códigos de streamer — permisos
+- **Problema 1**: QuickAction en overview del torneo apuntaba a `/admin/tournaments/${id}` (layout externo, salía del dashboard).
+- **Fix**: Nueva ruta `/tournaments/[id]/codes` dentro del grupo `(dashboard)` con `DashboardStreamerCodeManager`.
+- **Problema 2**: `generateStreamerCode` y `toggleStreamerCode` solo permitían ADMIN. El creador del torneo (streamer con suscripción) no podía generar sus propios códigos.
+- **Fix**: función `canManageCodes(tournamentId)` — retorna true si `isAdmin()` OR `creator_id === user.id`. `revalidatePath` corregido a `/tournaments/${tournamentId}/codes`.
+
+---
+
 ## [2026-04-15] — Producción estable, Kronix branding y Panel Admin
 
 ### Problemas resueltos en producción
