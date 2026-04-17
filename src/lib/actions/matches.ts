@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import type { Match } from '@/types'
 import { revalidatePath } from 'next/cache'
+import { pushToAC } from './ac-push'
 
 export async function getTournamentMatches(tournamentId: string): Promise<{ data: Match[] } | { error: string }> {
   const supabase = await createClient()
@@ -81,6 +82,27 @@ export async function updateMatch(
     .eq('tournament_id', tournamentId)
 
   if (error) return { error: error.message }
+
+  // Push updated match to AC mirror
+  const { data: updatedMatch } = await supabase
+    .from('matches')
+    .select('*')
+    .eq('id', matchId)
+    .single()
+  if (updatedMatch) {
+    pushToAC('matches', 'upsert', {
+      id: updatedMatch.id,
+      tournamentId: updatedMatch.tournament_id,
+      name: updatedMatch.name,
+      matchNumber: updatedMatch.match_number,
+      roundNumber: updatedMatch.round_number,
+      mapName: updatedMatch.map_name,
+      isCompleted: updatedMatch.is_completed,
+      isActive: updatedMatch.is_active,
+      isWarmup: updatedMatch.is_warmup,
+      parentMatchId: updatedMatch.parent_match_id,
+    })
+  }
 
   revalidatePath(`/t/[slug]`, 'page')
   revalidatePath(`/tournaments/${tournamentId}/matches`)

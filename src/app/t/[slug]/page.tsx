@@ -119,6 +119,7 @@ export default async function PublicLeaderboardPage({
     mapName: m.map_name,
     isCompleted: m.is_completed,
     isWarmup: m.is_warmup,
+    isActive: m.is_active ?? false,
     roundNumber: m.round_number || 1,
     createdAt: m.created_at
   }))

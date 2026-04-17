@@ -50,6 +50,23 @@ export async function createSubmission(
     return { error: 'Este equipo ya tiene un registro para esta partida' }
   }
 
+  // Ensure rank uniqueness — only one team per position per match
+  const effectiveRank = parsed.data.rank ?? (parsed.data.potTop ? 1 : null)
+  if (effectiveRank !== null && effectiveRank !== undefined) {
+    const { data: rankConflict } = await supabase
+      .from('submissions')
+      .select('id, teams(name)')
+      .eq('match_id', parsed.data.matchId)
+      .eq('rank', effectiveRank)
+      .in('status', ['pending', 'approved'])
+      .neq('team_id', parsed.data.teamId)
+      .maybeSingle()
+
+    if (rankConflict) {
+      return { error: `La posición #${effectiveRank} ya está registrada por otro equipo en esta partida` }
+    }
+  }
+
   const { data: submission, error: subErr } = await supabase
     .from('submissions')
     .insert({

@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { createSubmission } from '@/lib/actions/submissions'
+import { uploadEvidence } from '@/lib/actions/storage'
 
 export function TeamPortalClient({
   tournament,
@@ -25,7 +25,6 @@ export function TeamPortalClient({
   const [rank, setRank] = useState<number | ''>('')
   const [potTop, setPotTop] = useState(false)
 
-  const supabase = createClient()
 
   // Initialize playerKills when participants load
   useEffect(() => {
@@ -94,17 +93,19 @@ export function TeamPortalClient({
     }
 
     try {
-      // 1. Upload file to Supabase Storage
+      // 1. Upload file via Server Action (browser → Vercel → Supabase Storage)
+      //    This avoids DNS resolution failures on mobile carrier networks.
       const fileExt = file.name.split('.').pop()
-      const fileName = `${Math.random()}.${fileExt}`
+      const fileName = `${crypto.randomUUID()}.${fileExt}`
       const filePath = `${tournament.id}/${team.id}/${matchId}/${fileName}`
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('evidences')
-        .upload(filePath, file)
+      const uploadFormData = new FormData()
+      uploadFormData.append('file', file)
+      uploadFormData.append('filePath', filePath)
 
-      if (uploadError) {
-        throw new Error('Error al subir la imagen. ' + uploadError.message)
+      const uploadResult = await uploadEvidence(uploadFormData)
+      if ('error' in uploadResult) {
+        throw new Error('Error al subir la imagen: ' + uploadResult.error)
       }
 
       // 2. Submit with player breakdown
@@ -114,11 +115,11 @@ export function TeamPortalClient({
         matchId: matchId,
         submittedBy: submittedBy,
         killCount: teamTotalKills,
-        playerKills: playerKills, // NEW: Individual breakdown
+        playerKills: playerKills,
         rank: finalRank,
         potTop: finalPotTop,
         evidence: {
-          storagePath: uploadData.path,
+          storagePath: uploadResult.path,
           fileName: file.name,
           fileSize: file.size,
           mimeType: file.type,
@@ -126,7 +127,6 @@ export function TeamPortalClient({
       })
 
       if (res && 'error' in res) {
-        await supabase.storage.from('evidences').remove([uploadData.path])
         throw new Error(res.error)
       }
 

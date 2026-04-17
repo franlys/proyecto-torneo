@@ -4,6 +4,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { teamSchema, participantSchema } from '@/lib/validations/schemas'
 import type { CreateTeamInput, CreateParticipantInput } from '@/lib/validations/schemas'
 import type { Team, Participant } from '@/types'
+import { pushToAC } from './ac-push'
 
 // ─── Teams ──────────────────────────────────────────────────────────────────
 
@@ -43,6 +44,14 @@ export async function createTeam(
     .single()
 
   if (teamErr) return { error: teamErr.message }
+
+  pushToAC('teams', 'upsert', {
+    id: team.id,
+    tournamentId: team.tournament_id,
+    name: team.name,
+    avatarUrl: team.avatar_url,
+    streamUrl: team.stream_url,
+  })
 
   // Auto-initialize standings using admin client — the regular user session lacks
   // write permission on team_standings (no INSERT/UPDATE RLS policy for authenticated users).
@@ -102,6 +111,8 @@ export async function deleteTeam(
     .eq('tournament_id', tournamentId)
 
   if (error) return { error: error.message }
+
+  pushToAC('teams', 'delete', { id: teamId })
   return { success: true }
 }
 
@@ -146,6 +157,16 @@ export async function addParticipant(
 
   if (partErr) return { error: partErr.message }
 
+  pushToAC('participants', 'upsert', {
+    id: participant.id,
+    tournamentId: participant.tournament_id,
+    teamId: participant.team_id,
+    displayName: participant.display_name,
+    streamUrl: participant.stream_url,
+    totalKills: participant.total_kills || 0,
+    isCaptain: participant.is_captain,
+  })
+
   return {
     data: {
       id: participant.id,
@@ -185,6 +206,8 @@ export async function deleteParticipant(
     .eq('tournament_id', tournamentId)
 
   if (error) return { error: error.message }
+
+  pushToAC('participants', 'delete', { id: participantId })
   return { success: true }
 }
 
@@ -300,6 +323,14 @@ export async function updateTeam(
 
   if (updateErr) return { error: updateErr.message }
 
+  pushToAC('teams', 'upsert', {
+    id: team.id,
+    tournamentId: team.tournament_id,
+    name: team.name,
+    avatarUrl: team.avatar_url,
+    streamUrl: team.stream_url,
+  })
+
   return {
     data: {
       id: team.id,
@@ -345,6 +376,16 @@ export async function updateParticipant(
     .single()
 
   if (updateErr) return { error: updateErr.message }
+
+  pushToAC('participants', 'upsert', {
+    id: participant.id,
+    tournamentId: participant.tournament_id,
+    teamId: participant.team_id,
+    displayName: participant.display_name,
+    streamUrl: participant.stream_url,
+    totalKills: participant.total_kills || 0,
+    isCaptain: participant.is_captain,
+  })
 
   return {
     data: {

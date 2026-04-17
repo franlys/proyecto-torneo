@@ -6,6 +6,7 @@ import { createTournamentSchema, updateTournamentSchema } from '@/lib/validation
 import type { Tournament, ScoringRule } from '@/types'
 import type { CreateTournamentInput, UpdateTournamentInput } from '@/lib/validations/schemas'
 import { isActiveStreamer, isAdmin } from './auth-helpers'
+import { pushToAC } from './ac-push'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -190,7 +191,17 @@ export async function createTournament(
     }
   }
 
-  return { data: mapTournamentRow(tournament as Record<string, unknown>) }
+  const mapped = mapTournamentRow(tournament as Record<string, unknown>)
+
+  // Push tournament + all matches to AC mirror (fire-and-forget)
+  pushToAC('tournaments', 'upsert', mapped as unknown as Record<string, unknown>)
+  const { data: createdMatches } = await supabase
+    .from('matches').select('*').eq('tournament_id', tournament.id)
+  for (const m of createdMatches ?? []) {
+    pushToAC('matches', 'upsert', m)
+  }
+
+  return { data: mapped }
 }
 
 export async function updateTournament(
@@ -279,7 +290,9 @@ export async function updateTournament(
       .eq('tournament_id', id)
   }
 
-  return { data: mapTournamentRow(updated as Record<string, unknown>) }
+  const mappedUpdated = mapTournamentRow(updated as Record<string, unknown>)
+  pushToAC('tournaments', 'upsert', mappedUpdated as unknown as Record<string, unknown>)
+  return { data: mappedUpdated }
 }
 
 export async function publishTournament(
@@ -311,6 +324,10 @@ export async function publishTournament(
     .eq('id', id)
 
   if (error) return { error: error.message }
+
+  // Push updated status to AC mirror
+  const { data: updated } = await supabase.from('tournaments').select('*').eq('id', id).single()
+  if (updated) pushToAC('tournaments', 'upsert', mapTournamentRow(updated as Record<string, unknown>) as unknown as Record<string, unknown>)
 
   revalidatePath(`/tournaments/${id}`)
   revalidatePath('/tournaments')
@@ -361,10 +378,14 @@ export async function activateTournament(
     .eq('id', id)
 
   if (activateErr) return { error: activateErr.message }
-  
+
+  // Push updated status to AC mirror
+  const { data: activated } = await supabase.from('tournaments').select('*').eq('id', id).single()
+  if (activated) pushToAC('tournaments', 'upsert', mapTournamentRow(activated as Record<string, unknown>) as unknown as Record<string, unknown>)
+
   revalidatePath(`/tournaments/${id}`)
   revalidatePath('/tournaments')
-  
+
   return { success: true }
 }
 
@@ -431,12 +452,16 @@ export async function finishTournament(
     })
   }
 
+  // Push finished status to AC mirror
+  const { data: finished } = await supabase.from('tournaments').select('*').eq('id', id).single()
+  if (finished) pushToAC('tournaments', 'upsert', mapTournamentRow(finished as Record<string, unknown>) as unknown as Record<string, unknown>)
+
   revalidatePath(`/tournaments/${id}`)
   revalidatePath('/tournaments')
   revalidatePath('/hall-of-fame')
   // Invalidate the public leaderboard page so the next visit gets fresh status
   if (tournament.slug) revalidatePath(`/t/${tournament.slug}`)
-  
+
   return { success: true }
 }
 
@@ -535,6 +560,9 @@ export async function deleteTournament(
     .eq('id', id)
 
   if (deleteErr) return { error: deleteErr.message }
+
+  // Notify AC to remove from mirror
+  pushToAC('tournaments', 'delete', { id })
 
   return { success: true }
 }
