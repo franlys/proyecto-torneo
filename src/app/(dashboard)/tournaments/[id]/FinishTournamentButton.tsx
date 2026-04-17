@@ -2,8 +2,8 @@
 
 import { useState, useRef } from 'react'
 import { finishTournament } from '@/lib/actions/tournaments'
+import { uploadEvidence } from '@/lib/actions/storage'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export function FinishTournamentButton({ id }: { id: string }) {
@@ -13,7 +13,6 @@ export function FinishTournamentButton({ id }: { id: string }) {
   const [preview, setPreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
-  const supabase = createClient()
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0]
@@ -32,21 +31,18 @@ export function FinishTournamentButton({ id }: { id: string }) {
     try {
       if (file) {
         const fileExt = file.name.split('.').pop()
-        const fileName = `${id}-champion.${fileExt}`
-        const filePath = `champions/${fileName}`
+        const filePath = `champions/${id}-champion.${fileExt}`
 
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('evidences') // Usamos el mismo bucket por simplicidad pero ruta /champions/
-          .upload(filePath, file, { upsert: true })
+        const fd = new FormData()
+        fd.append('file', file)
+        fd.append('filePath', filePath)
 
-        if (uploadError) throw uploadError
-        
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('evidences')
-          .getPublicUrl(filePath)
-        
-        imageUrl = publicUrl
+        const uploadResult = await uploadEvidence(fd)
+        if ('error' in uploadResult) throw new Error(uploadResult.error)
+
+        // Build public URL from the returned path
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '')
+        imageUrl = `${supabaseUrl}/storage/v1/object/public/evidences/${uploadResult.path}`
       }
 
       const result = await finishTournament(id, imageUrl)
