@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { isAdmin } from '@/lib/actions/auth-helpers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import WithdrawalButton from './WithdrawalButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -62,6 +63,8 @@ export default async function AdminRevenuePage() {
 
   const acSummary = acData?.summary
   const acRecords: any[] = acData?.records ?? []
+  const ptBalance: number = acSummary?.pt_balance ?? 0
+  const ptPendingWithdrawal: number = acSummary?.pt_pending_withdrawal ?? 0
 
   return (
     <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-8">
@@ -76,6 +79,34 @@ export default async function AdminRevenuePage() {
           <p className="text-white/40 text-sm">Panel financiero de Kronix</p>
         </div>
       </div>
+
+      {/* Saldo en ArenaCrypto */}
+      {acData && (
+        <div className="bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/30 rounded-2xl p-6">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-widest text-emerald-400/70 font-semibold">Tu saldo en ArenaCrypto</p>
+              <p className="text-5xl font-bold text-emerald-400 mt-1">
+                ${ptBalance.toFixed(2)} <span className="text-lg text-white/40">USDT</span>
+              </p>
+              {ptPendingWithdrawal > 0 && (
+                <p className="text-yellow-400/70 text-sm mt-1">
+                  ${ptPendingWithdrawal.toFixed(2)} en solicitud pendiente
+                </p>
+              )}
+              <p className="text-white/30 text-xs mt-2">
+                Ganancias acumuladas de apuestas retenidas por AC · disponibles para retiro
+              </p>
+            </div>
+            <WithdrawalButton
+              balance={ptBalance}
+              pendingWithdrawal={ptPendingWithdrawal}
+              acUrl={process.env.AC_WEBHOOK_URL ?? ''}
+              acSecret={process.env.AC_WEBHOOK_SECRET ?? ''}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Suscripciones */}
       <div>
