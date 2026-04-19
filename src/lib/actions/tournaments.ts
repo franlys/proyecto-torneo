@@ -416,6 +416,7 @@ export async function finishTournament(
     .from('tournaments')
     .update({
       status: 'finished',
+      arena_betting_status: 'closed',
       champion_image_url: championImageUrl || null,
       end_date: new Date().toISOString()
     })
