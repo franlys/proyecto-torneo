@@ -114,8 +114,8 @@ export default async function AdminRevenuePage() {
                 { label: 'Vol. Kronix',        value: `$${Number(acSummary.total_kronix_volume).toFixed(2)}`,  color: 'text-purple-400' },
                 { label: 'Comisión AC (1%)',    value: `$${Number(acSummary.total_commission).toFixed(2)}`,              color: 'text-green-400' },
                 { label: 'Rake PT (5%)',       value: `$${Number(acSummary.total_rake_earned ?? 0).toFixed(2)}`,         color: 'text-emerald-400' },
-                { label: 'Vol. test 🧪',       value: `$${Number(acSummary.total_test_volume).toFixed(2)}`,              color: 'text-yellow-400/70' },
-                { label: 'Comisión test 🧪',   value: `$${Number(acSummary.total_test_commission ?? 0).toFixed(2)}`,     color: 'text-yellow-300' },
+                { label: 'Vol. test 🧪',        value: `$${Number(acSummary.total_test_volume).toFixed(2)}`,              color: 'text-yellow-400/70' },
+                { label: 'Ganancia test 🧪',   value: `$${Number(acSummary.total_test_earnings ?? 0).toFixed(2)}`,       color: 'text-yellow-300' },
               ].map(({ label, value, color }) => (
                 <div key={label} className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-4">
                   <p className="text-white/40 text-xs uppercase tracking-widest">{label}</p>
@@ -136,7 +136,7 @@ export default async function AdminRevenuePage() {
                       <th className="text-right px-4 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Comisión AC</th>
                       <th className="text-right px-4 py-3 text-xs uppercase tracking-widest text-emerald-400/50 font-medium">Rake PT</th>
                       <th className="text-right px-4 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Vol. Test 🧪</th>
-                      <th className="text-right px-4 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Com. Test 🧪</th>
+                      <th className="text-right px-4 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Gan. Test 🧪</th>
                       <th className="text-right px-4 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Estado</th>
                     </tr>
                   </thead>
@@ -167,7 +167,7 @@ export default async function AdminRevenuePage() {
                           ${Number(r.test_volume ?? 0).toFixed(2)}
                         </td>
                         <td className="px-4 py-3 text-right text-yellow-300/70 tabular-nums text-xs font-medium">
-                          ${Number(r.test_commission ?? 0).toFixed(2)}
+                          ${Number(r.test_earnings ?? 0).toFixed(2)}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
