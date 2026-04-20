@@ -169,163 +169,214 @@ export function TeamDetails({
       {/* Analytics Grid */}
       <AnimatePresence mode="wait">
       {selectedPlayerId && selectedPlayer ? (
-        /* ── ESPORTS PLAYER SHOWCASE ─────────────────────────────────────── */
+        /* ── COMBAT PLAYER SHOWCASE ─────────────────────────────────────── */
         <motion.div
           key={`showcase-${selectedPlayer.id}`}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.35 }}
-          className="relative overflow-hidden rounded-3xl"
-          style={{ minHeight: '420px', background: 'rgba(0,0,0,0.6)' }}
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.98 }}
+          transition={{ duration: 0.3 }}
+          className="relative overflow-hidden"
+          style={{
+            minHeight: '420px',
+            background: 'linear-gradient(135deg, #0a0a0c 0%, #0d0d10 50%, #0a0c0a 100%)',
+            border: '1px solid rgba(239,68,68,0.2)',
+            borderRadius: '4px',
+          }}
         >
-          {/* Background radial glow */}
+          {/* Hex grid background */}
+          <div style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.04,
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0 L40 10 L40 30 L20 40 L0 30 L0 10 Z' fill='none' stroke='%23ef4444' stroke-width='0.5'/%3E%3C/svg%3E")`,
+            backgroundSize: '40px 40px',
+          }} />
+          {/* Blood-red radial behind player */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8 }}
             style={{
-              position: 'absolute', inset: 0, pointerEvents: 'none',
-              background: `radial-gradient(ellipse 60% 80% at 25% 60%, ${primaryColor}22 0%, transparent 70%)`,
+              position: 'absolute', top: 0, left: 0, width: '55%', height: '100%',
+              background: 'radial-gradient(ellipse 70% 90% at 30% 60%, rgba(239,68,68,0.12) 0%, rgba(180,40,40,0.06) 40%, transparent 70%)',
+              pointerEvents: 'none',
             }}
           />
-          {/* Scanlines overlay */}
+          {/* Diagonal slash accent */}
           <div style={{
-            position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.03,
-            backgroundImage: 'repeating-linear-gradient(0deg, #fff 0px, #fff 1px, transparent 1px, transparent 4px)',
+            position: 'absolute', top: 0, left: '38%', width: '3px', height: '100%',
+            background: 'linear-gradient(180deg, transparent, rgba(239,68,68,0.4) 30%, rgba(239,68,68,0.6) 50%, rgba(239,68,68,0.4) 70%, transparent)',
+            transform: 'skewX(-8deg)', pointerEvents: 'none',
           }} />
+
           {/* Top bar */}
-          <div className="relative z-10 flex items-center justify-between px-6 pt-5 pb-0">
+          <div className="relative z-10 flex items-center justify-between px-5 pt-4 pb-0">
             <button
               onClick={() => setSelectedPlayerId(null)}
-              className="flex items-center gap-2 text-white/30 hover:text-white transition-colors text-[10px] font-black uppercase tracking-[0.2em]"
+              className="flex items-center gap-2 transition-colors text-[9px] font-black uppercase tracking-[0.25em]"
+              style={{ color: 'rgba(239,68,68,0.6)' }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(239,68,68,0.6)')}
             >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
               </svg>
               Volver
             </button>
-            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20">{teamName}</span>
+            <div className="flex items-center gap-3">
+              <motion.div
+                animate={{ opacity: [1, 0.3, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444' }}
+              />
+              <span style={{ fontSize: '0.55rem', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.2)' }}>
+                {teamName.toUpperCase()}
+              </span>
+            </div>
           </div>
 
-          {/* Main showcase layout */}
-          <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-stretch gap-0 px-4 sm:px-6 pb-6 pt-2">
+          {/* Main layout */}
+          <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-end gap-0 px-4 sm:px-5 pb-5 pt-1">
 
-            {/* ── LEFT: Player image ── */}
+            {/* ── LEFT: Player image with tactical frame ── */}
             <motion.div
-              initial={{ opacity: 0, x: -40, y: 20 }}
-              animate={{ opacity: 1, x: 0, y: 0 }}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
               className="relative flex-shrink-0 flex items-center justify-center"
-              style={{ width: '220px', height: '300px' }}
+              style={{ width: '210px', height: '290px' }}
             >
-              {/* Glow pool — centered */}
+              {/* Ground glow */}
               <div style={{
-                position: 'absolute', bottom: '10px', left: '50%', transform: 'translateX(-50%)',
-                width: '200px', height: '80px',
-                background: `radial-gradient(ellipse, ${primaryColor}55 0%, transparent 70%)`,
-                filter: 'blur(16px)', pointerEvents: 'none',
+                position: 'absolute', bottom: '0px', left: '50%', transform: 'translateX(-50%)',
+                width: '180px', height: '50px',
+                background: 'radial-gradient(ellipse, rgba(239,68,68,0.4) 0%, transparent 70%)',
+                filter: 'blur(14px)', pointerEvents: 'none',
               }} />
-              {/* Outer ring — wrapper handles centering, motion div handles rotation only */}
-              <div style={{ position: 'absolute', top: '50%', left: '50%', marginTop: '-110px', marginLeft: '-110px', width: '220px', height: '220px', pointerEvents: 'none' }}>
+              {/* Tactical corner brackets */}
+              {[
+                { top: 12, left: 12, borderTop: '2px solid #ef4444', borderLeft: '2px solid #ef4444', w: 20, h: 20 },
+                { top: 12, right: 12, borderTop: '2px solid #ef4444', borderRight: '2px solid #ef4444', w: 20, h: 20 },
+                { bottom: 12, left: 12, borderBottom: '2px solid #ef4444', borderLeft: '2px solid #ef4444', w: 20, h: 20 },
+                { bottom: 12, right: 12, borderBottom: '2px solid #ef4444', borderRight: '2px solid #ef4444', w: 20, h: 20 },
+              ].map((s, i) => (
                 <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}
-                  style={{ width: '100%', height: '100%', borderRadius: '50%', border: `1px dashed ${primaryColor}40` }}
+                  key={i}
+                  initial={{ opacity: 0, scale: 1.4 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.1 + i * 0.06, duration: 0.4 }}
+                  style={{
+                    position: 'absolute',
+                    top: s.top, left: s.left, right: s.right, bottom: s.bottom,
+                    width: s.w, height: s.h,
+                    borderTop: s.borderTop, borderLeft: s.borderLeft,
+                    borderBottom: s.borderBottom, borderRight: s.borderRight,
+                    pointerEvents: 'none',
+                  }}
                 />
-              </div>
-              {/* Inner ring */}
-              <div style={{ position: 'absolute', top: '50%', left: '50%', marginTop: '-80px', marginLeft: '-80px', width: '160px', height: '160px', pointerEvents: 'none' }}>
-                <motion.div
-                  animate={{ rotate: -360 }}
-                  transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
-                  style={{ width: '100%', height: '100%', borderRadius: '50%', border: `1px solid ${primaryColor}20` }}
-                />
-              </div>
-
-              {/* Image or placeholder */}
+              ))}
+              {/* Scan line */}
+              <motion.div
+                animate={{ top: ['15%', '85%', '15%'] }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                style={{
+                  position: 'absolute', left: '10%', right: '10%', height: '1px',
+                  background: 'linear-gradient(90deg, transparent, rgba(239,68,68,0.6), transparent)',
+                  pointerEvents: 'none', zIndex: 3,
+                }}
+              />
+              {/* Player image */}
               {selectedPlayer.avatarUrl ? (
                 <motion.img
                   src={selectedPlayer.avatarUrl}
                   alt={selectedPlayer.displayName}
-                  animate={{ y: [0, -10, 0] }}
-                  transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+                  animate={{ y: [0, -6, 0] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
                   style={{
-                    width: '180px', height: '260px',
-                    objectFit: 'contain',
-                    filter: `drop-shadow(0 0 28px ${primaryColor}99) drop-shadow(0 12px 40px rgba(0,0,0,0.9))`,
+                    width: '170px', height: '250px', objectFit: 'contain',
+                    filter: 'drop-shadow(0 0 20px rgba(239,68,68,0.7)) drop-shadow(0 10px 40px rgba(0,0,0,0.95))',
                     position: 'relative', zIndex: 2,
                   }}
                 />
               ) : (
                 <motion.div
-                  animate={{ y: [0, -10, 0] }}
-                  transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+                  animate={{ y: [0, -6, 0] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
                   style={{
-                    position: 'relative', zIndex: 2,
-                    width: '160px', height: '220px', borderRadius: '24px',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '5rem',
-                    background: `linear-gradient(135deg, ${primaryColor}15, rgba(0,0,0,0.3))`,
-                    border: `1px solid ${primaryColor}30`,
+                    position: 'relative', zIndex: 2, width: '150px', height: '210px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '5rem',
+                    background: 'linear-gradient(135deg, rgba(239,68,68,0.1), rgba(0,0,0,0.4))',
+                    border: '1px solid rgba(239,68,68,0.2)',
                   }}
-                >
-                  👤
-                </motion.div>
+                >👤</motion.div>
               )}
             </motion.div>
 
-            {/* ── RIGHT: Stats panel ── */}
-            <div className="flex-1 flex flex-col justify-center pl-0 sm:pl-8 pt-4 sm:pt-8">
-              {/* Name + Role */}
+            {/* ── RIGHT: Combat stats ── */}
+            <div className="flex-1 flex flex-col justify-end pl-0 sm:pl-6 pb-1">
+              {/* Role badge */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+                className="flex items-center gap-2 mb-2"
+              >
+                {selectedPlayer.isCaptain && (
+                  <span style={{
+                    background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.5)',
+                    color: '#ef4444', fontSize: '0.45rem',
+                    fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.25em',
+                    padding: '3px 10px', clipPath: 'polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%)',
+                  }}>▲ CAPITÁN</span>
+                )}
+                <span style={{ fontSize: '0.45rem', color: 'rgba(255,255,255,0.2)', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.2em' }}>
+                  ID:{selectedPlayer.id.slice(0, 8).toUpperCase()}
+                </span>
+              </motion.div>
+
+              {/* Player name with glitch */}
               <motion.div
                 initial={{ opacity: 0, x: 30 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.15 }}
+                transition={{ delay: 0.15, duration: 0.5 }}
               >
-                <div className="flex items-center gap-2 mb-1">
-                  {selectedPlayer.isCaptain && (
-                    <span style={{
-                      background: `linear-gradient(90deg, ${primaryColor}33, transparent)`,
-                      border: `1px solid ${primaryColor}50`,
-                      color: primaryColor, fontSize: '0.5rem',
-                      fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.2em',
-                      padding: '2px 8px', borderRadius: '4px',
-                    }}>CAPITÁN</span>
-                  )}
-                </div>
                 <h2 style={{
-                  fontFamily: 'Orbitron, sans-serif', fontSize: 'clamp(1.6rem, 4vw, 2.8rem)',
-                  fontWeight: 900, color: '#fff', lineHeight: 1, letterSpacing: '-0.02em',
-                  textShadow: `0 0 40px ${primaryColor}66`,
+                  fontFamily: 'Orbitron, sans-serif',
+                  fontSize: 'clamp(2rem, 5vw, 3.2rem)',
+                  fontWeight: 900, color: '#fff', lineHeight: 0.9,
+                  letterSpacing: '-0.02em',
+                  textShadow: '0 0 30px rgba(239,68,68,0.5), 2px 0 0 rgba(239,68,68,0.3), -2px 0 0 rgba(0,200,255,0.15)',
                 }}>
                   {selectedPlayer.displayName.toUpperCase()}
                 </h2>
               </motion.div>
 
-              {/* Divider */}
+              {/* Red divider */}
               <motion.div
                 initial={{ scaleX: 0 }}
                 animate={{ scaleX: 1 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                style={{ height: '1px', background: `linear-gradient(90deg, ${primaryColor}80, transparent)`, marginTop: '1rem', marginBottom: '1rem', transformOrigin: 'left' }}
+                transition={{ duration: 0.6, delay: 0.28 }}
+                style={{
+                  height: '2px', marginTop: '0.75rem', marginBottom: '0.75rem',
+                  background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.3), transparent)',
+                  transformOrigin: 'left',
+                }}
               />
 
-              {/* Torneo stats row */}
+              {/* Live tournament stats */}
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.35 }}
-                className="flex gap-6 mb-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.32 }}
+                className="flex gap-5 mb-4"
               >
                 {[
-                  { label: 'KD Torneo', value: Number(kd), decimals: 2, color: '#67e8f9' },
-                  { label: 'Kills', value: calculatedPlayerKillsMap[selectedPlayer.id] || 0, decimals: 0, color: '#fff' },
-                ].map((stat, i) => (
-                  <div key={stat.label}>
-                    <p style={{ fontSize: '0.5rem', color: 'rgba(255,255,255,0.3)', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.2em', marginBottom: '2px' }}>{stat.label}</p>
-                    <p style={{ fontSize: '1.8rem', fontFamily: 'Orbitron, sans-serif', fontWeight: 900, color: stat.color, lineHeight: 1 }}>
-                      <AnimatedNumber value={stat.value} decimals={stat.decimals} />
+                  { label: 'KD TORNEO', value: Number(kd), dec: 2, color: '#f97316' },
+                  { label: 'BAJAS CONF.', value: calculatedPlayerKillsMap[selectedPlayer.id] || 0, dec: 0, color: '#ef4444' },
+                ].map(s => (
+                  <div key={s.label}>
+                    <p style={{ fontSize: '0.45rem', color: 'rgba(255,255,255,0.25)', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.2em', marginBottom: '2px' }}>{s.label}</p>
+                    <p style={{ fontSize: '2rem', fontFamily: 'Orbitron, sans-serif', fontWeight: 900, color: s.color, lineHeight: 1, textShadow: `0 0 20px ${s.color}66` }}>
+                      <AnimatedNumber value={s.value} decimals={s.dec} />
                     </p>
                   </div>
                 ))}
@@ -333,49 +384,49 @@ export function TeamDetails({
 
               {/* Pre-tournament stats */}
               {(selectedPlayer.kdRatio != null || selectedPlayer.avgKills != null || selectedPlayer.classificationRank || selectedPlayer.brAvgPlacement != null) && (
-                <>
+                <div>
                   <motion.p
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ delay: 0.45 }}
-                    style={{ fontSize: '0.5rem', color: 'rgba(255,255,255,0.2)', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.2em', marginBottom: '0.6rem' }}
-                  >
-                    STATS PREVIOS
-                  </motion.p>
+                    transition={{ delay: 0.38 }}
+                    style={{ fontSize: '0.45rem', color: 'rgba(239,68,68,0.4)', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.25em', marginBottom: '0.5rem' }}
+                  >◆ HISTORIAL DE COMBATE</motion.p>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {[
-                      selectedPlayer.kdRatio != null && { label: 'K/D PROM.', value: `${Number(selectedPlayer.kdRatio).toFixed(2)}`, color: '#67e8f9', bar: Math.min(Number(selectedPlayer.kdRatio) / 5, 1) },
-                      selectedPlayer.avgKills != null && { label: 'AVG KILLS', value: `${Number(selectedPlayer.avgKills).toFixed(1)}`, color: '#a78bfa', bar: Math.min(Number(selectedPlayer.avgKills) / 15, 1) },
-                      selectedPlayer.classificationRank && { label: 'RANGO', value: selectedPlayer.classificationRank, color: '#fbbf24', bar: null },
-                      selectedPlayer.brAvgPlacement != null && { label: 'POS. BR', value: `#${Number(selectedPlayer.brAvgPlacement).toFixed(0)}`, color: 'rgba(255,255,255,0.7)', bar: null },
-                    ].filter(Boolean).map((stat: any, i) => (
+                      selectedPlayer.kdRatio != null && { label: 'K/D PROM.', value: Number(selectedPlayer.kdRatio).toFixed(2), color: '#f97316', bar: Math.min(Number(selectedPlayer.kdRatio) / 5, 1) },
+                      selectedPlayer.avgKills != null && { label: 'BAJAS/PARTIDA', value: Number(selectedPlayer.avgKills).toFixed(1), color: '#ef4444', bar: Math.min(Number(selectedPlayer.avgKills) / 15, 1) },
+                      selectedPlayer.classificationRank && { label: 'RANGO', value: selectedPlayer.classificationRank.toUpperCase(), color: '#fbbf24', bar: null },
+                      selectedPlayer.brAvgPlacement != null && { label: 'POS. BR', value: `#${Number(selectedPlayer.brAvgPlacement).toFixed(0)}`, color: '#94a3b8', bar: null },
+                    ].filter(Boolean).map((s: any, i) => (
                       <motion.div
-                        key={stat.label}
-                        initial={{ opacity: 0, y: 12 }}
+                        key={s.label}
+                        initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, delay: 0.5 + i * 0.08 }}
+                        transition={{ delay: 0.42 + i * 0.07 }}
                         style={{
-                          background: 'rgba(255,255,255,0.03)',
-                          border: `1px solid ${stat.color}22`,
-                          borderRadius: '12px', padding: '0.75rem',
+                          background: `linear-gradient(135deg, rgba(239,68,68,0.06), rgba(0,0,0,0.4))`,
+                          border: '1px solid rgba(239,68,68,0.15)',
+                          borderLeft: `2px solid ${s.color}`,
+                          padding: '0.6rem 0.75rem',
+                          clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%)',
                         }}
                       >
-                        <p style={{ fontSize: '0.45rem', color: 'rgba(255,255,255,0.3)', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.15em', marginBottom: '4px' }}>{stat.label}</p>
-                        <p style={{ fontSize: '1.1rem', fontFamily: 'Orbitron, sans-serif', fontWeight: 900, color: stat.color, lineHeight: 1 }}>{stat.value}</p>
-                        {stat.bar != null && (
-                          <div style={{ marginTop: '6px', height: '2px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
+                        <p style={{ fontSize: '0.42rem', color: 'rgba(255,255,255,0.25)', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.15em', marginBottom: '3px' }}>{s.label}</p>
+                        <p style={{ fontSize: '1.15rem', fontFamily: 'Orbitron, sans-serif', fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.value}</p>
+                        {s.bar != null && (
+                          <div style={{ marginTop: '5px', height: '3px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
                             <motion.div
                               initial={{ width: 0 }}
-                              animate={{ width: `${stat.bar * 100}%` }}
-                              transition={{ duration: 1, delay: 0.6 + i * 0.08, ease: [0.16, 1, 0.3, 1] }}
-                              style={{ height: '100%', background: stat.color, borderRadius: '2px' }}
+                              animate={{ width: `${s.bar * 100}%` }}
+                              transition={{ duration: 1.2, delay: 0.55 + i * 0.07, ease: [0.16, 1, 0.3, 1] }}
+                              style={{ height: '100%', background: `linear-gradient(90deg, ${s.color}, ${s.color}aa)` }}
                             />
                           </div>
                         )}
                       </motion.div>
                     ))}
                   </div>
-                </>
+                </div>
               )}
             </div>
           </div>

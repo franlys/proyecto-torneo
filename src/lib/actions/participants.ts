@@ -457,12 +457,13 @@ export async function uploadAvatar(
   if (uploadError) return { error: uploadError.message }
 
   const { data: { publicUrl } } = admin.storage.from('evidences').getPublicUrl(filePath)
+  const urlWithBust = `${publicUrl}?t=${Date.now()}`
 
   if (type === 'team') {
-    await admin.from('teams').update({ avatar_url: publicUrl }).eq('id', entityId)
+    await admin.from('teams').update({ avatar_url: urlWithBust }).eq('id', entityId)
   } else {
-    await admin.from('participants').update({ avatar_url: publicUrl }).eq('id', entityId)
+    await admin.from('participants').update({ avatar_url: urlWithBust }).eq('id', entityId)
   }
 
-  return { url: publicUrl }
+  return { url: urlWithBust }
 }
