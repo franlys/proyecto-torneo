@@ -259,10 +259,15 @@ export async function getTeamsWithParticipants(tournamentId: string) {
     tournamentId: p.tournament_id,
     teamId: p.team_id,
     displayName: p.display_name,
+    avatarUrl: p.avatar_url ?? undefined,
     contactId: p.contact_id,
     streamUrl: p.stream_url,
     isCaptain: p.is_captain,
     totalKills: p.total_kills || 0,
+    kdRatio:            p.kd_ratio            ?? undefined,
+    avgKills:           p.avg_kills            ?? undefined,
+    classificationRank: p.classification_rank  ?? undefined,
+    brAvgPlacement:     p.br_avg_placement      ?? undefined,
   }))
 
   return { teams: mappedTeams, participants: mappedParticipants }
