@@ -254,28 +254,64 @@ export function TeamDetails({
                 exit={{ opacity: 0, y: -10 }}
                 className="p-6 rounded-2xl bg-gradient-to-br from-white/[0.05] to-transparent border border-white/10"
               >
-                 <div className="flex items-center gap-4 mb-6">
-                    <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-3xl">
-                      👤
-                    </div>
+                 <div className="flex items-center gap-4 mb-5">
+                    {selectedPlayer.avatarUrl ? (
+                      <img src={selectedPlayer.avatarUrl} alt="" className="w-16 h-16 rounded-2xl object-contain" style={{ background: 'transparent' }} />
+                    ) : (
+                      <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-3xl">👤</div>
+                    )}
                     <div>
                        <h4 className="font-orbitron font-bold text-white text-xl leading-none mb-1">{selectedPlayer.displayName}</h4>
                        <p className="text-[10px] text-neon-cyan uppercase font-black tracking-widest">{selectedPlayer.isCaptain ? 'Capitán de Equipo' : 'Operador'}</p>
                     </div>
                  </div>
-                 
-                 <div className="grid grid-cols-2 gap-3 mb-6">
-                    <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5">
-                       <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">KD (Promedio)</p>
+
+                 {/* Stats del torneo en curso */}
+                 <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
+                       <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">KD Torneo</p>
                        <p className="text-2xl font-orbitron font-black text-white">{kd}</p>
                     </div>
-                    <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5">
+                    <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
                        <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">Kills Totales</p>
                        <p className="text-2xl font-orbitron font-black text-white">{calculatedPlayerKillsMap[selectedPlayer.id] || 0}</p>
                     </div>
                  </div>
 
-                 <button 
+                 {/* Stats previos al torneo */}
+                 {(selectedPlayer.kdRatio != null || selectedPlayer.avgKills != null || selectedPlayer.classificationRank || selectedPlayer.brAvgPlacement != null) && (
+                   <div className="mb-4">
+                     <p className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-2">Stats Previos</p>
+                     <div className="grid grid-cols-2 gap-2">
+                       {selectedPlayer.kdRatio != null && (
+                         <div className="p-3 rounded-xl bg-neon-cyan/5 border border-neon-cyan/10">
+                           <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">K/D Promedio</p>
+                           <p className="text-xl font-orbitron font-black text-neon-cyan">{Number(selectedPlayer.kdRatio).toFixed(2)}</p>
+                         </div>
+                       )}
+                       {selectedPlayer.avgKills != null && (
+                         <div className="p-3 rounded-xl bg-neon-purple/5 border border-neon-purple/10">
+                           <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">Kills / Partida</p>
+                           <p className="text-xl font-orbitron font-black text-neon-purple">{Number(selectedPlayer.avgKills).toFixed(1)}</p>
+                         </div>
+                       )}
+                       {selectedPlayer.classificationRank && (
+                         <div className="p-3 rounded-xl bg-yellow-400/5 border border-yellow-400/10">
+                           <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">Rango Clasif.</p>
+                           <p className="text-sm font-orbitron font-black text-yellow-400">{selectedPlayer.classificationRank}</p>
+                         </div>
+                       )}
+                       {selectedPlayer.brAvgPlacement != null && (
+                         <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
+                           <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">Pos. Prom. BR</p>
+                           <p className="text-xl font-orbitron font-black text-white/70">#{Number(selectedPlayer.brAvgPlacement).toFixed(0)}</p>
+                         </div>
+                       )}
+                     </div>
+                   </div>
+                 )}
+
+                 <button
                   onClick={() => setSelectedPlayerId(null)}
                   className="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-white/40 hover:text-white transition-all border border-white/5"
                  >
@@ -294,9 +330,13 @@ export function TeamDetails({
                       className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.08] hover:border-white/20 cursor-pointer transition-all group"
                     >
                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-[10px] text-white/40 font-black group-hover:bg-neon-cyan group-hover:text-black transition-colors">
-                            {p.isCaptain ? '👑' : idx + 1}
-                          </div>
+                          {p.avatarUrl ? (
+                            <img src={p.avatarUrl} alt="" className="w-8 h-8 rounded-lg object-contain shrink-0" style={{ background: 'transparent' }} />
+                          ) : (
+                            <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-[10px] text-white/40 font-black group-hover:bg-neon-cyan group-hover:text-black transition-colors">
+                              {p.isCaptain ? '👑' : idx + 1}
+                            </div>
+                          )}
                           <span className="text-sm font-medium text-white group-hover:text-neon-cyan transition-colors">{p.displayName}</span>
                        </div>
                        <div className="text-right flex items-center gap-3">
