@@ -144,7 +144,7 @@ export default async function AdminRevenuePage() {
                 { label: 'Volumen real',       value: `$${Number(acSummary.total_real_volume).toFixed(2)}`,    color: 'text-white' },
                 { label: 'Vol. Kronix',        value: `$${Number(acSummary.total_kronix_volume).toFixed(2)}`,  color: 'text-purple-400' },
                 { label: 'Comisión AC (1%)',    value: `$${Number(acSummary.total_commission).toFixed(2)}`,              color: 'text-green-400' },
-                { label: 'Rake PT (5%)',       value: `$${Number(acSummary.total_rake_earned ?? 0).toFixed(2)}`,         color: 'text-emerald-400' },
+                { label: 'Rake PT',            value: `$${Number(acSummary.total_rake_earned ?? 0).toFixed(2)}`,         color: 'text-emerald-400' },
                 { label: 'Vol. test 🧪',        value: `$${Number(acSummary.total_test_volume).toFixed(2)}`,              color: 'text-yellow-400/70' },
                 { label: 'Ganancia test 🧪',   value: `$${Number(acSummary.total_test_earnings ?? 0).toFixed(2)}`,       color: 'text-yellow-300' },
               ].map(({ label, value, color }) => (
@@ -165,7 +165,7 @@ export default async function AdminRevenuePage() {
                       <th className="text-right px-4 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Vol. Real</th>
                       <th className="text-right px-4 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Vol. Kronix</th>
                       <th className="text-right px-4 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Comisión AC</th>
-                      <th className="text-right px-4 py-3 text-xs uppercase tracking-widest text-emerald-400/50 font-medium">Rake PT</th>
+                      <th className="text-right px-4 py-3 text-xs uppercase tracking-widest text-emerald-400/50 font-medium">Ganancia PT</th>
                       <th className="text-right px-4 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Vol. Test 🧪</th>
                       <th className="text-right px-4 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Gan. Test 🧪</th>
                       <th className="text-right px-4 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Estado</th>
