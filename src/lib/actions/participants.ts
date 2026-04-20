@@ -425,12 +425,12 @@ export async function uploadAvatar(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
-  const { data: tournament } = await supabase
-    .from('tournaments')
-    .select('creator_id')
-    .eq('id', tournamentId)
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
     .single()
-  if (!tournament || tournament.creator_id !== user.id) return { error: 'Sin permisos' }
+  if (!profile || profile.role !== 'ADMIN') return { error: 'Sin permisos' }
 
   const file = formData.get('file') as File
   if (!file) return { error: 'No se recibió archivo' }
