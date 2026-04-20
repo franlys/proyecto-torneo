@@ -86,6 +86,10 @@ export interface Participant {
   streamUrl?: string;
   isCaptain: boolean;
   totalKills: number;
+  kdRatio?: number;
+  avgKills?: number;
+  classificationRank?: string;
+  brAvgPlacement?: number;
 }
 
 export interface Submission {

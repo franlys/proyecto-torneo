@@ -210,7 +210,7 @@ export function LeaderboardClient({
         .eq('tournament_id', tournamentId),
       supabase
         .from('teams')
-        .select('id, name, avatar_url, stream_url, participants(id, team_id, display_name, avatar_url, stream_url, is_captain, total_kills)')
+        .select('id, name, avatar_url, stream_url, participants(id, team_id, display_name, avatar_url, stream_url, is_captain, total_kills, kd_ratio, avg_kills, classification_rank, br_avg_placement)')
         .eq('tournament_id', tournamentId)
         .order('created_at', { ascending: true }),
       supabase
@@ -272,7 +272,11 @@ export function LeaderboardClient({
         avatarUrl: p.avatar_url,
         streamUrl: p.stream_url,
         isCaptain: p.is_captain,
-        totalKills: Number(p.total_kills || 0)
+        totalKills: Number(p.total_kills || 0),
+        kdRatio:            p.kd_ratio            ?? undefined,
+        avgKills:           p.avg_kills            ?? undefined,
+        classificationRank: p.classification_rank  ?? undefined,
+        brAvgPlacement:     p.br_avg_placement      ?? undefined,
       }))
     }))
 
@@ -976,42 +980,71 @@ export function LeaderboardClient({
                 </div>
                 {/* Participants list */}
                 {team.participants && team.participants.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {team.participants.map((p: any) => (
-                      <div key={p.id} className="flex items-center justify-between bg-white/[0.03] border border-white/5 rounded-lg px-3 py-2">
-                        <div className="flex items-center gap-2 max-w-[60%]">
-                          <div className={`w-2 h-2 rounded-full ${p.streamUrl ? 'bg-red-500 animate-pulse' : 'bg-white/20'}`} />
-                          <span className="text-sm text-white/80 truncate">{p.displayName}</span>
-                          {p.isCaptain && <span className="text-[9px] font-bold text-neon-cyan uppercase tracking-wider border border-neon-cyan/30 px-1 py-0.5 rounded shrink-0">Cap</span>}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                             <span className="text-xs font-orbitron font-bold text-white block leading-none">{calculatedKillsLookup[p.id] || 0}</span>
-                             <span className="text-[7px] text-white/30 uppercase font-black tracking-tighter">Kills</span>
-                          </div>
-                          {p.streamUrl && (
-                            <div className="flex gap-1">
-                              <button
-                                onClick={() => handleWatchTeam(p.streamUrl)}
-                                title="Ver stream en app"
-                                className="p-1 bg-red-600/20 hover:bg-red-600/40 rounded text-red-400 transition-colors"
-                              >
-                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                              </button>
-                              <a
-                                href={p.streamUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                title="Ir al canal"
-                                className="p-1 bg-white/5 hover:bg-white/10 rounded text-white/40 transition-colors"
-                              >
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                              </a>
-                            </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {team.participants.map((p: any) => {
+                      const hasStats = p.kdRatio != null || p.avgKills != null || p.classificationRank || p.brAvgPlacement != null
+                      return (
+                      <div key={p.id} className="bg-white/[0.03] border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-colors">
+                        <div className="flex items-center gap-3 px-3 py-2.5">
+                          {p.avatarUrl ? (
+                            <img src={p.avatarUrl} alt="" className="w-9 h-9 rounded-lg object-contain shrink-0" style={{ background: 'transparent' }} />
+                          ) : (
+                            <div className={`w-2 h-2 rounded-full shrink-0 ${p.streamUrl ? 'bg-red-500 animate-pulse' : 'bg-white/20'}`} />
                           )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm text-white/80 truncate">{p.displayName}</span>
+                              {p.isCaptain && <span className="text-[9px] font-bold text-neon-cyan uppercase tracking-wider border border-neon-cyan/30 px-1 py-0.5 rounded shrink-0">Cap</span>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="text-right">
+                              <span className="text-xs font-orbitron font-bold text-white block leading-none">{calculatedKillsLookup[p.id] || 0}</span>
+                              <span className="text-[7px] text-white/30 uppercase font-black tracking-tighter">Kills</span>
+                            </div>
+                            {p.streamUrl && (
+                              <div className="flex gap-1">
+                                <button onClick={() => handleWatchTeam(p.streamUrl)} title="Ver stream" className="p-1 bg-red-600/20 hover:bg-red-600/40 rounded text-red-400 transition-colors">
+                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                </button>
+                                <a href={p.streamUrl} target="_blank" rel="noreferrer" className="p-1 bg-white/5 hover:bg-white/10 rounded text-white/40 transition-colors">
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                </a>
+                              </div>
+                            )}
+                          </div>
                         </div>
+
+                        {hasStats && (
+                          <div className="grid grid-cols-4 divide-x divide-white/5 border-t border-white/5">
+                            {p.kdRatio != null && (
+                              <div className="px-2 py-1.5 text-center">
+                                <p className="text-[7px] text-white/30 uppercase font-bold tracking-wider">K/D</p>
+                                <p className="text-[11px] font-black text-neon-cyan font-orbitron">{Number(p.kdRatio).toFixed(2)}</p>
+                              </div>
+                            )}
+                            {p.avgKills != null && (
+                              <div className="px-2 py-1.5 text-center">
+                                <p className="text-[7px] text-white/30 uppercase font-bold tracking-wider">AVG K</p>
+                                <p className="text-[11px] font-black text-purple-400 font-orbitron">{Number(p.avgKills).toFixed(1)}</p>
+                              </div>
+                            )}
+                            {p.classificationRank && (
+                              <div className="px-2 py-1.5 text-center">
+                                <p className="text-[7px] text-white/30 uppercase font-bold tracking-wider">RANGO</p>
+                                <p className="text-[9px] font-black text-yellow-400 font-orbitron truncate">{p.classificationRank}</p>
+                              </div>
+                            )}
+                            {p.brAvgPlacement != null && (
+                              <div className="px-2 py-1.5 text-center">
+                                <p className="text-[7px] text-white/30 uppercase font-bold tracking-wider">BR</p>
+                                <p className="text-[11px] font-black text-white/60 font-orbitron">#{Number(p.brAvgPlacement).toFixed(0)}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    ))}
+                    )})}
                   </div>
                 )}
               </div>

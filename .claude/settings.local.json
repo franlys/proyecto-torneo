@@ -10,7 +10,17 @@
       "Bash(node -e \"const fs=require\\('fs'\\); const code=fs.readFileSync\\('src/components/dashboard/TournamentForm.tsx','utf8'\\); const lines=code.split\\('\\\\n'\\); lines.forEach\\(\\(l,i\\)=>{if\\(l.includes\\('{\\\\\\\\*'\\)||l.includes\\('{\\\\\\\\'\\)\\){console.log\\(i+1,JSON.stringify\\(l\\)\\)}}\\)\")",
       "Bash(npx tsc:*)",
       "Bash(npm run:*)",
-      "Bash(cmd /c \"cd /d c:\\\\Users\\\\elmae\\\\Proyecto-torneos && npm run typecheck 2>&1\")"
+      "Bash(cmd /c \"cd /d c:\\\\Users\\\\elmae\\\\Proyecto-torneos && npm run typecheck 2>&1\")",
+      "Bash(npx supabase *)",
+      "Bash(supabase db *)",
+      "Bash(node_modules/.bin/supabase db *)",
+      "Bash(cmd /c \"npx supabase db push\")",
+      "Read(//c/Users/elmae/AppData/Roaming/npm/**)",
+      "Read(//c/Users/elmae/AppData/Roaming/npm//**)",
+      "Bash(node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(32\\).toString\\('hex'\\)\\)\")",
+      "Bash(python3 -c \"import secrets; print\\(secrets.token_hex\\(32\\)\\)\")",
+      "Read(//proc/sys/kernel/random/**)",
+      "Bash(openssl rand *)"
     ]
   }
 }

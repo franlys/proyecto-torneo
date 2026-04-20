@@ -28,7 +28,7 @@ export default async function PublicLeaderboardPage({
   // Fetch ALL teams with their participants (for the Participants tab)
   const { data: allTeams } = await supabase
     .from('teams')
-    .select('id, name, avatar_url, stream_url, participants(id, team_id, display_name, is_captain, stream_url, total_kills)')
+    .select('id, name, avatar_url, stream_url, participants(id, team_id, display_name, is_captain, stream_url, total_kills, kd_ratio, avg_kills, classification_rank, br_avg_placement)')
     .eq('tournament_id', tournament.id)
     .order('created_at', { ascending: true })
 
@@ -96,7 +96,12 @@ export default async function PublicLeaderboardPage({
       displayName: p.display_name,
       isCaptain: p.is_captain,
       streamUrl: p.stream_url,
+      avatarUrl: p.avatar_url ?? undefined,
       totalKills: p.total_kills || 0,
+      kdRatio:            p.kd_ratio            ?? undefined,
+      avgKills:           p.avg_kills            ?? undefined,
+      classificationRank: p.classification_rank  ?? undefined,
+      brAvgPlacement:     p.br_avg_placement      ?? undefined,
     })),
   }))
 

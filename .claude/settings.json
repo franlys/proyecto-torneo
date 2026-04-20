@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\elmae\\\\Proyecto-torneos && npm run typecheck 2>&1\")",
+      "Read(//c/Users/elmae/.nvm/**)",
+      "Read(//c//**)",
+      "Read(//c/Users/elmae/**)",
+      "Bash(export PATH=\"/c/Users/elmae/AppData/Local/nvm/v22.18.0:$PATH\")",
+      "Bash(node /c/Users/elmae/AppData/Local/nvm/v22.18.0/node_modules/typescript/bin/tsc --noEmit)",
+      "Bash(/c/Users/elmae/AppData/Local/nvm/v22.18.0/node.exe /c/Users/elmae/Proyecto-torneos/node_modules/typescript/bin/tsc --noEmit -p /c/Users/elmae/Proyecto-torneos/tsconfig.json)"
+    ]
+  }
+}

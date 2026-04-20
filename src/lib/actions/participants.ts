@@ -177,6 +177,10 @@ export async function addParticipant(
       streamUrl: participant.stream_url,
       isCaptain: participant.is_captain,
       totalKills: participant.total_kills || 0,
+      kdRatio:            participant.kd_ratio          ?? undefined,
+      avgKills:           participant.avg_kills          ?? undefined,
+      classificationRank: participant.classification_rank ?? undefined,
+      brAvgPlacement:     participant.br_avg_placement   ?? undefined,
     }
   }
 }
@@ -362,13 +366,18 @@ export async function updateParticipant(
     return { error: 'Sin permisos' }
   }
 
+  const d = data as any
   const { data: participant, error: updateErr } = await supabase
     .from('participants')
     .update({
-      display_name: data.displayName,
-      avatar_url: (data as any).avatarUrl,
-      stream_url: data.streamUrl,
-      is_captain: data.isCaptain,
+      display_name:          data.displayName,
+      avatar_url:            d.avatarUrl,
+      stream_url:            data.streamUrl,
+      is_captain:            data.isCaptain,
+      kd_ratio:              d.kdRatio        ?? null,
+      avg_kills:             d.avgKills        ?? null,
+      classification_rank:   d.classificationRank ?? null,
+      br_avg_placement:      d.brAvgPlacement  ?? null,
     })
     .eq('id', participantId)
     .eq('tournament_id', tournamentId)
@@ -398,6 +407,10 @@ export async function updateParticipant(
       streamUrl: participant.stream_url,
       isCaptain: participant.is_captain,
       totalKills: participant.total_kills || 0,
+      kdRatio:             participant.kd_ratio         ?? undefined,
+      avgKills:            participant.avg_kills         ?? undefined,
+      classificationRank:  participant.classification_rank ?? undefined,
+      brAvgPlacement:      participant.br_avg_placement  ?? undefined,
     }
   }
 }

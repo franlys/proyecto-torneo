@@ -44,6 +44,23 @@ export function ParticipantsManager({
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
+
+  // Add-player inline form
+  const [addingPlayerTo, setAddingPlayerTo] = useState<string | null>(null)
+  const [newPlayerName, setNewPlayerName] = useState('')
+  const [newPlayerKd, setNewPlayerKd] = useState('')
+  const [newPlayerAvgKills, setNewPlayerAvgKills] = useState('')
+  const [newPlayerRank, setNewPlayerRank] = useState('')
+  const [newPlayerBrPlacement, setNewPlayerBrPlacement] = useState('')
+  const [addPlayerLoading, setAddPlayerLoading] = useState(false)
+
+  // Edit-stats modal
+  const [editingStats, setEditingStats] = useState<Participant | null>(null)
+  const [editKd, setEditKd] = useState('')
+  const [editAvgKills, setEditAvgKills] = useState('')
+  const [editRank, setEditRank] = useState('')
+  const [editBrPlacement, setEditBrPlacement] = useState('')
+  const [editStatsLoading, setEditStatsLoading] = useState(false)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const currentUploadRef = useRef<{ id: string, type: 'team' | 'participant' } | null>(null)
@@ -119,17 +136,72 @@ export function ParticipantsManager({
     }
   }
 
-  const handleAddParticipant = async (teamId: string, name: string) => {
+  const handleAddParticipant = async (teamId: string) => {
+    if (!newPlayerName.trim()) return
+    setAddPlayerLoading(true)
     const pRes = await addParticipant(tournamentId, {
-      displayName: name,
-      teamId: teamId,
+      displayName: newPlayerName.trim(),
+      teamId,
       isCaptain: false,
     })
-    if ('error' in pRes) toast.error(pRes.error)
-    else {
-      setParticipants([...participants, pRes.data])
+    if ('error' in pRes) {
+      toast.error(pRes.error)
+    } else {
+      const p = pRes.data
+      // Save stats if provided
+      if (newPlayerKd || newPlayerAvgKills || newPlayerRank || newPlayerBrPlacement) {
+        await updateParticipant(tournamentId, p.id, {
+          kdRatio:            newPlayerKd          ? Number(newPlayerKd)          : undefined,
+          avgKills:           newPlayerAvgKills     ? Number(newPlayerAvgKills)     : undefined,
+          classificationRank: newPlayerRank         || undefined,
+          brAvgPlacement:     newPlayerBrPlacement  ? Number(newPlayerBrPlacement)  : undefined,
+        } as any)
+      }
+      setParticipants([...participants, {
+        ...p,
+        kdRatio:            newPlayerKd          ? Number(newPlayerKd)          : undefined,
+        avgKills:           newPlayerAvgKills     ? Number(newPlayerAvgKills)     : undefined,
+        classificationRank: newPlayerRank         || undefined,
+        brAvgPlacement:     newPlayerBrPlacement  ? Number(newPlayerBrPlacement)  : undefined,
+      }])
       toast.success('Jugador añadido')
+      setNewPlayerName(''); setNewPlayerKd(''); setNewPlayerAvgKills('')
+      setNewPlayerRank(''); setNewPlayerBrPlacement(''); setAddingPlayerTo(null)
     }
+    setAddPlayerLoading(false)
+  }
+
+  const openEditStats = (p: Participant) => {
+    setEditingStats(p)
+    setEditKd(p.kdRatio != null ? String(p.kdRatio) : '')
+    setEditAvgKills(p.avgKills != null ? String(p.avgKills) : '')
+    setEditRank(p.classificationRank ?? '')
+    setEditBrPlacement(p.brAvgPlacement != null ? String(p.brAvgPlacement) : '')
+  }
+
+  const handleSaveStats = async () => {
+    if (!editingStats) return
+    setEditStatsLoading(true)
+    const res = await updateParticipant(tournamentId, editingStats.id, {
+      kdRatio:            editKd          ? Number(editKd)          : undefined,
+      avgKills:           editAvgKills     ? Number(editAvgKills)     : undefined,
+      classificationRank: editRank         || undefined,
+      brAvgPlacement:     editBrPlacement  ? Number(editBrPlacement)  : undefined,
+    } as any)
+    if ('error' in res) {
+      toast.error(res.error)
+    } else {
+      setParticipants(participants.map(p => p.id === editingStats.id ? {
+        ...p,
+        kdRatio:            editKd          ? Number(editKd)          : undefined,
+        avgKills:           editAvgKills     ? Number(editAvgKills)     : undefined,
+        classificationRank: editRank         || undefined,
+        brAvgPlacement:     editBrPlacement  ? Number(editBrPlacement)  : undefined,
+      } : p))
+      toast.success('Stats actualizadas')
+      setEditingStats(null)
+    }
+    setEditStatsLoading(false)
   }
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -327,14 +399,14 @@ export function ParticipantsManager({
                       {roster.map((p) => (
                         <div key={p.id} className="relative group bg-white/5 border border-white/5 p-4 rounded-2xl hover:border-neon-purple/50 transition-all">
                           <div className="flex items-center gap-3">
-                            <div 
+                            <div
                               className="relative cursor-pointer"
                               onClick={() => triggerUpload(p.id, 'participant')}
                             >
                               {p.avatarUrl ? (
-                                <img src={p.avatarUrl} alt="" className="w-10 h-10 rounded-xl object-cover" />
+                                <img src={p.avatarUrl} alt="" className="w-12 h-12 rounded-xl object-contain" style={{ background: 'transparent' }} />
                               ) : (
-                                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                                <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
                                   <svg className="w-5 h-5 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                   </svg>
@@ -349,54 +421,142 @@ export function ParticipantsManager({
                             <div className="flex-1 min-w-0">
                               <h4 className="text-white font-bold text-sm truncate">{p.displayName}</h4>
                               {p.isCaptain ? (
-                                <span className="text-[8px] font-black text-neon-cyan uppercase tracking-widest block">Capitán de Equipo</span>
+                                <span className="text-[8px] font-black text-neon-cyan uppercase tracking-widest block">Capitán</span>
                               ) : (
                                 <span className="text-[8px] font-bold text-white/30 uppercase tracking-widest block">Jugador</span>
                               )}
                             </div>
                           </div>
-                          
-                          <div className="mt-3 flex items-center justify-between gap-1 pt-3 border-t border-white/5">
-                            <div className="flex items-center gap-2">
-                                <div className="px-2 py-0.5 bg-black/40 rounded text-[9px] text-white/40 font-bold uppercase tracking-tighter">
-                                  Bajas Totales <b className="text-neon-purple ml-1">{p.totalKills || 0}</b>
+
+                          {/* Stats preview */}
+                          {(p.kdRatio != null || p.avgKills != null || p.classificationRank || p.brAvgPlacement != null) && (
+                            <div className="mt-2 grid grid-cols-2 gap-1">
+                              {p.kdRatio != null && (
+                                <div className="bg-black/40 rounded px-2 py-1 text-center">
+                                  <p className="text-[8px] text-white/30 uppercase">K/D</p>
+                                  <p className="text-[11px] font-black text-neon-cyan">{p.kdRatio.toFixed(2)}</p>
                                 </div>
+                              )}
+                              {p.avgKills != null && (
+                                <div className="bg-black/40 rounded px-2 py-1 text-center">
+                                  <p className="text-[8px] text-white/30 uppercase">Kills/partida</p>
+                                  <p className="text-[11px] font-black text-neon-purple">{p.avgKills.toFixed(1)}</p>
+                                </div>
+                              )}
+                              {p.classificationRank && (
+                                <div className="bg-black/40 rounded px-2 py-1 text-center">
+                                  <p className="text-[8px] text-white/30 uppercase">Rango</p>
+                                  <p className="text-[10px] font-bold text-yellow-400 truncate">{p.classificationRank}</p>
+                                </div>
+                              )}
+                              {p.brAvgPlacement != null && (
+                                <div className="bg-black/40 rounded px-2 py-1 text-center">
+                                  <p className="text-[8px] text-white/30 uppercase">Pos. BR</p>
+                                  <p className="text-[11px] font-black text-white/70">#{p.brAvgPlacement.toFixed(0)}</p>
+                                </div>
+                              )}
                             </div>
-                            <div className="flex items-center gap-2">
-                                {p.streamUrl && (
-                                  <a href={p.streamUrl} target="_blank" rel="noreferrer" className="text-red-500/50 hover:text-red-500 transition-colors">
-                                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                                      <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
-                                    </svg>
-                                  </a>
-                                )}
-                                <button 
-                                  onClick={() => handleRemoveParticipant(p.id)}
-                                  className="text-white/20 hover:text-red-500 transition-colors"
-                                >
-                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          )}
+
+                          <div className="mt-2 flex items-center justify-between gap-1 pt-2 border-t border-white/5">
+                            <div className="px-2 py-0.5 bg-black/40 rounded text-[9px] text-white/40 font-bold uppercase tracking-tighter">
+                              Bajas <b className="text-neon-purple ml-1">{p.totalKills || 0}</b>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => openEditStats(p)}
+                                title="Editar estadísticas"
+                                className="text-white/20 hover:text-neon-cyan transition-colors"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                              {p.streamUrl && (
+                                <a href={p.streamUrl} target="_blank" rel="noreferrer" className="text-red-500/50 hover:text-red-500 transition-colors">
+                                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
                                   </svg>
-                                </button>
+                                </a>
+                              )}
+                              <button
+                                onClick={() => handleRemoveParticipant(p.id)}
+                                className="text-white/20 hover:text-red-500 transition-colors"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
                             </div>
                           </div>
                         </div>
                       ))}
-                      
+
                       {roster.length < maxPerTeam && (
-                        <button
-                          onClick={() => {
-                            const name = prompt('Nombre del jugador:')
-                            if (name) handleAddParticipant(team.id, name)
-                          }}
-                          className="flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-dashed border-white/5 
-                            hover:border-neon-purple/40 hover:bg-white/[0.02] transition-all group/btn"
-                        >
-                          <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mb-1 group-hover/btn:scale-110 transition-transform">
-                            <span className="text-white/40 text-lg">+</span>
+                        addingPlayerTo === team.id ? (
+                          <div className="bg-white/5 border border-neon-purple/30 rounded-2xl p-4 space-y-2">
+                            <input
+                              autoFocus
+                              type="text"
+                              value={newPlayerName}
+                              onChange={e => setNewPlayerName(e.target.value)}
+                              placeholder="Nombre del jugador"
+                              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder:text-white/20 outline-none focus:border-neon-purple/50"
+                            />
+                            <div className="grid grid-cols-2 gap-1.5">
+                              <div>
+                                <label className="text-[8px] text-white/30 uppercase tracking-widest ml-1">K/D Promedio</label>
+                                <input type="number" step="0.01" min="0" value={newPlayerKd} onChange={e => setNewPlayerKd(e.target.value)}
+                                  placeholder="1.50"
+                                  className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-white/20 outline-none focus:border-neon-cyan/50" />
+                              </div>
+                              <div>
+                                <label className="text-[8px] text-white/30 uppercase tracking-widest ml-1">Kills/Partida</label>
+                                <input type="number" step="0.1" min="0" value={newPlayerAvgKills} onChange={e => setNewPlayerAvgKills(e.target.value)}
+                                  placeholder="4.5"
+                                  className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-white/20 outline-none focus:border-neon-cyan/50" />
+                              </div>
+                              <div>
+                                <label className="text-[8px] text-white/30 uppercase tracking-widest ml-1">Rango Clasif.</label>
+                                <input type="text" value={newPlayerRank} onChange={e => setNewPlayerRank(e.target.value)}
+                                  placeholder="Oro / Platino..."
+                                  className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-white/20 outline-none focus:border-neon-cyan/50" />
+                              </div>
+                              <div>
+                                <label className="text-[8px] text-white/30 uppercase tracking-widest ml-1">Pos. Prom. BR</label>
+                                <input type="number" step="1" min="1" value={newPlayerBrPlacement} onChange={e => setNewPlayerBrPlacement(e.target.value)}
+                                  placeholder="8"
+                                  className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-white/20 outline-none focus:border-neon-cyan/50" />
+                              </div>
+                            </div>
+                            <div className="flex gap-2 pt-1">
+                              <button
+                                onClick={() => handleAddParticipant(team.id)}
+                                disabled={addPlayerLoading || !newPlayerName.trim()}
+                                className="flex-1 py-1.5 bg-neon-purple/80 hover:bg-neon-purple text-white text-[10px] font-bold rounded-lg disabled:opacity-50 transition-colors uppercase tracking-widest"
+                              >
+                                {addPlayerLoading ? '...' : 'Agregar'}
+                              </button>
+                              <button
+                                onClick={() => { setAddingPlayerTo(null); setNewPlayerName('') }}
+                                className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white/40 text-[10px] rounded-lg transition-colors"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
                           </div>
-                          <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">Añadir Jugador</span>
-                        </button>
+                        ) : (
+                          <button
+                            onClick={() => setAddingPlayerTo(team.id)}
+                            className="flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-dashed border-white/5
+                              hover:border-neon-purple/40 hover:bg-white/[0.02] transition-all group/btn"
+                          >
+                            <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mb-1 group-hover/btn:scale-110 transition-transform">
+                              <span className="text-white/40 text-lg">+</span>
+                            </div>
+                            <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">Añadir Jugador</span>
+                          </button>
+                        )
                       )}
                     </div>
                     
@@ -434,6 +594,72 @@ export function ParticipantsManager({
         accept="image/*"
         className="hidden"
       />
+
+      {/* Edit Stats Modal */}
+      {editingStats && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-[#0d0d0f] border border-neon-purple/30 rounded-2xl p-6 w-full max-w-sm shadow-2xl shadow-neon-purple/10">
+            <div className="flex items-center gap-3 mb-5">
+              {editingStats.avatarUrl ? (
+                <img src={editingStats.avatarUrl} alt="" className="w-10 h-10 rounded-xl object-contain" style={{ background: 'transparent' }} />
+              ) : (
+                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+              )}
+              <div>
+                <h3 className="text-white font-bold text-sm">{editingStats.displayName}</h3>
+                <p className="text-white/30 text-[10px] uppercase tracking-widest">Editar estadísticas</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[9px] text-white/40 uppercase tracking-widest mb-1.5">K/D Promedio</label>
+                <input type="number" step="0.01" min="0" value={editKd} onChange={e => setEditKd(e.target.value)}
+                  placeholder="1.50"
+                  className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/20 outline-none focus:border-neon-cyan/50" />
+              </div>
+              <div>
+                <label className="block text-[9px] text-white/40 uppercase tracking-widest mb-1.5">Kills / Partida</label>
+                <input type="number" step="0.1" min="0" value={editAvgKills} onChange={e => setEditAvgKills(e.target.value)}
+                  placeholder="4.5"
+                  className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/20 outline-none focus:border-neon-cyan/50" />
+              </div>
+              <div>
+                <label className="block text-[9px] text-white/40 uppercase tracking-widest mb-1.5">Rango Clasificatoria</label>
+                <input type="text" value={editRank} onChange={e => setEditRank(e.target.value)}
+                  placeholder="Oro / Platino / Diamante..."
+                  className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/20 outline-none focus:border-neon-cyan/50" />
+              </div>
+              <div>
+                <label className="block text-[9px] text-white/40 uppercase tracking-widest mb-1.5">Posición Prom. BR</label>
+                <input type="number" step="1" min="1" value={editBrPlacement} onChange={e => setEditBrPlacement(e.target.value)}
+                  placeholder="8"
+                  className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/20 outline-none focus:border-neon-cyan/50" />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={handleSaveStats}
+                disabled={editStatsLoading}
+                className="flex-1 py-2.5 bg-neon-purple hover:bg-neon-purple/90 text-white text-sm font-bold rounded-xl disabled:opacity-50 transition-colors"
+              >
+                {editStatsLoading ? 'Guardando...' : 'Guardar'}
+              </button>
+              <button
+                onClick={() => setEditingStats(null)}
+                className="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-white/50 text-sm rounded-xl transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
