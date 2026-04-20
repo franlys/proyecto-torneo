@@ -6,6 +6,11 @@ import type { CreateTeamInput, CreateParticipantInput } from '@/lib/validations/
 import type { Team, Participant } from '@/types'
 import { pushToAC } from './ac-push'
 
+async function assertAdmin(supabase: any, userId: string): Promise<string | null> {
+  const { data } = await supabase.from('profiles').select('role').eq('id', userId).single()
+  return (!data || data.role !== 'ADMIN') ? 'Sin permisos' : null
+}
+
 // ─── Teams ──────────────────────────────────────────────────────────────────
 
 export async function createTeam(
@@ -24,11 +29,11 @@ export async function createTeam(
   // Verify tournament ownership
   const { data: tournament, error: authErr } = await supabase
     .from('tournaments')
-    .select('creator_id')
+    .select('id')
     .eq('id', tournamentId)
     .single()
 
-  if (authErr || !tournament || tournament.creator_id !== user.id) {
+  if (await assertAdmin(supabase, user.id)) {
     return { error: 'Sin permisos para este torneo' }
   }
 
@@ -96,11 +101,11 @@ export async function deleteTeam(
 
   const { data: tournament } = await supabase
     .from('tournaments')
-    .select('creator_id')
+    .select('id')
     .eq('id', tournamentId)
     .single()
 
-  if (!tournament || tournament.creator_id !== user.id) {
+  if (await assertAdmin(supabase, user.id)) {
     return { error: 'Sin permisos' }
   }
 
@@ -134,11 +139,11 @@ export async function addParticipant(
   // Verify tournament ownership
   const { data: tournament, error: authErr } = await supabase
     .from('tournaments')
-    .select('creator_id')
+    .select('id')
     .eq('id', tournamentId)
     .single()
 
-  if (authErr || !tournament || tournament.creator_id !== user.id) {
+  if (await assertAdmin(supabase, user.id)) {
     return { error: 'Sin permisos para este torneo' }
   }
 
@@ -195,11 +200,11 @@ export async function deleteParticipant(
 
   const { data: tournament } = await supabase
     .from('tournaments')
-    .select('creator_id')
+    .select('id')
     .eq('id', tournamentId)
     .single()
 
-  if (!tournament || tournament.creator_id !== user.id) {
+  if (await assertAdmin(supabase, user.id)) {
     return { error: 'Sin permisos' }
   }
 
@@ -275,11 +280,11 @@ export async function updateParticipantKills(
   // Verify tournament ownership
   const { data: tournament, error: authErr } = await supabase
     .from('tournaments')
-    .select('creator_id')
+    .select('id')
     .eq('id', tournamentId)
     .single()
 
-  if (authErr || !tournament || tournament.creator_id !== user.id) {
+  if (await assertAdmin(supabase, user.id)) {
     return { error: 'Sin permisos para este torneo' }
   }
 
@@ -305,11 +310,11 @@ export async function updateTeam(
 
   const { data: tournament } = await supabase
     .from('tournaments')
-    .select('creator_id')
+    .select('id')
     .eq('id', tournamentId)
     .single()
 
-  if (!tournament || tournament.creator_id !== user.id) {
+  if (await assertAdmin(supabase, user.id)) {
     return { error: 'Sin permisos' }
   }
 
@@ -358,11 +363,11 @@ export async function updateParticipant(
 
   const { data: tournament } = await supabase
     .from('tournaments')
-    .select('creator_id')
+    .select('id')
     .eq('id', tournamentId)
     .single()
 
-  if (!tournament || tournament.creator_id !== user.id) {
+  if (await assertAdmin(supabase, user.id)) {
     return { error: 'Sin permisos' }
   }
 
