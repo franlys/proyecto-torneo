@@ -2,8 +2,7 @@
 
 import { useState, useRef } from 'react'
 import type { Team, Participant, TournamentMode } from '@/types'
-import { createTeam, addParticipant, deleteTeam, deleteParticipant, updateTeam, updateParticipant } from '@/lib/actions/participants'
-import { createClient } from '@/lib/supabase/client'
+import { createTeam, addParticipant, deleteTeam, deleteParticipant, updateTeam, updateParticipant, uploadAvatar } from '@/lib/actions/participants'
 import { toast } from 'sonner'
 
 export function ParticipantsManager({
@@ -64,8 +63,6 @@ export function ParticipantsManager({
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const currentUploadRef = useRef<{ id: string, type: 'team' | 'participant' } | null>(null)
-  
-  const supabase = createClient()
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -210,32 +207,18 @@ export function ParticipantsManager({
 
     const { id, type } = currentUploadRef.current
     setUploadingId(id)
-    
+
     try {
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${id}-${type}-avatar.${fileExt}`
-      const filePath = `avatars/${fileName}`
-
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('evidences')
-        .upload(filePath, file, { upsert: true })
-
-      if (uploadError) throw uploadError
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('evidences')
-        .getPublicUrl(filePath)
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await uploadAvatar(tournamentId, id, type, fd)
+      if ('error' in res) throw new Error(res.error)
 
       if (type === 'team') {
-        const res = await updateTeam(tournamentId, id, { avatarUrl: publicUrl })
-        if ('error' in res) throw new Error(res.error)
-        setTeams(teams.map(t => t.id === id ? { ...t, avatarUrl: publicUrl } : t))
+        setTeams(teams.map(t => t.id === id ? { ...t, avatarUrl: res.url } : t))
       } else {
-        const res = await updateParticipant(tournamentId, id, { avatarUrl: publicUrl })
-        if ('error' in res) throw new Error(res.error)
-        setParticipants(participants.map(p => p.id === id ? { ...p, avatarUrl: publicUrl } : p))
+        setParticipants(participants.map(p => p.id === id ? { ...p, avatarUrl: res.url } : p))
       }
-
       toast.success('Imagen actualizada con éxito')
     } catch (err: any) {
       toast.error('Error al subir imagen: ' + err.message)

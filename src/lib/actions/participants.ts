@@ -414,3 +414,45 @@ export async function updateParticipant(
     }
   }
 }
+
+export async function uploadAvatar(
+  tournamentId: string,
+  entityId: string,
+  type: 'team' | 'participant',
+  formData: FormData
+): Promise<{ url: string } | { error: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const { data: tournament } = await supabase
+    .from('tournaments')
+    .select('creator_id')
+    .eq('id', tournamentId)
+    .single()
+  if (!tournament || tournament.creator_id !== user.id) return { error: 'Sin permisos' }
+
+  const file = formData.get('file') as File
+  if (!file) return { error: 'No se recibió archivo' }
+
+  const ext = file.name.split('.').pop()
+  const filePath = `avatars/${entityId}-${type}-avatar.${ext}`
+  const buffer = Buffer.from(await file.arrayBuffer())
+
+  const admin = await createAdminClient()
+  const { error: uploadError } = await admin.storage
+    .from('evidences')
+    .upload(filePath, buffer, { upsert: true, contentType: file.type })
+
+  if (uploadError) return { error: uploadError.message }
+
+  const { data: { publicUrl } } = admin.storage.from('evidences').getPublicUrl(filePath)
+
+  if (type === 'team') {
+    await admin.from('teams').update({ avatar_url: publicUrl }).eq('id', entityId)
+  } else {
+    await admin.from('participants').update({ avatar_url: publicUrl }).eq('id', entityId)
+  }
+
+  return { url: publicUrl }
+}
