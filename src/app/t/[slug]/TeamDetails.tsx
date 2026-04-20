@@ -216,46 +216,59 @@ export function TeamDetails({
               initial={{ opacity: 0, x: -40, y: 20 }}
               animate={{ opacity: 1, x: 0, y: 0 }}
               transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              className="relative flex-shrink-0 flex items-end justify-center"
-              style={{ width: '200px', minHeight: '280px' }}
+              className="relative flex-shrink-0 flex items-center justify-center"
+              style={{ width: '220px', height: '300px' }}
             >
-              {/* Glow pool under image */}
+              {/* Glow pool — centered */}
               <div style={{
-                position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)',
-                width: '180px', height: '60px',
+                position: 'absolute', bottom: '10px', left: '50%', transform: 'translateX(-50%)',
+                width: '200px', height: '80px',
                 background: `radial-gradient(ellipse, ${primaryColor}55 0%, transparent 70%)`,
-                filter: 'blur(12px)',
+                filter: 'blur(16px)', pointerEvents: 'none',
               }} />
-              {/* Decorative ring */}
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-                style={{
-                  position: 'absolute', bottom: '-10px', left: '50%', transform: 'translateX(-50%)',
-                  width: '160px', height: '160px', borderRadius: '50%',
-                  border: `1px solid ${primaryColor}30`,
-                  pointerEvents: 'none',
-                }}
-              />
+              {/* Outer ring — wrapper handles centering, motion div handles rotation only */}
+              <div style={{ position: 'absolute', top: '50%', left: '50%', marginTop: '-110px', marginLeft: '-110px', width: '220px', height: '220px', pointerEvents: 'none' }}>
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}
+                  style={{ width: '100%', height: '100%', borderRadius: '50%', border: `1px dashed ${primaryColor}40` }}
+                />
+              </div>
+              {/* Inner ring */}
+              <div style={{ position: 'absolute', top: '50%', left: '50%', marginTop: '-80px', marginLeft: '-80px', width: '160px', height: '160px', pointerEvents: 'none' }}>
+                <motion.div
+                  animate={{ rotate: -360 }}
+                  transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
+                  style={{ width: '100%', height: '100%', borderRadius: '50%', border: `1px solid ${primaryColor}20` }}
+                />
+              </div>
+
+              {/* Image or placeholder */}
               {selectedPlayer.avatarUrl ? (
                 <motion.img
                   src={selectedPlayer.avatarUrl}
                   alt={selectedPlayer.displayName}
-                  animate={{ y: [0, -8, 0] }}
+                  animate={{ y: [0, -10, 0] }}
                   transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
                   style={{
-                    width: '180px', height: '240px',
+                    width: '180px', height: '260px',
                     objectFit: 'contain',
-                    filter: `drop-shadow(0 0 24px ${primaryColor}88) drop-shadow(0 8px 32px rgba(0,0,0,0.8))`,
-                    position: 'relative', zIndex: 1,
+                    filter: `drop-shadow(0 0 28px ${primaryColor}99) drop-shadow(0 12px 40px rgba(0,0,0,0.9))`,
+                    position: 'relative', zIndex: 2,
                   }}
                 />
               ) : (
                 <motion.div
-                  animate={{ y: [0, -8, 0] }}
+                  animate={{ y: [0, -10, 0] }}
                   transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
-                  className="relative z-10 w-40 h-52 rounded-3xl flex items-center justify-center text-7xl"
-                  style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${primaryColor}30` }}
+                  style={{
+                    position: 'relative', zIndex: 2,
+                    width: '160px', height: '220px', borderRadius: '24px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '5rem',
+                    background: `linear-gradient(135deg, ${primaryColor}15, rgba(0,0,0,0.3))`,
+                    border: `1px solid ${primaryColor}30`,
+                  }}
                 >
                   👤
                 </motion.div>
