@@ -13,8 +13,21 @@ import {
   Bar,
   Cell
 } from 'recharts'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, animate } from 'framer-motion'
 import { Match, Submission, ScoringRule, Participant } from '@/types'
+
+function AnimatedNumber({ value, decimals = 0 }: { value: number; decimals?: number }) {
+  const [display, setDisplay] = useState(0)
+  useEffect(() => {
+    const controls = animate(0, value, {
+      duration: 1.2,
+      ease: [0.16, 1, 0.3, 1],
+      onUpdate: v => setDisplay(v),
+    })
+    return controls.stop
+  }, [value])
+  return <>{display.toFixed(decimals)}</>
+}
 
 interface TeamDetailsProps {
   teamId: string
@@ -154,7 +167,208 @@ export function TeamDetails({
   return (
     <div className="p-4 sm:p-8 bg-white/[0.01] border-t border-white/5 space-y-8">
       {/* Analytics Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <AnimatePresence mode="wait">
+      {selectedPlayerId && selectedPlayer ? (
+        /* ── ESPORTS PLAYER SHOWCASE ─────────────────────────────────────── */
+        <motion.div
+          key={`showcase-${selectedPlayer.id}`}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.35 }}
+          className="relative overflow-hidden rounded-3xl"
+          style={{ minHeight: '420px', background: 'rgba(0,0,0,0.6)' }}
+        >
+          {/* Background radial glow */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6 }}
+            style={{
+              position: 'absolute', inset: 0, pointerEvents: 'none',
+              background: `radial-gradient(ellipse 60% 80% at 25% 60%, ${primaryColor}22 0%, transparent 70%)`,
+            }}
+          />
+          {/* Scanlines overlay */}
+          <div style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.03,
+            backgroundImage: 'repeating-linear-gradient(0deg, #fff 0px, #fff 1px, transparent 1px, transparent 4px)',
+          }} />
+          {/* Top bar */}
+          <div className="relative z-10 flex items-center justify-between px-6 pt-5 pb-0">
+            <button
+              onClick={() => setSelectedPlayerId(null)}
+              className="flex items-center gap-2 text-white/30 hover:text-white transition-colors text-[10px] font-black uppercase tracking-[0.2em]"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Volver
+            </button>
+            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20">{teamName}</span>
+          </div>
+
+          {/* Main showcase layout */}
+          <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-stretch gap-0 px-4 sm:px-6 pb-6 pt-2">
+
+            {/* ── LEFT: Player image ── */}
+            <motion.div
+              initial={{ opacity: 0, x: -40, y: 20 }}
+              animate={{ opacity: 1, x: 0, y: 0 }}
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              className="relative flex-shrink-0 flex items-end justify-center"
+              style={{ width: '200px', minHeight: '280px' }}
+            >
+              {/* Glow pool under image */}
+              <div style={{
+                position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+                width: '180px', height: '60px',
+                background: `radial-gradient(ellipse, ${primaryColor}55 0%, transparent 70%)`,
+                filter: 'blur(12px)',
+              }} />
+              {/* Decorative ring */}
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+                style={{
+                  position: 'absolute', bottom: '-10px', left: '50%', transform: 'translateX(-50%)',
+                  width: '160px', height: '160px', borderRadius: '50%',
+                  border: `1px solid ${primaryColor}30`,
+                  pointerEvents: 'none',
+                }}
+              />
+              {selectedPlayer.avatarUrl ? (
+                <motion.img
+                  src={selectedPlayer.avatarUrl}
+                  alt={selectedPlayer.displayName}
+                  animate={{ y: [0, -8, 0] }}
+                  transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+                  style={{
+                    width: '180px', height: '240px',
+                    objectFit: 'contain',
+                    filter: `drop-shadow(0 0 24px ${primaryColor}88) drop-shadow(0 8px 32px rgba(0,0,0,0.8))`,
+                    position: 'relative', zIndex: 1,
+                  }}
+                />
+              ) : (
+                <motion.div
+                  animate={{ y: [0, -8, 0] }}
+                  transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+                  className="relative z-10 w-40 h-52 rounded-3xl flex items-center justify-center text-7xl"
+                  style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${primaryColor}30` }}
+                >
+                  👤
+                </motion.div>
+              )}
+            </motion.div>
+
+            {/* ── RIGHT: Stats panel ── */}
+            <div className="flex-1 flex flex-col justify-center pl-0 sm:pl-8 pt-4 sm:pt-8">
+              {/* Name + Role */}
+              <motion.div
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.15 }}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  {selectedPlayer.isCaptain && (
+                    <span style={{
+                      background: `linear-gradient(90deg, ${primaryColor}33, transparent)`,
+                      border: `1px solid ${primaryColor}50`,
+                      color: primaryColor, fontSize: '0.5rem',
+                      fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.2em',
+                      padding: '2px 8px', borderRadius: '4px',
+                    }}>CAPITÁN</span>
+                  )}
+                </div>
+                <h2 style={{
+                  fontFamily: 'Orbitron, sans-serif', fontSize: 'clamp(1.6rem, 4vw, 2.8rem)',
+                  fontWeight: 900, color: '#fff', lineHeight: 1, letterSpacing: '-0.02em',
+                  textShadow: `0 0 40px ${primaryColor}66`,
+                }}>
+                  {selectedPlayer.displayName.toUpperCase()}
+                </h2>
+              </motion.div>
+
+              {/* Divider */}
+              <motion.div
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                style={{ height: '1px', background: `linear-gradient(90deg, ${primaryColor}80, transparent)`, marginTop: '1rem', marginBottom: '1rem', transformOrigin: 'left' }}
+              />
+
+              {/* Torneo stats row */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.35 }}
+                className="flex gap-6 mb-4"
+              >
+                {[
+                  { label: 'KD Torneo', value: Number(kd), decimals: 2, color: '#67e8f9' },
+                  { label: 'Kills', value: calculatedPlayerKillsMap[selectedPlayer.id] || 0, decimals: 0, color: '#fff' },
+                ].map((stat, i) => (
+                  <div key={stat.label}>
+                    <p style={{ fontSize: '0.5rem', color: 'rgba(255,255,255,0.3)', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.2em', marginBottom: '2px' }}>{stat.label}</p>
+                    <p style={{ fontSize: '1.8rem', fontFamily: 'Orbitron, sans-serif', fontWeight: 900, color: stat.color, lineHeight: 1 }}>
+                      <AnimatedNumber value={stat.value} decimals={stat.decimals} />
+                    </p>
+                  </div>
+                ))}
+              </motion.div>
+
+              {/* Pre-tournament stats */}
+              {(selectedPlayer.kdRatio != null || selectedPlayer.avgKills != null || selectedPlayer.classificationRank || selectedPlayer.brAvgPlacement != null) && (
+                <>
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.45 }}
+                    style={{ fontSize: '0.5rem', color: 'rgba(255,255,255,0.2)', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.2em', marginBottom: '0.6rem' }}
+                  >
+                    STATS PREVIOS
+                  </motion.p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      selectedPlayer.kdRatio != null && { label: 'K/D PROM.', value: `${Number(selectedPlayer.kdRatio).toFixed(2)}`, color: '#67e8f9', bar: Math.min(Number(selectedPlayer.kdRatio) / 5, 1) },
+                      selectedPlayer.avgKills != null && { label: 'AVG KILLS', value: `${Number(selectedPlayer.avgKills).toFixed(1)}`, color: '#a78bfa', bar: Math.min(Number(selectedPlayer.avgKills) / 15, 1) },
+                      selectedPlayer.classificationRank && { label: 'RANGO', value: selectedPlayer.classificationRank, color: '#fbbf24', bar: null },
+                      selectedPlayer.brAvgPlacement != null && { label: 'POS. BR', value: `#${Number(selectedPlayer.brAvgPlacement).toFixed(0)}`, color: 'rgba(255,255,255,0.7)', bar: null },
+                    ].filter(Boolean).map((stat: any, i) => (
+                      <motion.div
+                        key={stat.label}
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.5 + i * 0.08 }}
+                        style={{
+                          background: 'rgba(255,255,255,0.03)',
+                          border: `1px solid ${stat.color}22`,
+                          borderRadius: '12px', padding: '0.75rem',
+                        }}
+                      >
+                        <p style={{ fontSize: '0.45rem', color: 'rgba(255,255,255,0.3)', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.15em', marginBottom: '4px' }}>{stat.label}</p>
+                        <p style={{ fontSize: '1.1rem', fontFamily: 'Orbitron, sans-serif', fontWeight: 900, color: stat.color, lineHeight: 1 }}>{stat.value}</p>
+                        {stat.bar != null && (
+                          <div style={{ marginTop: '6px', height: '2px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${stat.bar * 100}%` }}
+                              transition={{ duration: 1, delay: 0.6 + i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                              style={{ height: '100%', background: stat.color, borderRadius: '2px' }}
+                            />
+                          </div>
+                        )}
+                      </motion.div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      ) : (
+      <div key="analytics" className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Chart Column */}
         <div className="lg:col-span-2 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -185,9 +399,7 @@ export function TeamDetails({
           </div>
           
           <div className="h-[300px] w-full bg-black/20 rounded-3xl p-6 border border-white/5 shadow-inner relative group">
-            {/* Team Summary Overlay (Only when no player selected) */}
-            {!selectedPlayerId && (
-              <div className="absolute top-4 right-4 z-10 flex gap-2">
+            <div className="absolute top-4 right-4 z-10 flex gap-2">
                  <div className="px-4 py-2 rounded-xl bg-black/60 backdrop-blur-md border border-white/5 flex flex-col items-center">
                     <span className="text-[7px] font-black text-white/30 uppercase tracking-widest leading-none mb-1">Mejor Pos.</span>
                     <span className="text-sm font-orbitron font-black text-neon-cyan leading-none">#{bestPlacement}</span>
@@ -197,27 +409,9 @@ export function TeamDetails({
                     <span className="text-sm font-orbitron font-black text-white leading-none">#{avgPlacement}</span>
                  </div>
               </div>
-            )}
 
             <ResponsiveContainer width="100%" height="100%">
-              {selectedPlayerId ? (
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                  <XAxis dataKey="name" stroke="rgba(255,255,255,0.3)" fontSize={10} tickLine={false} axisLine={false} dy={10} />
-                  <YAxis stroke="rgba(255,255,255,0.3)" fontSize={10} tickLine={false} axisLine={false} />
-                  <Tooltip 
-                    cursor={{fill: 'rgba(255,255,255,0.05)'}}
-                    contentStyle={{ backgroundColor: '#0A0A0B', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '10px' }}
-                    itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
-                  />
-                  <Bar dataKey="playerKills" radius={[4, 4, 0, 0]} animationDuration={1000}>
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={primaryColor} fillOpacity={0.8} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              ) : (
-                <AreaChart data={chartData}>
+              <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="colorPoints" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor={primaryColor} stopOpacity={0.3}/>
@@ -234,7 +428,6 @@ export function TeamDetails({
                   <Area type="monotone" dataKey="points" stroke={primaryColor} strokeWidth={3} fillOpacity={1} fill="url(#colorPoints)" animationDuration={1500} />
                   <Area type="monotone" dataKey="kills" stroke="#B400FF" strokeWidth={2} fill="transparent" animationDuration={2000} />
                 </AreaChart>
-              )}
             </ResponsiveContainer>
           </div>
         </div>
@@ -242,133 +435,57 @@ export function TeamDetails({
         {/* Individual Stats Column */}
         <div className="space-y-4">
           <h3 className="text-[10px] font-orbitron font-black text-white/40 uppercase tracking-[0.3em]">
-            {selectedPlayerId ? 'Perfil de Jugador' : 'Estadísticas de Jugadores'}
+            Estadísticas de Jugadores
           </h3>
-          
-          <AnimatePresence mode="wait">
-            {selectedPlayerId && selectedPlayer ? (
-              <motion.div
-                key="player-card"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="p-6 rounded-2xl bg-gradient-to-br from-white/[0.05] to-transparent border border-white/10"
-              >
-                 <div className="flex items-center gap-4 mb-5">
-                    {selectedPlayer.avatarUrl ? (
-                      <img src={selectedPlayer.avatarUrl} alt="" className="w-16 h-16 rounded-2xl object-contain" style={{ background: 'transparent' }} />
-                    ) : (
-                      <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-3xl">👤</div>
-                    )}
-                    <div>
-                       <h4 className="font-orbitron font-bold text-white text-xl leading-none mb-1">{selectedPlayer.displayName}</h4>
-                       <p className="text-[10px] text-neon-cyan uppercase font-black tracking-widest">{selectedPlayer.isCaptain ? 'Capitán de Equipo' : 'Operador'}</p>
-                    </div>
-                 </div>
 
-                 {/* Stats del torneo en curso */}
-                 <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                       <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">KD Torneo</p>
-                       <p className="text-2xl font-orbitron font-black text-white">{kd}</p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                       <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">Kills Totales</p>
-                       <p className="text-2xl font-orbitron font-black text-white">{calculatedPlayerKillsMap[selectedPlayer.id] || 0}</p>
-                    </div>
-                 </div>
-
-                 {/* Stats previos al torneo */}
-                 {(selectedPlayer.kdRatio != null || selectedPlayer.avgKills != null || selectedPlayer.classificationRank || selectedPlayer.brAvgPlacement != null) && (
-                   <div className="mb-4">
-                     <p className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-2">Stats Previos</p>
-                     <div className="grid grid-cols-2 gap-2">
-                       {selectedPlayer.kdRatio != null && (
-                         <div className="p-3 rounded-xl bg-neon-cyan/5 border border-neon-cyan/10">
-                           <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">K/D Promedio</p>
-                           <p className="text-xl font-orbitron font-black text-neon-cyan">{Number(selectedPlayer.kdRatio).toFixed(2)}</p>
-                         </div>
-                       )}
-                       {selectedPlayer.avgKills != null && (
-                         <div className="p-3 rounded-xl bg-neon-purple/5 border border-neon-purple/10">
-                           <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">Kills / Partida</p>
-                           <p className="text-xl font-orbitron font-black text-neon-purple">{Number(selectedPlayer.avgKills).toFixed(1)}</p>
-                         </div>
-                       )}
-                       {selectedPlayer.classificationRank && (
-                         <div className="p-3 rounded-xl bg-yellow-400/5 border border-yellow-400/10">
-                           <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">Rango Clasif.</p>
-                           <p className="text-sm font-orbitron font-black text-yellow-400">{selectedPlayer.classificationRank}</p>
-                         </div>
-                       )}
-                       {selectedPlayer.brAvgPlacement != null && (
-                         <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                           <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">Pos. Prom. BR</p>
-                           <p className="text-xl font-orbitron font-black text-white/70">#{Number(selectedPlayer.brAvgPlacement).toFixed(0)}</p>
-                         </div>
-                       )}
-                     </div>
-                   </div>
-                 )}
-
-                 <button
-                  onClick={() => setSelectedPlayerId(null)}
-                  className="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-white/40 hover:text-white transition-all border border-white/5"
-                 >
-                   Cerrar Perfil
-                 </button>
-              </motion.div>
+          <div className="space-y-2">
+            {teamParticipants.length === 0 ? (
+              <p className="text-[10px] text-white/20 uppercase tracking-widest italic py-4 text-center">No hay jugadores registrados</p>
             ) : (
-              <div className="space-y-2">
-                {teamParticipants.length === 0 ? (
-                  <p className="text-[10px] text-white/20 uppercase tracking-widest italic py-4 text-center">No hay jugadores registrados</p>
-                ) : (
-                  teamParticipants.map((p, idx) => (
-                    <motion.div 
-                      key={p.id} 
-                      onClick={() => setSelectedPlayerId(p.id)}
-                      className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.08] hover:border-white/20 cursor-pointer transition-all group"
-                    >
-                       <div className="flex items-center gap-3">
-                          {p.avatarUrl ? (
-                            <img src={p.avatarUrl} alt="" className="w-8 h-8 rounded-lg object-contain shrink-0" style={{ background: 'transparent' }} />
-                          ) : (
-                            <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-[10px] text-white/40 font-black group-hover:bg-neon-cyan group-hover:text-black transition-colors">
-                              {p.isCaptain ? '👑' : idx + 1}
-                            </div>
-                          )}
-                          <span className="text-sm font-medium text-white group-hover:text-neon-cyan transition-colors">{p.displayName}</span>
-                       </div>
-                       <div className="text-right flex items-center gap-3">
-                          <div className="text-right">
-                            <span className="text-lg font-orbitron font-black text-white block leading-none">{calculatedPlayerKillsMap[p.id] || 0}</span>
-                            <span className="text-[8px] text-white/30 uppercase font-bold tracking-tighter">Kills</span>
-                          </div>
-                          <svg className="w-3 h-3 text-white/20 group-hover:text-neon-cyan transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                       </div>
-                    </motion.div>
-                  ))
-                )}
-              </div>
+              teamParticipants.map((p, idx) => (
+                <motion.div
+                  key={p.id}
+                  onClick={() => setSelectedPlayerId(p.id)}
+                  whileHover={{ x: 4 }}
+                  className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.08] hover:border-white/20 cursor-pointer transition-colors group"
+                >
+                  <div className="flex items-center gap-3">
+                    {p.avatarUrl ? (
+                      <img src={p.avatarUrl} alt="" className="w-8 h-8 rounded-lg object-contain shrink-0" style={{ background: 'transparent' }} />
+                    ) : (
+                      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-[10px] text-white/40 font-black group-hover:bg-neon-cyan group-hover:text-black transition-colors">
+                        {p.isCaptain ? '👑' : idx + 1}
+                      </div>
+                    )}
+                    <span className="text-sm font-medium text-white group-hover:text-neon-cyan transition-colors">{p.displayName}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <span className="text-lg font-orbitron font-black text-white block leading-none">{calculatedPlayerKillsMap[p.id] || 0}</span>
+                      <span className="text-[8px] text-white/30 uppercase font-bold tracking-tighter">Kills</span>
+                    </div>
+                    <svg className="w-3 h-3 text-white/20 group-hover:text-neon-cyan transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </motion.div>
+              ))
             )}
-          </AnimatePresence>
-          
-          {/* AI Banner */}
-          {!selectedPlayerId && (
-            <div className="mt-6 p-4 rounded-2xl bg-gradient-to-br from-neon-purple/20 to-transparent border border-neon-purple/30">
-               <div className="flex items-center gap-2 mb-2">
-                  <div className="w-2 h-2 rounded-full bg-neon-purple animate-pulse" />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-white font-orbitron">IA Verified</span>
-               </div>
-               <p className="text-[9px] text-white/40 leading-relaxed uppercase tracking-widest font-bold">
-                  Detección automática de OCR activada para este equipo.
-               </p>
+          </div>
+
+          <div className="mt-4 p-4 rounded-2xl bg-gradient-to-br from-neon-purple/20 to-transparent border border-neon-purple/30">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2 h-2 rounded-full bg-neon-purple animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-white font-orbitron">IA Verified</span>
             </div>
-          )}
+            <p className="text-[9px] text-white/40 leading-relaxed uppercase tracking-widest font-bold">
+              Detección automática de OCR activada para este equipo.
+            </p>
+          </div>
         </div>
       </div>
+      )}
+      </AnimatePresence>
     </div>
   )
 }
