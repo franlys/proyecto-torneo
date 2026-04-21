@@ -442,9 +442,12 @@ export function ParticipantsManager({
                           )}
 
                           <div className="mt-2 flex items-center justify-between gap-1 pt-2 border-t border-white/5">
-                            <div className="px-2 py-0.5 bg-black/40 rounded text-[9px] text-white/40 font-bold uppercase tracking-tighter">
-                              Bajas <b className="text-neon-purple ml-1">{p.totalKills || 0}</b>
-                            </div>
+                            {p.totalKills > 0 && (
+                              <div className="px-2 py-0.5 bg-black/40 rounded text-[9px] text-white/40 font-bold uppercase tracking-tighter">
+                                Bajas <b className="text-neon-purple ml-1">{p.totalKills}</b>
+                              </div>
+                            )}
+                            {!p.totalKills && <div />}
                             <div className="flex items-center gap-1">
                               <button
                                 onClick={() => openEditStats(p)}
