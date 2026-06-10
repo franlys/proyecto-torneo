@@ -3,6 +3,7 @@ import { Orbitron } from 'next/font/google'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { StreamerCodeManager } from './StreamerCodeManager'
+import { SanctionToggle } from './SanctionToggle'
 
 const orbitron = Orbitron({ subsets: ['latin'] })
 
@@ -59,7 +60,8 @@ export default async function AdminTournamentDetailPage({ params }: { params: { 
           </div>
         </header>
 
-        <div className="w-full md:w-auto flex gap-4">
+        <div className="w-full md:w-auto flex flex-wrap items-center gap-4">
+             <SanctionToggle tournamentId={id} initialSanctioned={tournament.is_sanctioned} />
              <Link 
                 href={`/t/${tournament.slug}`} 
                 target="_blank"

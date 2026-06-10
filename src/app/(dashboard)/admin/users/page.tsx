@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { RoleSelect } from './RoleSelect'
 import { SubToggle } from './SubToggle'
+import { LicenseToggle } from './LicenseToggle'
 
 export default async function AdminUsersPage() {
   const admin = await isAdmin()
@@ -18,7 +19,7 @@ export default async function AdminUsersPage() {
   // Perfiles existentes
   const { data: profiles } = await supabase
     .from('profiles')
-    .select('id, username, role, subscription_status, created_at')
+    .select('id, username, role, subscription_status, created_at, has_ranking_license')
 
   const profileMap = new Map(profiles?.map((p) => [p.id, p]) ?? [])
 
@@ -45,9 +46,10 @@ export default async function AdminUsersPage() {
                 <th className="text-left px-5 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Username</th>
                 <th className="text-left px-5 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Rol</th>
                 <th className="text-left px-5 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Suscripción</th>
+                <th className="text-left px-5 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Licencia Fede</th>
                 <th className="text-left px-5 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Registro</th>
                 <th className="text-left px-5 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Perfil</th>
-                <th className="px-5 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Rol</th>
+                <th className="px-5 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Acción Sub</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -89,6 +91,11 @@ export default async function AdminUsersPage() {
                         </span>
                       ) : <span className="text-white/20 text-xs">—</span>}
                     </td>
+                    <td className="px-5 py-3">
+                      {profile ? (
+                        <LicenseToggle streamerId={u.id} initialHasLicense={profile.has_ranking_license} />
+                      ) : <span className="text-white/20 text-xs">—</span>}
+                    </td>
                     <td className="px-5 py-3 text-xs text-white/30">
                       {new Date(u.created_at).toLocaleDateString('es')}
                     </td>
@@ -99,16 +106,12 @@ export default async function AdminUsersPage() {
                         <CreateProfileButton userId={u.id} />
                       )}
                     </td>
-                    <td className="px-5 py-3">
+                    <td className="px-5 py-3 flex gap-2">
                       {profile && profile.role !== 'ADMIN' ? (
-                        <SubToggle userId={u.id} status={profile.subscription_status} />
-                      ) : (
-                        <span className="text-white/20 text-xs">—</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3">
-                      {profile ? (
-                        <RoleSelect userId={u.id} currentRole={profile.role} />
+                        <>
+                          <SubToggle userId={u.id} status={profile.subscription_status} />
+                          <RoleSelect userId={u.id} currentRole={profile.role} />
+                        </>
                       ) : (
                         <span className="text-white/20 text-xs">—</span>
                       )}

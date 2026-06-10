@@ -3,6 +3,7 @@ import { isAdmin } from '@/lib/actions/auth-helpers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { SendRemindersButton } from './SendRemindersButton'
+import { RankingManager } from './RankingManager'
 
 export default async function AdminPage() {
   const admin = await isAdmin()
@@ -37,7 +38,7 @@ export default async function AdminPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-white">Panel de Administración</h1>
-        <p className="text-white/40 text-sm mt-1">Vista global de la plataforma Kronix</p>
+        <p className="text-white/40 text-sm mt-1">Vista global de la plataforma Kronix & FDDE</p>
       </div>
 
       {/* Stats */}
@@ -136,6 +137,11 @@ export default async function AdminPage() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Federation live stats update editor */}
+      <div className="pt-6 border-t border-white/5">
+        <RankingManager />
       </div>
     </div>
   )
