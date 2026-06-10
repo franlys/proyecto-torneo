@@ -57,7 +57,7 @@ export async function sendSubscriptionReminders(): Promise<{ sent: number } | { 
 
 const changeRoleSchema = z.object({
   userId: z.string().uuid(),
-  role: z.enum(['ADMIN', 'STREAMER', 'USER']),
+  role: z.enum(['ADMIN', 'FEDERATION', 'STREAMER', 'USER']),
 })
 
 export async function changeUserRole(formData: FormData) {

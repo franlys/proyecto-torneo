@@ -27,6 +27,7 @@ export function RoleSelect({ userId, currentRole }: RoleSelectProps) {
     >
       <option value="USER">USER</option>
       <option value="STREAMER">STREAMER</option>
+      <option value="FEDERATION">FEDERATION</option>
       <option value="ADMIN">ADMIN</option>
     </select>
   )

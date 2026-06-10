@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 export type Profile = {
   id: string
   username: string | null
-  role: 'ADMIN' | 'STREAMER' | 'USER'
+  role: 'ADMIN' | 'FEDERATION' | 'STREAMER' | 'USER'
   subscriptionStatus: 'NONE' | 'PENDING' | 'ACTIVE' | 'EXPIRED'
   subscriptionExpiry: string | null
 }
@@ -37,9 +37,17 @@ export async function getProfile(): Promise<Profile | null> {
 }
 
 /**
- * Checks if the current user is an admin.
+ * Checks if the current user is an admin or federation member.
  */
 export async function isAdmin() {
+  const profile = await getProfile()
+  return profile?.role === 'ADMIN' || profile?.role === 'FEDERATION'
+}
+
+/**
+ * Checks if the current user is specifically Super Admin (role = ADMIN).
+ */
+export async function isSuperAdmin() {
   const profile = await getProfile()
   return profile?.role === 'ADMIN'
 }
@@ -49,5 +57,5 @@ export async function isAdmin() {
  */
 export async function isActiveStreamer() {
   const profile = await getProfile()
-  return profile?.role === 'ADMIN' || profile?.subscriptionStatus === 'ACTIVE'
+  return profile?.role === 'ADMIN' || profile?.role === 'FEDERATION' || profile?.subscriptionStatus === 'ACTIVE'
 }
