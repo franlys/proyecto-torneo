@@ -130,7 +130,7 @@ export async function createSubmission(
 export async function recalculateStandings(supabase: any, tournamentId: string) {
   // Fetch tournament + rule
   const { data: tourney } = await supabase.from('tournaments')
-    .select('id, total_matches, format, scoring_rules(kill_points, placement_points)')
+    .select('id, total_matches, format, is_sanctioned, mode, tournament_type, scoring_rules(kill_points, placement_points)')
     .eq('id', tournamentId).single()
   
   console.log(`[STANDINGS] Recalculating for Tournament: ${tournamentId}`)

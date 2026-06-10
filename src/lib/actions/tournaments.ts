@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { createTournamentSchema, updateTournamentSchema } from '@/lib/validations/schemas'
 import type { Tournament, ScoringRule } from '@/types'
@@ -402,7 +402,7 @@ export async function finishTournament(
   // Verify ownership
   const { data: tournament, error: fetchErr } = await supabase
     .from('tournaments')
-    .select('creator_id, status, slug')
+    .select('creator_id, status, slug, is_sanctioned, mode')
     .eq('id', id)
     .single()
 
@@ -451,6 +451,122 @@ export async function finishTournament(
       organizer_payout: remainder * (Number(t.organizer_split) / 100),
       streamer_payout: remainder * (Number(t.streamer_split) / 100)
     })
+  }
+
+  // --- FEDERATION AUTO RANKING UPDATE ---
+  if (tournament.is_sanctioned) {
+    const adminSupabase = await createAdminClient()
+
+    // 1. Get the discipline of the cup (if exists, or default to clash_royale)
+    const { data: sanctionedCup } = await adminSupabase
+      .from('sanctioned_cups')
+      .select('discipline')
+      .eq('tournament_id', id)
+      .maybeSingle()
+
+    const discipline = sanctionedCup?.discipline || 'clash_royale'
+
+    // Update the corresponding sanctioned cup status to 'finished'
+    await adminSupabase
+      .from('sanctioned_cups')
+      .update({ status: 'finished', end_date: new Date().toISOString() })
+      .eq('tournament_id', id)
+
+    // 2. Fetch all team standings with their participants
+    const { data: standings } = await adminSupabase
+      .from('team_standings')
+      .select(`
+        rank,
+        total_points,
+        total_kills,
+        team_id,
+        teams (
+          name,
+          participants (
+            display_name
+          )
+        )
+      `)
+      .eq('tournament_id', id)
+
+    if (standings && standings.length > 0) {
+      const pointsScale: Record<number, number> = {
+        1: 1000,
+        2: 600,
+        3: 400,
+        4: 200,
+        5: 100,
+        6: 100,
+        7: 100,
+        8: 100,
+      }
+
+      for (const standing of standings) {
+        const rank = standing.rank || 99
+        const pointsToAward = pointsScale[rank] || 50
+        const isPodium = rank <= 3 ? 1 : 0
+        const isWinner = rank === 1 ? 100.00 : 0.00
+
+        const team = standing.teams as any
+        const participants = team?.participants || []
+
+        for (const p of participants) {
+          const displayName = p.display_name
+          if (!displayName) continue
+
+          // Fetch existing player stats
+          const { data: existingPlayer } = await adminSupabase
+            .from('player_national_stats')
+            .select('*')
+            .eq('display_name', displayName)
+            .eq('discipline', discipline)
+            .maybeSingle()
+
+          if (existingPlayer) {
+            const newTournamentsPlayed = existingPlayer.tournaments_played + 1
+            const newWinRate = Number((((Number(existingPlayer.win_rate) * existingPlayer.tournaments_played) + isWinner) / newTournamentsPlayed).toFixed(2))
+
+            await adminSupabase
+              .from('player_national_stats')
+              .update({
+                points: existingPlayer.points + pointsToAward,
+                tournaments_played: newTournamentsPlayed,
+                podiums_count: existingPlayer.podiums_count + isPodium,
+                win_rate: newWinRate,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', existingPlayer.id)
+          } else {
+            await adminSupabase
+              .from('player_national_stats')
+              .insert({
+                display_name: displayName,
+                discipline,
+                points: pointsToAward,
+                tournaments_played: 1,
+                podiums_count: isPodium,
+                win_rate: isWinner,
+                updated_at: new Date().toISOString(),
+              })
+          }
+        }
+      }
+
+      // Recalculate rank positions in player_national_stats for this discipline
+      const { data: allPlayers } = await adminSupabase
+        .from('player_national_stats')
+        .select('id, points')
+        .eq('discipline', discipline)
+        .order('points', { ascending: false })
+
+      if (allPlayers) {
+        const rankUpdates = allPlayers.map((player: any, index: number) => ({
+          id: player.id,
+          rank_position: index + 1
+        }))
+        await adminSupabase.from('player_national_stats').upsert(rankUpdates)
+      }
+    }
   }
 
   // Push finished status to AC mirror

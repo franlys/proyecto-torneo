@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { RoleSelect } from './RoleSelect'
 import { SubToggle } from './SubToggle'
 import { LicenseToggle } from './LicenseToggle'
+import { CreateUserForm } from './CreateUserForm'
 
 export default async function AdminUsersPage() {
   const admin = await isAdmin()
@@ -37,6 +38,8 @@ export default async function AdminUsersPage() {
         </div>
       </div>
 
+      <CreateUserForm />
+
       <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -68,6 +71,8 @@ export default async function AdminUsersPage() {
                             ? 'border-neon-cyan/30 text-neon-cyan bg-neon-cyan/10'
                             : profile.role === 'STREAMER'
                             ? 'border-neon-purple/30 text-neon-purple bg-neon-purple/10'
+                            : profile.role === 'FEDERATION'
+                            ? 'border-green-500/30 text-green-400 bg-green-500/10'
                             : 'border-white/10 text-white/40'
                         }`}>
                           {profile.role}
@@ -107,9 +112,11 @@ export default async function AdminUsersPage() {
                       )}
                     </td>
                     <td className="px-5 py-3 flex gap-2">
-                      {profile && profile.role !== 'ADMIN' ? (
+                      {profile ? (
                         <>
-                          <SubToggle userId={u.id} status={profile.subscription_status} />
+                          {profile.role !== 'ADMIN' && (
+                            <SubToggle userId={u.id} status={profile.subscription_status} />
+                          )}
                           <RoleSelect userId={u.id} currentRole={profile.role} />
                         </>
                       ) : (
