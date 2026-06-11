@@ -7,6 +7,7 @@ import { getAdBanners } from '@/lib/actions/federation'
 import { AdPlacement } from '@/components/federation/AdPlacement'
 import { Navbar } from '@/components/navigation/Navbar'
 import { HomeTracker } from '@/components/analytics/HomeTracker'
+import { getLandingSettings } from '@/lib/actions/landing-settings'
 
 const orbitron = Orbitron({ subsets: ['latin'] })
 
@@ -15,40 +16,75 @@ export default async function Home() {
   const { data: { user } } = await supabase.auth.getUser()
   const profile = user ? await getProfile() : null
 
-  // Fetch ads
-  const adsRes = await getAdBanners()
+  // Fetch ads and landing page settings
+  const [adsRes, settings] = await Promise.all([
+    getAdBanners(),
+    getLandingSettings()
+  ])
+  
   const ads = adsRes && 'data' in adsRes ? adsRes.data : []
+  
+  const primaryColor = settings.primary_color || '#00F5FF'
+  const secondaryColor = settings.secondary_color || '#BD00FF'
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white selection:bg-neon-cyan/30">
+    <div className="min-h-screen bg-[#0a0a0b] text-white selection:bg-neon-cyan/30 relative overflow-x-hidden">
       <HomeTracker path="/" />
+      
+      {/* Ambient Video Background if enabled */}
+      {settings.ambient_video_url && (
+        <video 
+          src={settings.ambient_video_url} 
+          autoPlay loop muted playsInline 
+          className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none -z-20"
+        />
+      )}
       
       {/* Dynamic Hamburger Navigation */}
       <Navbar user={user} profile={profile} />
 
       {/* Hero Section */}
-      <section className="relative pt-44 pb-16 px-6 sm:px-8 overflow-hidden">
+      <section className="relative pt-44 pb-12 px-6 sm:px-8 overflow-hidden">
         {/* Background Gradients */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-neon-cyan/5 blur-[120px] rounded-full -z-10 animate-pulse" />
-        <div className="absolute -top-40 -left-40 w-[600px] h-[600px] bg-neon-purple/5 blur-[100px] rounded-full -z-10" />
+        <div 
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] blur-[120px] rounded-full -z-10 opacity-30 animate-pulse" 
+          style={{ backgroundColor: `${primaryColor}20` }}
+        />
+        <div 
+          className="absolute -top-40 -left-40 w-[600px] h-[600px] blur-[100px] rounded-full -z-10 opacity-20" 
+          style={{ backgroundColor: `${secondaryColor}10` }}
+        />
         
         <div className="max-w-7xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 mb-8">
-             <div className="w-1.5 h-1.5 rounded-full bg-neon-cyan animate-pulse" />
-             <span className="text-[9px] font-black uppercase tracking-widest text-white/50">Tecnología de Clasificación Oficial FDDE</span>
-          </div>
+          {settings.live_ticker_text && (
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 mb-8 select-none">
+               <div className="w-1.5 h-1.5 rounded-full animate-pulse bg-red-500" />
+               <span className="text-[9px] font-black uppercase tracking-widest text-white/70">
+                 {settings.live_ticker_text}
+               </span>
+            </div>
+          )}
           
           <h1 className={`${orbitron.className} text-4xl sm:text-6xl md:text-7xl font-black uppercase tracking-tighter leading-[0.95] mb-8`}>
-            EL PORTAL DE LOS<br/>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan to-neon-purple">E-SPORTS DOMINICANOS</span>
+            {settings.hero_title.split(' ').slice(0, -2).join(' ')}<br/>
+            <span 
+              className="text-transparent bg-clip-text"
+              style={{ backgroundImage: `linear-gradient(to right, ${primaryColor}, ${secondaryColor})` }}
+            >
+              {settings.hero_title.split(' ').slice(-2).join(' ')}
+            </span>
           </h1>
           
           <p className="max-w-2xl mx-auto text-white/40 text-base md:text-lg mb-10 leading-relaxed">
-            La herramienta definitiva de clasificación nacional. Consulta estadísticas de atletas, descubre torneos avalados por la Federación y visualiza los rankings de la República Dominicana.
+            {settings.hero_subtitle}
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-             <Link href="/rankings" className="w-full sm:w-auto px-8 py-4 bg-neon-cyan text-black text-xs font-black uppercase tracking-widest rounded-xl hover:shadow-[0_0_20px_rgba(0,245,255,0.4)] hover:scale-[1.02] transition-all">
+             <Link 
+               href="/rankings" 
+               className="w-full sm:w-auto px-8 py-4 text-black text-xs font-black uppercase tracking-widest rounded-xl transition-all"
+               style={{ backgroundColor: primaryColor, boxShadow: `0 0 20px ${primaryColor}40` }}
+             >
                 Consultar Rankings Nacionales
              </Link>
              <Link href="/copas" className="w-full sm:w-auto px-8 py-4 bg-[#121219] border border-white/10 text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-white/5 transition-all">
@@ -57,6 +93,18 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+      {/* Infinite Statistics Ticker */}
+      {settings.statistics_ticker_text && (
+        <div className="w-full bg-[#121219]/40 border-y border-white/5 py-4 overflow-hidden relative mb-16 z-10">
+          <div className="animate-marquee flex gap-16 text-[10px] font-black uppercase tracking-[0.2em] text-white/40">
+            <span>{settings.statistics_ticker_text}</span>
+            <span>{settings.statistics_ticker_text}</span>
+            <span>{settings.statistics_ticker_text}</span>
+            <span>{settings.statistics_ticker_text}</span>
+          </div>
+        </div>
+      )}
 
       {/* Publicidad Destacada (Sponsorship Slot) */}
       <section className="max-w-7xl mx-auto px-6 sm:px-8 mb-20">
