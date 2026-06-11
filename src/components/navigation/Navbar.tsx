@@ -31,8 +31,8 @@ export function Navbar({ user, profile }: NavbarProps) {
 
         {/* Desktop Links (Simplified) */}
         <div className="hidden md:flex items-center gap-8">
-          <Link href="#rankings" className="text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white transition-all">Rankings</Link>
-          <Link href="#copas" className="text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white transition-all">Copas Oficiales</Link>
+          <Link href="/rankings" className="text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white transition-all">Rankings</Link>
+          <Link href="/copas" className="text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white transition-all">Copas Oficiales</Link>
           <Link href="/hall-of-fame" className="text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white transition-all">Hall of Fame</Link>
         </div>
 
@@ -88,14 +88,14 @@ export function Navbar({ user, profile }: NavbarProps) {
           {/* Nav Links */}
           <div className="flex flex-col gap-6">
             <Link 
-              href="#rankings" 
+              href="/rankings" 
               onClick={toggleMenu}
               className="text-lg font-black uppercase tracking-widest text-white/60 hover:text-neon-cyan transition-colors"
             >
               Rankings Nacionales
             </Link>
             <Link 
-              href="#copas" 
+              href="/copas" 
               onClick={toggleMenu}
               className="text-lg font-black uppercase tracking-widest text-white/60 hover:text-neon-cyan transition-colors"
             >

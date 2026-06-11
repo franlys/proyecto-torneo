@@ -3,11 +3,10 @@ import { Orbitron } from 'next/font/google'
 import Link from 'next/link'
 import { getProfile } from '@/lib/actions/auth-helpers'
 import { MembershipSection } from './MembershipSection'
-import { getNationalRankings, getSanctionedCups, getAdBanners } from '@/lib/actions/federation'
-import { RankingList } from '@/components/federation/RankingList'
-import { FederationCups } from '@/components/federation/FederationCups'
+import { getAdBanners } from '@/lib/actions/federation'
 import { AdPlacement } from '@/components/federation/AdPlacement'
 import { Navbar } from '@/components/navigation/Navbar'
+import { HomeTracker } from '@/components/analytics/HomeTracker'
 
 const orbitron = Orbitron({ subsets: ['latin'] })
 
@@ -16,17 +15,14 @@ export default async function Home() {
   const { data: { user } } = await supabase.auth.getUser()
   const profile = user ? await getProfile() : null
 
-  // Fetch federation data
-  const rankingsRes = await getNationalRankings()
-  const cupsRes = await getSanctionedCups()
+  // Fetch ads
   const adsRes = await getAdBanners()
-
-  const players = rankingsRes && 'data' in rankingsRes ? rankingsRes.data : []
-  const cups = cupsRes && 'data' in cupsRes ? cupsRes.data : []
   const ads = adsRes && 'data' in adsRes ? adsRes.data : []
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white selection:bg-neon-cyan/30">
+      <HomeTracker path="/" />
+      
       {/* Dynamic Hamburger Navigation */}
       <Navbar user={user} profile={profile} />
 
@@ -52,11 +48,11 @@ export default async function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-             <Link href="#rankings" className="w-full sm:w-auto px-8 py-4 bg-neon-cyan text-black text-xs font-black uppercase tracking-widest rounded-xl hover:shadow-[0_0_20px_rgba(0,245,255,0.4)] hover:scale-102 transition-all">
+             <Link href="/rankings" className="w-full sm:w-auto px-8 py-4 bg-neon-cyan text-black text-xs font-black uppercase tracking-widest rounded-xl hover:shadow-[0_0_20px_rgba(0,245,255,0.4)] hover:scale-[1.02] transition-all">
                 Consultar Rankings Nacionales
              </Link>
-             <Link href="#membresias" className="w-full sm:w-auto px-8 py-4 bg-white/5 border border-white/10 text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-white/10 transition-all">
-                Solicitar Acceso Tablero
+             <Link href="/copas" className="w-full sm:w-auto px-8 py-4 bg-[#121219] border border-white/10 text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-white/5 transition-all">
+                Ver Copas Oficiales
              </Link>
           </div>
         </div>
@@ -65,46 +61,6 @@ export default async function Home() {
       {/* Publicidad Destacada (Sponsorship Slot) */}
       <section className="max-w-7xl mx-auto px-6 sm:px-8 mb-20">
         <AdPlacement banners={ads} slotName="home_hero_banner" />
-      </section>
-
-      {/* Interactive Ranking Section */}
-      <section id="rankings" className="py-20 px-6 sm:px-8 bg-[#0d0d0f]">
-        <div className="max-w-7xl mx-auto space-y-10">
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-neon-cyan">Base de datos de Alto Rendimiento</span>
-            <h2 className={`${orbitron.className} text-2xl sm:text-4xl font-black uppercase tracking-tighter text-white mt-2`}>
-              Rankings Oficiales de la República Dominicana
-            </h2>
-            <p className="text-white/40 text-xs sm:text-sm max-w-xl mt-1.5 leading-relaxed">
-              Buscador y clasificaciones de jugadores federados acumulando puntos de circuito para la Selección Nacional.
-            </p>
-          </div>
-
-          <RankingList initialPlayers={players} />
-        </div>
-      </section>
-
-      {/* Copas Oficiales Section */}
-      <section id="copas" className="py-20 px-6 sm:px-8">
-        <div className="max-w-7xl mx-auto space-y-10">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-neon-purple">Calendario Federado</span>
-              <h2 className={`${orbitron.className} text-2xl sm:text-4xl font-black uppercase tracking-tighter text-white mt-2`}>
-                Copas & Ligas Nacionales
-              </h2>
-              <p className="text-white/40 text-xs sm:text-sm max-w-xl mt-1.5 leading-relaxed">
-                Circuitos competitivos oficiales avalados por la Federación Dominicana de Deportes Electrónicos.
-              </p>
-            </div>
-            
-            <div className="text-[9px] font-black uppercase tracking-widest bg-[#121219] border border-white/5 px-4 py-3 rounded-xl text-white/50 shrink-0">
-              Clasificaciones oficiales a mundiales de la <span className="text-gold">IESF 🏆</span>
-            </div>
-          </div>
-
-          <FederationCups cups={cups} />
-        </div>
       </section>
 
       {/* Features Grid */}
@@ -127,11 +83,11 @@ export default async function Home() {
              </div>
 
              <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
-                 <div className="w-12 h-12 bg-neon-purple/20 text-neon-purple rounded-2xl flex items-center justify-center mb-6">
-                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" /></svg>
-                </div>
-                <h3 className={`${orbitron.className} text-lg font-bold mb-3`}>Verificación por IA</h3>
-                <p className="text-white/40 text-xs leading-relaxed">Evidencias visuales de partidas auditadas con visión por computadora para erradicar el fraude y garantizar el fair-play.</p>
+                  <div className="w-12 h-12 bg-neon-purple/20 text-neon-purple rounded-2xl flex items-center justify-center mb-6">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" /></svg>
+                 </div>
+                 <h3 className={`${orbitron.className} text-lg font-bold mb-3`}>Verificación por IA</h3>
+                 <p className="text-white/40 text-xs leading-relaxed">Evidencias visuales de partidas auditadas con visión por computadora para erradicar el fraude y garantizar el fair-play.</p>
              </div>
 
              <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
