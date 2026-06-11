@@ -33,6 +33,7 @@ export function LeaderboardClient({
   scoringRule,
   participants,
   championImageUrl,
+  totalLiveViewers,
 }: {
   tournamentId: string
   tournamentName: string
