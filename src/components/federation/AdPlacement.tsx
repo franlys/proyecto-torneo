@@ -1,12 +1,14 @@
 import type { AdBanner } from '@/lib/actions/federation'
 import Link from 'next/link'
+import { trackEvent } from '@/lib/analytics'
 
 interface AdPlacementProps {
   banners: AdBanner[]
   slotName: string
+  tournamentId?: string
 }
 
-export function AdPlacement({ banners, slotName }: AdPlacementProps) {
+export function AdPlacement({ banners, slotName, tournamentId }: AdPlacementProps) {
   const activeAd = banners.find(b => b.slotName === slotName)
 
   if (!activeAd) {
@@ -15,6 +17,18 @@ export function AdPlacement({ banners, slotName }: AdPlacementProps) {
         Espacio publicitario disponible para patrocinadores oficiales FDDE x KRONIX
       </div>
     )
+  }
+
+  const handleClick = () => {
+    trackEvent({
+      tournamentId,
+      eventType: 'click_ad',
+      metadata: {
+        slotName,
+        advertiserName: activeAd.advertiserName,
+        clickThroughUrl: activeAd.clickThroughUrl
+      }
+    })
   }
 
   const content = (
@@ -42,11 +56,15 @@ export function AdPlacement({ banners, slotName }: AdPlacementProps) {
 
   if (activeAd.clickThroughUrl) {
     return (
-      <Link href={activeAd.clickThroughUrl} target="_blank" className="block w-full">
+      <Link href={activeAd.clickThroughUrl} target="_blank" className="block w-full" onClick={handleClick}>
         {content}
       </Link>
     )
   }
 
-  return content
+  return (
+    <div onClick={handleClick} className="cursor-pointer">
+      {content}
+    </div>
+  )
 }

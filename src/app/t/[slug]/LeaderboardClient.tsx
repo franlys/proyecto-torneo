@@ -13,6 +13,7 @@ import { NumberTicker } from '@/components/ui/NumberTicker'
 import { syncStandings } from '@/lib/actions/submissions'
 import { AdPlacement } from '@/components/federation/AdPlacement'
 import type { AdBanner } from '@/lib/actions/federation'
+import { trackEvent } from '@/lib/analytics'
 
 const orbitron = Orbitron({ subsets: ['latin'] })
 
@@ -83,7 +84,13 @@ export function LeaderboardClient({
   useEffect(() => {
     setIsMounted(true)
     setHost(window.location.hostname)
-  }, [])
+    // Track leaderboard page view
+    trackEvent({
+      tournamentId,
+      eventType: 'page_view',
+      metadata: { tournamentName }
+    })
+  }, [tournamentId, tournamentName])
 
   const primaryColor = currentTheme?.primary_color || currentTheme?.primaryColor || '#00F5FF'
   const backgroundValue = currentTheme?.background_value
@@ -887,7 +894,7 @@ export function LeaderboardClient({
           </div>
         </div>
         <div className="lg:col-span-3 lg:sticky lg:top-24 space-y-6">
-          <AdPlacement banners={adBanners || []} slotName="leaderboard_sidebar" />
+          <AdPlacement banners={adBanners || []} slotName="leaderboard_sidebar" tournamentId={tournamentId} />
         </div>
       </div>
       ) : activeTab === 'participants' ? (

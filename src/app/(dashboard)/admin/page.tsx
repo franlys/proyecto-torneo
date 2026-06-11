@@ -73,6 +73,12 @@ export default async function AdminPage() {
         >
           Ver solicitudes pendientes
         </Link>
+        <Link
+          href="/admin/analytics"
+          className="px-4 py-2 bg-purple-500/10 border border-purple-500/20 text-purple-400 text-sm rounded-lg hover:bg-purple-500/20 transition-colors"
+        >
+          Ver Analíticas y Tráfico
+        </Link>
         <SendRemindersButton />
       </div>
 
