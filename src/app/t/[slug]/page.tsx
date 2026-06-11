@@ -5,6 +5,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { LeaderboardClient } from './LeaderboardClient'
 import { recalculateStandings } from '@/lib/actions/submissions'
 import { ArenaPromoBanner } from '@/components/promo/ArenaPromoBanner'
+import { getAdBanners } from '@/lib/actions/federation'
 
 export default async function PublicLeaderboardPage({
   params,
@@ -186,6 +187,10 @@ export default async function PublicLeaderboardPage({
     }))
   ) || []
 
+  // Fetch active advertising placements
+  const adsRes = await getAdBanners()
+  const adBanners = adsRes && 'data' in adsRes ? adsRes.data : []
+
   return (
     <main className="min-h-screen bg-transparent text-white font-inter">
       <ArenaPromoBanner tournamentSlug={slug} />
@@ -209,6 +214,7 @@ export default async function PublicLeaderboardPage({
         scoringRule={scoringRule}
         participants={allParticipants}
         championImageUrl={tournament.champion_image_url}
+        adBanners={adBanners}
       />
     </main>
   )

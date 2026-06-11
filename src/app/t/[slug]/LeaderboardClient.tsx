@@ -11,6 +11,8 @@ import { TeamDetails } from './TeamDetails'
 import { NumberTicker } from '@/components/ui/NumberTicker'
 
 import { syncStandings } from '@/lib/actions/submissions'
+import { AdPlacement } from '@/components/federation/AdPlacement'
+import type { AdBanner } from '@/lib/actions/federation'
 
 const orbitron = Orbitron({ subsets: ['latin'] })
 
@@ -34,6 +36,7 @@ export function LeaderboardClient({
   participants,
   championImageUrl,
   totalLiveViewers,
+  adBanners,
 }: {
   tournamentId: string
   tournamentName: string
@@ -54,6 +57,7 @@ export function LeaderboardClient({
   participants: Participant[]
   championImageUrl?: string
   totalLiveViewers?: number
+  adBanners?: AdBanner[]
 }) {
   const [isMounted, setIsMounted] = useState(false)
   const [host, setHost] = useState('localhost')
@@ -599,22 +603,35 @@ export function LeaderboardClient({
           )}
 
           {description && <p className="text-white/60 text-lg max-w-2xl mx-auto">{description}</p>}
-          <div className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-black uppercase tracking-widest">
-            <span className={`w-1.5 h-1.5 rounded-full ${currentLiveViewers > 0 ? 'bg-green-400 animate-pulse' : 'bg-white/20'}`} />
-            <span>
-              {currentLiveViewers > 0 
-                ? `${currentLiveViewers.toLocaleString()} Espectadores en Vivo` 
-                : '0 Espectadores'
-              }
-            </span>
-          </div>
-          {currentStatus === 'draft' && <span className="inline-block mt-4 text-xs font-bold bg-white/10 px-3 py-1 rounded text-white/50 uppercase">Pre-torneo</span>}
-          {currentStatus === 'active' && <span className="inline-block mt-4 text-xs font-bold bg-red-500/20 border border-red-500/30 px-3 py-1 rounded text-red-400 uppercase animate-pulse">● En Vivo</span>}
-          {currentStatus === 'finished' && (
-            <div className="flex flex-col items-center gap-4 mt-4">
-              <span className="text-xs font-bold bg-gold/10 border border-gold/30 px-3 py-1 rounded text-gold uppercase tracking-widest">
-                🏆 Torneo Finalizado
+          <div className="flex flex-wrap items-center justify-center gap-3 mt-4">
+            {currentStatus === 'draft' && (
+              <span className="text-xs font-bold bg-white/5 border border-white/10 px-3.5 py-1.5 rounded-full text-white/50 uppercase tracking-widest">
+                Pre-torneo
               </span>
+            )}
+            {currentStatus === 'active' && (
+              <span className="text-xs font-bold bg-red-500/10 border border-red-500/20 px-3.5 py-1.5 rounded-full text-red-400 uppercase tracking-widest animate-pulse flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                ● En Vivo
+              </span>
+            )}
+            {currentStatus === 'finished' && (
+              <span className="text-xs font-bold bg-gold/10 border border-gold/20 px-3.5 py-1.5 rounded-full text-gold uppercase tracking-widest flex items-center gap-1.5">
+                <span>🏆</span> Torneo Finalizado
+              </span>
+            )}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white/5 border border-white/10 rounded-full text-xs font-black uppercase tracking-widest text-white/70">
+              <span className={`w-1.5 h-1.5 rounded-full ${currentLiveViewers > 0 ? 'bg-green-400 animate-pulse' : 'bg-white/20'}`} />
+              <span>
+                {currentLiveViewers > 0 
+                  ? `${currentLiveViewers.toLocaleString()} Espectadores` 
+                  : '0 Espectadores'
+                }
+              </span>
+            </div>
+          </div>
+          {currentStatus === 'finished' && (
+            <div className="flex flex-col items-center gap-4 mt-6">
               <button
                 onClick={() => setShowHallOfFame(true)}
                 className="group relative flex items-center gap-3 px-8 py-4 rounded-2xl bg-gold/10 border border-gold/40 text-gold font-orbitron font-black text-base uppercase tracking-widest hover:bg-gold/20 hover:border-gold/60 transition-all shadow-[0_0_30px_rgba(255,215,0,0.15)] hover:shadow-[0_0_50px_rgba(255,215,0,0.25)] animate-pulse"
@@ -638,89 +655,6 @@ export function LeaderboardClient({
             </button>
           )}
         </div>
-
-      {/* Top Fragger Hero Section (Individual) */}
-      {topFraggers.length > 0 && (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-12"
-        >
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-neon-cyan/50 to-transparent" />
-            <div className="flex flex-col items-center gap-2">
-              <h2 className={`${orbitron.className} text-xl font-black text-neon-cyan uppercase tracking-widest flex items-center gap-3`}>
-                <span className="p-1 px-2 rounded bg-neon-cyan/20 text-[10px] sm:text-xs font-sans">Individual</span>
-                Top Fragger MVP
-              </h2>
-            </div>
-            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-neon-cyan/50 to-transparent" />
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-4">
-            {topFraggers.slice(0, 3).map((player, idx) => (
-              <motion.div
-                key={player.id}
-                whileHover={{ scale: 1.02, y: -5 }}
-                className={`relative group bg-dark-card/40 backdrop-blur-xl border rounded-2xl p-3.5 mb-2 overflow-hidden transition-all duration-300 w-full md:w-[calc(50%-1rem)] lg:w-[calc(33.33%-1rem)] max-w-sm ${
-                  idx === 0 ? 'border-neon-cyan/50 shadow-[0_0_20px_rgba(0,245,255,0.15)]' : 'border-white/5'
-                }`}
-              >
-                {/* Accent background */}
-                <div className={`absolute -right-4 -top-4 w-20 h-20 rounded-full blur-3xl opacity-10 ${
-                  idx === 0 ? 'bg-neon-cyan' : 'bg-neon-purple'
-                }`} />
-
-                <div className="flex items-center gap-3 relative z-10">
-                  <div className="relative">
-                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl border ${
-                      idx === 0 ? 'bg-neon-cyan/10 border-neon-cyan/40' : 'bg-white/5 border-white/10'
-                    }`}>
-                      {idx === 0 ? '👑' : idx === 1 ? '🥈' : '🥉'}
-                    </div>
-                    {idx === 0 && (
-                      <div className="absolute -top-1.5 -left-1.5 bg-neon-cyan text-black font-black text-[8px] px-1.5 py-0.5 rounded-full animate-bounce">
-                        MVP
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-orbitron font-bold text-white text-base truncate group-hover:text-neon-cyan transition-colors">
-                      {player.displayName}
-                    </h4>
-                    <p className="text-white/40 text-[10px] truncate uppercase tracking-tighter">Equipo: {(player as any).teamName}</p>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="text-xl font-black text-white leading-none">{(player as any).totalKills || 0}</div>
-                    <div className="text-[9px] font-bold text-white/30 uppercase tracking-tighter">Kills</div>
-                  </div>
-                </div>
-
-                <div className="mt-3.5 pt-3 border-t border-white/5 flex items-center justify-between gap-3">
-                  {player.streamUrl ? (
-                    <button
-                      onClick={() => handleWatchTeam(player.streamUrl!)}
-                      className="flex-1 flex items-center justify-center gap-2 py-1.5 bg-red-600/20 border border-red-500/20 text-red-400 rounded-lg text-[10px] font-bold hover:bg-red-600/30 transition-all group/btn"
-                    >
-                      <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
-                      Live Stream
-                      <svg className="w-2.5 h-2.5 group-hover/btn:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                      </svg>
-                    </button>
-                  ) : (
-                    <div className="flex-1 py-1.5 text-center text-[9px] text-white/10 font-bold uppercase tracking-widest border border-dashed border-white/5 rounded-lg">
-                      Offline
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-      )}
 
       {/* Tabs — scrollable on mobile */}
       <div className="flex gap-1 mb-6 sm:mb-8 sm:justify-center overflow-x-auto pb-1 px-2 sm:px-0 scrollbar-hide">
@@ -772,8 +706,9 @@ export function LeaderboardClient({
       </div>
 
       {activeTab === 'ranking' ? (
-        <div className="bg-dark-card/80 backdrop-blur-md border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
-          <div className="overflow-x-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div className="lg:col-span-9 bg-dark-card/80 backdrop-blur-md border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
+            <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-white/[0.03] border-b border-white/5 text-xs text-white/40 uppercase tracking-widest font-semibold">
@@ -951,6 +886,10 @@ export function LeaderboardClient({
             </table>
           </div>
         </div>
+        <div className="lg:col-span-3 space-y-6">
+          <AdPlacement banners={adBanners || []} slotName="leaderboard_sidebar" />
+        </div>
+      </div>
       ) : activeTab === 'participants' ? (
         <div className="space-y-4">
           {(!currentTeams || currentTeams.length === 0) ? (
@@ -1068,6 +1007,89 @@ export function LeaderboardClient({
         </div>
       ) : activeTab === 'statistics' ? (
         <div className="space-y-6">
+          {/* Top Fragger Hero Section (Individual) */}
+          {topFraggers.length > 0 && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8 p-6 bg-dark-card/30 border border-white/5 rounded-3xl"
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-neon-cyan/50 to-transparent" />
+                <div className="flex flex-col items-center gap-2">
+                  <h2 className={`${orbitron.className} text-xl font-black text-neon-cyan uppercase tracking-widest flex items-center gap-3`}>
+                    <span className="p-1 px-2 rounded bg-neon-cyan/20 text-[10px] sm:text-xs font-sans">Individual</span>
+                    Top Fragger MVP
+                  </h2>
+                </div>
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-neon-cyan/50 to-transparent" />
+              </div>
+
+              <div className="flex flex-wrap justify-center gap-4">
+                {topFraggers.slice(0, 3).map((player, idx) => (
+                  <motion.div
+                    key={player.id}
+                    whileHover={{ scale: 1.02, y: -5 }}
+                    className={`relative group bg-dark-card/40 backdrop-blur-xl border rounded-2xl p-3.5 mb-2 overflow-hidden transition-all duration-300 w-full md:w-[calc(50%-1rem)] lg:w-[calc(33.33%-1rem)] max-w-sm ${
+                      idx === 0 ? 'border-neon-cyan/50 shadow-[0_0_20px_rgba(0,245,255,0.15)]' : 'border-white/5'
+                    }`}
+                  >
+                    {/* Accent background */}
+                    <div className={`absolute -right-4 -top-4 w-20 h-20 rounded-full blur-3xl opacity-10 ${
+                      idx === 0 ? 'bg-neon-cyan' : 'bg-neon-purple'
+                    }`} />
+
+                    <div className="flex items-center gap-3 relative z-10">
+                      <div className="relative">
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl border ${
+                          idx === 0 ? 'bg-neon-cyan/10 border-neon-cyan/40' : 'bg-white/5 border-white/10'
+                        }`}>
+                          {idx === 0 ? '👑' : idx === 1 ? '🥈' : '🥉'}
+                        </div>
+                        {idx === 0 && (
+                          <div className="absolute -top-1.5 -left-1.5 bg-neon-cyan text-black font-black text-[8px] px-1.5 py-0.5 rounded-full animate-bounce">
+                            MVP
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-orbitron font-bold text-white text-base truncate group-hover:text-neon-cyan transition-colors">
+                          {player.displayName}
+                        </h4>
+                        <p className="text-white/40 text-[10px] truncate uppercase tracking-tighter">Equipo: {(player as any).teamName}</p>
+                      </div>
+
+                      <div className="text-right">
+                        <div className="text-xl font-black text-white leading-none">{(player as any).totalKills || 0}</div>
+                        <div className="text-[9px] font-bold text-white/30 uppercase tracking-tighter">Kills</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3.5 pt-3 border-t border-white/5 flex items-center justify-between gap-3">
+                      {player.streamUrl ? (
+                        <button
+                          onClick={() => handleWatchTeam(player.streamUrl!)}
+                          className="flex-1 flex items-center justify-center gap-2 py-1.5 bg-red-600/20 border border-red-500/20 text-red-400 rounded-lg text-[10px] font-bold hover:bg-red-600/30 transition-all group/btn"
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                          Live Stream
+                          <svg className="w-2.5 h-2.5 group-hover/btn:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                          </svg>
+                        </button>
+                      ) : (
+                        <div className="flex-1 py-1.5 text-center text-[9px] text-white/10 font-bold uppercase tracking-widest border border-dashed border-white/5 rounded-lg">
+                          Offline
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
              {standings.map((team, idx) => (
                 <div 
