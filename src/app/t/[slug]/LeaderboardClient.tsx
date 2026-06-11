@@ -599,12 +599,15 @@ export function LeaderboardClient({
           )}
 
           {description && <p className="text-white/60 text-lg max-w-2xl mx-auto">{description}</p>}
-          {currentLiveViewers > 0 && (
-            <div className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-green-500/10 border border-green-500/20 text-green-400 rounded-full text-xs font-black uppercase tracking-widest animate-pulse">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-              <span>{currentLiveViewers.toLocaleString()} Espectadores en Vivo</span>
-            </div>
-          )}
+          <div className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-black uppercase tracking-widest">
+            <span className={`w-1.5 h-1.5 rounded-full ${currentLiveViewers > 0 ? 'bg-green-400 animate-pulse' : 'bg-white/20'}`} />
+            <span>
+              {currentLiveViewers > 0 
+                ? `${currentLiveViewers.toLocaleString()} Espectadores en Vivo` 
+                : '0 Espectadores'
+              }
+            </span>
+          </div>
           {currentStatus === 'draft' && <span className="inline-block mt-4 text-xs font-bold bg-white/10 px-3 py-1 rounded text-white/50 uppercase">Pre-torneo</span>}
           {currentStatus === 'active' && <span className="inline-block mt-4 text-xs font-bold bg-red-500/20 border border-red-500/30 px-3 py-1 rounded text-red-400 uppercase animate-pulse">● En Vivo</span>}
           {currentStatus === 'finished' && (
