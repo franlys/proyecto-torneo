@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { NationalPlayerStats, GameDiscipline } from '@/lib/actions/federation'
 import { Orbitron } from 'next/font/google'
+import { motion, AnimatePresence } from 'framer-motion'
 
 const orbitron = Orbitron({ subsets: ['latin'] })
 
@@ -23,6 +24,7 @@ interface RankingListProps {
 export function RankingList({ initialPlayers }: RankingListProps) {
   const [selectedDiscipline, setSelectedDiscipline] = useState<GameDiscipline | 'all'>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedPlayer, setSelectedPlayer] = useState<NationalPlayerStats | null>(null)
 
   const filteredPlayers = initialPlayers.filter((player) => {
     const matchesDiscipline = selectedDiscipline === 'all' || player.discipline === selectedDiscipline
@@ -41,7 +43,7 @@ export function RankingList({ initialPlayers }: RankingListProps) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 relative">
       {/* Search Bar & Game Selector */}
       <div className="flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center">
         {/* Search Input */}
@@ -105,7 +107,11 @@ export function RankingList({ initialPlayers }: RankingListProps) {
                 </tr>
               ) : (
                 filteredPlayers.map((player, idx) => (
-                  <tr key={player.id} className="group hover:bg-white/[0.01] transition-all">
+                  <tr 
+                    key={player.id} 
+                    onClick={() => setSelectedPlayer(player)}
+                    className="group hover:bg-white/[0.02] cursor-pointer transition-all"
+                  >
                     {/* Rank Position */}
                     <td className="px-6 py-5 text-center">
                       <span className={`font-orbitron font-black text-lg ${
@@ -140,7 +146,7 @@ export function RankingList({ initialPlayers }: RankingListProps) {
                         </div>
                       </div>
                     </td>
-
+                    
                     {/* Discipline */}
                     <td className="px-6 py-5">
                       <span className="text-xs text-white/60 font-semibold">{gameNames[player.discipline]}</span>
@@ -174,6 +180,179 @@ export function RankingList({ initialPlayers }: RankingListProps) {
           </table>
         </div>
       </div>
+
+      {/* Side Drawer for Player Details */}
+      <AnimatePresence>
+        {selectedPlayer && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedPlayer(null)}
+              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+            />
+
+            {/* Slide-out Sheet */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed top-0 right-0 bottom-0 z-50 w-full max-w-md bg-[#0e0e13] border-l border-white/10 p-6 shadow-2xl flex flex-col justify-between overflow-y-auto text-white"
+            >
+              {/* Header */}
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Ficha del Atleta FDDE</span>
+                  <button
+                    onClick={() => setSelectedPlayer(null)}
+                    className="p-1 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-all"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Avatar & Identifiers */}
+                <div className="flex flex-col items-center text-center space-y-4 pt-4">
+                  <div className="relative group">
+                    <div className="absolute inset-0 bg-neon-cyan/20 rounded-2xl blur-lg group-hover:bg-neon-cyan/30 transition-all" />
+                    <div className="w-24 h-24 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-3xl font-black uppercase relative overflow-hidden">
+                      {selectedPlayer.avatarUrl ? (
+                        <img src={selectedPlayer.avatarUrl} alt={selectedPlayer.displayName} className="w-full h-full object-cover" />
+                      ) : (
+                        selectedPlayer.displayName.substring(0, 2)
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className={`${orbitron.className} text-2xl font-black uppercase text-white flex items-center justify-center gap-2`}>
+                      {selectedPlayer.displayName}
+                    </h3>
+                    {selectedPlayer.realName && (
+                      <p className="text-xs text-white/40 font-semibold mt-1">{selectedPlayer.realName}</p>
+                    )}
+                    
+                    <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
+                      <span className="text-[10px] bg-white/5 border border-white/10 text-white/80 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
+                        {gameNames[selectedPlayer.discipline]}
+                      </span>
+                      {selectedPlayer.isNationalSelected && (
+                        <span className="text-[10px] bg-neon-purple/20 text-neon-purple border border-neon-purple/30 px-2.5 py-1 rounded-full font-black uppercase tracking-wider">
+                          Selección RD 🇩🇴
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stats Cards */}
+                <div className="grid grid-cols-2 gap-3 pt-6 border-t border-white/5">
+                  <div className="bg-white/5 border border-white/5 rounded-2xl p-4 text-center">
+                    <span className="block text-[9px] uppercase font-black tracking-widest text-white/40 mb-1">Rank Nacional</span>
+                    <span className={`${orbitron.className} text-2xl font-black text-white`}>
+                      #{selectedPlayer.rankPosition}
+                    </span>
+                  </div>
+                  <div className="bg-white/5 border border-white/5 rounded-2xl p-4 text-center">
+                    <span className="block text-[9px] uppercase font-black tracking-widest text-white/40 mb-1">Puntos FDDE</span>
+                    <span className={`${orbitron.className} text-2xl font-black text-neon-cyan neon-text-cyan`}>
+                      {selectedPlayer.points.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="bg-white/5 border border-white/5 rounded-2xl p-4 text-center">
+                    <span className="block text-[9px] uppercase font-black tracking-widest text-white/40 mb-1">Torneos Jugados</span>
+                    <span className="text-xl font-bold text-white/90">
+                      {selectedPlayer.tournamentsPlayed}
+                    </span>
+                  </div>
+                  <div className="bg-white/5 border border-white/5 rounded-2xl p-4 text-center">
+                    <span className="block text-[9px] uppercase font-black tracking-widest text-white/40 mb-1">Victorias / WR</span>
+                    <span className="text-xl font-bold text-white/90">
+                      {selectedPlayer.winRate}%
+                    </span>
+                  </div>
+                </div>
+
+                {/* Medallero */}
+                <div className="bg-[#121219]/60 border border-white/5 rounded-2xl p-5 space-y-3">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-white/40">Palmarés de Podios</h4>
+                  <div className="flex items-center justify-around text-center pt-2">
+                    <div>
+                      <span className="block text-2xl">🥇</span>
+                      <span className="block text-sm font-bold text-white mt-1">{selectedPlayer.podiumsCount}</span>
+                      <span className="block text-[9px] text-white/30 uppercase tracking-wider font-bold">1.er Puesto</span>
+                    </div>
+                    <div>
+                      <span className="block text-2xl">🥈</span>
+                      <span className="block text-sm font-bold text-white mt-1">—</span>
+                      <span className="block text-[9px] text-white/30 uppercase tracking-wider font-bold">2.º Puesto</span>
+                    </div>
+                    <div>
+                      <span className="block text-2xl">🥉</span>
+                      <span className="block text-sm font-bold text-white mt-1">—</span>
+                      <span className="block text-[9px] text-white/30 uppercase tracking-wider font-bold">3.er Puesto</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Achievements / Logros */}
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-white/40">Logros Obtenidos</h4>
+                  <div className="space-y-2">
+                    {selectedPlayer.isNationalSelected && (
+                      <div className="flex items-center gap-3 bg-neon-purple/5 border border-neon-purple/10 rounded-xl p-3">
+                        <span className="text-lg">🇩🇴</span>
+                        <div>
+                          <p className="text-xs font-bold text-white">Patriota de Élite</p>
+                          <p className="text-[10px] text-white/40">Miembro oficial de la Selección Nacional de eSports de RD.</p>
+                        </div>
+                      </div>
+                    )}
+                    {selectedPlayer.points >= 3000 && (
+                      <div className="flex items-center gap-3 bg-neon-cyan/5 border border-neon-cyan/10 rounded-xl p-3">
+                        <span className="text-lg">⚡</span>
+                        <div>
+                          <p className="text-xs font-bold text-white">Leyenda FDDE</p>
+                          <p className="text-[10px] text-white/40">Superó los 3,000 puntos en torneos nacionales oficiales.</p>
+                        </div>
+                      </div>
+                    )}
+                    {selectedPlayer.tournamentsPlayed >= 10 && (
+                      <div className="flex items-center gap-3 bg-white/5 border border-white/5 rounded-xl p-3">
+                        <span className="text-lg">⚔️</span>
+                        <div>
+                          <p className="text-xs font-bold text-white">Veterano de la Arena</p>
+                          <p className="text-[10px] text-white/40">Ha disputado más de 10 torneos oficiales avalados.</p>
+                        </div>
+                      </div>
+                    )}
+                    {selectedPlayer.winRate >= 70 && (
+                      <div className="flex items-center gap-3 bg-green-500/5 border border-green-500/10 rounded-xl p-3">
+                        <span className="text-lg">🎯</span>
+                        <div>
+                          <p className="text-xs font-bold text-white">Imbatible</p>
+                          <p className="text-[10px] text-white/40">Mantiene una efectividad (Win Rate) mayor al 70%.</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer / Federation seal */}
+              <div className="border-t border-white/5 pt-4 text-center opacity-30 select-none pointer-events-none mt-6">
+                <span className="text-[8px] uppercase tracking-widest block font-orbitron">Certificado por</span>
+                <span className="text-xs font-bold uppercase tracking-wider mt-0.5 block font-orbitron text-neon-cyan">Federación de eSports</span>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
