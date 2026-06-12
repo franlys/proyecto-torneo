@@ -49,6 +49,23 @@ export function TournamentBranding({ id, initialLogoUrl, tournamentName }: Tourn
     }
   }
 
+  const handleDeleteLogo = async () => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar el logo del torneo?')) return
+
+    setUploading(true)
+    try {
+      const res = await updateTournament(id, { logoUrl: null })
+      if ('error' in res) throw new Error(res.error)
+
+      setLogoUrl(undefined)
+      toast.success('Logo del torneo eliminado con éxito')
+    } catch (err: any) {
+      toast.error('Error al eliminar el logo: ' + err.message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
   return (
     <div className="mb-8 p-6 bg-dark-card border border-neon-purple/20 rounded-2xl shadow-lg shadow-neon-purple/5">
       <div className="flex flex-col md:flex-row items-center gap-6">
@@ -88,13 +105,24 @@ export function TournamentBranding({ id, initialLogoUrl, tournamentName }: Tourn
             Sustituye el nombre escrito del torneo por un logo personalizado en el leaderboard público. 
             Se recomienda usar imágenes cuadradas o rectangulares en formato PNG transparente.
           </p>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="px-5 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-neon-purple/50 rounded-lg text-xs font-bold text-white transition-all uppercase tracking-widest"
-          >
-            {logoUrl ? 'Cambiar Logo de Marca' : 'Subir Logo de Marca'}
-          </button>
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="px-5 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-neon-purple/50 rounded-lg text-xs font-bold text-white transition-all uppercase tracking-widest"
+            >
+              {logoUrl ? 'Cambiar Logo de Marca' : 'Subir Logo de Marca'}
+            </button>
+            {logoUrl && (
+              <button
+                onClick={handleDeleteLogo}
+                disabled={uploading}
+                className="px-5 py-2 bg-red-500/10 hover:bg-red-500/25 border border-red-500/20 hover:border-red-500/50 rounded-lg text-xs font-bold text-red-400 transition-all uppercase tracking-widest"
+              >
+                Eliminar Logo
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

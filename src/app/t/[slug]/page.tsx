@@ -196,7 +196,9 @@ export default async function PublicLeaderboardPage({
 
   return (
     <main className="min-h-screen bg-transparent text-white font-inter">
-      <ArenaPromoBanner tournamentSlug={slug} />
+      {tournament.arena_betting_enabled && (
+        <ArenaPromoBanner tournamentSlug={slug} />
+      )}
       <LeaderboardClient 
         tournamentId={tournament.id}
         tournamentName={tournament.name}
