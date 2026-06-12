@@ -33,6 +33,9 @@ const tournamentBaseSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   logoUrl: z.string().url().optional().or(z.literal('')).or(z.null()),
+  maxTeams: z.number().int().min(1).optional().nullable(),
+  isPrivate: z.boolean().default(false),
+  registrationPassword: z.string().max(100).optional().nullable(),
   
   // Finance Model
   entryFee: z.number().min(0).default(0),

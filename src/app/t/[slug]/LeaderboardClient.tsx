@@ -42,6 +42,8 @@ export function LeaderboardClient({
   adBanners,
   slug,
   mode,
+  isPrivate,
+  maxTeams,
 }: {
   tournamentId: string
   tournamentName: string
@@ -65,6 +67,8 @@ export function LeaderboardClient({
   adBanners?: AdBanner[]
   slug: string
   mode: string
+  isPrivate: boolean
+  maxTeams?: number | null
 }) {
   // Stable supabase client — created once, not on every render.
   // If this were inside the component body without useMemo, every render would produce
@@ -78,6 +82,7 @@ export function LeaderboardClient({
   const [regTeamName, setRegTeamName] = useState('')
   const [regStreamUrl, setRegStreamUrl] = useState('')
   const [regParticipants, setRegParticipants] = useState<string[]>([])
+  const [regPassword, setRegPassword] = useState('')
   const [regLoading, setRegLoading] = useState(false)
 
   const handleOpenRegistration = () => {
@@ -89,6 +94,7 @@ export function LeaderboardClient({
     setRegParticipants(initialParticipants)
     setRegTeamName('')
     setRegStreamUrl('')
+    setRegPassword('')
     setIsRegistering(true)
   }
 
@@ -104,11 +110,18 @@ export function LeaderboardClient({
         return
       }
 
+      if (isPrivate && !regPassword.trim()) {
+        toast.error('Por favor, ingresa la contraseña del torneo.')
+        setRegLoading(false)
+        return
+      }
+
       const members = regParticipants.map(name => ({ displayName: name }))
       const res = await registerTournament(tournamentId, {
         teamName: mode === 'individual' ? regParticipants[0] : regTeamName,
         streamUrl: regStreamUrl || undefined,
-        participants: members
+        participants: members,
+        password: isPrivate ? regPassword : undefined
       })
 
       if (res && 'error' in res) {
@@ -1063,40 +1076,59 @@ export function LeaderboardClient({
           )}
 
           {/* Registration Section */}
-          {(currentStatus === 'pending' || currentStatus === 'active') && (
-            <div className="mt-8 px-6 py-4 rounded-2xl bg-white/[0.02] border border-white/5 backdrop-blur-md max-w-xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 w-full text-left">
-              <div>
-                <h3 className="font-orbitron font-bold text-sm text-white uppercase tracking-wider">Inscripción al Torneo</h3>
-                <p className="text-white/40 text-xs mt-1">
-                  {isUserRegistered 
-                    ? '¡Ya estás inscrito en este torneo! Revisa tu equipo en la pestaña de Participantes.'
-                    : `Regístrate para competir en la modalidad de ${format.replace(/_/g, ' ').toUpperCase()}.`
-                  }
-                </p>
+          {(currentStatus === 'pending' || currentStatus === 'active') && (() => {
+            const totalTeamsRegistered = currentTeams.length
+            const isFull = maxTeams ? totalTeamsRegistered >= maxTeams : false
+
+            return (
+              <div className="mt-8 px-6 py-4 rounded-2xl bg-white/[0.02] border border-white/5 backdrop-blur-md max-w-xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 w-full text-left">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-orbitron font-bold text-sm text-white uppercase tracking-wider">Inscripción al Torneo</h3>
+                    {isPrivate && (
+                      <span className="text-[9px] bg-neon-purple/20 text-neon-purple font-bold px-2 py-0.5 rounded border border-neon-purple/30 uppercase tracking-wide flex items-center gap-1">
+                        <span>🔒</span> Privado
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-white/40 text-xs mt-1">
+                    {isUserRegistered 
+                      ? '¡Ya estás inscrito en este torneo! Revisa tu equipo en la pestaña de Participantes.'
+                      : `Regístrate para competir en la modalidad de ${format.replace(/_/g, ' ').toUpperCase()}.`
+                    }
+                  </p>
+                  <p className="text-neon-cyan text-[10px] font-bold uppercase tracking-widest mt-1.5">
+                    {maxTeams ? `Cupos: ${totalTeamsRegistered} / ${maxTeams} Equipos` : `Inscritos: ${totalTeamsRegistered} Equipos`}
+                  </p>
+                </div>
+                <div className="shrink-0 w-full sm:w-auto text-right">
+                  {isUserRegistered ? (
+                    <span className="inline-block text-xs font-bold bg-green-500/20 text-green-400 px-4 py-2.5 rounded-xl border border-green-500/30 uppercase tracking-wider">
+                      ✓ Inscrito
+                    </span>
+                  ) : isFull ? (
+                    <span className="inline-block text-xs font-bold bg-red-500/10 text-red-400 px-4 py-2.5 rounded-xl border border-red-500/20 uppercase tracking-wider">
+                      🚫 Cupos Llenos
+                    </span>
+                  ) : currentUser ? (
+                    <button
+                      onClick={handleOpenRegistration}
+                      className="w-full sm:w-auto px-5 py-2.5 bg-neon-cyan hover:bg-neon-cyan/90 active:scale-95 text-black font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(0,245,255,0.2)] hover:shadow-[0_0_35px_rgba(0,245,255,0.35)]"
+                    >
+                      Inscribirse Ahora
+                    </button>
+                  ) : (
+                    <Link
+                      href={`/login?redirectTo=/t/${slug}`}
+                      className="inline-block w-full sm:w-auto text-center px-5 py-2.5 bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all border border-white/10"
+                    >
+                      Inicia Sesión
+                    </Link>
+                  )}
+                </div>
               </div>
-              <div className="shrink-0 w-full sm:w-auto text-right">
-                {isUserRegistered ? (
-                  <span className="inline-block text-xs font-bold bg-green-500/20 text-green-400 px-4 py-2.5 rounded-xl border border-green-500/30 uppercase tracking-wider">
-                    ✓ Inscrito
-                  </span>
-                ) : currentUser ? (
-                  <button
-                    onClick={handleOpenRegistration}
-                    className="w-full sm:w-auto px-5 py-2.5 bg-neon-cyan hover:bg-neon-cyan/90 active:scale-95 text-black font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(0,245,255,0.2)] hover:shadow-[0_0_35px_rgba(0,245,255,0.35)]"
-                  >
-                    Inscribirse Ahora
-                  </button>
-                ) : (
-                  <Link
-                    href={`/login?redirectTo=/t/${slug}`}
-                    className="inline-block w-full sm:w-auto text-center px-5 py-2.5 bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all border border-white/10"
-                  >
-                    Inicia Sesión
-                  </Link>
-                )}
-              </div>
-            </div>
-          )}
+            )
+          })()}
         </div>
 
       {/* Tabs — scrollable on mobile */}
@@ -1670,6 +1702,22 @@ export function LeaderboardClient({
                       className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30 transition-all"
                     />
                   </div>
+
+                  {isPrivate && (
+                    <div>
+                      <label className="block text-xs text-neon-purple uppercase tracking-widest font-bold mb-1.5 ml-1 flex items-center gap-1">
+                        <span>🔒</span> Contraseña de Inscripción
+                      </label>
+                      <input
+                        required
+                        type="password"
+                        value={regPassword}
+                        onChange={e => setRegPassword(e.target.value)}
+                        placeholder="Contraseña provista por el organizador"
+                        className="w-full bg-black/40 border border-neon-purple/20 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/30 transition-all font-mono"
+                      />
+                    </div>
+                  )}
 
                   <div className="space-y-3">
                     <label className="block text-xs text-white/60 uppercase tracking-widest font-bold mb-1 ml-1">

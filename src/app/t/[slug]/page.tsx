@@ -220,6 +220,8 @@ export default async function PublicLeaderboardPage({
         championImageUrl={tournament.champion_image_url}
         adBanners={adBanners}
         slug={normalizedSlug}
+        isPrivate={tournament.is_private || false}
+        maxTeams={tournament.max_teams}
       />
     </main>
   )

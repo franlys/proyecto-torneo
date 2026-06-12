@@ -122,6 +122,9 @@ export async function createTournament(
       default_rounds_per_match: input.defaultRoundsPerMatch,
       start_date: input.startDate || null,
       end_date: input.endDate || null,
+      is_private: input.isPrivate || false,
+      registration_password: input.registrationPassword || null,
+      max_teams: input.maxTeams || null,
       // Finance Model
       entry_fee: input.entryFee || 0,
       prize_1st: input.prize1st || 0,

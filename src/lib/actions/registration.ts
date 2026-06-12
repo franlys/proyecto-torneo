@@ -9,6 +9,7 @@ export async function registerTournament(
     teamName: string
     streamUrl?: string
     participants: { displayName: string; contactId?: string; streamUrl?: string }[]
+    password?: string
   }
 ): Promise<{ success: boolean } | { error: string }> {
   try {
@@ -19,7 +20,7 @@ export async function registerTournament(
     // 1. Obtener detalles del torneo
     const { data: tournament, error: tourneyErr } = await supabase
       .from('tournaments')
-      .select('id, name, mode, status')
+      .select('id, name, mode, status, is_private, registration_password, max_teams')
       .eq('id', tournamentId)
       .single()
 
@@ -29,6 +30,25 @@ export async function registerTournament(
 
     if (tournament.status !== 'pending' && tournament.status !== 'active') {
       return { error: 'Las inscripciones están cerradas para este torneo.' }
+    }
+
+    // Validar Contraseña si el torneo es privado
+    if (tournament.is_private) {
+      if (!formData.password || formData.password.trim() !== tournament.registration_password) {
+        return { error: 'Contraseña de inscripción incorrecta.' }
+      }
+    }
+
+    // Validar Límite de Equipos (Capacidad Máxima)
+    if (tournament.max_teams && tournament.max_teams > 0) {
+      const { count, error: countErr } = await supabase
+        .from('teams')
+        .select('*', { count: 'exact', head: true })
+        .eq('tournament_id', tournamentId)
+      
+      if (!countErr && count !== null && count >= tournament.max_teams) {
+        return { error: 'El torneo ha alcanzado el límite máximo de inscripciones (Cupos Llenos).' }
+      }
     }
 
     // 2. Verificar si el usuario ya está registrado en este torneo

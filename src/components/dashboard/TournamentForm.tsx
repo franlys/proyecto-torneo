@@ -104,6 +104,7 @@ export function TournamentForm({ onSuccess }: TournamentFormProps) {
   const format = watch('format')
   const mode = watch('mode')
   const rulesText = watch('rulesText') ?? ''
+  const isPrivate = watch('isPrivate')
 
   const maxMatches = level === 'casual' ? 3 : level === 'profesional' ? 12 : undefined
   const minMatches = level === 'profesional' ? 6 : 1
@@ -414,6 +415,71 @@ export function TournamentForm({ onSuccess }: TournamentFormProps) {
                 </button>
               )
             })}
+          </div>
+        </section>
+
+        {/* ── Section: Inscripciones y Privacidad ── */}
+        <section className="space-y-6">
+          <SectionHeader title="Inscripciones y Privacidad" subtitle="Configura los límites de inscripción y acceso" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+            <div>
+              <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
+                Límite de Equipos (Cupo Máximo)
+              </label>
+              <input
+                type="number"
+                min="1"
+                {...register('maxTeams', { valueAsNumber: true })}
+                placeholder="Ej. 20 (Dejar vacío para ilimitados)"
+                className={inputClass}
+              />
+              {errors.maxTeams && <p className="text-red-400 text-xs mt-1">{errors.maxTeams.message}</p>}
+            </div>
+
+            {/* Private toggle & password */}
+            <div className="space-y-4">
+              <button
+                type="button"
+                onClick={() => setValue('isPrivate', !isPrivate)}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all duration-150
+                  ${isPrivate
+                    ? 'border-neon-purple/30 bg-neon-purple/5'
+                    : 'border-white/10 bg-white/[0.03] hover:border-white/20'
+                  }`}
+              >
+                <div className="text-left">
+                  <p className={`text-sm font-medium transition-colors duration-150
+                    ${isPrivate ? 'text-white' : 'text-white/50'}`}>
+                    Torneo Privado
+                  </p>
+                  <p className="text-xs text-white/30 mt-0.5">Requiere ingresar contraseña para inscribirse</p>
+                </div>
+                <div
+                  className={`relative w-10 h-5 rounded-full transition-colors duration-150 shrink-0
+                    ${isPrivate ? 'bg-neon-purple' : 'bg-white/10'}`}
+                >
+                  <div
+                    className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-150
+                      ${isPrivate ? 'translate-x-5' : 'translate-x-0.5'}`}
+                  />
+                </div>
+              </button>
+
+              {isPrivate && (
+                <div>
+                  <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
+                    Contraseña de Inscripción *
+                  </label>
+                  <input
+                    required
+                    {...register('registrationPassword')}
+                    placeholder="Ej. CLAVE123"
+                    className={inputClass}
+                  />
+                  {errors.registrationPassword && <p className="text-red-400 text-xs mt-1">{errors.registrationPassword.message}</p>}
+                </div>
+              )}
+            </div>
           </div>
         </section>
 
