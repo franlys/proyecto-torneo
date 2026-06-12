@@ -33,8 +33,19 @@ export default async function RankingsPage() {
           </p>
         </div>
 
-        <div className="bg-[#0d0d0f] border border-white/5 rounded-3xl p-6 sm:p-8">
-          <RankingList initialPlayers={players} />
+        <div className="bg-[#0d0d0f] border border-white/5 rounded-3xl p-12 text-center max-w-2xl mx-auto space-y-6 shadow-2xl">
+          <div className="w-16 h-16 rounded-2xl bg-neon-cyan/10 border border-neon-cyan/20 flex items-center justify-center mx-auto animate-pulse">
+            <span className="text-2xl">⚡</span>
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-white font-orbitron font-black text-lg sm:text-xl uppercase tracking-wider">Próxima Actualización</h2>
+            <p className="text-white/40 text-xs sm:text-sm leading-relaxed">
+              El módulo de Rankings Nacionales de la Federación Dominicana de Deportes Electrónicos (FDDE) está en desarrollo. Muy pronto podrás consultar aquí las posiciones oficiales de los mejores competidores de República Dominicana.
+            </p>
+          </div>
+          <div className="pt-4 border-t border-white/5">
+             <span className="text-[9px] font-orbitron uppercase tracking-widest text-white/30">GonzalezLabs Platform</span>
+          </div>
         </div>
       </main>
     </div>

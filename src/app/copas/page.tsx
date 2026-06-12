@@ -39,8 +39,19 @@ export default async function CopasPage() {
           </div>
         </div>
 
-        <div className="bg-[#0a0a0b] rounded-3xl">
-          <FederationCups cups={cups} />
+        <div className="bg-[#0d0d0f] border border-white/5 rounded-3xl p-12 text-center max-w-2xl mx-auto space-y-6 shadow-2xl">
+          <div className="w-16 h-16 rounded-2xl bg-neon-purple/10 border border-neon-purple/20 flex items-center justify-center mx-auto animate-pulse">
+            <span className="text-2xl">🏆</span>
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-white font-orbitron font-black text-lg sm:text-xl uppercase tracking-wider">Próxima Actualización</h2>
+            <p className="text-white/40 text-xs sm:text-sm leading-relaxed">
+              El calendario de Copas y Ligas Nacionales Federadas oficiales está siendo coordinado por la Federación Dominicana de Deportes Electrónicos (FDDE). Pronto se habilitarán las inscripciones aquí.
+            </p>
+          </div>
+          <div className="pt-4 border-t border-white/5">
+             <span className="text-[9px] font-orbitron uppercase tracking-widest text-white/30">GonzalezLabs Platform</span>
+          </div>
         </div>
       </main>
     </div>
