@@ -9,10 +9,12 @@ interface TournamentBrandingProps {
   id: string
   initialLogoUrl?: string
   tournamentName: string
+  initialHideLogoInLeaderboard?: boolean
 }
 
-export function TournamentBranding({ id, initialLogoUrl, tournamentName }: TournamentBrandingProps) {
+export function TournamentBranding({ id, initialLogoUrl, tournamentName, initialHideLogoInLeaderboard }: TournamentBrandingProps) {
   const [logoUrl, setLogoUrl] = useState(initialLogoUrl)
+  const [hideLogo, setHideLogo] = useState(initialHideLogoInLeaderboard || false)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
@@ -63,6 +65,17 @@ export function TournamentBranding({ id, initialLogoUrl, tournamentName }: Tourn
       toast.error('Error al eliminar el logo: ' + err.message)
     } finally {
       setUploading(false)
+    }
+  }
+
+  const handleToggleHideLogo = async (checked: boolean) => {
+    try {
+      const res = await updateTournament(id, { hideLogoInLeaderboard: checked })
+      if ('error' in res) throw new Error(res.error)
+      setHideLogo(checked)
+      toast.success(checked ? 'Logo ocultado en el Leaderboard público' : 'Logo visible en el Leaderboard público')
+    } catch (err: any) {
+      toast.error('Error al actualizar preferencia: ' + err.message)
     }
   }
 
@@ -124,6 +137,25 @@ export function TournamentBranding({ id, initialLogoUrl, tournamentName }: Tourn
             )}
           </div>
         </div>
+      </div>
+
+      <div className="mt-6 pt-6 border-t border-white/5">
+        <label className="flex items-center gap-3 cursor-pointer group w-fit">
+          <input
+            type="checkbox"
+            checked={hideLogo}
+            onChange={(e) => handleToggleHideLogo(e.target.checked)}
+            className="rounded border-white/10 bg-white/5 text-neon-purple focus:ring-neon-purple focus:ring-offset-dark-bg w-4 h-4 cursor-pointer"
+          />
+          <div>
+            <span className="text-sm font-semibold text-white group-hover:text-neon-purple transition-colors">
+              Usar logo solo para miniatura / vista previa
+            </span>
+            <span className="block text-xs text-white/40 mt-0.5">
+              Si se activa, el logo no se mostrará en el fondo/cabecera del tablero público (útil si tu fondo ya incluye el logo).
+            </span>
+          </div>
+        </label>
       </div>
 
       <input

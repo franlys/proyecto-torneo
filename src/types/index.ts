@@ -41,6 +41,7 @@ export interface Tournament {
   endDate?: string;
   championImageUrl?: string;
   logoUrl?: string;
+  hideLogoInLeaderboard?: boolean;
 
   // Finance Model
   entryFee: number;

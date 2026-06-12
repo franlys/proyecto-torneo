@@ -111,7 +111,12 @@ export function TournamentForm({ onSuccess }: TournamentFormProps) {
 
   async function onSubmit(data: CreateTournamentInput) {
     setServerError(null)
-    const result = await createTournament(data)
+    const cleanedData = { ...data }
+    if (!cleanedData.entryFee || cleanedData.entryFee === 0) {
+      cleanedData.organizerSplit = 0
+      cleanedData.streamerSplit = 0
+    }
+    const result = await createTournament(cleanedData)
     if ('error' in result) {
       setServerError(result.error)
       return
@@ -570,39 +575,41 @@ export function TournamentForm({ onSuccess }: TournamentFormProps) {
               </div>
 
               {/* Revenue Splits */}
-              <div className="space-y-4 pt-2">
-                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                  <p className="text-xs font-bold text-neon-cyan uppercase tracking-widest mb-4">Repartición del Sobrante</p>
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex justify-between text-xs mb-2">
-                        <span className="text-white/60">Organizador</span>
-                        <span className="text-white">{watch('organizerSplit')}%</span>
+              {watch('entryFee') > 0 && (
+                <div className="space-y-4 pt-2">
+                  <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                    <p className="text-xs font-bold text-neon-cyan uppercase tracking-widest mb-4">Repartición del Sobrante</p>
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex justify-between text-xs mb-2">
+                          <span className="text-white/60">Organizador</span>
+                          <span className="text-white">{watch('organizerSplit')}%</span>
+                        </div>
+                        <input 
+                          type="range" 
+                          min="0" max="100" 
+                          {...register('organizerSplit', { valueAsNumber: true })}
+                          className="w-full accent-neon-cyan h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer"
+                          onChange={(e) => setValue('streamerSplit', 100 - parseInt(e.target.value))}
+                        />
                       </div>
-                      <input 
-                        type="range" 
-                        min="0" max="100" 
-                        {...register('organizerSplit', { valueAsNumber: true })}
-                        className="w-full accent-neon-cyan h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer"
-                        onChange={(e) => setValue('streamerSplit', 100 - parseInt(e.target.value))}
-                      />
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs mb-2">
-                        <span className="text-white/60">Streamer</span>
-                        <span className="text-white">{watch('streamerSplit')}%</span>
+                      <div>
+                        <div className="flex justify-between text-xs mb-2">
+                          <span className="text-white/60">Streamer</span>
+                          <span className="text-white">{watch('streamerSplit')}%</span>
+                        </div>
+                        <input 
+                          type="range" 
+                          min="0" max="100" 
+                          value={watch('streamerSplit')}
+                          readOnly
+                          className="w-full accent-neon-purple h-1.5 bg-white/10 rounded-lg appearance-none opacity-50"
+                        />
                       </div>
-                      <input 
-                        type="range" 
-                        min="0" max="100" 
-                        value={watch('streamerSplit')}
-                        readOnly
-                        className="w-full accent-neon-purple h-1.5 bg-white/10 rounded-lg appearance-none opacity-50"
-                      />
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 

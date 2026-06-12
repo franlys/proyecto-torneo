@@ -41,7 +41,7 @@ export default async function TorneosPublicosPage() {
   // Fetch all public tournaments (is_private = false or null)
   const { data: tournaments, error } = await supabase
     .from('tournaments')
-    .select('*')
+    .select('*, teams(id)')
     .or('is_private.eq.false,is_private.is.null')
     .order('created_at', { ascending: false })
 
@@ -88,6 +88,9 @@ export default async function TorneosPublicosPage() {
               const hasRegStarted = regStart ? now >= regStart : true
               const hasRegEnded = regEnd ? now > regEnd : false
               const isOpen = hasRegStarted && !hasRegEnded
+              const totalTeamsRegistered = t.teams?.length || 0
+              const maxTeams = t.max_teams
+              const spotsLeft = maxTeams ? Math.max(0, maxTeams - totalTeamsRegistered) : null
 
               return (
                 <div key={t.id} className="group relative rounded-2xl bg-white/[0.01] border border-white/5 hover:border-white/10 transition-all p-5 flex flex-col justify-between overflow-hidden">
@@ -121,7 +124,7 @@ export default async function TorneosPublicosPage() {
                       </div>
                     </div>
 
-                    {/* Dates */}
+                    {/* Dates & Capacity */}
                     <div className="space-y-1.5 text-[10px] text-white/40 border-t border-white/5 pt-3 mb-4">
                       {t.registration_start_date && (
                         <div className="flex justify-between">
@@ -136,6 +139,21 @@ export default async function TorneosPublicosPage() {
                           <span>Inicio Torneo:</span>
                           <span className="text-white/60">
                             {new Date(t.start_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </span>
+                        </div>
+                      )}
+                      {maxTeams !== undefined && maxTeams !== null && maxTeams > 0 ? (
+                        <div className="flex justify-between border-t border-white/5 pt-1.5 mt-1.5">
+                          <span>Cupos Libres:</span>
+                          <span className={spotsLeft === 0 ? "text-red-400 font-bold" : "text-neon-cyan font-bold"}>
+                            {spotsLeft === 0 ? 'Agotado' : `${spotsLeft} / ${maxTeams}`}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between border-t border-white/5 pt-1.5 mt-1.5">
+                          <span>Equipos Inscritos:</span>
+                          <span className="text-white/60">
+                            {totalTeamsRegistered}
                           </span>
                         </div>
                       )}

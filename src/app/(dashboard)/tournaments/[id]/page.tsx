@@ -189,7 +189,12 @@ export default async function TournamentOverviewPage({
       </div>
 
       {/* Corporate Branding */}
-      <TournamentBranding id={id} initialLogoUrl={tournament.logoUrl} tournamentName={tournament.name} />
+      <TournamentBranding 
+        id={id} 
+        initialLogoUrl={tournament.logoUrl} 
+        tournamentName={tournament.name} 
+        initialHideLogoInLeaderboard={tournament.hideLogoInLeaderboard}
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

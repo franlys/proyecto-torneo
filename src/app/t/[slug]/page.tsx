@@ -203,6 +203,7 @@ export default async function PublicLeaderboardPage({
         tournamentId={tournament.id}
         tournamentName={tournament.name}
         tournamentLogoUrl={tournament.logo_url}
+        hideLogoInLeaderboard={tournament.hide_logo_in_leaderboard || false}
         description={tournament.description}
         format={tournament.format}
         status={tournament.status}

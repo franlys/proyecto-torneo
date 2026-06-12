@@ -23,6 +23,7 @@ export function LeaderboardClient({
   tournamentId,
   tournamentName,
   tournamentLogoUrl,
+  hideLogoInLeaderboard = false,
   description,
   format,
   status,
@@ -55,6 +56,7 @@ export function LeaderboardClient({
   tournamentId: string
   tournamentName: string
   tournamentLogoUrl?: string
+  hideLogoInLeaderboard?: boolean
   description?: string
   format: string
   status: string
@@ -1014,7 +1016,7 @@ export function LeaderboardClient({
         </AnimatePresence>
 
         <div className="text-center mb-12 flex flex-col items-center">
-          {logoUrl ? (
+          {logoUrl && !hideLogoInLeaderboard ? (
             <div className="mb-6">
               <img 
                 src={logoUrl} 
@@ -1119,7 +1121,7 @@ export function LeaderboardClient({
                 <div className="absolute inset-0 bg-gradient-to-r from-neon-cyan/5 to-neon-purple/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 
                 {/* Logo & Mode Section */}
-                {logoUrl && (
+                {logoUrl && !hideLogoInLeaderboard && (
                   <div className="shrink-0 relative w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden border border-white/10 bg-black/40 flex items-center justify-center shadow-inner">
                     <img 
                       src={logoUrl} 

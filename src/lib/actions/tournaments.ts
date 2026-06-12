@@ -48,6 +48,7 @@ function mapTournamentRow(row: Record<string, unknown>): Tournament {
     endDate: row.end_date as string | undefined,
     championImageUrl: row.champion_image_url as string | undefined,
     logoUrl: row.logo_url as string | undefined,
+    hideLogoInLeaderboard: row.hide_logo_in_leaderboard as boolean,
     // Finance Model
     entryFee: Number(row.entry_fee || 0),
     prize1st: Number(row.prize_1st || 0),
@@ -127,14 +128,15 @@ export async function createTournament(
       max_teams: input.maxTeams || null,
       registration_start_date: input.registrationStartDate || new Date().toISOString(),
       registration_end_date: input.registrationEndDate || null,
+      hide_logo_in_leaderboard: input.hideLogoInLeaderboard || false,
       // Finance Model
       entry_fee: input.entryFee || 0,
       prize_1st: input.prize1st || 0,
       prize_2nd: input.prize2nd || 0,
       prize_3rd: input.prize3rd || 0,
       prize_mvp: input.prizeMvp || 0,
-      organizer_split: input.organizerSplit || 50,
-      streamer_split: input.streamerSplit || 50,
+      organizer_split: input.organizerSplit ?? 50,
+      streamer_split: input.streamerSplit ?? 50,
       // Arena Betting
       arena_betting_enabled: input.arenaBettingEnabled || false,
       arena_betting_status: 'closed',
@@ -260,6 +262,8 @@ export async function updateTournament(
   if (input.startDate !== undefined) updatePayload.start_date = input.startDate || null
   if (input.endDate !== undefined) updatePayload.end_date = input.endDate || null
   if (input.logoUrl !== undefined) updatePayload.logo_url = input.logoUrl || null
+  if (input.hideLogoInLeaderboard !== undefined)
+    updatePayload.hide_logo_in_leaderboard = input.hideLogoInLeaderboard
   
   // Finance Model
   if (input.entryFee !== undefined) updatePayload.entry_fee = input.entryFee
