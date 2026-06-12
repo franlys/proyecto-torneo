@@ -16,6 +16,7 @@ export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId
   const [backgroundMobileValue, setBackgroundMobileValue] = useState(initialTheme?.background_mobile_value || '')
   const [backgroundOpacity, setBackgroundOpacity] = useState<number>(initialTheme?.background_opacity ?? 40)
   const [logoUrl, setLogoUrl] = useState(initialTheme?.logo_url || '')
+  const [presetName, setPresetName] = useState(initialTheme?.preset_name || 'classic')
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
 
@@ -81,7 +82,8 @@ export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId
       background_value: backgroundValue || null,
       background_mobile_value: backgroundMobileValue || null,
       background_opacity: backgroundOpacity,
-      logo_url: logoUrl || null
+      logo_url: logoUrl || null,
+      preset_name: presetName
     })
     setSaving(false)
     
@@ -247,6 +249,22 @@ export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId
               accept="image/*"
               className="hidden"
             />
+          </div>
+
+          {/* Layout Type Selection */}
+          <div className="pt-4 border-t border-white/5">
+            <label className="block text-sm text-white/70 mb-2 font-medium">Diseño del Tablero</label>
+            <select
+              value={presetName}
+              onChange={(e) => setPresetName(e.target.value)}
+              className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:border-white/30 outline-none cursor-pointer"
+            >
+              <option value="classic">Clásico (Centrado estándar)</option>
+              <option value="split">Dividido (Sponsor central en fondo - Tablas a los lados)</option>
+            </select>
+            <p className="text-xs text-white/40 mt-2">
+              El diseño <strong>Dividido</strong> es ideal si tu fondo de marca tiene el logo de patrocinio o contenido importante en el centro de la pantalla. Separa las tablas a la izquierda y derecha.
+            </p>
           </div>
 
           <div className="pt-4 border-t border-white/5">

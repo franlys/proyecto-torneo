@@ -182,7 +182,7 @@ export function LeaderboardClient({
   const backgroundValue = currentTheme?.background_value
   const backgroundMobileValue = currentTheme?.background_mobile_value
   const activeBackground = (isMobile && backgroundMobileValue) ? backgroundMobileValue : backgroundValue
-  const logoUrl = currentTheme?.logo_url
+  const logoUrl = currentTheme?.logo_url || currentTheme?.logoUrl || tournamentLogoUrl
 
   // Prop Sync: Ensure internal state handles server-side updates/navigation
   useEffect(() => {
@@ -458,6 +458,139 @@ export function LeaderboardClient({
           )}
         </tbody>
       </table>
+    )
+  }
+
+  const renderSplitStandings = () => {
+    if (standings.length === 0) {
+      return (
+        <div className="py-16 text-center border border-dashed border-white/10 rounded-2xl w-full bg-dark-card/50">
+          <p className="text-white/40 font-orbitron">Aún no hay posiciones registradas</p>
+        </div>
+      )
+    }
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full relative">
+        {/* Left Table: General Standings & Kills */}
+        <div className="lg:col-span-5 bg-dark-card/75 backdrop-blur-md border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
+          <div className="px-6 py-4 border-b border-white/5 bg-white/[0.02] flex justify-between items-center">
+            <span className="font-orbitron font-bold text-xs text-white uppercase tracking-widest">Puntuación y Bajas</span>
+            <button 
+              onClick={() => setIsTableMaximized(true)}
+              className="flex items-center gap-1 px-2.5 py-1 bg-white/5 hover:bg-white/10 text-white/50 text-[10px] uppercase font-bold rounded-lg border border-white/5 transition-all"
+            >
+              <svg className="w-3 h-3 text-neon-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+              </svg>
+              Maximizar
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-white/[0.03] border-b border-white/5 text-[10px] text-white/40 uppercase tracking-widest font-semibold">
+                  <th className="px-4 py-3 w-16 text-center">Rank</th>
+                  <th className="px-4 py-3">Equipo</th>
+                  <th className="px-4 py-3 text-center">PTS</th>
+                  <th className="px-4 py-3 text-center">Kills</th>
+                </tr>
+              </thead>
+              <tbody>
+                {standings.map((s, idx) => (
+                  <tr 
+                    key={s.teamId} 
+                    className={`border-b border-white/5 hover:bg-white/[0.04] transition-colors cursor-pointer ${
+                      expandedTeamId === s.teamId ? 'bg-white/[0.03]' : ''
+                    }`}
+                    onClick={() => setExpandedTeamId(expandedTeamId === s.teamId ? null : s.teamId)}
+                  >
+                    <td className="px-4 py-3.5 text-center font-orbitron font-black text-sm" style={{ color: (idx+1) === 1 ? '#FFD700' : (idx+1) === 2 ? '#C0C0C0' : (idx+1) === 3 ? '#CD7F32' : 'rgba(255,255,255,0.4)' }}>
+                      {idx + 1}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <div className="flex items-center gap-2">
+                        {s.avatarUrl ? (
+                          <img src={s.avatarUrl} alt="" className="w-7 h-7 rounded-lg object-cover" />
+                        ) : (
+                          <div className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[10px] font-bold">
+                            {s.teamName.substring(0, 1)}
+                          </div>
+                        )}
+                        <span className="font-orbitron font-bold text-xs truncate max-w-[120px]">{s.teamName}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3.5 text-center font-orbitron font-black text-sm text-neon-cyan">
+                      {s.totalPoints}
+                    </td>
+                    <td className="px-4 py-3.5 text-center font-orbitron font-bold text-xs text-white/80">
+                      {s.totalKills}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Center Space: Empty for branding */}
+        <div className="hidden lg:block lg:col-span-2 min-h-[100px]" />
+
+        {/* Right Table: Details & Ratios */}
+        <div className="lg:col-span-5 bg-dark-card/75 backdrop-blur-md border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
+          <div className="px-6 py-4 border-b border-white/5 bg-white/[0.02]">
+            <span className="font-orbitron font-bold text-xs text-white uppercase tracking-widest">Estadísticas de Rendimiento</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-white/[0.03] border-b border-white/5 text-[10px] text-white/40 uppercase tracking-widest font-semibold">
+                  <th className="px-4 py-3 w-16 text-center">Rank</th>
+                  <th className="px-4 py-3">Equipo</th>
+                  {potTopEnabled && <th className="px-4 py-3 text-center">Top 1</th>}
+                  {killRateEnabled && <th className="px-4 py-3 text-center">Kill Rate</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {standings.map((s, idx) => (
+                  <tr 
+                    key={s.teamId} 
+                    className={`border-b border-white/5 hover:bg-white/[0.04] transition-colors cursor-pointer ${
+                      expandedTeamId === s.teamId ? 'bg-white/[0.03]' : ''
+                    }`}
+                    onClick={() => setExpandedTeamId(expandedTeamId === s.teamId ? null : s.teamId)}
+                  >
+                    <td className="px-4 py-3.5 text-center font-orbitron font-black text-sm" style={{ color: (idx+1) === 1 ? '#FFD700' : (idx+1) === 2 ? '#C0C0C0' : (idx+1) === 3 ? '#CD7F32' : 'rgba(255,255,255,0.4)' }}>
+                      {idx + 1}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <div className="flex items-center gap-2">
+                        {s.avatarUrl ? (
+                          <img src={s.avatarUrl} alt="" className="w-7 h-7 rounded-lg object-cover" />
+                        ) : (
+                          <div className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[10px] font-bold">
+                            {s.teamName.substring(0, 1)}
+                          </div>
+                        )}
+                        <span className="font-orbitron font-bold text-xs truncate max-w-[120px]">{s.teamName}</span>
+                      </div>
+                    </td>
+                    {potTopEnabled && (
+                      <td className="px-4 py-3.5 text-center font-orbitron font-bold text-xs text-gold">
+                        {s.potTopCount}
+                      </td>
+                    )}
+                    {killRateEnabled && (
+                      <td className="px-4 py-3.5 text-center font-mono text-xs text-white/60">
+                        {s.killRate.toFixed(1)}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     )
   }
 
@@ -854,10 +987,10 @@ export function LeaderboardClient({
         </AnimatePresence>
 
         <div className="text-center mb-12 flex flex-col items-center">
-          {tournamentLogoUrl ? (
+          {logoUrl ? (
             <div className="mb-6">
               <img 
-                src={tournamentLogoUrl} 
+                src={logoUrl} 
                 alt={tournamentName} 
                 className="max-h-32 md:max-h-48 object-contain drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]" 
               />
@@ -1016,28 +1149,32 @@ export function LeaderboardClient({
       </div>
 
       {activeTab === 'ranking' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          <div className="lg:col-span-9 bg-dark-card/80 backdrop-blur-md border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
-            <div className="flex justify-between items-center px-6 py-4 border-b border-white/5 bg-white/[0.02]">
-              <span className="font-orbitron font-bold text-xs sm:text-sm text-white uppercase tracking-wider">Tabla de Posiciones</span>
-              <button 
-                onClick={() => setIsTableMaximized(true)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-all text-xs border border-white/5 font-semibold"
-              >
-                <svg className="w-3.5 h-3.5 text-neon-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                </svg>
-                Maximizar Vista
-              </button>
+        currentTheme?.preset_name === 'split' ? (
+          renderSplitStandings()
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <div className="lg:col-span-9 bg-dark-card/80 backdrop-blur-md border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
+              <div className="flex justify-between items-center px-6 py-4 border-b border-white/5 bg-white/[0.02]">
+                <span className="font-orbitron font-bold text-xs sm:text-sm text-white uppercase tracking-wider">Tabla de Posiciones</span>
+                <button 
+                  onClick={() => setIsTableMaximized(true)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-all text-xs border border-white/5 font-semibold"
+                >
+                  <svg className="w-3.5 h-3.5 text-neon-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  </svg>
+                  Maximizar Vista
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                {renderStandingsTable()}
+              </div>
             </div>
-            <div className="overflow-x-auto">
-              {renderStandingsTable()}
+            <div className="lg:col-span-3 lg:sticky lg:top-24 space-y-6">
+              <AdPlacement banners={adBanners || []} slotName="leaderboard_sidebar" tournamentId={tournamentId} />
             </div>
           </div>
-          <div className="lg:col-span-3 lg:sticky lg:top-24 space-y-6">
-            <AdPlacement banners={adBanners || []} slotName="leaderboard_sidebar" tournamentId={tournamentId} />
-          </div>
-        </div>
+        )
       ) : activeTab === 'participants' ? (
         <div className="space-y-4">
           {(!currentTeams || currentTeams.length === 0) ? (

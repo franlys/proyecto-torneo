@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { isAdmin } from './auth-helpers'
 
 export async function updateTheme(
   tournamentId: string,
@@ -17,6 +18,8 @@ export async function updateTheme(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
+  const admin = await isAdmin()
+
   // Auth verification
   const { data: tournament } = await supabase
     .from('tournaments')
@@ -24,7 +27,7 @@ export async function updateTheme(
     .eq('id', tournamentId)
     .single()
 
-  if (!tournament || tournament.creator_id !== user.id) {
+  if (!tournament || (tournament.creator_id !== user.id && !admin)) {
     return { error: 'Sin permisos' }
   }
 
