@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { Orbitron } from 'next/font/google'
 import Link from 'next/link'
 import { getProfile } from '@/lib/actions/auth-helpers'
@@ -35,11 +35,12 @@ function StatusBadge({ status }: { status: string }) {
 
 export default async function TorneosPublicosPage() {
   const supabase = await createClient()
+  const adminSupabase = await createAdminClient()
   const { data: { user } } = await supabase.auth.getUser()
   const profile = user ? await getProfile() : null
 
   // Fetch all public tournaments (is_private = false or null)
-  const { data: tournaments, error } = await supabase
+  const { data: tournaments, error } = await adminSupabase
     .from('tournaments')
     .select('*, teams(id)')
     .or('is_private.eq.false,is_private.is.null')

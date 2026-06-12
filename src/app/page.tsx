@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { Orbitron } from 'next/font/google'
 import Link from 'next/link'
 import { getProfile } from '@/lib/actions/auth-helpers'
@@ -13,6 +13,7 @@ const orbitron = Orbitron({ subsets: ['latin'] })
 
 export default async function Home() {
   const supabase = await createClient()
+  const adminSupabase = await createAdminClient()
   const { data: { user } } = await supabase.auth.getUser()
   const profile = user ? await getProfile() : null
 
@@ -20,8 +21,8 @@ export default async function Home() {
   const [adsRes, settings, { data: activeTournaments }, { data: recentPublicTournaments }] = await Promise.all([
     getAdBanners(),
     getLandingSettings(),
-    supabase.from('tournaments').select('total_live_viewers').eq('status', 'active'),
-    supabase.from('tournaments')
+    adminSupabase.from('tournaments').select('total_live_viewers').eq('status', 'active'),
+    adminSupabase.from('tournaments')
       .select('*, teams(id)')
       .or('is_private.eq.false,is_private.is.null')
       .order('created_at', { ascending: false })

@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { createTournamentSchema, type CreateTournamentInput } from '@/lib/validations/schemas'
-import { createTournament } from '@/lib/actions/tournaments'
+import { createTournament, updateTournament } from '@/lib/actions/tournaments'
 import { ScoringRuleEditor } from './ScoringRuleEditor'
 
 // ─── Section header ──────────────────────────────────────────────────────────
@@ -63,33 +63,48 @@ const FORMATS = [
 
 interface TournamentFormProps {
   onSuccess?: (id: string) => void
+  initialData?: any
+  tournamentId?: string
 }
 
-export function TournamentForm({ onSuccess }: TournamentFormProps) {
+function formatDateForInput(dateStr?: string | null) {
+  if (!dateStr) return ''
+  return dateStr.split('T')[0]
+}
+
+export function TournamentForm({ onSuccess, initialData, tournamentId }: TournamentFormProps) {
   const router = useRouter()
   const [serverError, setServerError] = useState<string | null>(null)
 
+  const defaultValues = {
+    killRateEnabled: initialData?.killRateEnabled ?? true,
+    potTopEnabled: initialData?.potTopEnabled ?? true,
+    vipEnabled: initialData?.vipEnabled ?? false,
+    tiebreakerMatchEnabled: initialData?.tiebreakerMatchEnabled ?? false,
+    killRaceTimeLimitMinutes: initialData?.killRaceTimeLimitMinutes ?? 30,
+    defaultRoundsPerMatch: initialData?.defaultRoundsPerMatch ?? 1,
+    entryFee: initialData?.entryFee ?? 40,
+    prize1st: initialData?.prize1st ?? 500,
+    prize2nd: initialData?.prize2nd ?? 300,
+    prize3rd: initialData?.prize3rd ?? 100,
+    prizeMvp: initialData?.prizeMvp ?? 250,
+    organizerSplit: initialData?.organizerSplit ?? 50,
+    streamerSplit: initialData?.streamerSplit ?? 50,
+    arenaBettingEnabled: initialData?.arenaBettingEnabled ?? false,
+    scoringRule: initialData?.scoringRule ?? {
+      killPoints: 1,
+      placementPoints: { '1': 15, '2': 12, '3': 10, '4': 8, '5': 6, '6': 4, '7': 2, '8': 1 },
+    },
+    ...initialData,
+    startDate: formatDateForInput(initialData?.startDate),
+    endDate: formatDateForInput(initialData?.endDate),
+    registrationStartDate: formatDateForInput(initialData?.registrationStartDate),
+    registrationEndDate: formatDateForInput(initialData?.registrationEndDate),
+  }
+
   const methods = useForm<CreateTournamentInput>({
     resolver: zodResolver(createTournamentSchema),
-    defaultValues: {
-      killRateEnabled: true,
-      potTopEnabled: true,
-      vipEnabled: false,
-      killRaceTimeLimitMinutes: 30,
-      defaultRoundsPerMatch: 1,
-      entryFee: 40,
-      prize1st: 500,
-      prize2nd: 300,
-      prize3rd: 100,
-      prizeMvp: 250,
-      organizerSplit: 50,
-      streamerSplit: 50,
-      arenaBettingEnabled: false,
-      scoringRule: {
-        killPoints: 1,
-        placementPoints: { '1': 15, '2': 12, '3': 10, '4': 8, '5': 6, '6': 4, '7': 2, '8': 1 },
-      },
-    },
+    defaultValues,
   })
 
   const {
@@ -116,7 +131,14 @@ export function TournamentForm({ onSuccess }: TournamentFormProps) {
       cleanedData.organizerSplit = 0
       cleanedData.streamerSplit = 0
     }
-    const result = await createTournament(cleanedData)
+    
+    let result
+    if (tournamentId) {
+      result = await updateTournament(tournamentId, cleanedData)
+    } else {
+      result = await createTournament(cleanedData)
+    }
+
     if ('error' in result) {
       setServerError(result.error)
       return
@@ -658,7 +680,9 @@ export function TournamentForm({ onSuccess }: TournamentFormProps) {
               disabled:opacity-50 disabled:cursor-not-allowed
               transition-all duration-150 shadow-lg shadow-neon-cyan/10"
           >
-            {isSubmitting ? 'Creando torneo...' : 'Crear torneo'}
+            {isSubmitting
+              ? (tournamentId ? 'Guardando...' : 'Creando torneo...')
+              : (tournamentId ? 'Guardar Cambios' : 'Crear torneo')}
           </button>
         </div>
       </form>
