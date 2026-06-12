@@ -75,8 +75,8 @@ export default async function PublicLeaderboardPage({
       killRate: s ? Number(s.kill_rate) : 0,
       potTopCount: s ? (s.pot_top_count ?? 0) : 0,
       vipScore: s ? Number(s.vip_score) : 0,
-      rank: s ? s.rank : (allTeams.length + 100),
-      previousRank: s ? s.previous_rank : (allTeams.length + 100),
+      rank: s ? s.rank : ((allTeams?.length || 0) + 100),
+      previousRank: s ? s.previous_rank : ((allTeams?.length || 0) + 100),
     }
   }).sort((a, b) => {
     // Deterministic sort: Points > Kills > Rank > Name

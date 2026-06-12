@@ -66,6 +66,12 @@ export function LeaderboardClient({
   slug: string
   mode: string
 }) {
+  // Stable supabase client — created once, not on every render.
+  // If this were inside the component body without useMemo, every render would produce
+  // a new object reference, causing refreshStandingsFromDB (useCallback) to be
+  // recreated each render, which would re-trigger the useEffect on every render.
+  const supabase = useMemo(() => createClient(), [])
+
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [isUserRegistered, setIsUserRegistered] = useState(false)
   const [isRegistering, setIsRegistering] = useState(false)
@@ -232,11 +238,6 @@ export function LeaderboardClient({
       setTimeout(() => setSyncStatus(null), 3000)
     }
   }
-  // Stable supabase client — created once, not on every render.
-  // If this were inside the component body without useMemo, every render would produce
-  // a new object reference, causing refreshStandingsFromDB (useCallback) to be
-  // recreated each render, which would re-trigger the useEffect on every render.
-  const supabase = useMemo(() => createClient(), [])
 
   // 1. Agregación Atómica: Calculamos las bajas reales sumando las partidas aprobadas
   // Esta es la "Fuente de Verdad" que evita la latencia de la base de datos.
