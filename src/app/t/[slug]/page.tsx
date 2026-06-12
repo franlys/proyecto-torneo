@@ -225,6 +225,10 @@ export default async function PublicLeaderboardPage({
         registrationStartDate={tournament.registration_start_date}
         registrationEndDate={tournament.registration_end_date}
         startDate={tournament.start_date}
+        prize1st={Number(tournament.prize_1st || 0)}
+        prize2nd={Number(tournament.prize_2nd || 0)}
+        prize3rd={Number(tournament.prize_3rd || 0)}
+        prizeMvp={Number(tournament.prize_mvp || 0)}
       />
     </main>
   )

@@ -16,14 +16,21 @@ export default async function Home() {
   const { data: { user } } = await supabase.auth.getUser()
   const profile = user ? await getProfile() : null
 
-  // Fetch ads and landing page settings
-  const [adsRes, settings] = await Promise.all([
+  // Fetch ads, landing settings, and real active tournament statistics
+  const [adsRes, settings, { data: activeTournaments }] = await Promise.all([
     getAdBanners(),
-    getLandingSettings()
+    getLandingSettings(),
+    supabase.from('tournaments').select('total_live_viewers').eq('status', 'active')
   ])
   
   const ads = adsRes && 'data' in adsRes ? adsRes.data : []
   
+  const activeCount = activeTournaments?.length || 0
+  const totalViewers = activeTournaments?.reduce((acc, curr) => acc + (curr.total_live_viewers || 0), 0) || 0
+  const dynamicLiveTickerText = activeCount > 0
+    ? `● ${activeCount} Torneo${activeCount === 1 ? '' : 's'} Activo${activeCount === 1 ? '' : 's'} ahora · 👥 ${totalViewers.toLocaleString('es-ES')} Espectadores`
+    : `● No hay torneos activos en este momento · 👥 0 Espectadores`
+
   const primaryColor = settings.primary_color || '#00F5FF'
   const secondaryColor = settings.secondary_color || '#BD00FF'
 
@@ -56,11 +63,11 @@ export default async function Home() {
         />
         
         <div className="max-w-7xl mx-auto text-center">
-          {settings.live_ticker_text && (
+          {dynamicLiveTickerText && (
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 mb-8 select-none">
                <div className="w-1.5 h-1.5 rounded-full animate-pulse bg-red-500" />
                <span className="text-[9px] font-black uppercase tracking-widest text-white/70">
-                 {settings.live_ticker_text}
+                 {dynamicLiveTickerText}
                </span>
             </div>
           )}

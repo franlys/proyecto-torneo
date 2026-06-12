@@ -30,7 +30,9 @@ export function Navbar({ user, profile }: NavbarProps) {
         </div>
 
         {/* Desktop Links (Simplified) */}
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden md:flex items-center gap-6">
+          <Link href="/" className="text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white transition-all">Inicio</Link>
+          <Link href="/torneos" className="text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white transition-all">Torneos Públicos</Link>
           <Link href="/rankings" className="text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white transition-all">Rankings</Link>
           <Link href="/copas" className="text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white transition-all">Copas Oficiales</Link>
           <Link href="/hall-of-fame" className="text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white transition-all">Hall of Fame</Link>
@@ -87,6 +89,20 @@ export function Navbar({ user, profile }: NavbarProps) {
 
           {/* Nav Links */}
           <div className="flex flex-col gap-6">
+            <Link 
+              href="/" 
+              onClick={toggleMenu}
+              className="text-lg font-black uppercase tracking-widest text-white/60 hover:text-neon-cyan transition-colors"
+            >
+              Inicio
+            </Link>
+            <Link 
+              href="/torneos" 
+              onClick={toggleMenu}
+              className="text-lg font-black uppercase tracking-widest text-white/60 hover:text-neon-cyan transition-colors"
+            >
+              Torneos Públicos
+            </Link>
             <Link 
               href="/rankings" 
               onClick={toggleMenu}

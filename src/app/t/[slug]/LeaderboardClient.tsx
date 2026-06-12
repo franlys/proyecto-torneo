@@ -47,6 +47,10 @@ export function LeaderboardClient({
   registrationStartDate,
   registrationEndDate,
   startDate,
+  prize1st = 0,
+  prize2nd = 0,
+  prize3rd = 0,
+  prizeMvp = 0,
 }: {
   tournamentId: string
   tournamentName: string
@@ -75,6 +79,10 @@ export function LeaderboardClient({
   registrationStartDate?: string | null
   registrationEndDate?: string | null
   startDate?: string | null
+  prize1st?: number
+  prize2nd?: number
+  prize3rd?: number
+  prizeMvp?: number
 }) {
   // Stable supabase client — created once, not on every render.
   // If this were inside the component body without useMemo, every render would produce
@@ -1090,6 +1098,7 @@ export function LeaderboardClient({
             const regStart = registrationStartDate ? new Date(registrationStartDate) : null
             const regEnd = registrationEndDate ? new Date(registrationEndDate) : null
             const tourneyStart = startDate ? new Date(startDate) : null
+            const totalPrize = (prize1st || 0) + (prize2nd || 0) + (prize3rd || 0) + (prizeMvp || 0)
 
             const hasRegStarted = regStart ? now >= regStart : true
             const hasRegEnded = regEnd ? now > regEnd : false
@@ -1163,6 +1172,17 @@ export function LeaderboardClient({
                         <span className="text-gold">🚀</span>
                         <span>
                           <strong>Inicio del Torneo:</strong> {formatDate(tourneyStart)}
+                        </span>
+                      </div>
+                    )}
+                    {totalPrize > 0 && (
+                      <div className="flex items-center gap-1.5 sm:col-span-2 text-gold font-bold mt-1">
+                        <span>💰</span>
+                        <span>
+                          <strong>Premio total:</strong> ${totalPrize.toLocaleString('es-ES')} USD 
+                          <span className="text-[9px] text-white/40 font-normal ml-2">
+                            (1º: ${prize1st} | 2º: ${prize2nd} | 3º: ${prize3rd} {prizeMvp > 0 && `| MVP: $${prizeMvp}`})
+                          </span>
                         </span>
                       </div>
                     )}
