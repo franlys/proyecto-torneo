@@ -1,6 +1,8 @@
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 import { notFound } from 'next/navigation'
+import { unstable_noStore as noStore } from 'next/cache'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { LeaderboardClient } from './LeaderboardClient'
 import { recalculateStandings } from '@/lib/actions/submissions'
@@ -12,6 +14,7 @@ export default async function PublicLeaderboardPage({
 }: {
   params: Promise<{ slug: string }>
 }) {
+  noStore()
   const { slug } = await params
   const normalizedSlug = slug.trim().toLowerCase()
   const adminSupabase = await createAdminClient()

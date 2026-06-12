@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { isAdmin } from './auth-helpers'
+import { revalidatePath } from 'next/cache'
 
 export async function updateTheme(
   tournamentId: string,
@@ -12,6 +13,7 @@ export async function updateTheme(
     background_mobile_value?: string | null
     background_opacity?: number
     logo_url?: string | null
+    preset_name?: string | null
   }
 ): Promise<{ success: boolean } | { error: string }> {
   const supabase = await createClient()
@@ -23,7 +25,7 @@ export async function updateTheme(
   // Auth verification
   const { data: tournament } = await supabase
     .from('tournaments')
-    .select('creator_id')
+    .select('creator_id, slug')
     .eq('id', tournamentId)
     .single()
 
@@ -44,5 +46,13 @@ export async function updateTheme(
     )
 
   if (error) return { error: error.message }
+
+  // Invalidate cache for the public leaderboard page
+  if (tournament.slug) {
+    const slugLower = tournament.slug.toLowerCase()
+    revalidatePath(`/t/${slugLower}`)
+    revalidatePath(`/t/${tournament.slug}`)
+  }
+
   return { success: true }
 }
