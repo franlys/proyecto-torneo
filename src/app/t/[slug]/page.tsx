@@ -222,6 +222,9 @@ export default async function PublicLeaderboardPage({
         slug={normalizedSlug}
         isPrivate={tournament.is_private || false}
         maxTeams={tournament.max_teams}
+        registrationStartDate={tournament.registration_start_date}
+        registrationEndDate={tournament.registration_end_date}
+        startDate={tournament.start_date}
       />
     </main>
   )

@@ -44,6 +44,9 @@ export function LeaderboardClient({
   mode,
   isPrivate,
   maxTeams,
+  registrationStartDate,
+  registrationEndDate,
+  startDate,
 }: {
   tournamentId: string
   tournamentName: string
@@ -69,6 +72,9 @@ export function LeaderboardClient({
   mode: string
   isPrivate: boolean
   maxTeams?: number | null
+  registrationStartDate?: string | null
+  registrationEndDate?: string | null
+  startDate?: string | null
 }) {
   // Stable supabase client — created once, not on every render.
   // If this were inside the component body without useMemo, every render would produce
@@ -1079,48 +1085,122 @@ export function LeaderboardClient({
           {(currentStatus === 'pending' || currentStatus === 'active') && (() => {
             const totalTeamsRegistered = currentTeams.length
             const isFull = maxTeams ? totalTeamsRegistered >= maxTeams : false
+            
+            const now = new Date()
+            const regStart = registrationStartDate ? new Date(registrationStartDate) : null
+            const regEnd = registrationEndDate ? new Date(registrationEndDate) : null
+            const tourneyStart = startDate ? new Date(startDate) : null
+
+            const hasRegStarted = regStart ? now >= regStart : true
+            const hasRegEnded = regEnd ? now > regEnd : false
+            const isRegistrationOpen = hasRegStarted && !hasRegEnded
+
+            const formatDate = (date: Date) => {
+              return date.toLocaleDateString('es-ES', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              })
+            }
 
             return (
-              <div className="mt-8 px-6 py-4 rounded-2xl bg-white/[0.02] border border-white/5 backdrop-blur-md max-w-xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 w-full text-left">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-orbitron font-bold text-sm text-white uppercase tracking-wider">Inscripción al Torneo</h3>
+              <div className="mt-8 p-6 rounded-2xl bg-white/[0.02] border border-white/5 backdrop-blur-md max-w-2xl mx-auto flex flex-col md:flex-row items-center gap-6 w-full text-left relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-r from-neon-cyan/5 to-neon-purple/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                
+                {/* Logo & Mode Section */}
+                {logoUrl && (
+                  <div className="shrink-0 relative w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden border border-white/10 bg-black/40 flex items-center justify-center shadow-inner">
+                    <img 
+                      src={logoUrl} 
+                      alt={tournamentName} 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+                
+                <div className="flex-1 min-w-0 z-10 w-full">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-orbitron font-bold text-base text-white uppercase tracking-wider">Inscripción al Torneo</h3>
                     {isPrivate && (
                       <span className="text-[9px] bg-neon-purple/20 text-neon-purple font-bold px-2 py-0.5 rounded border border-neon-purple/30 uppercase tracking-wide flex items-center gap-1">
                         <span>🔒</span> Privado
                       </span>
                     )}
+                    <span className="text-[9px] bg-neon-cyan/20 text-neon-cyan font-bold px-2 py-0.5 rounded border border-neon-cyan/30 uppercase tracking-wide">
+                      {mode.toUpperCase()}
+                    </span>
                   </div>
-                  <p className="text-white/40 text-xs mt-1">
+
+                  <p className="text-white/60 text-xs mt-1.5 leading-relaxed">
                     {isUserRegistered 
                       ? '¡Ya estás inscrito en este torneo! Revisa tu equipo en la pestaña de Participantes.'
-                      : `Regístrate para competir en la modalidad de ${format.replace(/_/g, ' ').toUpperCase()}.`
+                      : `Regístrate para competir en la modalidad de ${mode.toUpperCase()} (${format.replace(/_/g, ' ').toUpperCase()}).`
                     }
                   </p>
-                  <p className="text-neon-cyan text-[10px] font-bold uppercase tracking-widest mt-1.5">
+
+                  {/* Dates / Info Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4 text-[11px] text-white/40">
+                    {regStart && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-neon-cyan">📅</span>
+                        <span>
+                          <strong>Inscripciones:</strong> {formatDate(regStart)}
+                        </span>
+                      </div>
+                    )}
+                    {regEnd && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-neon-purple">⏳</span>
+                        <span>
+                          <strong>Cierre:</strong> {formatDate(regEnd)}
+                        </span>
+                      </div>
+                    )}
+                    {tourneyStart && (
+                      <div className="flex items-center gap-1.5 sm:col-span-2">
+                        <span className="text-gold">🚀</span>
+                        <span>
+                          <strong>Inicio del Torneo:</strong> {formatDate(tourneyStart)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="text-neon-cyan text-[10px] font-bold uppercase tracking-widest mt-3">
                     {maxTeams ? `Cupos: ${totalTeamsRegistered} / ${maxTeams} Equipos` : `Inscritos: ${totalTeamsRegistered} Equipos`}
                   </p>
                 </div>
-                <div className="shrink-0 w-full sm:w-auto text-right">
+
+                <div className="shrink-0 w-full md:w-auto text-right z-10">
                   {isUserRegistered ? (
-                    <span className="inline-block text-xs font-bold bg-green-500/20 text-green-400 px-4 py-2.5 rounded-xl border border-green-500/30 uppercase tracking-wider">
+                    <span className="inline-block w-full md:w-auto text-center text-xs font-bold bg-green-500/20 text-green-400 px-5 py-3 rounded-xl border border-green-500/30 uppercase tracking-wider">
                       ✓ Inscrito
                     </span>
+                  ) : !hasRegStarted ? (
+                    <span className="inline-block w-full md:w-auto text-center text-xs font-bold bg-white/10 text-white/40 px-5 py-3 rounded-xl border border-white/5 uppercase tracking-wider">
+                      Próximamente
+                    </span>
+                  ) : hasRegEnded ? (
+                    <span className="inline-block w-full md:w-auto text-center text-xs font-bold bg-red-500/10 text-red-400 px-5 py-3 rounded-xl border border-red-500/20 uppercase tracking-wider">
+                      Registro Cerrado
+                    </span>
                   ) : isFull ? (
-                    <span className="inline-block text-xs font-bold bg-red-500/10 text-red-400 px-4 py-2.5 rounded-xl border border-red-500/20 uppercase tracking-wider">
+                    <span className="inline-block w-full md:w-auto text-center text-xs font-bold bg-red-500/10 text-red-400 px-5 py-3 rounded-xl border border-red-500/20 uppercase tracking-wider">
                       🚫 Cupos Llenos
                     </span>
                   ) : currentUser ? (
                     <button
                       onClick={handleOpenRegistration}
-                      className="w-full sm:w-auto px-5 py-2.5 bg-neon-cyan hover:bg-neon-cyan/90 active:scale-95 text-black font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(0,245,255,0.2)] hover:shadow-[0_0_35px_rgba(0,245,255,0.35)]"
+                      className="w-full md:w-auto px-6 py-3 bg-neon-cyan hover:bg-neon-cyan/90 active:scale-95 text-black font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(0,245,255,0.2)] hover:shadow-[0_0_35px_rgba(0,245,255,0.35)]"
                     >
                       Inscribirse Ahora
                     </button>
                   ) : (
                     <Link
                       href={`/login?redirectTo=/t/${slug}`}
-                      className="inline-block w-full sm:w-auto text-center px-5 py-2.5 bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all border border-white/10"
+                      className="inline-block w-full text-center px-6 py-3 bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all border border-white/10"
                     >
                       Inicia Sesión
                     </Link>

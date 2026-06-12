@@ -436,6 +436,28 @@ export function TournamentForm({ onSuccess }: TournamentFormProps) {
               {errors.maxTeams && <p className="text-red-400 text-xs mt-1">{errors.maxTeams.message}</p>}
             </div>
 
+            <div>
+              <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
+                Fecha Inicio de Inscripciones
+              </label>
+              <input
+                type="date"
+                {...register('registrationStartDate')}
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
+                Fecha Límite de Inscripciones
+              </label>
+              <input
+                type="date"
+                {...register('registrationEndDate')}
+                className={inputClass}
+              />
+            </div>
+
             {/* Private toggle & password */}
             <div className="space-y-4">
               <button

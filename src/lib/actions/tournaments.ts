@@ -125,6 +125,8 @@ export async function createTournament(
       is_private: input.isPrivate || false,
       registration_password: input.registrationPassword || null,
       max_teams: input.maxTeams || null,
+      registration_start_date: input.registrationStartDate || new Date().toISOString(),
+      registration_end_date: input.registrationEndDate || null,
       // Finance Model
       entry_fee: input.entryFee || 0,
       prize_1st: input.prize1st || 0,
@@ -381,6 +383,52 @@ export async function activateTournament(
     .eq('id', id)
 
   if (activateErr) return { error: activateErr.message }
+
+  // Enviar notificaciones in-app y simulación de correos electrónicos
+  try {
+    const { data: participants } = await supabase
+      .from('participants')
+      .select('display_name, user_id')
+      .eq('tournament_id', id)
+      .not('user_id', 'is', null)
+
+    if (participants && participants.length > 0) {
+      const adminSupabase = await createAdminClient()
+      const userIds = Array.from(new Set(participants.map(p => p.user_id).filter(Boolean)))
+
+      if (userIds.length > 0) {
+        // 1. Insertar notificaciones in-app
+        const notificationsToInsert = userIds.map(uId => ({
+          user_id: uId,
+          title: `¡El torneo ${tournament.name} ha comenzado!`,
+          message: `El torneo '${tournament.name}' al que te inscribiste ha iniciado oficialmente. ¡Buena suerte!`,
+          is_read: false
+        }))
+
+        await adminSupabase.from('notifications').insert(notificationsToInsert)
+
+        // 2. Consultar emails de auth y simular correos por consola
+        const { data: authUsers } = await adminSupabase
+          .schema('auth')
+          .from('users')
+          .select('id, email')
+          .in('id', userIds)
+
+        if (authUsers) {
+          authUsers.forEach(u => {
+            console.log(`\n================================================================================`);
+            console.log(`[EMAIL ENVIADO - SIMULACIÓN]`);
+            console.log(`Destinatario: ${u.email}`);
+            console.log(`Asunto: ¡El torneo "${tournament.name}" ha comenzado!`);
+            console.log(`Mensaje: Hola, el torneo al que te inscribiste ya está activo. ¡Buena suerte en la arena!`);
+            console.log(`================================================================================\n`);
+          })
+        }
+      }
+    }
+  } catch (notifyErr: any) {
+    console.error('Error al enviar alertas del torneo:', notifyErr.message || notifyErr)
+  }
 
   // Push updated status to AC mirror
   const { data: activated } = await supabase.from('tournaments').select('*').eq('id', id).single()
