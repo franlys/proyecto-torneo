@@ -80,6 +80,7 @@ export function LeaderboardClient({
   const [currentChampionImg, setCurrentChampionImg] = useState(championImageUrl)
   const [isMobile, setIsMobile] = useState(false)
   const [showHallOfFame, setShowHallOfFame] = useState(false)
+  const [isTableMaximized, setIsTableMaximized] = useState(false)
 
   useEffect(() => {
     setIsMounted(true)
@@ -199,6 +200,186 @@ export function LeaderboardClient({
     .sort((a, b) => (b.totalKills || 0) - (a.totalKills || 0))
     .filter(p => (p.totalKills || 0) > 0)
     .slice(0, 5)
+
+  const renderStandingsTable = () => {
+    return (
+      <table className="w-full text-left border-collapse">
+        <thead>
+          <tr className="bg-white/[0.03] border-b border-white/5 text-xs text-white/40 uppercase tracking-widest font-semibold">
+            <th className="px-6 py-4 w-20 text-center">Rank</th>
+            <th className="px-6 py-4">Equipo</th>
+            <th className="px-6 py-4 text-center">PTS</th>
+            <th className="px-6 py-4 text-center">Kills</th>
+            {potTopEnabled && <th className="hidden md:table-cell px-6 py-4 text-center">Top 1</th>}
+            {killRateEnabled && <th className="hidden md:table-cell px-6 py-4 text-center">Kill Rate</th>}
+          </tr>
+        </thead>
+        <tbody>
+          <AnimatePresence>
+            {standings.map((s, idx) => {
+              const rankDiff = (s.previousRank || s.rank) - s.rank
+              return (
+                <Fragment key={s.teamId}>
+                <motion.tr
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{ 
+                    type: 'spring', 
+                    stiffness: 400, 
+                    damping: 40,
+                    opacity: { duration: 0.2 },
+                    layout: { duration: 0.6 }
+                  }}
+                  className={`border-b border-white/5 hover:bg-white/[0.04] transition-colors cursor-pointer group ${
+                    expandedTeamId === s.teamId ? 'bg-white/[0.03]' : ''
+                  }`}
+                  onClick={() => setExpandedTeamId(expandedTeamId === s.teamId ? null : s.teamId)}
+                >
+                  <td className="px-3 sm:px-6 py-4 sm:py-6">
+                    <div className="flex items-center justify-center gap-1 sm:gap-2">
+                       <div className="flex flex-col items-center">
+                          <span className={`font-orbitron font-black text-base sm:text-2xl ${
+                            (idx + 1) === 1 ? 'text-gold drop-shadow-[0_0_10px_rgba(255,215,0,0.3)]' : 
+                            (idx + 1) === 2 ? 'text-gray-300' : 
+                            (idx + 1) === 3 ? 'text-orange-400' : 'text-white/40'
+                          }`}>
+                            {idx + 1}
+                          </span>
+                          <div className="flex items-center gap-1 mt-1 h-3">
+                             <AnimatePresence mode="wait">
+                               {rankDiff > 0 && (
+                                 <motion.span 
+                                   key="up"
+                                   initial={{ opacity: 0, y: 5 }}
+                                   animate={{ opacity: 1, y: 0 }}
+                                   exit={{ opacity: 0, y: -5 }}
+                                   className="text-[9px] font-bold text-green-400 flex items-center"
+                                 >
+                                   ▲{rankDiff}
+                                 </motion.span>
+                               )}
+                               {rankDiff < 0 && (
+                                 <motion.span 
+                                   key="down"
+                                   initial={{ opacity: 0, y: -5 }}
+                                   animate={{ opacity: 1, y: 0 }}
+                                   exit={{ opacity: 0, y: 5 }}
+                                   className="text-[9px] font-bold text-red-400 flex items-center"
+                                 >
+                                   ▼{Math.abs(rankDiff)}
+                                 </motion.span>
+                               )}
+                             </AnimatePresence>
+                          </div>
+                       </div>
+                    </div>
+                  </td>
+                  <td className="px-3 sm:px-6 py-4 sm:py-6">
+                    <div className="flex items-center gap-3 sm:gap-5">
+                      <div className="relative">
+                         {s.avatarUrl ? (
+                           <img src={s.avatarUrl} alt="" className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl object-cover border-2 border-white/10 shadow-xl" />
+                         ) : (
+                           <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 font-orbitron font-black text-xl italic">
+                             {s.teamName.substring(0, 1)}
+                           </div>
+                         )}
+                         {expandedTeamId === s.teamId && (
+                           <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-neon-cyan border-2 border-dark-card flex items-center justify-center">
+                              <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                           </div>
+                         )}
+                      </div>
+                      <div className="flex-1">
+                         <div className="flex items-center gap-3">
+                           <span className="font-orbitron font-black text-sm sm:text-xl tracking-tight text-white group-hover:text-neon-cyan transition-colors">{s.teamName}</span>
+                           {s.streams && s.streams.length > 0 && (
+                             <div className="flex items-center gap-1 text-[8px] bg-red-500/20 text-red-500 font-bold px-1.5 py-0.5 rounded border border-red-500/30 uppercase tracking-tighter">
+                                LIVE
+                             </div>
+                           )}
+                         </div>
+                         <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest">Ver Detalles</span>
+                            <svg className={`w-3 h-3 text-white/20 transition-transform ${expandedTeamId === s.teamId ? 'rotate-90 text-neon-cyan' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
+                            </svg>
+                         </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 sm:px-6 py-4 sm:py-6 text-center font-orbitron font-black text-2xl sm:text-4xl text-neon-cyan">
+                    <NumberTicker value={s.totalPoints} />
+                  </td>
+                  <td className="px-3 sm:px-6 py-4 sm:py-6 text-center">
+                     <div className="flex flex-col items-center">
+                        <span className="text-white font-black text-lg sm:text-xl">
+                          <NumberTicker value={s.totalKills} />
+                        </span>
+                        <span className="text-[8px] text-white/40 uppercase font-black tracking-widest mt-1">TOTAL KILLS</span>
+                     </div>
+                  </td>
+                  {potTopEnabled && (
+                    <td className="hidden md:table-cell px-6 py-4 text-center">
+                       <div className="flex flex-col items-center">
+                          <span className="text-gold font-black text-lg">{s.potTopCount}</span>
+                          <span className="text-[8px] text-white/40 uppercase font-black tracking-widest mt-1">VICTORIAS</span>
+                       </div>
+                    </td>
+                  )}
+                  {killRateEnabled && (
+                    <td className="hidden md:table-cell px-6 py-4 text-center">
+                       <div className="flex flex-col items-center">
+                          <span className="text-white/60 font-mono text-xs">
+                            <NumberTicker value={s.killRate} precision={1} />
+                          </span>
+                          <span className="text-[8px] text-white/20 uppercase font-black tracking-tighter mt-1">AVG K/M</span>
+                       </div>
+                    </td>
+                  )}
+                </motion.tr>
+
+                {/* Expansion Row */}
+                <AnimatePresence>
+                  {expandedTeamId === s.teamId && (
+                    <motion.tr
+                      key={`details-${s.teamId}`}
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="bg-black/40 overflow-hidden"
+                    >
+                      <td colSpan={6} className="p-0">
+                         <TeamDetails 
+                           teamId={s.teamId}
+                           teamName={s.teamName}
+                           matches={currentMatches || []}
+                           submissions={currentSubmissions || []}
+                           scoringRule={scoringRule!}
+                           participants={participantsWithCalculatedKills}
+                           primaryColor={primaryColor}
+                         />
+                      </td>
+                    </motion.tr>
+                  )}
+                </AnimatePresence>
+                </Fragment>
+              )
+            })}
+          </AnimatePresence>
+          {standings.length === 0 && (
+            <tr>
+              <td colSpan={6} className="px-6 py-12 text-center text-white/40">
+                Aún no hay posiciones registradas
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    )
+  }
 
   useEffect(() => {
     const checkMobile = () => {
@@ -715,188 +896,26 @@ export function LeaderboardClient({
       {activeTab === 'ranking' ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           <div className="lg:col-span-9 bg-dark-card/80 backdrop-blur-md border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-white/5 bg-white/[0.02]">
+              <span className="font-orbitron font-bold text-xs sm:text-sm text-white uppercase tracking-wider">Tabla de Posiciones</span>
+              <button 
+                onClick={() => setIsTableMaximized(true)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-all text-xs border border-white/5 font-semibold"
+              >
+                <svg className="w-3.5 h-3.5 text-neon-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+                Maximizar Vista
+              </button>
+            </div>
             <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-white/[0.03] border-b border-white/5 text-xs text-white/40 uppercase tracking-widest font-semibold">
-                  <th className="px-6 py-4 w-20 text-center">Rank</th>
-                  <th className="px-6 py-4">Equipo</th>
-                  <th className="px-6 py-4 text-center">PTS</th>
-                  <th className="px-6 py-4 text-center">Kills</th>
-                  {potTopEnabled && <th className="hidden md:table-cell px-6 py-4 text-center">Top 1</th>}
-                  {killRateEnabled && <th className="hidden md:table-cell px-6 py-4 text-center">Kill Rate</th>}
-                </tr>
-              </thead>
-              <tbody>
-                <AnimatePresence>
-                  {standings.map((s, idx) => {
-                    const rankDiff = (s.previousRank || s.rank) - s.rank
-                    return (
-                      <Fragment key={s.teamId}>
-                      <motion.tr
-                        layout
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.98 }}
-                        transition={{ 
-                          type: 'spring', 
-                          stiffness: 400, 
-                          damping: 40,
-                          opacity: { duration: 0.2 },
-                          layout: { duration: 0.6 }
-                        }}
-                        className={`border-b border-white/5 hover:bg-white/[0.04] transition-colors cursor-pointer group ${
-                          expandedTeamId === s.teamId ? 'bg-white/[0.03]' : ''
-                        }`}
-                        onClick={() => setExpandedTeamId(expandedTeamId === s.teamId ? null : s.teamId)}
-                      >
-                        <td className="px-3 sm:px-6 py-4 sm:py-6">
-                          <div className="flex items-center justify-center gap-1 sm:gap-2">
-                             <div className="flex flex-col items-center">
-                                <span className={`font-orbitron font-black text-base sm:text-2xl ${
-                                  (idx + 1) === 1 ? 'text-gold drop-shadow-[0_0_10px_rgba(255,215,0,0.3)]' : 
-                                  (idx + 1) === 2 ? 'text-gray-300' : 
-                                  (idx + 1) === 3 ? 'text-orange-400' : 'text-white/40'
-                                }`}>
-                                  {idx + 1}
-                                </span>
-                                <div className="flex items-center gap-1 mt-1 h-3">
-                                   <AnimatePresence mode="wait">
-                                     {rankDiff > 0 && (
-                                       <motion.span 
-                                         key="up"
-                                         initial={{ opacity: 0, y: 5 }}
-                                         animate={{ opacity: 1, y: 0 }}
-                                         exit={{ opacity: 0, y: -5 }}
-                                         className="text-[9px] font-bold text-green-400 flex items-center"
-                                       >
-                                         ▲{rankDiff}
-                                       </motion.span>
-                                     )}
-                                     {rankDiff < 0 && (
-                                       <motion.span 
-                                         key="down"
-                                         initial={{ opacity: 0, y: -5 }}
-                                         animate={{ opacity: 1, y: 0 }}
-                                         exit={{ opacity: 0, y: 5 }}
-                                         className="text-[9px] font-bold text-red-400 flex items-center"
-                                       >
-                                         ▼{Math.abs(rankDiff)}
-                                       </motion.span>
-                                     )}
-                                   </AnimatePresence>
-                                </div>
-                             </div>
-                          </div>
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 sm:py-6">
-                          <div className="flex items-center gap-3 sm:gap-5">
-                            <div className="relative">
-                               {s.avatarUrl ? (
-                                 <img src={s.avatarUrl} alt="" className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl object-cover border-2 border-white/10 shadow-xl" />
-                               ) : (
-                                 <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 font-orbitron font-black text-xl italic">
-                                   {s.teamName.substring(0, 1)}
-                                 </div>
-                               )}
-                               {expandedTeamId === s.teamId && (
-                                 <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-neon-cyan border-2 border-dark-card flex items-center justify-center">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                                 </div>
-                               )}
-                            </div>
-                            <div className="flex-1">
-                               <div className="flex items-center gap-3">
-                                 <span className="font-orbitron font-black text-sm sm:text-xl tracking-tight text-white group-hover:text-neon-cyan transition-colors">{s.teamName}</span>
-                                 {s.streams && s.streams.length > 0 && (
-                                   <div className="flex items-center gap-1 text-[8px] bg-red-500/20 text-red-500 font-bold px-1.5 py-0.5 rounded border border-red-500/30 uppercase tracking-tighter">
-                                      LIVE
-                                   </div>
-                                 )}
-                               </div>
-                               <div className="flex items-center gap-2 mt-1">
-                                  <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest">Ver Detalles</span>
-                                  <svg className={`w-3 h-3 text-white/20 transition-transform ${expandedTeamId === s.teamId ? 'rotate-90 text-neon-cyan' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
-                                  </svg>
-                               </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 sm:py-6 text-center font-orbitron font-black text-2xl sm:text-4xl text-neon-cyan">
-                          <NumberTicker value={s.totalPoints} />
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 sm:py-6 text-center">
-                           <div className="flex flex-col items-center">
-                              <span className="text-white font-black text-lg sm:text-xl">
-                                <NumberTicker value={s.totalKills} />
-                              </span>
-                              <span className="text-[8px] text-white/40 uppercase font-black tracking-widest mt-1">TOTAL KILLS</span>
-                           </div>
-                        </td>
-                        {potTopEnabled && (
-                          <td className="hidden md:table-cell px-6 py-4 text-center">
-                             <div className="flex flex-col items-center">
-                                <span className="text-gold font-black text-lg">{s.potTopCount}</span>
-                                <span className="text-[8px] text-white/40 uppercase font-black tracking-widest mt-1">VICTORIAS</span>
-                             </div>
-                          </td>
-                        )}
-                        {killRateEnabled && (
-                          <td className="hidden md:table-cell px-6 py-4 text-center">
-                             <div className="flex flex-col items-center">
-                                <span className="text-white/60 font-mono text-xs">
-                                  <NumberTicker value={s.killRate} precision={1} />
-                                </span>
-                                <span className="text-[8px] text-white/20 uppercase font-black tracking-tighter mt-1">AVG K/M</span>
-                             </div>
-                          </td>
-                        )}
-                      </motion.tr>
-
-                      {/* Expansion Row */}
-                      <AnimatePresence>
-                        {expandedTeamId === s.teamId && (
-                          <motion.tr
-                            key={`details-${s.teamId}`}
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="bg-black/40 overflow-hidden"
-                          >
-                            <td colSpan={6} className="p-0">
-                               <TeamDetails 
-                                 teamId={s.teamId}
-                                 teamName={s.teamName}
-                                 matches={currentMatches || []}
-                                 submissions={currentSubmissions || []}
-                                 scoringRule={scoringRule!}
-                                 participants={participantsWithCalculatedKills}
-                                 primaryColor={primaryColor}
-                               />
-                            </td>
-                          </motion.tr>
-                        )}
-                      </AnimatePresence>
-                      </Fragment>
-                    )
-                  })}
-                </AnimatePresence>
-                {standings.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-white/40">
-                      Aún no hay posiciones registradas
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+              {renderStandingsTable()}
+            </div>
+          </div>
+          <div className="lg:col-span-3 lg:sticky lg:top-24 space-y-6">
+            <AdPlacement banners={adBanners || []} slotName="leaderboard_sidebar" tournamentId={tournamentId} />
           </div>
         </div>
-        <div className="lg:col-span-3 lg:sticky lg:top-24 space-y-6">
-          <AdPlacement banners={adBanners || []} slotName="leaderboard_sidebar" tournamentId={tournamentId} />
-        </div>
-      </div>
       ) : activeTab === 'participants' ? (
         <div className="space-y-4">
           {(!currentTeams || currentTeams.length === 0) ? (
@@ -1283,6 +1302,48 @@ export function LeaderboardClient({
                   </svg>
                   Volver al Marcador
                 </button>
+              </motion.div>
+            </motion.div>
+          )}
+          {isTableMaximized && (
+            <motion.div
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[90] flex items-center justify-center p-4 sm:p-6 bg-black/45 backdrop-blur-xl overflow-y-auto"
+              onClick={() => setIsTableMaximized(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="bg-dark-card/95 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.8)] w-full max-w-6xl my-8 flex flex-col"
+                onClick={e => e.stopPropagation()}
+              >
+                <div 
+                  className="flex justify-between items-center px-6 sm:px-8 py-5 border-b border-white/5 bg-white/[0.03]"
+                  style={{ borderLeft: `4px solid ${primaryColor}` }}
+                >
+                  <div>
+                    <h2 className="font-orbitron font-black text-lg sm:text-2xl text-white uppercase tracking-wider">
+                      Clasificación General
+                    </h2>
+                    <p className="text-white/40 text-xs mt-0.5 uppercase tracking-widest font-semibold">
+                      {tournamentName} • Vista Expandida
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => setIsTableMaximized(false)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-all text-sm border border-white/5 font-semibold group"
+                  >
+                    <span className="group-hover:rotate-90 transition-transform duration-300">✕</span>
+                    Minimizar
+                  </button>
+                </div>
+                <div className="overflow-x-auto p-4 sm:p-6 max-h-[75vh] overflow-y-auto">
+                  {renderStandingsTable()}
+                </div>
               </motion.div>
             </motion.div>
           )}
