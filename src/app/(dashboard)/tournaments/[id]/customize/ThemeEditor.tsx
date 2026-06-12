@@ -1,12 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateTheme } from '@/lib/actions/themes'
+import { createClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
 import Link from 'next/link'
 
 export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId: string, initialTheme: any, slug: string }) {
   const router = useRouter()
+  const supabase = createClient()
+
   const [primaryColor, setPrimaryColor] = useState(initialTheme?.primary_color || '#00F5FF')
   const [backgroundValue, setBackgroundValue] = useState(initialTheme?.background_value || '')
   const [backgroundMobileValue, setBackgroundMobileValue] = useState(initialTheme?.background_mobile_value || '')
@@ -14,6 +18,16 @@ export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId
   const [logoUrl, setLogoUrl] = useState(initialTheme?.logo_url || '')
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
+
+  // Uploading states
+  const [uploadingPc, setUploadingPc] = useState(false)
+  const [uploadingMobile, setUploadingMobile] = useState(false)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+
+  // File input refs
+  const pcInputRef = useRef<HTMLInputElement>(null)
+  const mobileInputRef = useRef<HTMLInputElement>(null)
+  const logoInputRef = useRef<HTMLInputElement>(null)
 
   const PRESET_COLORS = [
     { label: 'Neon Cyan', value: '#00F5FF' },
@@ -23,22 +37,56 @@ export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId
     { label: 'Toxic Green', value: '#00FF66' },
   ]
 
+  const handleFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    type: 'pc' | 'mobile' | 'logo',
+    setUploading: (val: boolean) => void,
+    setValue: (val: string) => void
+  ) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${tournamentId}-${type}-${Date.now()}.${fileExt}`
+      const filePath = `themes/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('evidences')
+        .upload(filePath, file, { upsert: true })
+
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('evidences')
+        .getPublicUrl(filePath)
+
+      setValue(publicUrl)
+      toast.success('Archivo subido correctamente')
+    } catch (err: any) {
+      toast.error('Error al subir el archivo: ' + err.message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
     setSuccess(false)
     
     const res = await updateTheme(tournamentId, { 
-    primary_color: primaryColor,
-    background_value: backgroundValue || null,
-    background_mobile_value: backgroundMobileValue || null,
-    background_opacity: backgroundOpacity,
-    logo_url: logoUrl || null
-  })
+      primary_color: primaryColor,
+      background_value: backgroundValue || null,
+      background_mobile_value: backgroundMobileValue || null,
+      background_opacity: backgroundOpacity,
+      logo_url: logoUrl || null
+    })
     setSaving(false)
     
     if ('error' in res) {
-      alert(res.error)
+      toast.error(res.error)
     } else {
       setSuccess(true)
       router.refresh()
@@ -87,24 +135,59 @@ export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId
             <label className="block text-sm text-white/70 mb-2 font-medium">
               Fondo Principal (PC / Horizontal - 16:9)
             </label>
+            <div className="flex gap-2 mb-4">
+              <input 
+                type="text" 
+                placeholder="URL o sube una imagen/video (.mp4, .jpg...)"
+                value={backgroundValue} 
+                onChange={(e) => setBackgroundValue(e.target.value)}
+                className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-white/30 outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => pcInputRef.current?.click()}
+                disabled={uploadingPc}
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-neon-cyan/50 rounded-lg text-xs font-bold text-white transition-all uppercase tracking-wider shrink-0 flex items-center justify-center min-w-[100px]"
+              >
+                {uploadingPc ? 'Subiendo...' : 'Subir'}
+              </button>
+            </div>
             <input 
-              type="text" 
-              placeholder="Recomendado: 1920x1080 (.mp4, .jpg, Youtube...)"
-              value={backgroundValue} 
-              onChange={(e) => setBackgroundValue(e.target.value)}
-              className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-white/30 outline-none mb-4"
+              type="file"
+              ref={pcInputRef}
+              onChange={(e) => handleFileUpload(e, 'pc', setUploadingPc, setBackgroundValue)}
+              accept="image/*,video/*"
+              className="hidden"
             />
             
             <label className="block text-sm text-white/70 mb-2 font-medium">
               Fondo para Móviles (Vertical - 9:16)
             </label>
+            <div className="flex gap-2">
+              <input 
+                type="text" 
+                placeholder="URL o sube una imagen/video (.mp4, .jpg...)"
+                value={backgroundMobileValue} 
+                onChange={(e) => setBackgroundMobileValue(e.target.value)}
+                className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-white/30 outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => mobileInputRef.current?.click()}
+                disabled={uploadingMobile}
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-neon-cyan/50 rounded-lg text-xs font-bold text-white transition-all uppercase tracking-wider shrink-0 flex items-center justify-center min-w-[100px]"
+              >
+                {uploadingMobile ? 'Subiendo...' : 'Subir'}
+              </button>
+            </div>
             <input 
-              type="text" 
-              placeholder="Recomendado: 1080x1920 (TikTok/Reels format)"
-              value={backgroundMobileValue} 
-              onChange={(e) => setBackgroundMobileValue(e.target.value)}
-              className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-white/30 outline-none"
+              type="file"
+              ref={mobileInputRef}
+              onChange={(e) => handleFileUpload(e, 'mobile', setUploadingMobile, setBackgroundMobileValue)}
+              accept="image/*,video/*"
+              className="hidden"
             />
+            
             <p className="text-xs text-white/40 mt-2">
               <strong>Tip de formato:</strong> Usa 16:9 para PCs y 9:16 para celulares. El sistema detectará el dispositivo del espectador automáticamente.
             </p>
@@ -140,12 +223,29 @@ export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId
           {/* Logo */}
           <div className="pt-4 border-t border-white/5">
             <label className="block text-sm text-white/70 mb-2 font-medium">Logo del Torneo (URL)</label>
+            <div className="flex gap-2">
+              <input 
+                type="text" 
+                placeholder="https://ejemplo.com/logo.png"
+                value={logoUrl} 
+                onChange={(e) => setLogoUrl(e.target.value)}
+                className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-white/30 outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => logoInputRef.current?.click()}
+                disabled={uploadingLogo}
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-neon-cyan/50 rounded-lg text-xs font-bold text-white transition-all uppercase tracking-wider shrink-0 flex items-center justify-center min-w-[100px]"
+              >
+                {uploadingLogo ? 'Subiendo...' : 'Subir'}
+              </button>
+            </div>
             <input 
-              type="text" 
-              placeholder="https://ejemplo.com/logo.png"
-              value={logoUrl} 
-              onChange={(e) => setLogoUrl(e.target.value)}
-              className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-white/30 outline-none"
+              type="file"
+              ref={logoInputRef}
+              onChange={(e) => handleFileUpload(e, 'logo', setUploadingLogo, setLogoUrl)}
+              accept="image/*"
+              className="hidden"
             />
           </div>
 
@@ -209,3 +309,4 @@ export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId
     </div>
   )
 }
+
