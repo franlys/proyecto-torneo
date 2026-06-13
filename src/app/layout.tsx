@@ -6,8 +6,13 @@ import { ToastProvider } from "@/components/ui/ToastProvider";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Tournament Leaderboard Platform",
-  description: "Professional eSports tournament management and leaderboard platform",
+  title: {
+    default: "Kronix E-sports | Plataforma de Torneos",
+    template: "%s | Kronix E-sports"
+  },
+  description: "La plataforma líder de torneos y rankings de E-sports en República Dominicana. Compite en salas personalizadas, torneos de streamers y escala en el ranking nacional.",
+  keywords: ["Kronix", "Esports", "Torneos", "Clash Royale", "Leaderboard", "Dominican Republic", "República Dominicana", "Gaming"],
+  metadataBase: new URL("https://www.kronix.do"),
 };
 
 export default function RootLayout({
