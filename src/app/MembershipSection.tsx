@@ -25,43 +25,43 @@ export function MembershipSection({ user, profile }: { user: any, profile: any }
   }
 
   return (
-    <section className="py-32 px-8">
-      <div className="max-w-4xl mx-auto bg-gradient-to-b from-[#121219] to-[#0a0a0b] border border-white/10 rounded-[40px] p-12 text-center relative overflow-hidden">
+    <section className="py-20 md:py-32 px-4 sm:px-8">
+      <div className="max-w-4xl mx-auto bg-gradient-to-b from-[#121219] to-[#0a0a0b] border border-white/10 rounded-[30px] md:rounded-[40px] p-6 sm:p-12 text-center relative overflow-hidden">
         {/* Glow effect */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-neon-cyan to-transparent opacity-50" />
         
         {!user ? (
           <>
-            <h2 className={`${orbitron.className} text-4xl font-black uppercase mb-6`}>Únete a la <span className="text-neon-cyan">Élite</span></h2>
-            <p className="text-white/40 mb-10 text-lg">Inicia sesión para solicitar tu membresía de Streamer Pro y empezar a crear tus propios torneos con apuestas.</p>
-            <Link href="/login" className="px-12 py-5 bg-neon-cyan text-black font-black uppercase tracking-widest rounded-2xl hover:bg-[#00D1DB] transition-all">
-              Login to Get Started
+            <h2 className={`${orbitron.className} text-2xl sm:text-4xl font-black uppercase mb-4 sm:mb-6`}>Únete a la <span className="text-neon-cyan">Élite</span></h2>
+            <p className="text-white/40 mb-8 sm:mb-10 text-sm sm:text-lg max-w-xl mx-auto leading-relaxed">Inicia sesión para solicitar tu membresía de Streamer Pro y empezar a crear tus propios torneos con apuestas.</p>
+            <Link href="/login" className="w-full sm:w-auto inline-block text-center px-6 md:px-12 py-4 md:py-5 bg-neon-cyan text-black font-black text-xs md:text-sm uppercase tracking-widest rounded-2xl hover:bg-[#00D1DB] transition-all">
+              Inicia Sesión
             </Link>
           </>
         ) : profile?.subscriptionStatus === 'ACTIVE' ? (
           <>
-            <div className="w-20 h-20 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-8 border border-green-500/30">
-               <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6 sm:mb-8 border border-green-500/30">
+               <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
             </div>
-            <h2 className={`${orbitron.className} text-4xl font-black uppercase mb-6`}>Eres <span className="text-green-500">Streamer Pro</span></h2>
-            <p className="text-white/40 mb-10 text-lg text-balance">Tienes acceso total para crear torneos ilimitados, gestionar premios y habilitar apuestas para tu comunidad.</p>
-            <Link href="/tournaments" className="px-12 py-5 bg-white text-black font-black uppercase tracking-widest rounded-2xl hover:bg-neon-cyan transition-all">
-              Ir al Dashboard de Torneos
+            <h2 className={`${orbitron.className} text-2xl sm:text-4xl font-black uppercase mb-4 sm:mb-6`}>Eres <span className="text-green-500">Streamer Pro</span></h2>
+            <p className="text-white/40 mb-8 sm:mb-10 text-sm sm:text-lg max-w-xl mx-auto leading-relaxed text-balance">Tienes acceso total para crear torneos ilimitados, gestionar premios y habilitar apuestas para tu comunidad.</p>
+            <Link href="/tournaments" className="w-full sm:w-auto inline-block text-center px-6 md:px-12 py-4 md:py-5 bg-white text-black font-black text-xs md:text-sm uppercase tracking-widest rounded-2xl hover:bg-neon-cyan transition-all">
+              Ir al Dashboard
             </Link>
           </>
         ) : profile?.subscriptionStatus === 'PENDING' ? (
            <>
-            <div className="w-20 h-20 bg-yellow-500/20 text-yellow-500 rounded-full flex items-center justify-center mx-auto mb-8 border border-yellow-500/30">
-               <svg className="w-10 h-10 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-yellow-500/20 text-yellow-500 rounded-full flex items-center justify-center mx-auto mb-6 sm:mb-8 border border-yellow-500/30">
+               <svg className="w-8 h-8 sm:w-10 sm:h-10 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
-            <h2 className={`${orbitron.className} text-4xl font-black uppercase mb-6`}>Pago en <span className="text-yellow-500">Revisión</span></h2>
-            <p className="text-white/40 mb-10 text-lg">Hemos recibido tu comprobante. El administrador validará el pago de $15 pronto para activar tu cuenta.</p>
+            <h2 className={`${orbitron.className} text-2xl sm:text-4xl font-black uppercase mb-4 sm:mb-6`}>Pago en <span className="text-yellow-500">Revisión</span></h2>
+            <p className="text-white/40 mb-8 sm:mb-10 text-sm sm:text-lg max-w-xl mx-auto leading-relaxed">Hemos recibido tu comprobante. El administrador validará el pago de $15 pronto para activar tu cuenta.</p>
             <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/20">Espera un momento...</div>
           </>
         ) : (
           <div className="max-w-2xl mx-auto">
-            <h2 className={`${orbitron.className} text-4xl font-black uppercase mb-4`}>Plan <span className="text-neon-cyan">Streamer Pro</span></h2>
-            <div className="text-5xl font-black text-white mb-6">$15<span className="text-sm font-normal text-white/40">/mes</span></div>
+            <h2 className={`${orbitron.className} text-2xl sm:text-4xl font-black uppercase mb-4`}>Plan <span className="text-neon-cyan">Streamer Pro</span></h2>
+            <div className="text-4xl sm:text-5xl font-black text-white mb-6">$15<span className="text-sm font-normal text-white/40">/mes</span></div>
             
             <ul className="text-left space-y-4 mb-10">
                <li className="flex items-center gap-3 text-white/60 text-sm">
