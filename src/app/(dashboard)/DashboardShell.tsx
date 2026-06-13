@@ -110,7 +110,7 @@ export default function DashboardShell({ children, userRole }: { children: React
   return (
     <div className="min-h-screen bg-dark-bg flex">
       {/* Desktop Sidebar — hidden on mobile */}
-      <aside className="hidden lg:flex w-60 shrink-0 bg-dark-card border-r border-white/5 flex-col">
+      <aside className="hidden lg:flex w-60 shrink-0 bg-dark-card border-r border-white/5 flex-col h-screen sticky top-0 overflow-y-auto">
         <div className="px-6 py-5 border-b border-white/5">
           <Link href="/tournaments">
             <span className="font-orbitron text-sm font-bold tracking-widest text-neon-cyan uppercase">KRO<span className="text-white">NIX</span></span>

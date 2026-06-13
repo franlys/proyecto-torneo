@@ -17,7 +17,7 @@ export default async function EditTournamentPage({ params }: EditTournamentPageP
 
   const tournament = result.data
 
-  if (tournament.status !== 'draft') {
+  if (tournament.status !== 'draft' && tournament.status !== 'pending') {
     return (
       <div className="p-8 max-w-3xl mx-auto">
         <div className="mb-8">

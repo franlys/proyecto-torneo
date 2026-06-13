@@ -231,7 +231,7 @@ export default async function TournamentOverviewPage({
           Gestión
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {tournament.status === 'draft' && (
+          {(tournament.status === 'draft' || tournament.status === 'pending') && (
             <QuickAction
               href={`/tournaments/${id}/edit`}
               label="Editar Ajustes"

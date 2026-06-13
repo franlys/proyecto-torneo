@@ -236,7 +236,7 @@ export async function updateTournament(
 
   if (fetchErr || !existing) return { error: 'Torneo no encontrado' }
   if (existing.creator_id !== user.id) return { error: 'Sin permisos' }
-  if (existing.status !== 'draft') {
+  if (existing.status !== 'draft' && existing.status !== 'pending') {
     return { error: 'No se puede modificar un torneo activo o finalizado' }
   }
 
