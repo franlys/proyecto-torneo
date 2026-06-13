@@ -63,6 +63,12 @@ function mapTournamentRow(row: Record<string, unknown>): Tournament {
     totalLiveViewers: row.total_live_viewers as number,
     // Arena Crypto sync
     tournamentType: (row.tournament_type as Tournament['tournamentType']) ?? 'battle_royale',
+    // Registration & Capacity
+    maxTeams: row.max_teams !== undefined && row.max_teams !== null ? Number(row.max_teams) : null,
+    isPrivate: row.is_private as boolean | undefined,
+    registrationPassword: row.registration_password as string | undefined | null,
+    registrationStartDate: row.registration_start_date as string | undefined | null,
+    registrationEndDate: row.registration_end_date as string | undefined | null,
   }
 }
 

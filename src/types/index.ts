@@ -59,6 +59,13 @@ export interface Tournament {
 
   // Arena Crypto sync
   tournamentType: TournamentType;
+
+  // Registration & Capacity
+  maxTeams?: number | null;
+  isPrivate?: boolean;
+  registrationPassword?: string | null;
+  registrationStartDate?: string | null;
+  registrationEndDate?: string | null;
 }
 
 export interface ScoringRule {
