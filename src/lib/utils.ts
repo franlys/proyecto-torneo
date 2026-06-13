@@ -7,8 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 
 export function getOptimizedImageUrl(url?: string | null, width = 150, height = 150) {
   if (!url) return ''
-  if (url.includes('supabase.co') && url.includes('/object/public/')) {
-    return `${url.replace('/object/public/', '/render/image/public/')}?width=${width}&height=${height}&resize=contain`
-  }
+  // Si el plan de Supabase es de nivel gratuito (Free Tier), la API de transformación (/render/image/) 
+  // da error 404/403. Retornamos la URL directa del almacenamiento para asegurar la visualización.
   return url
 }
