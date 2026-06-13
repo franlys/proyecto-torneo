@@ -1,21 +1,69 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { Orbitron } from 'next/font/google'
 import { updateLandingSettings, type LandingSettings } from '@/lib/actions/landing-settings'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 const orbitron = Orbitron({ subsets: ['latin'] })
 
 interface SettingsClientProps {
   initialSettings: LandingSettings
+  activeCount: number
+  totalViewers: number
 }
 
-export function SettingsClient({ initialSettings }: SettingsClientProps) {
+export function SettingsClient({ initialSettings, activeCount, totalViewers }: SettingsClientProps) {
   const router = useRouter()
   const [settings, setSettings] = useState<LandingSettings>(initialSettings)
   const [isSaving, setIsSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const supabase = createClient()
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    setMessage(null)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `ambient-bg-${Date.now()}.${fileExt}`
+      const filePath = `branding/${fileName}`
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('evidences')
+        .upload(filePath, file, { upsert: true })
+
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('evidences')
+        .getPublicUrl(filePath)
+
+      setSettings(prev => ({
+        ...prev,
+        ambient_video_url: publicUrl
+      }))
+      
+      setMessage({ type: 'success', text: 'Archivo de fondo subido correctamente. Haz clic en Guardar Cambios para aplicar.' })
+    } catch (err: any) {
+      setMessage({ type: 'error', text: 'Error al subir el archivo: ' + err.message })
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleDeleteBackground = () => {
+    setSettings(prev => ({
+      ...prev,
+      ambient_video_url: ''
+    }))
+    setMessage({ type: 'success', text: 'Fondo eliminado. Haz clic en Guardar Cambios para aplicar.' })
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -95,32 +143,104 @@ export function SettingsClient({ initialSettings }: SettingsClientProps) {
             />
           </div>
 
-          {/* Live Ticker Text */}
+          {/* Live Ticker Preview (Non-editable, Subject to real statistics) */}
           <div className="space-y-2">
             <label className="text-white/60 font-bold uppercase tracking-widest text-[10px] block">Insignia de Estado En Vivo (Live Ticker)</label>
-            <input
-              type="text"
-              name="live_ticker_text"
-              value={settings.live_ticker_text}
-              onChange={handleChange}
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-neon-cyan transition-colors"
-              placeholder="Ej: ● 3 Torneos Activos ahora"
-            />
-            <p className="text-[9px] text-white/30">Texto de urgencia que aparece arriba del título principal.</p>
+            <div className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white/50 flex items-center gap-2 select-none">
+              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <span>
+                ● {activeCount} Torneo{activeCount === 1 ? '' : 's'} Activo{activeCount === 1 ? '' : 's'} ahora · 👥 {totalViewers.toLocaleString('es-ES')} Espectadores
+              </span>
+            </div>
+            <p className="text-[9px] text-neon-cyan/80 font-semibold">
+              ✔ Automatizado con estadísticas reales de la base de datos (se genera según los torneos activos).
+            </p>
           </div>
 
-          {/* Video URL */}
-          <div className="space-y-2">
-            <label className="text-white/60 font-bold uppercase tracking-widest text-[10px] block">URL de Vídeo de Fondo (Opcional MP4)</label>
-            <input
-              type="text"
-              name="ambient_video_url"
-              value={settings.ambient_video_url}
-              onChange={handleChange}
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-neon-cyan transition-colors"
-              placeholder="Ej: https://tudominio.com/esports-background.mp4"
-            />
-            <p className="text-[9px] text-white/30">Dejar en blanco para usar gradiente de color estándar.</p>
+          {/* Ambient Background Section */}
+          <div className="space-y-4 md:col-span-2 bg-white/[0.01] border border-white/5 p-5 rounded-2xl">
+            <h3 className="text-white/80 font-bold uppercase tracking-widest text-[11px]">Fondo de la Landing Page</h3>
+            <p className="text-white/40 text-xs">Carga directamente un archivo (imagen o vídeo) o introduce una URL externa.</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+              {/* Upload & Input */}
+              <div className="space-y-3">
+                <label className="text-white/60 font-bold uppercase tracking-widest text-[9px] block">Cargar archivo de fondo (Vídeo o Imagen)</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    accept="image/*,video/mp4,video/webm"
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    disabled={uploading}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex-1 py-3 px-4 bg-white/5 border border-white/10 hover:border-neon-cyan/50 rounded-xl text-xs font-bold text-white uppercase tracking-widest transition-all text-center"
+                  >
+                    {uploading ? 'Subiendo archivo...' : 'Seleccionar Archivo'}
+                  </button>
+                  {settings.ambient_video_url && (
+                    <button
+                      type="button"
+                      onClick={handleDeleteBackground}
+                      className="px-4 py-3 bg-red-500/15 border border-red-500/30 hover:bg-red-500/25 rounded-xl text-xs font-bold text-red-400 uppercase tracking-widest transition-all"
+                    >
+                      Eliminar
+                    </button>
+                  )}
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="text-white/60 font-bold uppercase tracking-widest text-[9px] block">O introducir URL del fondo</label>
+                  <input
+                    type="text"
+                    name="ambient_video_url"
+                    value={settings.ambient_video_url}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-neon-cyan transition-colors"
+                    placeholder="Ej: https://tudominio.com/background.mp4"
+                  />
+                </div>
+              </div>
+
+              {/* Preview Box */}
+              <div className="border border-white/5 rounded-xl p-4 bg-white/[0.01] min-h-[160px] flex flex-col items-center justify-center relative overflow-hidden">
+                {settings.ambient_video_url ? (
+                  (() => {
+                    const isVideo = settings.ambient_video_url.toLowerCase().match(/\.(mp4|webm|ogg)$/) || settings.ambient_video_url.includes('/video/');
+                    return (
+                      <div className="w-full h-full min-h-[120px] relative flex flex-col items-center justify-center gap-2">
+                        {isVideo ? (
+                          <video
+                            src={settings.ambient_video_url}
+                            className="max-h-[120px] w-auto rounded border border-white/10"
+                            controls
+                            muted
+                          />
+                        ) : (
+                          <img
+                            src={settings.ambient_video_url}
+                            alt="Vista previa de fondo"
+                            className="max-h-[120px] w-auto object-contain rounded border border-white/10"
+                          />
+                        )}
+                        <span className="text-[9px] text-white/50 uppercase tracking-wider font-semibold">
+                          Fondo actual ({isVideo ? 'Vídeo' : 'Imagen'})
+                        </span>
+                      </div>
+                    )
+                  })()
+                ) : (
+                  <div className="text-center p-4">
+                    <span className="text-2xl mb-2 block grayscale opacity-30">🖼️</span>
+                    <span className="text-[10px] text-white/30 uppercase font-black">Sin fondo personalizado</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Statistics Ticker Text */}

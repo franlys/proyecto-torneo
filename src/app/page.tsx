@@ -45,13 +45,24 @@ export default async function Home() {
     <div className="min-h-screen bg-[#0a0a0b] text-white selection:bg-neon-cyan/30 relative overflow-x-hidden">
       <HomeTracker path="/" />
       
-      {/* Ambient Video Background if enabled */}
+      {/* Ambient Video or Image Background if enabled */}
       {settings.ambient_video_url && (
-        <video 
-          src={settings.ambient_video_url} 
-          autoPlay loop muted playsInline 
-          className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none -z-20"
-        />
+        (() => {
+          const isVideo = settings.ambient_video_url.toLowerCase().match(/\.(mp4|webm|ogg)$/) || settings.ambient_video_url.includes('/video/');
+          return isVideo ? (
+            <video 
+              src={settings.ambient_video_url} 
+              autoPlay loop muted playsInline 
+              className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none -z-20"
+            />
+          ) : (
+            <img 
+              src={settings.ambient_video_url} 
+              alt="Fondo ambiental"
+              className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none -z-20"
+            />
+          );
+        })()
       )}
       
       {/* Dynamic Hamburger Navigation */}
