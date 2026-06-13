@@ -18,19 +18,46 @@ export default async function Home() {
   const { data: { user } } = await supabase.auth.getUser()
   const profile = user ? await getProfile() : null
 
-  // Fetch ads, landing settings, real active tournament statistics, and recent public tournaments
-  const [adsRes, settings, { data: activeTournaments }, { data: recentPublicTournaments }] = await Promise.all([
-    getAdBanners(),
-    getLandingSettings(),
-    adminSupabase.from('tournaments').select('total_live_viewers').eq('status', 'active'),
-    adminSupabase.from('tournaments')
-      .select('*, teams(id)')
-      .or('is_private.eq.false,is_private.is.null')
-      .order('created_at', { ascending: false })
-      .limit(3)
-  ])
-  
-  const ads = adsRes && 'data' in adsRes ? adsRes.data : []
+  // Fetch ads, landing settings, real active tournament statistics, and recent public tournaments safely
+  let ads: any[] = []
+  let settings: any = {
+    hero_title: 'EL PORTAL DE LOS E-SPORTS DOMINICANOS',
+    hero_subtitle: 'La herramienta definitiva de clasificación nacional.',
+    statistics_ticker_text: '',
+    primary_color: '#00F5FF',
+    secondary_color: '#BD00FF',
+    ambient_video_url: ''
+  }
+  let activeTournaments: any[] = []
+  let recentPublicTournaments: any[] = []
+
+  try {
+    const [adsRes, settingsRes, activeTournamentsRes, recentPublicTournamentsRes] = await Promise.all([
+      getAdBanners().catch(err => ({ error: err.message })),
+      getLandingSettings().catch(err => null),
+      adminSupabase.from('tournaments').select('total_live_viewers').eq('status', 'active'),
+      adminSupabase.from('tournaments')
+        .select('*, teams(id)')
+        .or('is_private.eq.false,is_private.is.null')
+        .order('created_at', { ascending: false })
+        .limit(3)
+    ])
+
+    if (adsRes && 'data' in adsRes && Array.isArray(adsRes.data)) {
+      ads = adsRes.data
+    }
+    if (settingsRes) {
+      settings = settingsRes
+    }
+    if (activeTournamentsRes && activeTournamentsRes.data) {
+      activeTournaments = activeTournamentsRes.data
+    }
+    if (recentPublicTournamentsRes && recentPublicTournamentsRes.data) {
+      recentPublicTournaments = recentPublicTournamentsRes.data
+    }
+  } catch (err) {
+    console.error('Error loading landing page data:', err)
+  }
   
   const activeCount = activeTournaments?.length || 0
   const totalViewers = activeTournaments?.reduce((acc, curr) => acc + (curr.total_live_viewers || 0), 0) || 0
