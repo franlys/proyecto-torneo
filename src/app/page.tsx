@@ -173,8 +173,9 @@ export default async function Home() {
                           Finalizado
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-white/5 text-white/50 border border-white/10">
-                          Inscripciones
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-neon-purple/10 text-neon-purple border border-neon-purple/20">
+                          <span className="w-1.5 h-1.5 rounded-full bg-neon-purple animate-pulse" />
+                          Inscripciones Abiertas
                         </span>
                       )}
                       <span className="text-[9px] bg-white/5 border border-white/10 px-2 py-0.5 rounded text-white/60 font-bold uppercase tracking-wider">

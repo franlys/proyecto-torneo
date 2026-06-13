@@ -27,8 +27,9 @@ function StatusBadge({ status }: { status: string }) {
     )
   }
   return (
-    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/5 text-white/50 border border-white/10">
-      Inscripciones
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-neon-purple/10 text-neon-purple border border-neon-purple/20">
+      <span className="w-1.5 h-1.5 rounded-full bg-neon-purple animate-pulse" />
+      Inscripciones Abiertas
     </span>
   )
 }
