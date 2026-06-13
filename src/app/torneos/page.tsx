@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { getProfile } from '@/lib/actions/auth-helpers'
 import { Navbar } from '@/components/navigation/Navbar'
 import { HomeTracker } from '@/components/analytics/HomeTracker'
+import { getOptimizedImageUrl } from '@/lib/utils'
 
 const orbitron = Orbitron({ subsets: ['latin'] })
 
@@ -111,7 +112,7 @@ export default async function TorneosPublicosPage() {
                     <div className="flex items-center gap-4 mb-4">
                       <div className="w-14 h-14 rounded-xl overflow-hidden bg-black/40 border border-white/10 flex items-center justify-center shrink-0">
                         {hasLogo ? (
-                          <img src={t.logo_url} alt={t.name} className="w-full h-full object-cover" />
+                          <img src={getOptimizedImageUrl(t.logo_url, 120, 120)} alt={t.name} className="w-full h-full object-cover" />
                         ) : (
                           <span className="text-xl">🏆</span>
                         )}

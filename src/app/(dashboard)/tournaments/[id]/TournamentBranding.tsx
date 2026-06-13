@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { updateTournament } from '@/lib/actions/tournaments'
 import { toast } from 'sonner'
+import { getOptimizedImageUrl } from '@/lib/utils'
 
 interface TournamentBrandingProps {
   id: string
@@ -87,7 +88,7 @@ export function TournamentBranding({ id, initialLogoUrl, tournamentName, initial
           className="relative w-32 h-32 rounded-xl bg-white/5 border border-white/10 overflow-hidden cursor-pointer hover:border-neon-purple/50 transition-all flex items-center justify-center group"
         >
           {logoUrl ? (
-            <img src={logoUrl} alt={tournamentName} className="w-full h-full object-contain p-2" />
+            <img src={getOptimizedImageUrl(logoUrl, 250, 250)} alt={tournamentName} className="w-full h-full object-contain p-2" />
           ) : (
             <div className="text-center p-4">
               <span className="text-3xl mb-2 block grayscale opacity-30">🏆</span>
