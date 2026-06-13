@@ -1,6 +1,7 @@
 import type { AdBanner } from '@/lib/actions/federation'
 import Link from 'next/link'
 import { trackEvent } from '@/lib/analytics'
+import { useMemo } from 'react'
 
 interface AdPlacementProps {
   banners: AdBanner[]
@@ -9,7 +10,12 @@ interface AdPlacementProps {
 }
 
 export function AdPlacement({ banners, slotName, tournamentId }: AdPlacementProps) {
-  const activeAd = banners.find(b => b.slotName === slotName)
+  const activeAd = useMemo(() => {
+    const matching = banners.filter(b => b.slotName === slotName && b.isActive)
+    if (matching.length === 0) return null
+    const randomIndex = Math.floor(Math.random() * matching.length)
+    return matching[randomIndex]
+  }, [banners, slotName])
 
   if (!activeAd) {
     return (
