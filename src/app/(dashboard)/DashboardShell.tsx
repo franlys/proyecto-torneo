@@ -122,9 +122,14 @@ export default function DashboardShell({ children, userRole }: { children: React
       {/* Desktop Sidebar — hidden on mobile */}
       <aside className="hidden lg:flex w-60 shrink-0 bg-dark-card border-r border-white/5 flex-col h-screen sticky top-0 overflow-y-auto">
         <div className="px-6 py-5 border-b border-white/5">
-          <Link href="/tournaments">
-            <span className="font-orbitron text-sm font-bold tracking-widest text-neon-cyan uppercase">KRO<span className="text-white">NIX</span></span>
-            <span className="block font-orbitron text-[10px] tracking-[0.25em] text-white/30 uppercase mt-0.5">by GonzalezLabs</span>
+          <Link href="/tournaments" className="flex items-center gap-2 group">
+            <div className="relative w-5 h-5 flex items-center justify-center rounded border border-white/10 bg-white/5 group-hover:border-neon-cyan/40 transition-all">
+              <div className="w-1.5 h-1.5 rounded-sm bg-neon-cyan shadow-[0_0_6px_rgba(0,245,255,0.6)] group-hover:rotate-45 transition-transform" />
+            </div>
+            <div>
+              <span className="font-sans font-black tracking-[0.2em] text-xs text-white uppercase group-hover:text-neon-cyan transition-colors">KRONIX</span>
+              <span className="block font-sans text-[8px] tracking-[0.15em] text-white/30 uppercase -mt-0.5">by GonzalezLabs</span>
+            </div>
           </Link>
         </div>
         <NavLinks />
@@ -133,8 +138,11 @@ export default function DashboardShell({ children, userRole }: { children: React
 
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-dark-card/95 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-4 py-3">
-        <Link href="/tournaments">
-          <span className="font-orbitron text-sm font-bold tracking-widest text-neon-cyan uppercase">Tournament</span>
+        <Link href="/tournaments" className="flex items-center gap-2 group">
+          <div className="relative w-5 h-5 flex items-center justify-center rounded border border-white/10 bg-white/5">
+            <div className="w-1.5 h-1.5 rounded-sm bg-neon-cyan shadow-[0_0_6px_rgba(0,245,255,0.6)]" />
+          </div>
+          <span className="font-sans font-black tracking-[0.2em] text-xs text-white uppercase">KRONIX</span>
         </Link>
         <button
           onClick={() => setDrawerOpen(true)}

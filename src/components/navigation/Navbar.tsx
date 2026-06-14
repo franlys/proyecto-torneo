@@ -21,10 +21,15 @@ export function Navbar({ user, profile }: NavbarProps) {
       <nav className="fixed top-0 left-0 right-0 h-20 bg-[#0a0a0b]/80 backdrop-blur-xl border-b border-white/5 z-50 px-6 sm:px-8 flex items-center justify-between">
         {/* Brand Logo */}
         <div className="flex items-center gap-3">
-          <Link href="/" className={`${orbitron.className} text-2xl font-black tracking-tighter uppercase text-white`}>
-            KRO<span className="text-neon-cyan">NIX</span>
+          <Link href="/" className="flex items-center gap-2 group">
+            <div className="relative w-6 h-6 flex items-center justify-center rounded-md border border-white/10 bg-white/5 group-hover:border-neon-cyan/40 transition-all duration-300">
+              <div className="w-2 h-2 rounded-sm bg-neon-cyan shadow-[0_0_8px_rgba(0,245,255,0.6)] transition-transform duration-500 group-hover:rotate-45" />
+            </div>
+            <span className="font-sans font-black tracking-[0.2em] text-sm text-white uppercase transition-colors group-hover:text-neon-cyan duration-300">
+              KRONIX
+            </span>
           </Link>
-          <span className="text-[9px] font-black uppercase tracking-widest bg-white/5 border border-white/10 px-2 py-0.5 rounded text-white/50">
+          <span className="text-[8px] font-black uppercase tracking-widest bg-white/5 border border-white/10 px-2 py-0.5 rounded text-white/40">
             FDDE HUB 🇩🇴
           </span>
         </div>
