@@ -95,7 +95,11 @@ export function LeaderboardClient({
   // a new object reference, causing refreshStandingsFromDB (useCallback) to be
   // recreated each render, which would re-trigger the useEffect on every render.
   const supabase = useMemo(() => createClient(), [])
-  const isShooter = discipline !== 'clash_royale' && discipline !== 'street_fighter_6' && discipline !== 'super_smash_bros_ultimate'
+  const isShooter = discipline !== 'clash_royale' && 
+    discipline !== 'street_fighter_6' && 
+    discipline !== 'super_smash_bros_ultimate' && 
+    discipline !== 'league_of_legends' && 
+    discipline !== 'valorant'
 
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [isUserRegistered, setIsUserRegistered] = useState(false)

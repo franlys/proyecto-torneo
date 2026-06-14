@@ -71,16 +71,31 @@ export function HallOfFameCard({ tournament }: HallOfFameCardProps) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="px-4 py-2 rounded-xl bg-white/[0.03] border border-white/5">
-                <p className="text-[9px] font-bold text-white/30 uppercase tracking-tighter mb-1">Puntos Finales</p>
-                <p className="font-orbitron font-black text-xl text-gold">{winner.totalPoints}</p>
-              </div>
-              <div className="px-4 py-2 rounded-xl bg-white/[0.03] border border-white/5">
-                <p className="text-[9px] font-bold text-white/30 uppercase tracking-tighter mb-1">Kills Totales</p>
-                <p className="font-orbitron font-black text-xl text-white">{winner.totalKills}</p>
-              </div>
-            </div>
+            {/* Dynamically adjust columns based on game discipline */}
+            {(() => {
+              const isShooter = tournament.discipline !== 'clash_royale' &&
+                tournament.discipline !== 'street_fighter_6' &&
+                tournament.discipline !== 'super_smash_bros_ultimate' &&
+                tournament.discipline !== 'league_of_legends' &&
+                tournament.discipline !== 'valorant';
+              
+              return (
+                <div className={isShooter ? "grid grid-cols-2 gap-3" : "w-full"}>
+                  <div className="px-4 py-2 rounded-xl bg-white/[0.03] border border-white/5">
+                    <p className="text-[9px] font-bold text-white/30 uppercase tracking-tighter mb-1 text-white/40">
+                      {tournament.discipline === 'clash_royale' ? 'Copas Finales' : 'Puntos Finales'}
+                    </p>
+                    <p className="font-orbitron font-black text-xl text-gold">{winner.totalPoints}</p>
+                  </div>
+                  {isShooter && (
+                    <div className="px-4 py-2 rounded-xl bg-white/[0.03] border border-white/5">
+                      <p className="text-[9px] font-bold text-white/30 uppercase tracking-tighter mb-1 text-white/40">Kills Totales</p>
+                      <p className="font-orbitron font-black text-xl text-white">{winner.totalKills}</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         ) : (
           <p className="text-white/40 text-sm italic">Resultados finales procesándose...</p>

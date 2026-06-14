@@ -608,7 +608,7 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
         </section>
 
         {/* ── Section 3: Métricas ── */}
-        {discipline !== 'clash_royale' && discipline !== 'street_fighter_6' && discipline !== 'super_smash_bros_ultimate' && (
+        {!['clash_royale', 'street_fighter_6', 'super_smash_bros_ultimate', 'league_of_legends', 'valorant'].includes(discipline) && (
           <section>
             <SectionHeader title="Métricas" subtitle="Activa las métricas que se mostrarán en el leaderboard" />
             <div className="space-y-3">
@@ -758,7 +758,7 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
         </section>
 
         {/* ── Section 4: Scoring Rule ── */}
-        {discipline !== 'clash_royale' && discipline !== 'street_fighter_6' && discipline !== 'super_smash_bros_ultimate' && (
+        {!['clash_royale', 'street_fighter_6', 'super_smash_bros_ultimate', 'league_of_legends', 'valorant'].includes(discipline) && (
           <section>
             <SectionHeader
               title="Sistema de puntuación"
