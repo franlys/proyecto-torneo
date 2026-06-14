@@ -1692,8 +1692,14 @@ export function LeaderboardClient({
                       </span>
                     </div>
                     <div className="flex items-center gap-6 text-sm text-white/60 font-orbitron mt-1">
-                      <span><b className="text-neon-cyan">{standings[0].totalPoints}</b> PTS</span>
-                      <span><b className="text-white">{standings[0].totalKills}</b> KILLS</span>
+                      {discipline === 'clash_royale' ? (
+                        <span><b className="text-neon-cyan">{standings[0].totalPoints}</b> COPAS</span>
+                      ) : (
+                        <span><b className="text-neon-cyan">{standings[0].totalPoints}</b> PTS</span>
+                      )}
+                      {isShooter && (
+                        <span><b className="text-white">{standings[0].totalKills}</b> KILLS</span>
+                      )}
                     </div>
                   </div>
                 )}
