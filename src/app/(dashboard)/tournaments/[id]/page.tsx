@@ -213,9 +213,9 @@ export default async function TournamentOverviewPage({
         <StatCard
           label="Modalidad"
           value={tournament.mode.charAt(0).toUpperCase() + tournament.mode.slice(1)}
-          sub="por equipo"
+          sub={['clash_royale', 'street_fighter_6', 'super_smash_bros_ultimate'].includes(tournament.discipline) ? '1v1' : 'por equipo'}
         />
-        {scoringRule && (
+        {scoringRule && !['clash_royale', 'street_fighter_6', 'super_smash_bros_ultimate', 'league_of_legends', 'valorant'].includes(tournament.discipline) && (
           <StatCard
             label="Kill Points"
             value={scoringRule.killPoints}
@@ -255,17 +255,19 @@ export default async function TournamentOverviewPage({
               </svg>
             }
           />
-          <QuickAction
-            href={`/tournaments/${id}/submissions`}
-            label="Submissions"
-            desc="Revisa y aprueba registros de kills"
-            icon={
-              <svg className="w-4 h-4 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            }
-          />
+          {!['clash_royale', 'street_fighter_6', 'super_smash_bros_ultimate', 'league_of_legends', 'valorant'].includes(tournament.discipline) && (
+            <QuickAction
+              href={`/tournaments/${id}/submissions`}
+              label="Submissions"
+              desc="Revisa y aprueba registros de kills"
+              icon={
+                <svg className="w-4 h-4 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              }
+            />
+          )}
           <QuickAction
             href={`/tournaments/${id}/customize`}
             label="Personalizar"

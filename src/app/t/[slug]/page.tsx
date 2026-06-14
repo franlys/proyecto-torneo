@@ -29,17 +29,17 @@ export default async function PublicLeaderboardPage({
 
   if (tErr || !tournament) notFound()
 
+  // AUTO-SYNC: Recalculate standings on every page load to ensure data is always fresh
+  if (tournament?.id) {
+    await recalculateStandings(adminSupabase, tournament.id)
+  }
+
   // Fetch ALL teams with their participants (for the Participants tab)
   const { data: allTeams } = await supabase
     .from('teams')
     .select('id, name, avatar_url, stream_url, participants(id, team_id, display_name, is_captain, stream_url, total_kills, kd_ratio, avg_kills, classification_rank, br_avg_placement)')
     .eq('tournament_id', tournament.id)
     .order('created_at', { ascending: true })
-
-  // AUTO-SYNC: Recalculate standings on every page load to ensure data is always fresh
-  if (tournament?.id) {
-    await recalculateStandings(adminSupabase, tournament.id)
-  }
 
 
   // Fetch real standings (if any approved submissions exist)
