@@ -287,21 +287,35 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
               <select
                 {...register('discipline')}
                 className={inputClass}
-                 onChange={(e) => {
+                onChange={(e) => {
                   const val = e.target.value
                   setValue('discipline', val)
-                  // Automate templates based on selected game
-                  if (val === 'clash_royale' || val === 'street_fighter_6' || val === 'super_smash_bros_ultimate') {
+                  // Automate templates based on selected game rules
+                  if (val === 'clash_royale') {
                     setValue('format', 'custom_rooms')
                     setValue('mode', 'individual')
+                    setValue('totalMatches', 1)
+                    setValue('defaultRoundsPerMatch', 1)
+                  } else if (val === 'street_fighter_6' || val === 'super_smash_bros_ultimate') {
+                    setValue('format', 'eliminacion_directa')
+                    setValue('mode', 'individual')
+                    setValue('totalMatches', 1)
+                    setValue('defaultRoundsPerMatch', 3) // BO3 por defecto para lucha
                   } else if (val === 'league_of_legends' || val === 'valorant') {
                     setValue('format', 'eliminacion_directa')
                     setValue('mode', 'quintas')
+                    setValue('totalMatches', 1)
+                    setValue('defaultRoundsPerMatch', 1) // BO1 por defecto para MOBA/Tactical
                   } else if (val === 'free_fire') {
                     setValue('format', 'battle_royale_clasico')
                     setValue('mode', 'cuartetos')
+                    setValue('totalMatches', 3)
+                    setValue('defaultRoundsPerMatch', 1)
                   } else {
                     setValue('format', 'battle_royale_clasico')
+                    setValue('mode', 'duos')
+                    setValue('totalMatches', 3)
+                    setValue('defaultRoundsPerMatch', 1)
                   }
                 }}
               >
@@ -356,24 +370,42 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
               <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-3">
                 Modalidad *
               </label>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                {MODES.map((m) => (
-                  <button
-                    key={m.value}
-                    type="button"
-                    onClick={() => setValue('mode', m.value)}
-                    className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-150
-                      ${mode === m.value
-                        ? 'border-neon-cyan bg-neon-cyan/10 text-white'
-                        : 'border-transparent bg-white/5 text-white/50 hover:border-neon-purple/50 hover:text-white/80'
-                      }`}
-                  >
-                    <span className="text-2xl">{m.icon}</span>
-                    <span className="text-sm font-medium">{m.label}</span>
-                    <span className="text-xs opacity-60">{m.desc}</span>
-                  </button>
-                ))}
-              </div>
+              {['clash_royale', 'street_fighter_6', 'super_smash_bros_ultimate'].includes(discipline) ? (
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-sm text-white/70 flex items-center gap-3">
+                  <span className="text-xl">👤</span>
+                  <div>
+                    <p className="font-semibold text-white">Individual (1v1)</p>
+                    <p className="text-xs text-white/40">Forzado automáticamente para esta disciplina.</p>
+                  </div>
+                </div>
+              ) : ['league_of_legends', 'valorant'].includes(discipline) ? (
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-sm text-white/70 flex items-center gap-3">
+                  <span className="text-xl">🛡️</span>
+                  <div>
+                    <p className="font-semibold text-white">Quintas (5v5)</p>
+                    <p className="text-xs text-white/40">Forzado automáticamente para esta disciplina de equipos.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  {MODES.map((m) => (
+                    <button
+                      key={m.value}
+                      type="button"
+                      onClick={() => setValue('mode', m.value)}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-150
+                        ${mode === m.value
+                          ? 'border-neon-cyan bg-neon-cyan/10 text-white'
+                          : 'border-transparent bg-white/5 text-white/50 hover:border-neon-purple/50 hover:text-white/80'
+                        }`}
+                    >
+                      <span className="text-2xl">{m.icon}</span>
+                      <span className="text-sm font-medium">{m.label}</span>
+                      <span className="text-xs opacity-60">{m.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               {err(errors.mode?.message)}
             </div>
 
@@ -382,114 +414,138 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
               <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-3">
                 Formato de competencia *
               </label>
-              <div className="grid grid-cols-1 gap-2">
-                {FORMATS.map((f) => (
-                  <button
-                    key={f.value}
-                    type="button"
-                    onClick={() => setValue('format', f.value)}
-                    className={`flex items-center gap-4 px-4 py-3 rounded-xl border-2 text-left transition-all duration-150
-                      ${format === f.value
-                        ? 'border-neon-cyan bg-neon-cyan/10'
-                        : 'border-transparent bg-white/5 hover:border-neon-purple/50'
-                      }`}
-                  >
-                    <div
-                      className={`w-2 h-2 rounded-full shrink-0 transition-colors duration-150
-                        ${format === f.value ? 'bg-neon-cyan' : 'bg-white/20'}`}
-                    />
-                    <div>
-                      <p className={`text-sm font-medium transition-colors duration-150
-                        ${format === f.value ? 'text-white' : 'text-white/60'}`}>
-                        {f.label}
-                      </p>
-                      <p className="text-xs text-white/30 mt-0.5">{f.desc}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
+              {discipline === 'clash_royale' ? (
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-sm text-white/70 flex items-center gap-3">
+                  <span className="text-xl">👑</span>
+                  <div>
+                    <p className="font-semibold text-white">Custom Rooms / Torneo Sincronizado por API</p>
+                    <p className="text-xs text-white/40">Forzado automáticamente. Los resultados se importarán mediante el tag del torneo.</p>
+                  </div>
+                </div>
+              ) : ['street_fighter_6', 'super_smash_bros_ultimate', 'league_of_legends', 'valorant'].includes(discipline) ? (
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-sm text-white/70 flex items-center gap-3">
+                  <span className="text-xl">🏆</span>
+                  <div>
+                    <p className="font-semibold text-white">Eliminación Directa (Playoffs / Brackets)</p>
+                    <p className="text-xs text-white/40">Forzado automáticamente. Cuadro de eliminatorias de avance directo.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-2">
+                  {FORMATS.map((f) => (
+                    <button
+                      key={f.value}
+                      type="button"
+                      onClick={() => setValue('format', f.value)}
+                      className={`flex items-center gap-4 px-4 py-3 rounded-xl border-2 text-left transition-all duration-150
+                        ${format === f.value
+                          ? 'border-neon-cyan bg-neon-cyan/10'
+                          : 'border-transparent bg-white/5 hover:border-neon-purple/50'
+                        }`}
+                    >
+                      <div
+                        className={`w-2 h-2 rounded-full shrink-0 transition-colors duration-150
+                          ${format === f.value ? 'bg-neon-cyan' : 'bg-white/20'}`}
+                      />
+                      <div>
+                        <p className={`text-sm font-medium transition-colors duration-150
+                          ${format === f.value ? 'text-white' : 'text-white/60'}`}>
+                          {f.label}
+                        </p>
+                        <p className="text-xs text-white/30 mt-0.5">{f.desc}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
               {err(errors.format?.message)}
             </div>
 
-            {/* Tournament Level */}
-            <div>
-              <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-3">
-                Nivel *
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  {
-                    value: 'casual',
-                    label: 'Casual',
-                    desc: 'Hasta 3 partidas · Sin verificación obligatoria',
-                  },
-                  {
-                    value: 'profesional',
-                    label: 'Profesional',
-                    desc: '6–12 partidas · Verificación de evidencias requerida',
-                  },
-                ].map((l) => (
-                  <button
-                    key={l.value}
-                    type="button"
-                    onClick={() => setValue('level', l.value as 'casual' | 'profesional')}
-                    className={`flex flex-col gap-1.5 p-4 rounded-xl border-2 text-left transition-all duration-150
-                      ${level === l.value
-                        ? 'border-neon-purple bg-neon-purple/10'
-                        : 'border-transparent bg-white/5 hover:border-neon-purple/30'
-                      }`}
-                  >
-                    <span className={`text-sm font-semibold transition-colors duration-150
-                      ${level === l.value ? 'text-neon-purple' : 'text-white/60'}`}>
-                      {l.label}
-                    </span>
-                    <span className="text-xs text-white/30">{l.desc}</span>
-                  </button>
-                ))}
+            {/* Tournament Level (Shooters only) */}
+            {(!discipline || !['clash_royale', 'street_fighter_6', 'super_smash_bros_ultimate', 'league_of_legends', 'valorant'].includes(discipline)) && (
+              <div>
+                <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-3">
+                  Nivel *
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    {
+                      value: 'casual',
+                      label: 'Casual',
+                      desc: 'Hasta 3 partidas · Sin verificación obligatoria',
+                    },
+                    {
+                      value: 'profesional',
+                      label: 'Profesional',
+                      desc: '6–12 partidas · Verificación de evidencias requerida',
+                    },
+                  ].map((l) => (
+                    <button
+                      key={l.value}
+                      type="button"
+                      onClick={() => setValue('level', l.value as 'casual' | 'profesional')}
+                      className={`flex flex-col gap-1.5 p-4 rounded-xl border-2 text-left transition-all duration-150
+                        ${level === l.value
+                          ? 'border-neon-purple bg-neon-purple/10'
+                          : 'border-transparent bg-white/5 hover:border-neon-purple/30'
+                        }`}
+                    >
+                      <span className={`text-sm font-semibold transition-colors duration-150
+                        ${level === l.value ? 'text-neon-purple' : 'text-white/60'}`}>
+                        {l.label}
+                      </span>
+                      <span className="text-xs text-white/30">{l.desc}</span>
+                    </button>
+                  ))}
+                </div>
+                {err(errors.level?.message)}
               </div>
-              {err(errors.level?.message)}
-            </div>
+            )}
 
-            {/* Total Matches */}
-            <div>
-              <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
-                Total de partidas *
-                {level === 'casual' && (
-                  <span className="ml-2 text-white/30 normal-case font-normal">(máx. 3)</span>
-                )}
-                {level === 'profesional' && (
-                  <span className="ml-2 text-white/30 normal-case font-normal">(6–12)</span>
-                )}
-              </label>
-              <input
-                type="number"
-                min={minMatches}
-                max={maxMatches}
-                {...register('totalMatches', { valueAsNumber: true })}
-                className="w-32 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm
-                  focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/20 focus:outline-none
-                  transition-all duration-150"
-              />
-              {err(errors.totalMatches?.message)}
-            </div>
+            {/* Total Matches (Shooters only) */}
+            {(!discipline || !['clash_royale', 'street_fighter_6', 'super_smash_bros_ultimate', 'league_of_legends', 'valorant'].includes(discipline)) && (
+              <div>
+                <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
+                  Total de partidas *
+                  {level === 'casual' && (
+                    <span className="ml-2 text-white/30 normal-case font-normal">(máx. 3)</span>
+                  )}
+                  {level === 'profesional' && (
+                    <span className="ml-2 text-white/30 normal-case font-normal">(6–12)</span>
+                  )}
+                </label>
+                <input
+                  type="number"
+                  min={minMatches}
+                  max={maxMatches}
+                  {...register('totalMatches', { valueAsNumber: true })}
+                  className="w-32 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm
+                    focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/20 focus:outline-none
+                    transition-all duration-150"
+                />
+                {err(errors.totalMatches?.message)}
+              </div>
+            )}
 
-            {/* Rounds per Match */}
-            <div>
-              <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
-                Rondas por Partida *
-                <span className="ml-2 text-white/30 normal-case font-normal">(Ej: 3 para BO3)</span>
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={5}
-                {...register('defaultRoundsPerMatch', { valueAsNumber: true })}
-                className="w-32 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm
-                  focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/20 focus:outline-none
-                  transition-all duration-150"
-              />
-              {err(errors.defaultRoundsPerMatch?.message)}
-            </div>
+            {/* Rounds per Match (Fighting & MOBA only) */}
+            {discipline && ['street_fighter_6', 'super_smash_bros_ultimate', 'league_of_legends', 'valorant'].includes(discipline) && (
+              <div>
+                <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
+                  Rondas por Partida (Best of BO) *
+                  <span className="ml-2 text-white/30 normal-case font-normal">(Ej: 3 para BO3, 5 para BO5)</span>
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={5}
+                  {...register('defaultRoundsPerMatch', { valueAsNumber: true })}
+                  className="w-32 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm
+                    focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/20 focus:outline-none
+                    transition-all duration-150"
+                />
+                {err(errors.defaultRoundsPerMatch?.message)}
+              </div>
+            )}
 
             {/* Kill Race Time Limit */}
             {format === 'kill_race' && (
