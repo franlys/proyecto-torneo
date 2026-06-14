@@ -37,6 +37,7 @@ interface TeamDetailsProps {
   scoringRule: ScoringRule
   participants: Participant[]
   primaryColor: string
+  discipline?: string
 }
 
 export function TeamDetails({
@@ -47,6 +48,7 @@ export function TeamDetails({
   scoringRule,
   participants,
   primaryColor,
+  discipline = 'warzone',
 }: TeamDetailsProps) {
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
   const [isMounted, setIsMounted] = useState(false)
@@ -441,7 +443,10 @@ export function TeamDetails({
                   {selectedPlayerId ? `Rendimiento: ${selectedPlayer?.displayName}` : 'Progreso de Equipo'}
                 </h3>
                 <p className="text-[9px] text-white/20 uppercase font-bold tracking-widest">
-                  {selectedPlayerId ? 'Bajas confirmadas por ronda' : 'Puntos y bajas acumuladas'}
+                  {selectedPlayerId 
+                    ? (['clash_royale', 'street_fighter_6', 'super_smash_bros_ultimate', 'league_of_legends', 'valorant'].includes(discipline) ? 'Rendimiento por ronda' : 'Bajas confirmadas por ronda') 
+                    : (['clash_royale', 'street_fighter_6', 'super_smash_bros_ultimate', 'league_of_legends', 'valorant'].includes(discipline) ? 'Puntos acumulados' : 'Puntos y bajas acumuladas')
+                  }
                 </p>
              </div>
              
@@ -449,7 +454,9 @@ export function TeamDetails({
                 {!selectedPlayerId ? (
                   <>
                     <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-neon-cyan" /> Puntos</div>
-                    <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-neon-purple" /> Kills</div>
+                    {!['clash_royale', 'street_fighter_6', 'super_smash_bros_ultimate', 'league_of_legends', 'valorant'].includes(discipline) && (
+                      <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-neon-purple" /> Kills</div>
+                    )}
                   </>
                 ) : (
                   <button 
@@ -490,7 +497,9 @@ export function TeamDetails({
                     itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
                   />
                   <Area type="monotone" dataKey="points" stroke={primaryColor} strokeWidth={3} fillOpacity={1} fill="url(#colorPoints)" animationDuration={1500} />
-                  <Area type="monotone" dataKey="kills" stroke="#B400FF" strokeWidth={2} fill="transparent" animationDuration={2000} />
+                  {!['clash_royale', 'street_fighter_6', 'super_smash_bros_ultimate', 'league_of_legends', 'valorant'].includes(discipline) && (
+                    <Area type="monotone" dataKey="kills" stroke="#B400FF" strokeWidth={2} fill="transparent" animationDuration={2000} />
+                  )}
                 </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -523,29 +532,53 @@ export function TeamDetails({
                     )}
                     <span className="text-sm font-medium text-white group-hover:text-neon-cyan transition-colors">{p.displayName}</span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <span className="text-lg font-orbitron font-black text-white block leading-none">{calculatedPlayerKillsMap[p.id] || 0}</span>
-                      <span className="text-[8px] text-white/30 uppercase font-bold tracking-tighter">Kills</span>
+                  {!['clash_royale', 'street_fighter_6', 'super_smash_bros_ultimate', 'league_of_legends', 'valorant'].includes(discipline) && (
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <span className="text-lg font-orbitron font-black text-white block leading-none">{calculatedPlayerKillsMap[p.id] || 0}</span>
+                        <span className="text-[8px] text-white/30 uppercase font-bold tracking-tighter">Kills</span>
+                      </div>
+                      <svg className="w-3 h-3 text-white/20 group-hover:text-neon-cyan transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
                     </div>
-                    <svg className="w-3 h-3 text-white/20 group-hover:text-neon-cyan transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
+                  )}
                 </motion.div>
               ))
             )}
           </div>
 
-          <div className="mt-4 p-4 rounded-2xl bg-gradient-to-br from-neon-purple/20 to-transparent border border-neon-purple/30">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full bg-neon-purple animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-white font-orbitron">IA Verified</span>
+          {discipline === 'clash_royale' ? (
+            <div className="mt-4 p-4 rounded-2xl bg-gradient-to-br from-neon-cyan/20 to-transparent border border-neon-cyan/30">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 rounded-full bg-neon-cyan animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-white font-orbitron">API Sincronizada</span>
+              </div>
+              <p className="text-[9px] text-white/40 leading-relaxed uppercase tracking-widest font-bold">
+                Sincronización oficial del marcador en vivo activa a través de la API de Clash Royale.
+              </p>
             </div>
-            <p className="text-[9px] text-white/40 leading-relaxed uppercase tracking-widest font-bold">
-              Detección automática de OCR activada para este equipo.
-            </p>
-          </div>
+          ) : ['street_fighter_6', 'super_smash_bros_ultimate', 'league_of_legends', 'valorant'].includes(discipline) ? (
+            <div className="mt-4 p-4 rounded-2xl bg-gradient-to-br from-neon-purple/20 to-transparent border border-neon-purple/30">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 rounded-full bg-neon-purple animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-white font-orbitron">Admin Verified</span>
+              </div>
+              <p className="text-[9px] text-white/40 leading-relaxed uppercase tracking-widest font-bold">
+                Resultados y llaves gestionados y verificados directamente por el organizador.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-4 p-4 rounded-2xl bg-gradient-to-br from-neon-purple/20 to-transparent border border-neon-purple/30">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 rounded-full bg-neon-purple animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-white font-orbitron">IA Verified</span>
+              </div>
+              <p className="text-[9px] text-white/40 leading-relaxed uppercase tracking-widest font-bold">
+                Detección automática de OCR activada para este equipo.
+              </p>
+            </div>
+          )}
         </div>
       </div>
       )}

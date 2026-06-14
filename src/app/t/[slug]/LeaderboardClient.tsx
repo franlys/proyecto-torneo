@@ -476,6 +476,7 @@ export function LeaderboardClient({
                            scoringRule={scoringRule!}
                            participants={participantsWithCalculatedKills}
                            primaryColor={primaryColor}
+                           discipline={discipline}
                          />
                       </td>
                     </motion.tr>
@@ -1586,6 +1587,7 @@ export function LeaderboardClient({
                       scoringRule={scoringRule!}
                       participants={participantsWithCalculatedKills}
                       primaryColor={primaryColor}
+                      discipline={discipline}
                     />
                   ))}
               </motion.div>
