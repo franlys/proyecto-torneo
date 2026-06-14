@@ -1102,7 +1102,7 @@ export function LeaderboardClient({
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-blue-500/10 border border-blue-500/30 rounded-full text-xs font-black uppercase tracking-widest text-blue-400">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-                  <span>Clash Royale ({clashRoyaleTag})</span>
+                  <span>Clash Royale</span>
                 </div>
                 <button
                   onClick={handleSync}
@@ -1152,6 +1152,23 @@ export function LeaderboardClient({
 
           {/* Registration Section */}
           {(currentStatus === 'pending' || currentStatus === 'active') && (() => {
+            // If tournament is already active (started), show locked message
+            if (currentStatus === 'active') {
+              return (
+                <div className="mt-8 p-5 rounded-2xl bg-white/[0.02] border border-white/5 max-w-2xl mx-auto flex items-center gap-4 w-full">
+                  <div className="w-10 h-10 rounded-xl bg-neon-cyan/10 border border-neon-cyan/20 flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-neon-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-widest text-neon-cyan">Torneo en Curso</p>
+                    <p className="text-white/40 text-xs mt-0.5">Las inscripciones están cerradas. El torneo ya ha comenzado.</p>
+                  </div>
+                </div>
+              )
+            }
+            return (() => {
             const totalTeamsRegistered = currentTeams.length
             const isFull = maxTeams ? totalTeamsRegistered >= maxTeams : false
             
@@ -1289,6 +1306,7 @@ export function LeaderboardClient({
                 </div>
               </div>
             )
+            })()
           })()}
         </div>
 
