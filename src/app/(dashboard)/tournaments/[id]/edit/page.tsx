@@ -1,7 +1,30 @@
-import { TournamentForm } from '@/components/dashboard/TournamentForm'
 import { getTournament } from '@/lib/actions/tournaments'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
+
+const TournamentForm = dynamic(
+  () => import('@/components/dashboard/TournamentForm').then((mod) => mod.TournamentForm),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="animate-pulse space-y-8 py-4">
+        <div className="space-y-3">
+          <div className="h-4 bg-white/10 rounded w-1/4"></div>
+          <div className="h-10 bg-white/5 rounded-lg"></div>
+        </div>
+        <div className="space-y-3">
+          <div className="h-4 bg-white/10 rounded w-1/3"></div>
+          <div className="h-24 bg-white/5 rounded-lg"></div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="h-10 bg-white/5 rounded-lg"></div>
+          <div className="h-10 bg-white/5 rounded-lg"></div>
+        </div>
+      </div>
+    )
+  }
+)
 
 interface EditTournamentPageProps {
   params: Promise<{ id: string }>

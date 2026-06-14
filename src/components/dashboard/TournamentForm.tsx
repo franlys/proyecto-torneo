@@ -3,11 +3,12 @@
 import { useForm, FormProvider } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createTournamentSchema, type CreateTournamentInput } from '@/lib/validations/schemas'
 import { createTournament, updateTournament } from '@/lib/actions/tournaments'
 import { ScoringRuleEditor } from './ScoringRuleEditor'
 import { createClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
 
 // ─── Section header ──────────────────────────────────────────────────────────
 
@@ -78,6 +79,10 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
   const router = useRouter()
   const [serverError, setServerError] = useState<string | null>(null)
   const [uploadingBadge, setUploadingBadge] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const handleBadgeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -118,6 +123,7 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
     tiebreakerMatchEnabled: initialData?.tiebreakerMatchEnabled ?? false,
     killRaceTimeLimitMinutes: initialData?.killRaceTimeLimitMinutes ?? 30,
     defaultRoundsPerMatch: initialData?.defaultRoundsPerMatch ?? 1,
+    totalMatches: initialData?.totalMatches ?? 3,
     entryFee: initialData?.entryFee ?? 40,
     prize1st: initialData?.prize1st ?? 500,
     prize2nd: initialData?.prize2nd ?? 300,
@@ -127,6 +133,9 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
     streamerSplit: initialData?.streamerSplit ?? 50,
     arenaBettingEnabled: initialData?.arenaBettingEnabled ?? false,
     discipline: initialData?.discipline ?? 'warzone',
+    mode: initialData?.mode ?? 'duos',
+    format: initialData?.format ?? 'battle_royale_clasico',
+    level: initialData?.level ?? 'casual',
     badgeUrl: initialData?.badgeUrl ?? '',
     scoringRule: initialData?.scoringRule ?? {
       killPoints: 1,
@@ -179,8 +188,10 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
 
     if ('error' in result) {
       setServerError(result.error)
+      toast.error(`Error al guardar: ${result.error}`)
       return
     }
+    toast.success(tournamentId ? 'Torneo actualizado correctamente' : 'Torneo creado con éxito')
     if (onSuccess) {
       onSuccess(result.data.id)
     } else {
@@ -195,9 +206,34 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
     'w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/25 ' +
     'focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/20 focus:outline-none transition-all duration-150'
 
+  if (!mounted) {
+    return (
+      <div className="animate-pulse space-y-8 py-4">
+        <div className="space-y-3">
+          <div className="h-4 bg-white/10 rounded w-1/4"></div>
+          <div className="h-10 bg-white/5 rounded-lg"></div>
+        </div>
+        <div className="space-y-3">
+          <div className="h-4 bg-white/10 rounded w-1/3"></div>
+          <div className="h-24 bg-white/5 rounded-lg"></div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="h-10 bg-white/5 rounded-lg"></div>
+          <div className="h-10 bg-white/5 rounded-lg"></div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <FormProvider {...methods}>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-10">
+      <form 
+        onSubmit={handleSubmit(onSubmit, (errors) => {
+          console.error('Validation errors:', errors)
+          toast.error('Por favor, completa todos los campos requeridos del formulario.')
+        })} 
+        className="space-y-10"
+      >
 
         {/* ── Section 1: Información básica ── */}
         <section>
@@ -296,16 +332,19 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
                     setValue('mode', 'individual')
                     setValue('totalMatches', 1)
                     setValue('defaultRoundsPerMatch', 1)
+                    setValue('level', 'casual')
                   } else if (val === 'street_fighter_6' || val === 'super_smash_bros_ultimate') {
                     setValue('format', 'eliminacion_directa')
                     setValue('mode', 'individual')
                     setValue('totalMatches', 1)
                     setValue('defaultRoundsPerMatch', 3) // BO3 por defecto para lucha
+                    setValue('level', 'casual')
                   } else if (val === 'league_of_legends' || val === 'valorant') {
                     setValue('format', 'eliminacion_directa')
                     setValue('mode', 'quintas')
                     setValue('totalMatches', 1)
                     setValue('defaultRoundsPerMatch', 1) // BO1 por defecto para MOBA/Tactical
+                    setValue('level', 'casual')
                   } else if (val === 'free_fire') {
                     setValue('format', 'battle_royale_clasico')
                     setValue('mode', 'cuartetos')
