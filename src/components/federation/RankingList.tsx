@@ -30,6 +30,8 @@ const DISCIPLINES: { value: GameDiscipline | 'all'; label: string; icon: string 
   { value: 'free_fire', label: 'Free Fire', icon: '🔥' },
   { value: 'fortnite', label: 'Fortnite', icon: '⛏️' },
   { value: 'call_of_duty_mobile', label: 'Call of Duty Mobile', icon: '🔫' },
+  { value: 'league_of_legends', label: 'League of Legends', icon: '🏆' },
+  { value: 'valorant', label: 'Valorant', icon: '🎯' },
 ]
 
 interface RankingListProps {
@@ -55,7 +57,9 @@ export function RankingList({ initialPlayers }: RankingListProps) {
     super_smash_bros_ultimate: 'Super Smash Bros Ultimate',
     free_fire: 'Free Fire',
     fortnite: 'Fortnite',
-    call_of_duty_mobile: 'Call of Duty Mobile'
+    call_of_duty_mobile: 'Call of Duty Mobile',
+    league_of_legends: 'League of Legends',
+    valorant: 'Valorant'
   }
 
   // 1. Radar Skill Data Calculation

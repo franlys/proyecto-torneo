@@ -104,7 +104,7 @@ export function LeaderboardClient({
   const [regLoading, setRegLoading] = useState(false)
 
   const handleOpenRegistration = () => {
-    const size = { individual: 1, duos: 2, trios: 3, cuartetos: 4 }[mode] || 1
+    const size = { individual: 1, duos: 2, trios: 3, cuartetos: 4, quintas: 5 }[mode] || 1
     const initialParticipants = Array(size).fill('')
     if (currentUser) {
       initialParticipants[0] = currentUser.email.split('@')[0]

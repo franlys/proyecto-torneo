@@ -14,7 +14,7 @@ const tournamentBaseSchema = z.object({
   name: z.string().min(3).max(255),
   description: z.string().max(1000).optional(),
   rulesText: z.string().max(5000).optional(),
-  mode: z.enum(['individual', 'duos', 'trios', 'cuartetos']),
+  mode: z.enum(['individual', 'duos', 'trios', 'cuartetos', 'quintas']),
   format: z.enum([
     'battle_royale_clasico',
     'kill_race',

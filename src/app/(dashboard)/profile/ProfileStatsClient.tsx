@@ -22,6 +22,8 @@ const GAME_NAMES: Record<string, string> = {
   call_of_duty_mobile: 'Call of Duty Mobile 🔫',
   street_fighter_6: 'Street Fighter 6 👊',
   super_smash_bros_ultimate: 'Super Smash Bros Ultimate 💥',
+  league_of_legends: 'League of Legends 🏆',
+  valorant: 'Valorant 🎯',
 }
 
 export function ProfileStatsClient({

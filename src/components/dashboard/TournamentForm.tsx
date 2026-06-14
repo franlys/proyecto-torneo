@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { createTournamentSchema, type CreateTournamentInput } from '@/lib/validations/schemas'
 import { createTournament, updateTournament } from '@/lib/actions/tournaments'
 import { ScoringRuleEditor } from './ScoringRuleEditor'
+import { createClient } from '@/lib/supabase/client'
 
 // ─── Section header ──────────────────────────────────────────────────────────
 
@@ -29,6 +30,7 @@ const MODES = [
   { value: 'duos', label: 'Duos', icon: '👥', desc: '2 jugadores' },
   { value: 'trios', label: 'Tríos', icon: '🎮', desc: '3 jugadores' },
   { value: 'cuartetos', label: 'Cuartetos', icon: '🏆', desc: '4 jugadores' },
+  { value: 'quintas', label: 'Quintas (5v5)', icon: '🛡️', desc: '5 jugadores' },
 ] as const
 
 const FORMATS = [
@@ -75,6 +77,39 @@ function formatDateForInput(dateStr?: string | null) {
 export function TournamentForm({ onSuccess, initialData, tournamentId }: TournamentFormProps) {
   const router = useRouter()
   const [serverError, setServerError] = useState<string | null>(null)
+  const [uploadingBadge, setUploadingBadge] = useState(false)
+
+  const handleBadgeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingBadge(true)
+    setServerError(null)
+
+    try {
+      const supabase = createClient()
+      const fileExt = file.name.split('.').pop()
+      const fileName = `badge-${Date.now()}.${fileExt}`
+      const filePath = `badges/${fileName}`
+
+      const { data, error } = await supabase.storage
+        .from('evidences')
+        .upload(filePath, file, { upsert: true })
+
+      if (error) throw error
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('evidences')
+        .getPublicUrl(filePath)
+
+      setValue('badgeUrl', publicUrl)
+    } catch (err: any) {
+      console.error('Error uploading badge:', err)
+      setServerError(err.message || 'Error al subir la insignia')
+    } finally {
+      setUploadingBadge(false)
+    }
+  }
 
   const defaultValues = {
     killRateEnabled: initialData?.killRateEnabled ?? true,
@@ -252,25 +287,33 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
               <select
                 {...register('discipline')}
                 className={inputClass}
-                onChange={(e) => {
+                 onChange={(e) => {
                   const val = e.target.value
                   setValue('discipline', val)
                   // Automate templates based on selected game
                   if (val === 'clash_royale' || val === 'street_fighter_6' || val === 'super_smash_bros_ultimate') {
                     setValue('format', 'custom_rooms')
                     setValue('mode', 'individual')
+                  } else if (val === 'league_of_legends' || val === 'valorant') {
+                    setValue('format', 'eliminacion_directa')
+                    setValue('mode', 'quintas')
+                  } else if (val === 'free_fire') {
+                    setValue('format', 'battle_royale_clasico')
+                    setValue('mode', 'cuartetos')
                   } else {
                     setValue('format', 'battle_royale_clasico')
                   }
                 }}
               >
-                <option value="warzone">Call of Duty: Warzone 🪂</option>
-                <option value="clash_royale">Clash Royale 👑</option>
-                <option value="fortnite">Fortnite ⛏️</option>
-                <option value="free_fire">Free Fire 🔥</option>
-                <option value="call_of_duty_mobile">Call of Duty Mobile 🔫</option>
-                <option value="street_fighter_6">Street Fighter 6 👊</option>
-                <option value="super_smash_bros_ultimate">Super Smash Bros Ultimate 💥</option>
+                <option value="warzone" className="bg-neutral-900 text-white">Call of Duty: Warzone 🪂</option>
+                <option value="clash_royale" className="bg-neutral-900 text-white">Clash Royale 👑</option>
+                <option value="fortnite" className="bg-neutral-900 text-white">Fortnite ⛏️</option>
+                <option value="free_fire" className="bg-neutral-900 text-white">Free Fire 🔥</option>
+                <option value="call_of_duty_mobile" className="bg-neutral-900 text-white">Call of Duty Mobile 🔫</option>
+                <option value="street_fighter_6" className="bg-neutral-900 text-white">Street Fighter 6 👊</option>
+                <option value="super_smash_bros_ultimate" className="bg-neutral-900 text-white">Super Smash Bros Ultimate 💥</option>
+                <option value="league_of_legends" className="bg-neutral-900 text-white">League of Legends 🏆</option>
+                <option value="valorant" className="bg-neutral-900 text-white">Valorant 🎯</option>
               </select>
               {err(errors.discipline?.message)}
             </div>
@@ -278,16 +321,32 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
             {/* Tournament Badge Url (Insignia) */}
             <div>
               <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
-                Insignia del Torneo (Imagen URL - Obligatorio para premiar ranking) *
+                Insignia del Torneo (Imagen URL o Cargar Archivo) *
               </label>
-              <input
-                required
-                {...register('badgeUrl')}
-                placeholder="Ej: https://res.cloudinary.com/.../badge.png"
-                className={inputClass}
-              />
-              <p className="text-xs text-white/45 mt-1">
-                Sube la URL de la insignia/medalla del torneo. Se otorgará automáticamente a los ganadores (Top 3) al finalizar el torneo.
+              
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  required
+                  {...register('badgeUrl')}
+                  placeholder="Ej: https://res.cloudinary.com/.../badge.png"
+                  className={`${inputClass} flex-1`}
+                />
+                
+                <label className="shrink-0 flex items-center justify-center px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white hover:bg-white/10 hover:border-white/20 transition-all duration-150 cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleBadgeUpload}
+                    disabled={uploadingBadge}
+                    className="hidden"
+                  />
+                  <svg className="w-4 h-4 mr-2 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                  {uploadingBadge ? 'Subiendo...' : 'Subir Local (.png, .gif)'}
+                </label>
+              </div>
+              
+              <p className="text-xs text-white/45 mt-1.5">
+                Sube un archivo desde tu equipo (admite GIFs animados) o ingresa una URL. Se otorgará automáticamente a los ganadores (Top 3) al finalizar el torneo.
               </p>
               {err(errors.badgeUrl?.message)}
             </div>
@@ -297,7 +356,7 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
               <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-3">
                 Modalidad *
               </label>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 {MODES.map((m) => (
                   <button
                     key={m.value}
@@ -454,65 +513,67 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
         </section>
 
         {/* ── Section 3: Métricas ── */}
-        <section>
-          <SectionHeader title="Métricas" subtitle="Activa las métricas que se mostrarán en el leaderboard" />
-          <div className="space-y-3">
-            {[
-              {
-                field: 'killRateEnabled' as const,
-                label: 'Kill Rate',
-                desc: 'Promedio de kills por partida',
-              },
-              {
-                field: 'potTopEnabled' as const,
-                label: 'Pot Top',
-                desc: 'Veces que el equipo terminó en el top',
-              },
-              {
-                field: 'vipEnabled' as const,
-                label: 'Top Fragger (MVP)',
-                desc: 'Métrica especial para destacar al mejor jugador del equipo',
-              },
-              {
-                field: 'tiebreakerMatchEnabled' as const,
-                label: 'Partida de desempate',
-                desc: 'Permite programar una partida extra en caso de empate',
-              },
-            ].map(({ field, label, desc }) => {
-              const value = watch(field)
-              return (
-                <button
-                  key={field}
-                  type="button"
-                  onClick={() => setValue(field, !value)}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all duration-150
-                    ${value
-                      ? 'border-neon-cyan/30 bg-neon-cyan/5'
-                      : 'border-white/10 bg-white/[0.03] hover:border-white/20'
-                    }`}
-                >
-                  <div className="text-left">
-                    <p className={`text-sm font-medium transition-colors duration-150
-                      ${value ? 'text-white' : 'text-white/50'}`}>
-                      {label}
-                    </p>
-                    <p className="text-xs text-white/30 mt-0.5">{desc}</p>
-                  </div>
-                  {/* Toggle pill */}
-                  <div
-                    className={`relative w-10 h-5 rounded-full transition-colors duration-150 shrink-0
-                      ${value ? 'bg-neon-cyan' : 'bg-white/10'}`}
+        {discipline !== 'clash_royale' && discipline !== 'street_fighter_6' && discipline !== 'super_smash_bros_ultimate' && (
+          <section>
+            <SectionHeader title="Métricas" subtitle="Activa las métricas que se mostrarán en el leaderboard" />
+            <div className="space-y-3">
+              {[
+                {
+                  field: 'killRateEnabled' as const,
+                  label: 'Kill Rate',
+                  desc: 'Promedio de kills por partida',
+                },
+                {
+                  field: 'potTopEnabled' as const,
+                  label: 'Pot Top',
+                  desc: 'Veces que el equipo terminó en el top',
+                },
+                {
+                  field: 'vipEnabled' as const,
+                  label: 'Top Fragger (MVP)',
+                  desc: 'Métrica especial para destacar al mejor jugador del equipo',
+                },
+                {
+                  field: 'tiebreakerMatchEnabled' as const,
+                  label: 'Partida de desempate',
+                  desc: 'Permite programar una partida extra en caso de empate',
+                },
+              ].map(({ field, label, desc }) => {
+                const value = watch(field)
+                return (
+                  <button
+                    key={field}
+                    type="button"
+                    onClick={() => setValue(field, !value)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all duration-150
+                      ${value
+                        ? 'border-neon-cyan/30 bg-neon-cyan/5'
+                        : 'border-white/10 bg-white/[0.03] hover:border-white/20'
+                      }`}
                   >
+                    <div className="text-left">
+                      <p className={`text-sm font-medium transition-colors duration-150
+                        ${value ? 'text-white' : 'text-white/50'}`}>
+                        {label}
+                      </p>
+                      <p className="text-xs text-white/30 mt-0.5">{desc}</p>
+                    </div>
+                    {/* Toggle pill */}
                     <div
-                      className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-150
-                        ${value ? 'translate-x-5' : 'translate-x-0.5'}`}
-                    />
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </section>
+                      className={`relative w-10 h-5 rounded-full transition-colors duration-150 shrink-0
+                        ${value ? 'bg-neon-cyan' : 'bg-white/10'}`}
+                    >
+                      <div
+                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-150
+                          ${value ? 'translate-x-5' : 'translate-x-0.5'}`}
+                      />
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+        )}
 
         {/* ── Section: Inscripciones y Privacidad ── */}
         <section className="space-y-6">
@@ -602,13 +663,15 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
         </section>
 
         {/* ── Section 4: Scoring Rule ── */}
-        <section>
-          <SectionHeader
-            title="Sistema de puntuación"
-            subtitle="Define los puntos por kill y por posición de llegada"
-          />
-          <ScoringRuleEditor />
-        </section>
+        {discipline !== 'clash_royale' && discipline !== 'street_fighter_6' && discipline !== 'super_smash_bros_ultimate' && (
+          <section>
+            <SectionHeader
+              title="Sistema de puntuación"
+              subtitle="Define los puntos por kill y por posición de llegada"
+            />
+            <ScoringRuleEditor />
+          </section>
+        )}
 
         {/* ── Section 5: Rules text ── */}
         <section>

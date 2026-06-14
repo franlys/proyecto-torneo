@@ -64,7 +64,7 @@ export async function registerTournament(
     }
 
     // 3. Validar el tamaño del equipo según el modo del torneo
-    const maxPerTeam = { individual: 1, duos: 2, trios: 3, cuartetos: 4 }[tournament.mode] || 1
+    const maxPerTeam = { individual: 1, duos: 2, trios: 3, cuartetos: 4, quintas: 5 }[tournament.mode] || 1
     const pList = formData.participants.filter(p => p.displayName.trim() !== '')
 
     if (tournament.mode === 'individual') {

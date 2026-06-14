@@ -9,6 +9,8 @@ export type GameDiscipline =
   | 'free_fire'
   | 'fortnite'
   | 'call_of_duty_mobile'
+  | 'league_of_legends'
+  | 'valorant'
 
 export interface NationalPlayerStats {
   id: string

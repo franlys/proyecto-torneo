@@ -1,7 +1,7 @@
 // TypeScript types for Tournament Leaderboard Platform
 // TODO: Task 2.3 — Full type definitions
 
-export type TournamentMode = 'individual' | 'duos' | 'trios' | 'cuartetos';
+export type TournamentMode = 'individual' | 'duos' | 'trios' | 'cuartetos' | 'quintas';
 export type CompetitionFormat =
   | 'battle_royale_clasico'
   | 'kill_race'

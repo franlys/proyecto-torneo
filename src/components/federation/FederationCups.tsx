@@ -14,7 +14,9 @@ const gameBadges: Record<GameDiscipline, string> = {
   super_smash_bros_ultimate: '💥 Smash Bros',
   free_fire: '🔥 Free Fire',
   fortnite: '⛏️ Fortnite',
-  call_of_duty_mobile: '🔫 CoD Mobile'
+  call_of_duty_mobile: '🔫 CoD Mobile',
+  league_of_legends: '🏆 League of Legends',
+  valorant: '🎯 Valorant'
 }
 
 export function FederationCups({ cups }: FederationCupsProps) {

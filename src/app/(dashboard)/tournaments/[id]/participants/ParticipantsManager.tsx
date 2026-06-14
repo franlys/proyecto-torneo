@@ -34,7 +34,7 @@ export function ParticipantsManager({
   }
   
   const isIndividual = tournamentMode === 'individual'
-  const maxPerTeam = { individual: 1, duos: 2, trios: 3, cuartetos: 4 }[tournamentMode]
+  const maxPerTeam = { individual: 1, duos: 2, trios: 3, cuartetos: 4, quintas: 5 }[tournamentMode]
 
   // Form states
   const [teamName, setTeamName] = useState('')

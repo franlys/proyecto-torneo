@@ -20,6 +20,8 @@ const GAME_NAMES: Record<string, string> = {
   call_of_duty_mobile: 'Call of Duty Mobile 🔫',
   street_fighter_6: 'Street Fighter 6 👊',
   super_smash_bros_ultimate: 'Super Smash Bros Ultimate 💥',
+  league_of_legends: 'League of Legends 🏆',
+  valorant: 'Valorant 🎯',
 }
 
 const DISCIPLINES = [
@@ -30,6 +32,8 @@ const DISCIPLINES = [
   { value: 'call_of_duty_mobile', label: 'COD Mobile' },
   { value: 'street_fighter_6', label: 'SF6' },
   { value: 'super_smash_bros_ultimate', label: 'Smash Bros' },
+  { value: 'league_of_legends', label: 'League of Legends' },
+  { value: 'valorant', label: 'Valorant' },
 ]
 
 export function RankingsClient({ initialRankings }: RankingsClientProps) {
