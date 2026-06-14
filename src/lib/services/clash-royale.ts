@@ -96,6 +96,15 @@ export async function syncClashRoyaleTournamentData(
   const data = await fetchClashRoyaleTournament(tag)
   const members = data.membersList || []
 
+  // Si el torneo terminó en Clash Royale, lo finalizamos localmente
+  if (data.status === 'ended') {
+    console.log(`[CLASH ROYALE SYNC] Torneo ${tournamentId} finalizado en Supercell. Actualizando a 'finished'.`)
+    await supabase
+      .from('tournaments')
+      .update({ status: 'finished' })
+      .eq('id', tournamentId)
+  }
+
   if (members.length === 0) {
     console.log('[CLASH ROYALE SYNC] No members found in tournament')
     return { success: true, count: 0 }
