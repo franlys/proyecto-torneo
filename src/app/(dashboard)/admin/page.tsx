@@ -38,7 +38,7 @@ export default async function AdminPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-white">Panel de Administración</h1>
-        <p className="text-white/40 text-sm mt-1">Vista global de la plataforma Kronix & FDDE</p>
+        <p className="text-white/40 text-sm mt-1">Vista global de la plataforma Kronix</p>
       </div>
 
       {/* Stats */}

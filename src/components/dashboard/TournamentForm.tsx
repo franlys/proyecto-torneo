@@ -91,6 +91,8 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
     organizerSplit: initialData?.organizerSplit ?? 50,
     streamerSplit: initialData?.streamerSplit ?? 50,
     arenaBettingEnabled: initialData?.arenaBettingEnabled ?? false,
+    discipline: initialData?.discipline ?? 'warzone',
+    badgeUrl: initialData?.badgeUrl ?? '',
     scoringRule: initialData?.scoringRule ?? {
       killPoints: 1,
       placementPoints: { '1': 15, '2': 12, '3': 10, '4': 8, '5': 6, '6': 4, '7': 2, '8': 1 },
@@ -120,6 +122,7 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
   const mode = watch('mode')
   const rulesText = watch('rulesText') ?? ''
   const isPrivate = watch('isPrivate')
+  const discipline = watch('discipline')
 
   const maxMatches = level === 'casual' ? 3 : level === 'profesional' ? 12 : undefined
   const minMatches = level === 'profesional' ? 6 : 1
@@ -215,6 +218,24 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
                 />
               </div>
             </div>
+
+            {/* Clash Royale Tag */}
+            {discipline === 'clash_royale' && (
+              <div>
+                <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
+                  Tag del Torneo de Clash Royale (Opcional - Sincronización en Vivo)
+                </label>
+                <input
+                  {...register('clashRoyaleTag')}
+                  placeholder="Ej: #2PPG0GG0"
+                  className={inputClass}
+                />
+                <p className="text-xs text-white/45 mt-1">
+                  Ingresa el tag del torneo de Clash Royale (ej. #2PPG0GG0) para importar participantes y sincronizar el marcador automáticamente.
+                </p>
+                {err(errors.clashRoyaleTag?.message)}
+              </div>
+            )}
           </div>
         </section>
 
@@ -222,6 +243,54 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
         <section>
           <SectionHeader title="Configuración" subtitle="Modalidad, formato y nivel de competencia" />
           <div className="space-y-6">
+
+            {/* Game / Discipline */}
+            <div>
+              <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
+                Juego / Disciplina *
+              </label>
+              <select
+                {...register('discipline')}
+                className={inputClass}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setValue('discipline', val)
+                  // Automate templates based on selected game
+                  if (val === 'clash_royale' || val === 'street_fighter_6' || val === 'super_smash_bros_ultimate') {
+                    setValue('format', 'custom_rooms')
+                    setValue('mode', 'individual')
+                  } else {
+                    setValue('format', 'battle_royale_clasico')
+                  }
+                }}
+              >
+                <option value="warzone">Call of Duty: Warzone 🪂</option>
+                <option value="clash_royale">Clash Royale 👑</option>
+                <option value="fortnite">Fortnite ⛏️</option>
+                <option value="free_fire">Free Fire 🔥</option>
+                <option value="call_of_duty_mobile">Call of Duty Mobile 🔫</option>
+                <option value="street_fighter_6">Street Fighter 6 👊</option>
+                <option value="super_smash_bros_ultimate">Super Smash Bros Ultimate 💥</option>
+              </select>
+              {err(errors.discipline?.message)}
+            </div>
+
+            {/* Tournament Badge Url (Insignia) */}
+            <div>
+              <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
+                Insignia del Torneo (Imagen URL - Obligatorio para premiar ranking) *
+              </label>
+              <input
+                required
+                {...register('badgeUrl')}
+                placeholder="Ej: https://res.cloudinary.com/.../badge.png"
+                className={inputClass}
+              />
+              <p className="text-xs text-white/45 mt-1">
+                Sube la URL de la insignia/medalla del torneo. Se otorgará automáticamente a los ganadores (Top 3) al finalizar el torneo.
+              </p>
+              {err(errors.badgeUrl?.message)}
+            </div>
 
             {/* Tournament Mode */}
             <div>

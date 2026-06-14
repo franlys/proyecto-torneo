@@ -52,6 +52,7 @@ export function LeaderboardClient({
   prize2nd = 0,
   prize3rd = 0,
   prizeMvp = 0,
+  clashRoyaleTag,
 }: {
   tournamentId: string
   tournamentName: string
@@ -85,6 +86,7 @@ export function LeaderboardClient({
   prize2nd?: number
   prize3rd?: number
   prizeMvp?: number
+  clashRoyaleTag?: string | null
 }) {
   // Stable supabase client — created once, not on every render.
   // If this were inside the component body without useMemo, every render would produce
@@ -1065,6 +1067,12 @@ export function LeaderboardClient({
                 }
               </span>
             </div>
+            {clashRoyaleTag && (
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-blue-500/10 border border-blue-500/30 rounded-full text-xs font-black uppercase tracking-widest text-blue-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                <span>Clash Royale ({clashRoyaleTag})</span>
+              </div>
+            )}
           </div>
           {currentStatus === 'finished' && (
             <div className="flex flex-col items-center gap-4 mt-6">

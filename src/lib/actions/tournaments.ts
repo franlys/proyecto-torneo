@@ -69,6 +69,9 @@ function mapTournamentRow(row: Record<string, unknown>): Tournament {
     registrationPassword: row.registration_password as string | undefined | null,
     registrationStartDate: row.registration_start_date as string | undefined | null,
     registrationEndDate: row.registration_end_date as string | undefined | null,
+    clashRoyaleTag: row.clash_royale_tag as string | undefined | null,
+    discipline: (row.discipline as string) || 'warzone',
+    badgeUrl: row.badge_url as string | undefined | null,
   }
 }
 
@@ -135,6 +138,9 @@ export async function createTournament(
       registration_start_date: input.registrationStartDate || new Date().toISOString(),
       registration_end_date: input.registrationEndDate || null,
       hide_logo_in_leaderboard: input.hideLogoInLeaderboard || false,
+      clash_royale_tag: input.clashRoyaleTag || null,
+      discipline: input.discipline || 'warzone',
+      badge_url: input.badgeUrl || null,
       // Finance Model
       entry_fee: input.entryFee || 0,
       prize_1st: input.prize1st || 0,
@@ -270,6 +276,12 @@ export async function updateTournament(
   if (input.logoUrl !== undefined) updatePayload.logo_url = input.logoUrl || null
   if (input.hideLogoInLeaderboard !== undefined)
     updatePayload.hide_logo_in_leaderboard = input.hideLogoInLeaderboard
+  if (input.clashRoyaleTag !== undefined)
+    updatePayload.clash_royale_tag = input.clashRoyaleTag
+  if (input.discipline !== undefined)
+    updatePayload.discipline = input.discipline
+  if (input.badgeUrl !== undefined)
+    updatePayload.badge_url = input.badgeUrl
   
   // Finance Model
   if (input.entryFee !== undefined) updatePayload.entry_fee = input.entryFee
@@ -463,7 +475,7 @@ export async function finishTournament(
   // Verify ownership
   const { data: tournament, error: fetchErr } = await supabase
     .from('tournaments')
-    .select('creator_id, status, slug, is_sanctioned, mode')
+    .select('creator_id, status, slug, is_sanctioned, mode, discipline, badge_url, name')
     .eq('id', id)
     .single()
 
@@ -628,6 +640,126 @@ export async function finishTournament(
         await adminSupabase.from('player_national_stats').upsert(rankUpdates)
       }
     }
+  }
+
+  // --- PLATFORM-WIDE PUBLIC USER RANKINGS AND BADGES UPDATE ---
+  try {
+    const adminSupabase = await createAdminClient()
+    
+    // Fetch standings again using admin client to get team participants
+    const { data: standings } = await adminSupabase
+      .from('team_standings')
+      .select(`
+        rank,
+        team_id,
+        teams (
+          name,
+          participants (
+            user_id,
+            display_name
+          )
+        )
+      `)
+      .eq('tournament_id', id)
+
+    if (standings && standings.length > 0) {
+      const getPlatformRankingPoints = (modeStr: string, r: number): number => {
+        const m = (modeStr || 'individual').toLowerCase()
+        if (r === 1) {
+          if (m === 'individual') return 6.0
+          if (m === 'duos') return 4.0
+          if (m === 'trios') return 2.0
+          return 1.0 // cuartetos / default
+        }
+        if (r === 2) {
+          if (m === 'individual') return 4.0
+          if (m === 'duos') return 3.0
+          if (m === 'trios') return 1.5
+          return 0.75
+        }
+        if (r === 3) {
+          if (m === 'individual') return 3.0
+          if (m === 'duos') return 2.0
+          if (m === 'trios') return 1.0
+          return 0.5
+        }
+        if (r === 4) {
+          if (m === 'individual') return 2.0
+          if (m === 'duos') return 1.0
+          if (m === 'trios') return 0.5
+          return 0.25
+        }
+        if (r === 5) {
+          if (m === 'individual') return 1.0
+          if (m === 'duos') return 0.5
+          if (m === 'trios') return 0.25
+          return 0.1
+        }
+        return 0
+      }
+
+      for (const standing of standings) {
+        const rank = standing.rank || 99
+        const pointsToAward = getPlatformRankingPoints(tournament.mode || 'individual', rank)
+        
+        const team = standing.teams as any
+        const participants = team?.participants || []
+
+        for (const p of participants) {
+          if (!p.user_id) continue
+
+          // A. Insert history record for time-series charts
+          await adminSupabase.from('user_points_history').insert({
+            user_id: p.user_id,
+            tournament_id: id,
+            discipline: tournament.discipline || 'warzone',
+            points_awarded: pointsToAward,
+            rank_achieved: rank
+          })
+
+          // B. Update/Upsert aggregate points
+          const { data: existingRank } = await adminSupabase
+            .from('user_discipline_rankings')
+            .select('points')
+            .eq('user_id', p.user_id)
+            .eq('discipline', tournament.discipline || 'warzone')
+            .maybeSingle()
+
+          if (existingRank) {
+            await adminSupabase
+              .from('user_discipline_rankings')
+              .update({
+                points: Number(existingRank.points) + pointsToAward,
+                updated_at: new Date().toISOString()
+              })
+              .eq('user_id', p.user_id)
+              .eq('discipline', tournament.discipline || 'warzone')
+          } else {
+            await adminSupabase
+              .from('user_discipline_rankings')
+              .insert({
+                user_id: p.user_id,
+                discipline: tournament.discipline || 'warzone',
+                points: pointsToAward,
+                updated_at: new Date().toISOString()
+              })
+          }
+
+          // C. Award badge if tournament has a badge_url and user finished in top 3
+          if (tournament.badge_url && rank <= 3) {
+            await adminSupabase.from('user_badges').insert({
+              user_id: p.user_id,
+              tournament_id: id,
+              badge_url: tournament.badge_url,
+              name: `${tournament.name} - Top ${rank}`,
+              rank_achieved: rank
+            })
+          }
+        }
+      }
+    }
+  } catch (rankingErr) {
+    console.error('[RANKINGS] Error processing platform rankings update:', rankingErr)
   }
 
   // Push finished status to AC mirror

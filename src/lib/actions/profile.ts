@@ -29,3 +29,53 @@ export async function updateProfile(formData: FormData) {
   revalidatePath('/profile')
   return { success: true }
 }
+
+export async function getPlayerDetails(userId: string) {
+  const supabase = await createClient()
+
+  // 1. Fetch user tournament history
+  const { data: participations } = await supabase
+    .from('participants')
+    .select(`
+      id,
+      tournament_id,
+      team_id,
+      tournaments (
+        id,
+        name,
+        slug,
+        discipline,
+        start_date
+      ),
+      teams (
+        id,
+        name,
+        team_standings (
+          rank,
+          total_points,
+          total_kills
+        )
+      )
+    `)
+    .eq('user_id', userId)
+
+  // 2. Fetch badges
+  const { data: badges } = await supabase
+    .from('user_badges')
+    .select('*')
+    .eq('user_id', userId)
+    .order('awarded_at', { ascending: false })
+
+  // 3. Fetch points history
+  const { data: pointsHistory } = await supabase
+    .from('user_points_history')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true })
+
+  return {
+    participations: participations || [],
+    badges: badges || [],
+    pointsHistory: pointsHistory || []
+  }
+}

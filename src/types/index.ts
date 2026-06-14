@@ -66,6 +66,9 @@ export interface Tournament {
   registrationPassword?: string | null;
   registrationStartDate?: string | null;
   registrationEndDate?: string | null;
+  clashRoyaleTag?: string | null;
+  discipline: string;
+  badgeUrl?: string | null;
 }
 
 export interface ScoringRule {

@@ -98,7 +98,7 @@ export function RankingManager() {
             </select>
           </div>
           <div>
-            <label className="block text-[10px] uppercase font-black tracking-widest text-white/40 mb-1.5">Puntos FDDE *</label>
+            <label className="block text-[10px] uppercase font-black tracking-widest text-white/40 mb-1.5">Puntos de Ranking *</label>
             <input 
               type="number"
               required

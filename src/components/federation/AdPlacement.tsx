@@ -22,7 +22,7 @@ export function AdPlacement({ banners, slotName, tournamentId }: AdPlacementProp
   if (!activeAd) {
     return (
       <div className="w-full bg-[#121219]/20 border border-dashed border-white/5 rounded-3xl p-6 text-center text-xs text-white/20 uppercase tracking-widest font-black">
-        Espacio publicitario disponible para patrocinadores oficiales FDDE x KRONIX
+        Espacio publicitario disponible para patrocinadores oficiales KRONIX
       </div>
     )
   }

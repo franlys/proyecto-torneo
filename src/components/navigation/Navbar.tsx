@@ -32,7 +32,7 @@ export function Navbar({ user, profile }: NavbarProps) {
             </span>
           </Link>
           <span className="text-[8px] font-black uppercase tracking-widest bg-white/5 border border-white/10 px-2 py-0.5 rounded text-white/40">
-            FDDE HUB 🇩🇴
+            NATIONAL HUB 🇩🇴
           </span>
         </div>
 

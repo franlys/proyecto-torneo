@@ -98,7 +98,7 @@ export function RankingList({ initialPlayers }: RankingListProps) {
 
         {/* Quick Info */}
         <div className="text-right text-xs text-white/40 uppercase tracking-widest font-bold hidden md:block">
-          Actualizado en tiempo real por <span className="text-neon-cyan">FDDE</span>
+          Actualizado en tiempo real
         </div>
       </div>
 
@@ -133,7 +133,7 @@ export function RankingList({ initialPlayers }: RankingListProps) {
                 <th className="px-6 py-5 text-center">Torneos</th>
                 <th className="px-6 py-5 text-center">Podios</th>
                 <th className="px-6 py-5 text-center">Win Rate</th>
-                <th className="px-6 py-5 text-right">Puntos FDDE</th>
+                <th className="px-6 py-5 text-right">Puntos de Ranking</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -291,7 +291,7 @@ export function RankingList({ initialPlayers }: RankingListProps) {
                         <span className="font-bold font-orbitron text-white text-base">#{selectedPlayer.rankPosition}</span>
                       </div>
                       <div className="flex justify-between items-center text-xs">
-                        <span className="text-white/40 font-bold uppercase">Puntos FDDE</span>
+                        <span className="text-white/40 font-bold uppercase">Puntos de Ranking</span>
                         <span className="font-black font-orbitron text-neon-cyan text-base">{selectedPlayer.points.toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between items-center text-xs">
@@ -423,7 +423,7 @@ export function RankingList({ initialPlayers }: RankingListProps) {
                   </div>
 
                   <div className="border-t border-white/5 pt-4 text-center opacity-30 select-none pointer-events-none mt-6">
-                    <span className="text-[8px] uppercase tracking-widest block font-orbitron">Certificado Oficial por FDDE & KRONIX</span>
+                    <span className="text-[8px] uppercase tracking-widest block font-orbitron">Certificado Oficial por KRONIX</span>
                   </div>
                 </div>
 

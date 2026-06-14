@@ -46,7 +46,7 @@ export default async function CopasPage() {
           <div className="space-y-2">
             <h2 className="text-white font-orbitron font-black text-lg sm:text-xl uppercase tracking-wider">Próxima Actualización</h2>
             <p className="text-white/40 text-xs sm:text-sm leading-relaxed">
-              El calendario de Copas y Ligas Nacionales Federadas oficiales está siendo coordinado por la Federación Dominicana de Deportes Electrónicos (FDDE). Pronto se habilitarán las inscripciones aquí.
+              El calendario de Copas y Ligas Nacionales oficiales está en desarrollo. Pronto se habilitarán las inscripciones aquí.
             </p>
           </div>
           <div className="pt-4 border-t border-white/5">

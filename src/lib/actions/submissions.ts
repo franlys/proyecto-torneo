@@ -130,13 +130,25 @@ export async function createSubmission(
 export async function recalculateStandings(supabase: any, tournamentId: string) {
   // Fetch tournament + rule
   const { data: tourney } = await supabase.from('tournaments')
-    .select('id, total_matches, format, is_sanctioned, mode, tournament_type, scoring_rules(kill_points, placement_points)')
+    .select('id, total_matches, format, is_sanctioned, mode, tournament_type, clash_royale_tag, scoring_rules(kill_points, placement_points)')
     .eq('id', tournamentId).single()
   
   console.log(`[STANDINGS] Recalculating for Tournament: ${tournamentId}`)
   if (!tourney) {
     console.error(`[STANDINGS] Tournament not found: ${tournamentId}`)
     return
+  }
+
+  // If this is a Clash Royale tournament, delegate to its specific sync flow
+  if (tourney.clash_royale_tag) {
+    console.log(`[STANDINGS] Tournament ${tournamentId} is linked to Clash Royale tag ${tourney.clash_royale_tag}. Syncing from API...`)
+    try {
+      const { syncClashRoyaleTournamentData } = await import('@/lib/services/clash-royale')
+      await syncClashRoyaleTournamentData(supabase, tournamentId, tourney.clash_royale_tag)
+      return
+    } catch (err) {
+      console.error(`[STANDINGS] Failed to sync Clash Royale stats:`, err)
+    }
   }
 
   const sRules = Array.isArray(tourney.scoring_rules) ? tourney.scoring_rules[0] : tourney.scoring_rules

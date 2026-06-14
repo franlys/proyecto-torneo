@@ -39,6 +39,9 @@ const tournamentBaseSchema = z.object({
   registrationStartDate: z.string().optional().nullable(),
   registrationEndDate: z.string().optional().nullable(),
   hideLogoInLeaderboard: z.boolean().default(false),
+  clashRoyaleTag: z.string().optional().nullable(),
+  discipline: z.string().default('warzone'),
+  badgeUrl: z.string().url().optional().or(z.literal('')).or(z.null()),
   
   // Finance Model
   entryFee: z.number().min(0).default(0),

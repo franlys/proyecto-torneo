@@ -316,7 +316,7 @@ export default async function Home() {
                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2" /></svg>
                 </div>
                 <h3 className={`${orbitron.className} text-lg font-bold mb-3`}>Estadísticas Reales (Big Data)</h3>
-                <p className="text-white/40 text-xs leading-relaxed">Registro preciso de kills, win rate y clasificaciones para que la FDDE tome decisiones de selección nacional con data en mano.</p>
+                <p className="text-white/40 text-xs leading-relaxed">Registro preciso de kills, win rate y clasificaciones para la toma de decisiones de selección nacional con data en mano.</p>
              </div>
 
              <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
@@ -346,7 +346,7 @@ export default async function Home() {
       {/* Footer */}
       <footer className="py-12 px-8 border-t border-white/5 text-center flex flex-col items-center gap-2">
          <div className="text-white/20 text-[10px] font-black uppercase tracking-[0.3em]">
-            © 2026 KRONIX · FDDE NATIONAL PLATFORM
+            © 2026 KRONIX · NATIONAL PLATFORM
          </div>
          <div className="flex items-center gap-1.5 opacity-30">
             <span className="text-[9px] font-orbitron uppercase tracking-widest text-white/60">Powered by</span>

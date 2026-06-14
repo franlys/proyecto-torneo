@@ -22,6 +22,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^11.11.17",
+    "https-proxy-agent": "^7.0.2",
     "lucide-react": "^1.7.0",
     "next": "14.2.18",
     "react": "^18",
