@@ -1387,10 +1387,12 @@ export function LeaderboardClient({
                             </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            <div className="text-right">
-                              <span className="text-xs font-orbitron font-bold text-white block leading-none">{calculatedKillsLookup[p.id] || 0}</span>
-                              <span className="text-[7px] text-white/30 uppercase font-black tracking-tighter">Kills</span>
-                            </div>
+                            {isShooter && (
+                              <div className="text-right">
+                                <span className="text-xs font-orbitron font-bold text-white block leading-none">{calculatedKillsLookup[p.id] || 0}</span>
+                                <span className="text-[7px] text-white/30 uppercase font-black tracking-tighter">Kills</span>
+                              </div>
+                            )}
                             {p.streamUrl && (
                               <div className="flex gap-1">
                                 <button onClick={() => handleWatchTeam(p.streamUrl)} title="Ver stream" className="p-1 bg-red-600/20 hover:bg-red-600/40 rounded text-red-400 transition-colors">
@@ -1404,7 +1406,7 @@ export function LeaderboardClient({
                           </div>
                         </div>
 
-                        {hasStats && (
+                        {isShooter && hasStats && (
                           <div className="grid grid-cols-4 divide-x divide-white/5 border-t border-white/5">
                             {p.kdRatio != null && (
                               <div className="px-2 py-1.5 text-center">
