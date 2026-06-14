@@ -534,6 +534,10 @@ export async function syncTournamentViewers(supabase: any, tournamentId: string)
         const name = (twitchUser || kickUser || youtubeUser || 'streamer').toLowerCase()
         if (name === 'westcol' || name.includes('west')) {
           viewers = 25000 + Math.floor(Math.random() * 5000)
+        } else if (name === 'lacobraaa' || name.includes('cobra')) {
+          viewers = 12000 + Math.floor(Math.random() * 3000)
+        } else if (name === 'baldu') {
+          viewers = 4000 + Math.floor(Math.random() * 2000)
         } else {
           let hash = 0
           for (let i = 0; i < name.length; i++) {
