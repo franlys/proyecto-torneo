@@ -777,8 +777,17 @@ export function LeaderboardClient({
     const merged = Array.from(calculatedStandingsMap.values()).map((t: any) => {
       const killRate = t.submissionsCount > 0 ? (t.totalKills / t.submissionsCount) : 0
       
-      // Intentamos recuperar el rango previo de la DB si existiera (opcional)
+      // For API-synced tournaments (e.g. Clash Royale), points come from DB standings, not submissions.
+      // If DB has higher points than the submission-calculated total, use DB data as source of truth.
       const dbStanding = (standingsData || []).find((s: any) => s.team_id === t.teamId)
+      const dbPoints = dbStanding ? (dbStanding.total_points || 0) : 0
+      const dbKills = dbStanding ? (dbStanding.total_kills || 0) : 0
+      const dbPotTop = dbStanding ? (dbStanding.pot_top_count || 0) : 0
+
+      // Use the higher value: either from DB sync (CR API) or from submissions calculation
+      const finalPoints = Math.max(t.totalPoints, dbPoints)
+      const finalKills = Math.max(t.totalKills, dbKills)
+      const finalPotTop = Math.max(t.potTopCount, dbPotTop)
 
       const teamStreams: { name: string; url: string }[] = []
       if (t.streamUrl) teamStreams.push({ name: 'Equipo', url: t.streamUrl })
@@ -790,6 +799,9 @@ export function LeaderboardClient({
 
       return {
         ...t,
+        totalPoints: finalPoints,
+        totalKills: finalKills,
+        potTopCount: finalPotTop,
         streams: teamStreams,
         killRate,
         rank: dbStanding ? dbStanding.rank : 999, // Se recalculará en el sort siguiente
