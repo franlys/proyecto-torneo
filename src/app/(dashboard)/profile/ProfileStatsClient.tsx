@@ -74,12 +74,7 @@ export function ProfileStatsClient({
   updateProfileForm,
   subscriptionCard,
 }: ProfileStatsClientProps) {
-  const [activeTab, setActiveTab] = useState<'profile' | 'history' | 'badges' | 'stats' | 'friends'>(
-    participations.some(p => {
-      const tourney = p.tournaments
-      return tourney && (tourney.status === 'pending' || new Date(tourney.start_date) > new Date())
-    }) ? 'history' : 'profile'
-  )
+  const [activeTab, setActiveTab] = useState<'inicio' | 'profile' | 'history' | 'badges' | 'stats' | 'friends'>('inicio')
   const [username, setUsername] = useState(profile?.username ?? '')
   const [streamUrl, setStreamUrl] = useState(profile?.stream_url ?? '')
   const [isSaving, setIsSaving] = useState(false)
@@ -92,7 +87,7 @@ export function ProfileStatsClient({
   const [searchingUsers, setSearchingUsers] = useState(false)
 
   useEffect(() => {
-    if (activeTab === 'friends') {
+    if (activeTab === 'friends' || activeTab === 'inicio') {
       const loadFriends = async () => {
         setLoadingFriends(true)
         const res = await getFriendsList()
@@ -409,6 +404,16 @@ export function ProfileStatsClient({
       {/* Tabs */}
       <div className="flex border-b border-white/5 overflow-x-auto scrollbar-hide">
         <button
+          onClick={() => setActiveTab('inicio')}
+          className={`flex-1 min-w-[80px] py-3 text-xs uppercase font-bold tracking-widest transition-colors border-b-2 ${
+            activeTab === 'inicio'
+              ? 'text-neon-cyan border-neon-cyan font-black'
+              : 'text-white/40 border-transparent hover:text-white/60'
+          }`}
+        >
+          Inicio
+        </button>
+        <button
           onClick={() => setActiveTab('profile')}
           className={`flex-1 min-w-[80px] py-3 text-xs uppercase font-bold tracking-widest transition-colors border-b-2 ${
             activeTab === 'profile'
@@ -462,6 +467,182 @@ export function ProfileStatsClient({
 
       {/* Tab Contents */}
       <div className="space-y-6">
+        {activeTab === 'inicio' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Main Dashboard Section */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Torneos Inscritos widget */}
+              <div className="bg-[#0d0d0f] border border-white/5 rounded-2xl p-6">
+                <h3 className="text-white font-orbitron font-bold text-sm uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <span>🏆</span> Torneos Inscritos
+                </h3>
+                
+                {(() => {
+                  const upcoming = participations.filter(p => {
+                    const status = p.tournaments?.status
+                    return status === 'pending' || status === 'active'
+                  })
+                  
+                  if (upcoming.length === 0) {
+                    return (
+                      <div className="text-center py-8 border border-dashed border-white/5 rounded-2xl bg-white/[0.005]">
+                        <p className="text-white/30 text-xs mb-3">No estás inscrito en ningún torneo activo o pendiente actualmente.</p>
+                        <a 
+                          href="/torneos"
+                          className="inline-block px-4 py-2 bg-neon-cyan/10 border border-neon-cyan/20 hover:bg-neon-cyan/20 text-neon-cyan text-[10px] font-black uppercase tracking-wider rounded-xl transition-all"
+                        >
+                          Explorar Torneos Públicos
+                        </a>
+                      </div>
+                    )
+                  }
+                  
+                  return (
+                    <div className="space-y-4">
+                      {upcoming.map(p => {
+                        const t = p.tournaments
+                        const status = t?.status
+                        const isPending = status === 'pending'
+                        return (
+                          <div key={p.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl bg-white/[0.01] border border-white/5 hover:border-white/10 transition-all gap-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center text-lg">
+                                🏆
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-bold text-white font-orbitron">{t?.name}</h4>
+                                <p className="text-[10px] text-neon-cyan uppercase mt-0.5">{GAME_NAMES[t?.discipline] || t?.discipline}</p>
+                              </div>
+                            </div>
+                            
+                            <div className="flex flex-col items-start sm:items-end gap-1">
+                              {t?.start_date && (
+                                <TournamentCountdown startDate={t.start_date} />
+                              )}
+                              <a 
+                                href={`/t/${t?.slug}`}
+                                className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-[9px] font-black uppercase tracking-wider text-white border border-white/10 rounded-lg transition-all"
+                              >
+                                Ver Detalles
+                              </a>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                })()}
+              </div>
+
+              {/* Top Skills / Discipline Rankings widget */}
+              <div className="bg-[#0d0d0f] border border-white/5 rounded-2xl p-6">
+                <h3 className="text-white font-orbitron font-bold text-sm uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <span>⚡</span> Mis Estadísticas y Skills
+                </h3>
+                
+                {rankings.length === 0 ? (
+                  <div className="text-center py-8 text-white/30 text-xs border border-dashed border-white/5 rounded-2xl bg-white/[0.005]">
+                    Participa en partidas puntuadas para ver tu clasificación de skill aquí.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {rankings.slice(0, 4).map((r) => (
+                      <div key={r.id} className="p-4 rounded-xl bg-white/[0.01] border border-white/5">
+                        <span className="text-[9px] uppercase font-bold tracking-widest text-white/30 block mb-1">
+                          {GAME_NAMES[r.discipline] || r.discipline}
+                        </span>
+                        <div className="flex items-baseline gap-1.5 mt-1">
+                          <span className="text-xl font-bold font-orbitron text-neon-cyan">{Number(r.points).toFixed(1)}</span>
+                          <span className="text-[9px] text-white/50 font-bold uppercase">Puntos de Rango</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right Widget Sidebar Section */}
+            <div className="space-y-6">
+              {/* Amigos Widget */}
+              <div className="bg-[#0d0d0f] border border-white/5 rounded-2xl p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-white font-orbitron font-bold text-sm uppercase tracking-wider flex items-center gap-2">
+                    <span>👥</span> Amigos
+                  </h3>
+                  <button 
+                    onClick={() => setActiveTab('friends')}
+                    className="text-[9px] uppercase font-bold tracking-wider text-neon-cyan hover:underline"
+                  >
+                    Ver todos
+                  </button>
+                </div>
+                
+                {friends.length === 0 ? (
+                  <div className="text-center py-6 text-white/30 text-[10px] border border-dashed border-white/5 rounded-xl bg-white/[0.005]">
+                    Sin amigos agregados.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {friends.slice(0, 3).map(f => (
+                      <div key={f.id} className="flex items-center justify-between p-2 rounded-lg bg-white/[0.005]">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-7 h-7 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center overflow-hidden text-xs shrink-0">
+                            👤
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-white truncate">{f.username}</p>
+                            <p className="text-[8px] text-white/30 font-mono truncate">{f.short_id}</p>
+                          </div>
+                        </div>
+                        {f.stream_url && (
+                          <a 
+                            href={f.stream_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="px-2 py-1 bg-neon-cyan/10 hover:bg-neon-cyan/20 border border-neon-cyan/20 text-neon-cyan text-[8px] font-bold uppercase tracking-wider rounded"
+                          >
+                            Live
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Medallas Ganadas Widget */}
+              <div className="bg-[#0d0d0f] border border-white/5 rounded-2xl p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-white font-orbitron font-bold text-sm uppercase tracking-wider flex items-center gap-2">
+                    <span>🎖️</span> Medallas Ganadas
+                  </h3>
+                  <button 
+                    onClick={() => setActiveTab('badges')}
+                    className="text-[9px] uppercase font-bold tracking-wider text-neon-cyan hover:underline"
+                  >
+                    Ver todas
+                  </button>
+                </div>
+                
+                {badges.length === 0 ? (
+                  <div className="text-center py-6 text-white/30 text-[10px] border border-dashed border-white/5 rounded-xl bg-white/[0.005]">
+                    Aún no tienes medallas.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-4 gap-2">
+                    {badges.slice(0, 8).map(b => (
+                      <div key={b.id} className="aspect-square rounded-lg bg-black/40 border border-white/10 flex items-center justify-center text-lg" title={b.name}>
+                        🏆
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'profile' && (
           <>
             <div className="bg-[#0d0d0f] border border-white/5 rounded-2xl p-6 space-y-4">
