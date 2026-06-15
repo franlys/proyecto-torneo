@@ -452,6 +452,68 @@ export async function processAIValidation(
   }
 }
 
+async function fetchKickViewersWithRetry(username: string, retries = 4): Promise<number> {
+  const target = `https://kick.com/api/v1/channels/${username.toLowerCase()}`
+  const url = `https://api.allorigins.win/get?url=${encodeURIComponent(target)}`
+  
+  for (let i = 0; i < retries; i++) {
+    try {
+      const controller = new AbortController()
+      const id = setTimeout(() => controller.abort(), 4000)
+      
+      const response = await fetch(url, { signal: controller.signal })
+      clearTimeout(id)
+      
+      if (response.status === 200) {
+        const json = await response.json()
+        if (json.contents) {
+          if (json.contents.startsWith('<!DOCTYPE html>') || json.contents.includes('<html')) {
+            continue
+          }
+          const data = JSON.parse(json.contents)
+          return data?.livestream?.viewer_count || 0
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[KICK SYNC] Attempt ${i + 1} failed for ${username}:`, err.message)
+    }
+    await new Promise(r => setTimeout(r, 500))
+  }
+  return 0
+}
+
+async function fetchYoutubeViewers(youtubeUser: string): Promise<number> {
+  try {
+    const formattedUser = youtubeUser.startsWith('@') ? youtubeUser : '@' + youtubeUser
+    const url = `https://www.youtube.com/${formattedUser}/live`
+    
+    const controller = new AbortController()
+    const id = setTimeout(() => controller.abort(), 4000)
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      signal: controller.signal
+    })
+    clearTimeout(id)
+    
+    const html = await response.text()
+    const match = html.match(/ytInitialData\s*=\s*({.+?});/)
+    if (match) {
+      const data = JSON.parse(match[1])
+      const viewCountRenderer = data?.contents?.twoColumnWatchNextResults?.results?.results?.contents?.[0]?.videoPrimaryInfoRenderer?.viewCount?.videoViewCountRenderer
+      if (viewCountRenderer && viewCountRenderer.isLive) {
+        return parseInt(viewCountRenderer.originalViewCount || '0', 10)
+      }
+    }
+  } catch (err: any) {
+    console.error(`[YT SYNC] Error fetching youtube viewers for ${youtubeUser}:`, err.message)
+  }
+  return 0
+}
+
 export async function syncTournamentViewers(supabase: any, tournamentId: string): Promise<number> {
   try {
     // 1. Fetch all teams and participants stream URLs for this tournament
@@ -517,34 +579,9 @@ export async function syncTournamentViewers(supabase: any, tournamentId: string)
           console.error(`Error fetching twitch viewers for ${twitchUser}:`, err)
         }
       } else if (kickUser) {
-        try {
-          const response = await fetch(`https://kick.com/api/v1/channels/${kickUser.toLowerCase()}`, {
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            }
-          })
-          const data = await response.json()
-          viewers = data?.livestream?.viewer_count || 0
-        } catch (err) {
-          console.error(`Error fetching kick viewers for ${kickUser}:`, err)
-        }
-      }
-
-      if (viewers === 0) {
-        const name = (twitchUser || kickUser || youtubeUser || 'streamer').toLowerCase()
-        if (name === 'westcol' || name.includes('west')) {
-          viewers = 25000 + Math.floor(Math.random() * 5000)
-        } else if (name === 'lacobraaa' || name.includes('cobra')) {
-          viewers = 12000 + Math.floor(Math.random() * 3000)
-        } else if (name === 'baldu') {
-          viewers = 4000 + Math.floor(Math.random() * 2000)
-        } else {
-          let hash = 0
-          for (let i = 0; i < name.length; i++) {
-            hash = name.charCodeAt(i) + ((hash << 5) - hash)
-          }
-          viewers = 150 + (Math.abs(hash) % 851)
-        }
+        viewers = await fetchKickViewersWithRetry(kickUser)
+      } else if (youtubeUser) {
+        viewers = await fetchYoutubeViewers(youtubeUser)
       }
 
       totalViewers += viewers
@@ -562,4 +599,5 @@ export async function syncTournamentViewers(supabase: any, tournamentId: string)
     return 0
   }
 }
+
 

@@ -14,11 +14,11 @@ export default async function AdminSettingsPage() {
   // Fetch real active tournament statistics
   const { data: activeTournaments } = await adminSupabase
     .from('tournaments')
-    .select('total_live_viewers')
-    .eq('status', 'active')
+    .select('total_live_viewers, status')
+    .neq('status', 'draft')
 
-  const activeCount = activeTournaments?.length || 0
-  const totalViewers = activeTournaments?.reduce((acc, curr) => acc + (curr.total_live_viewers || 0), 0) || 0
+  const activeCount = activeTournaments?.filter((t: any) => t.status === 'active' || t.status === 'pending').length || 0
+  const totalViewers = activeTournaments?.reduce((acc: number, curr: any) => acc + (curr.total_live_viewers || 0), 0) || 0
 
   return (
     <SettingsClient 
