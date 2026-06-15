@@ -365,6 +365,9 @@ export function ProfileStatsClient({
                   />
                   <p className="text-[10px] text-white/40 mt-2">
                     Solo se permiten letras, números y guiones bajos (sin espacios). Mínimo 2, máximo 30 caracteres.
+                    <span className="text-yellow-500/80 block mt-1 font-semibold">
+                      Límite: Tienes 1 cambio gratuito de nombre. (Cambios realizados: {profile?.usernameChangesCount || 0}/1)
+                    </span>
                   </p>
                 </div>
                 <button

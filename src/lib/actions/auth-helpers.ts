@@ -9,6 +9,7 @@ export type Profile = {
   subscriptionStatus: 'NONE' | 'PENDING' | 'ACTIVE' | 'EXPIRED'
   subscriptionExpiry: string | null
   avatarUrl: string | null
+  usernameChangesCount: number
 }
 
 /**
@@ -34,7 +35,8 @@ export async function getProfile(): Promise<Profile | null> {
     role: profile.role,
     subscriptionStatus: profile.subscription_status,
     subscriptionExpiry: profile.subscription_expiry,
-    avatarUrl: profile.avatar_url
+    avatarUrl: profile.avatar_url,
+    usernameChangesCount: profile.username_changes_count || 0
   }
 }
 

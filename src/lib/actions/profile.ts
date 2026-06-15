@@ -20,11 +20,49 @@ export async function updateProfile(formData: FormData) {
   if (!parsed.success) return { error: parsed.error.errors[0].message }
 
   const adminSupabase = await createAdminClient()
+
+  // Fetch existing profile to preserve role, check changes limit and uniqueness
+  const { data: existingProfile } = await adminSupabase
+    .from('profiles')
+    .select('role, username, username_changes_count')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  const role = existingProfile?.role || 'USER'
+  let changesCount = existingProfile?.username_changes_count || 0
+
+  const newUsername = parsed.data.username
+  const currentUsername = existingProfile?.username
+
+  if (newUsername && newUsername !== currentUsername) {
+    // Check if duplicate username
+    const { data: duplicateUser } = await adminSupabase
+      .from('profiles')
+      .select('id')
+      .eq('username', newUsername)
+      .neq('id', user.id)
+      .maybeSingle()
+
+    if (duplicateUser) {
+      return { error: 'El nombre de usuario ya está registrado por otro jugador' }
+    }
+
+    // If they had a username before, this counts as a name change
+    if (currentUsername) {
+      if (changesCount >= 1) {
+        return { error: 'Ya has agotado tu cambio de nombre gratuito. Los siguientes cambios son de pago.' }
+      }
+      changesCount += 1
+    }
+  }
+
   const { error } = await adminSupabase
     .from('profiles')
     .upsert({ 
       id: user.id, 
-      username: parsed.data.username, 
+      username: newUsername, 
+      role,
+      username_changes_count: changesCount,
       updated_at: new Date().toISOString() 
     })
 
@@ -106,6 +144,16 @@ export async function uploadProfileAvatar(formData: FormData) {
   const buffer = Buffer.from(await file.arrayBuffer())
 
   const adminSupabase = await createAdminClient()
+
+  // Fetch existing profile to preserve role and avoid resetting it
+  const { data: existingProfile } = await adminSupabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  const role = existingProfile?.role || 'USER'
+
   const { error: uploadError } = await adminSupabase.storage
     .from('evidences')
     .upload(filePath, buffer, { upsert: true, contentType: file.type })
@@ -120,6 +168,7 @@ export async function uploadProfileAvatar(formData: FormData) {
     .upsert({
       id: user.id,
       avatar_url: urlWithBust,
+      role,
       updated_at: new Date().toISOString()
     })
 
