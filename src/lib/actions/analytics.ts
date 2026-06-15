@@ -9,6 +9,8 @@ export interface TournamentAnalyticsSummary {
   totalViews: number
   uniqueVisitors: number
   totalAdClicks: number
+  averageViewers?: number
+  peakViewers?: number
 }
 
 export interface AdAnalyticsSummary {
@@ -51,11 +53,11 @@ export async function getPlatformAnalytics() {
   const totalAdClicks = events.filter(e => e.event_type === 'click_ad').length
 
   // Process tournament-specific statistics
-  const tournamentStats: Record<string, { views: number; visitors: Set<string>; clicks: number }> = {}
+  const tournamentStats: Record<string, { views: number; visitors: Set<string>; clicks: number; viewerCounts: number[] }> = {}
 
   // Initialize all tournaments with 0
   tournamentMap.forEach((name, id) => {
-    tournamentStats[id] = { views: 0, visitors: new Set(), clicks: 0 }
+    tournamentStats[id] = { views: 0, visitors: new Set(), clicks: 0, viewerCounts: [] }
   })
 
   events.forEach(event => {
@@ -63,7 +65,7 @@ export async function getPlatformAnalytics() {
     if (!tId) return
 
     if (!tournamentStats[tId]) {
-      tournamentStats[tId] = { views: 0, visitors: new Set(), clicks: 0 }
+      tournamentStats[tId] = { views: 0, visitors: new Set(), clicks: 0, viewerCounts: [] }
     }
 
     if (event.event_type === 'page_view') {
@@ -71,16 +73,28 @@ export async function getPlatformAnalytics() {
       tournamentStats[tId].visitors.add(event.visitor_id)
     } else if (event.event_type === 'click_ad') {
       tournamentStats[tId].clicks++
+    } else if (event.event_type === 'stream_viewers_snapshot') {
+      const metadata = typeof event.metadata === 'string' ? JSON.parse(event.metadata) : event.metadata
+      const count = Number(metadata?.viewer_count ?? 0)
+      tournamentStats[tId].viewerCounts.push(count)
     }
   })
 
-  const formattedTournaments: TournamentAnalyticsSummary[] = Object.entries(tournamentStats).map(([id, stats]) => ({
-    tournamentId: id,
-    tournamentName: tournamentMap.get(id) || 'Torneo Eliminado',
-    totalViews: stats.views,
-    uniqueVisitors: stats.visitors.size,
-    totalAdClicks: stats.clicks
-  })).sort((a, b) => b.totalViews - a.totalViews)
+  const formattedTournaments: TournamentAnalyticsSummary[] = Object.entries(tournamentStats).map(([id, stats]) => {
+    const counts = stats.viewerCounts
+    const averageViewers = counts.length > 0 ? Math.round(counts.reduce((a, b) => a + b, 0) / counts.length) : 0
+    const peakViewers = counts.length > 0 ? Math.max(...counts) : 0
+
+    return {
+      tournamentId: id,
+      tournamentName: tournamentMap.get(id) || 'Torneo Eliminado',
+      totalViews: stats.views,
+      uniqueVisitors: stats.visitors.size,
+      totalAdClicks: stats.clicks,
+      averageViewers,
+      peakViewers
+    }
+  }).sort((a, b) => b.totalViews - a.totalViews)
 
   // Process Advertising Statistics
   const adStats: Record<string, { clicks: number; advertiserName: string; clickThroughUrl: string }> = {}
@@ -113,6 +127,20 @@ export async function getPlatformAnalytics() {
     }
   }).sort((a, b) => b.totalClicks - a.totalClicks)
 
+  // Process Stream Viewers History log
+  const streamViewersHistory = events
+    .filter(e => e.event_type === 'stream_viewers_snapshot')
+    .map(e => {
+      const metadata = typeof e.metadata === 'string' ? JSON.parse(e.metadata) : e.metadata
+      return {
+        id: e.id,
+        tournamentId: e.tournament_id,
+        tournamentName: tournamentMap.get(e.tournament_id) || 'Torneo Eliminado',
+        viewerCount: Number(metadata?.viewer_count ?? 0),
+        createdAt: e.created_at
+      }
+    })
+
   return {
     data: {
       global: {
@@ -125,6 +153,7 @@ export async function getPlatformAnalytics() {
       },
       tournaments: formattedTournaments,
       ads: formattedAds,
+      streamViewersHistory,
       rawEvents: events.slice(0, 100) // limit raw view to last 100 events
     }
   }

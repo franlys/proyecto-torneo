@@ -597,6 +597,15 @@ export async function syncTournamentViewers(supabase: any, tournamentId: string)
       .update({ total_live_viewers: totalViewers })
       .eq('id', tournamentId)
 
+    // Insert snapshot history into tournament_analytics table
+    await supabase.from('tournament_analytics').insert({
+      tournament_id: tournamentId,
+      event_type: 'stream_viewers_snapshot',
+      path: '',
+      visitor_id: 'system',
+      metadata: { viewer_count: totalViewers }
+    })
+
     return totalViewers
   } catch (err) {
     console.error('Error syncing tournament viewers:', err)

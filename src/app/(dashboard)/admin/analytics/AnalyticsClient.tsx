@@ -16,12 +16,19 @@ interface AnalyticsClientProps {
     }
     tournaments: TournamentAnalyticsSummary[]
     ads: AdAnalyticsSummary[]
+    streamViewersHistory: {
+      id: string
+      tournamentId: string
+      tournamentName: string
+      viewerCount: number
+      createdAt: string
+    }[]
     rawEvents: any[]
   }
 }
 
 export function AnalyticsClient({ data }: AnalyticsClientProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'tournaments' | 'ads' | 'logs'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'tournaments' | 'stream_viewers' | 'ads' | 'logs'>('overview')
   const [searchTerm, setSearchTerm] = useState('')
 
   // Filtered tournaments
@@ -32,22 +39,24 @@ export function AnalyticsClient({ data }: AnalyticsClientProps) {
   }, [data.tournaments, searchTerm])
 
   // CSV Exporter Utility
-  const exportToCSV = (type: 'tournaments' | 'ads') => {
+  const exportToCSV = (type: 'tournaments' | 'ads' | 'streams') => {
     let headers: string[] = []
     let rows: string[][] = []
     let filename = ''
 
     if (type === 'tournaments') {
-      headers = ['ID de Torneo', 'Nombre del Torneo', 'Vistas Totales', 'Visitantes Únicos', 'Clics en Patrocinadores']
+      headers = ['ID de Torneo', 'Nombre del Torneo', 'Vistas Totales', 'Visitantes Únicos', 'Clics en Patrocinadores', 'Espectadores Promedio', 'Pico de Espectadores']
       rows = data.tournaments.map(t => [
         t.tournamentId,
         t.tournamentName,
         t.totalViews.toString(),
         t.uniqueVisitors.toString(),
-        t.totalAdClicks.toString()
+        t.totalAdClicks.toString(),
+        (t.averageViewers ?? 0).toString(),
+        (t.peakViewers ?? 0).toString()
       ])
       filename = `reporte_torneos_${new Date().toISOString().split('T')[0]}.csv`
-    } else {
+    } else if (type === 'ads') {
       headers = ['Espacio publicitario', 'Patrocinador', 'Clics totales', 'URL Destino']
       rows = data.ads.map(ad => [
         ad.slotName,
@@ -56,6 +65,14 @@ export function AnalyticsClient({ data }: AnalyticsClientProps) {
         ad.clickThroughUrl
       ])
       filename = `reporte_publicidad_${new Date().toISOString().split('T')[0]}.csv`
+    } else {
+      headers = ['Fecha/Hora', 'Torneo', 'Espectadores en Vivo']
+      rows = (data.streamViewersHistory || []).map(sh => [
+        new Date(sh.createdAt).toLocaleString('es'),
+        sh.tournamentName,
+        sh.viewerCount.toString()
+      ])
+      filename = `reporte_espectadores_streams_${new Date().toISOString().split('T')[0]}.csv`
     }
 
     const csvContent = [
@@ -96,6 +113,12 @@ export function AnalyticsClient({ data }: AnalyticsClientProps) {
             className="px-4 py-2 bg-neon-cyan text-black font-black text-xs uppercase tracking-wider rounded-lg hover:shadow-[0_0_15px_rgba(0,245,255,0.3)] transition-all flex items-center gap-2"
           >
             📊 Exportar Torneos (CSV)
+          </button>
+          <button
+            onClick={() => exportToCSV('streams')}
+            className="px-4 py-2 bg-purple-500 text-white font-black text-xs uppercase tracking-wider rounded-lg hover:shadow-[0_0_15px_rgba(168,85,247,0.3)] transition-all flex items-center gap-2"
+          >
+            📺 Exportar Streams (CSV)
           </button>
           <button
             onClick={() => exportToCSV('ads')}
@@ -154,6 +177,14 @@ export function AnalyticsClient({ data }: AnalyticsClientProps) {
           }`}
         >
           Torneos y Tráfico
+        </button>
+        <button
+          onClick={() => setActiveTab('stream_viewers')}
+          className={`px-5 py-3 text-xs font-black uppercase tracking-widest border-b-2 transition-all ${
+            activeTab === 'stream_viewers' ? 'border-neon-cyan text-white' : 'border-transparent text-white/40 hover:text-white/80'
+          }`}
+        >
+          Espectadores de Streams
         </button>
         <button
           onClick={() => setActiveTab('ads')}
@@ -329,6 +360,107 @@ export function AnalyticsClient({ data }: AnalyticsClientProps) {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'stream_viewers' && (
+        <div className="space-y-8">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-neon-cyan/5 blur-2xl rounded-full" />
+              <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">Pico de Espectadores Histórico</p>
+              <p className="text-3xl font-black text-neon-cyan mt-3 font-orbitron">
+                {Math.max(...data.tournaments.map(t => t.peakViewers ?? 0), 0).toLocaleString()}
+              </p>
+              <p className="text-[10px] text-white/30 mt-1">Pico máximo registrado en streams concurrentes</p>
+            </div>
+
+            <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 blur-2xl rounded-full" />
+              <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">Promedio General de Espectadores</p>
+              <p className="text-3xl font-black text-purple-400 mt-3 font-orbitron">
+                {data.tournaments.length > 0 
+                  ? Math.round(data.tournaments.reduce((acc, t) => acc + (t.averageViewers ?? 0), 0) / data.tournaments.length).toLocaleString()
+                  : 0
+                }
+              </p>
+              <p className="text-[10px] text-white/30 mt-1">Promedio de espectadores en vivo por torneo</p>
+            </div>
+
+            <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-500/5 blur-2xl rounded-full" />
+              <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">Muestras de Tráfico Registradas</p>
+              <p className="text-3xl font-black text-yellow-400 mt-3 font-orbitron">
+                {(data.streamViewersHistory || []).length}
+              </p>
+              <p className="text-[10px] text-white/30 mt-1">Total de snapshots capturados en tiempo real</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Viewers by Tournament Table */}
+            <div className="lg:col-span-6 bg-white/[0.02] border border-white/5 rounded-3xl p-6 space-y-4">
+              <div>
+                <h3 className="text-white font-bold text-base">Espectadores por Torneo</h3>
+                <p className="text-white/40 text-xs mt-0.5">Métricas de streaming en vivo por torneo activo</p>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-white/5 text-white/40 uppercase tracking-widest font-black">
+                      <th className="py-3 px-2">Torneo</th>
+                      <th className="py-3 px-2 text-center">Promedio</th>
+                      <th className="py-3 px-2 text-center">Pico Máximo</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {filteredTournaments.map(t => (
+                      <tr key={t.tournamentId} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="py-3 px-2 font-bold text-white text-xs">{t.tournamentName}</td>
+                        <td className="py-3 px-2 text-center font-orbitron text-purple-400 font-bold">{(t.averageViewers ?? 0).toLocaleString()}</td>
+                        <td className="py-3 px-2 text-center font-orbitron text-neon-cyan font-bold">{(t.peakViewers ?? 0).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                    {filteredTournaments.length === 0 && (
+                      <tr>
+                        <td colSpan={3} className="py-12 text-center text-white/30 italic">No hay torneos registrados</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Live Snapshots History Timeline */}
+            <div className="lg:col-span-6 bg-white/[0.02] border border-white/5 rounded-3xl p-6 space-y-4">
+              <div>
+                <h3 className="text-white font-bold text-base">Historial de Capturas de Tráfico (Snapshots)</h3>
+                <p className="text-white/40 text-xs mt-0.5">Capturas automáticas de espectadores concurrentes</p>
+              </div>
+
+              <div className="overflow-x-auto max-h-[300px] scrollbar-thin scrollbar-thumb-white/10 pr-2">
+                <div className="space-y-4">
+                  {(data.streamViewersHistory || []).map((sh) => (
+                    <div key={sh.id} className="flex justify-between items-center border-b border-white/5 pb-2">
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] text-white/40">{new Date(sh.createdAt).toLocaleString('es')}</p>
+                        <p className="text-xs font-bold text-white">{sh.tournamentName}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-orbitron font-black text-neon-cyan text-sm">{sh.viewerCount.toLocaleString()}</span>
+                        <span className="text-[8px] text-white/30 uppercase block font-bold">Espectadores</span>
+                      </div>
+                    </div>
+                  ))}
+                  {(data.streamViewersHistory || []).length === 0 && (
+                    <p className="text-center py-12 text-white/20 text-sm italic">Sin capturas de espectadores registradas aún</p>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
