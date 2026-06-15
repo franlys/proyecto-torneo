@@ -34,7 +34,7 @@ function EmptyState() {
 
 export default async function TournamentsPage() {
   const profile = await getProfile()
-  if (profile?.role === 'USER') {
+  if (!profile || profile.role === 'USER') {
     redirect('/profile')
   }
 

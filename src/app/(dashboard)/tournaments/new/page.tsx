@@ -28,7 +28,7 @@ const TournamentForm = dynamic(
 
 export default async function NewTournamentPage() {
   const profile = await getProfile()
-  if (profile?.role === 'USER') {
+  if (!profile || profile.role === 'USER') {
     redirect('/profile')
   }
 
