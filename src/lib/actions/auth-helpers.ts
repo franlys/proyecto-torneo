@@ -8,6 +8,7 @@ export type Profile = {
   role: 'ADMIN' | 'FEDERATION' | 'STREAMER' | 'USER'
   subscriptionStatus: 'NONE' | 'PENDING' | 'ACTIVE' | 'EXPIRED'
   subscriptionExpiry: string | null
+  avatarUrl: string | null
 }
 
 /**
@@ -32,7 +33,8 @@ export async function getProfile(): Promise<Profile | null> {
     username: profile.username,
     role: profile.role,
     subscriptionStatus: profile.subscription_status,
-    subscriptionExpiry: profile.subscription_expiry
+    subscriptionExpiry: profile.subscription_expiry,
+    avatarUrl: profile.avatar_url
   }
 }
 

@@ -83,3 +83,48 @@ export async function getPlayerDetails(userId: string) {
     pointsHistory: pointsHistory || []
   }
 }
+
+export async function uploadProfileAvatar(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autorizado' }
+
+  const file = formData.get('file') as File | null
+  if (!file) return { error: 'No se recibió archivo' }
+
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
+  if (!allowedTypes.includes(file.type)) {
+    return { error: 'Tipo de archivo no permitido. Solo imágenes JPG, PNG, WEBP o GIF.' }
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    return { error: 'El archivo supera el límite de 5 MB' }
+  }
+
+  const ext = file.name.split('.').pop() || 'png'
+  const filePath = `profile-avatars/${user.id}-avatar.${ext}`
+  const buffer = Buffer.from(await file.arrayBuffer())
+
+  const adminSupabase = await createAdminClient()
+  const { error: uploadError } = await adminSupabase.storage
+    .from('evidences')
+    .upload(filePath, buffer, { upsert: true, contentType: file.type })
+
+  if (uploadError) return { error: uploadError.message }
+
+  const { data: { publicUrl } } = adminSupabase.storage.from('evidences').getPublicUrl(filePath)
+  const urlWithBust = `${publicUrl}?t=${Date.now()}`
+
+  const { error: updateError } = await adminSupabase
+    .from('profiles')
+    .upsert({
+      id: user.id,
+      avatar_url: urlWithBust,
+      updated_at: new Date().toISOString()
+    })
+
+  if (updateError) return { error: updateError.message }
+
+  revalidatePath('/profile')
+  return { success: true, url: urlWithBust }
+}

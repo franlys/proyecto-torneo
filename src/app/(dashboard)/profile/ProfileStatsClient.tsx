@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts'
-import { updateProfile } from '@/lib/actions/profile'
+import { updateProfile, uploadProfileAvatar } from '@/lib/actions/profile'
 import { toast } from 'sonner'
 
 interface ProfileStatsClientProps {
@@ -62,6 +62,34 @@ export function ProfileStatsClient({
       toast.error('Error al actualizar perfil: ' + err.message)
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const [avatarUrl, setAvatarUrl] = useState(profile?.avatarUrl || null)
+  const [isUploading, setIsUploading] = useState(false)
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsUploading(true)
+    const toastId = toast.loading('Subiendo foto de perfil...')
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await uploadProfileAvatar(formData)
+      if (res && 'error' in res) {
+        toast.error(res.error, { id: toastId })
+      } else {
+        toast.success('Foto de perfil actualizada con éxito', { id: toastId })
+        if (res.url) {
+          setAvatarUrl(res.url)
+        }
+      }
+    } catch (err: any) {
+      toast.error('Error al subir foto: ' + err.message, { id: toastId })
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -213,11 +241,31 @@ export function ProfileStatsClient({
       {/* Account Info Card */}
       <div className="bg-[#0d0d0f] border border-white/5 rounded-2xl p-6 space-y-6">
         <div className="flex items-start gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-neon-cyan/20 to-neon-purple/20 border border-neon-cyan/20 flex items-center justify-center shrink-0">
-            <span className="text-neon-cyan text-2xl font-black font-orbitron">
-              {(profile?.username?.[0] || user.email?.[0] || '?').toUpperCase()}
-            </span>
-          </div>
+          <label className="relative w-16 h-16 rounded-2xl border border-neon-cyan/20 flex items-center justify-center shrink-0 cursor-pointer overflow-hidden group">
+            <input 
+              type="file" 
+              accept="image/*" 
+              onChange={handleAvatarChange} 
+              className="hidden" 
+              disabled={isUploading}
+            />
+            {avatarUrl ? (
+              <img 
+                src={avatarUrl} 
+                alt="Avatar" 
+                className="w-full h-full object-cover transition-opacity group-hover:opacity-40" 
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-neon-cyan/20 to-neon-purple/20 flex items-center justify-center transition-opacity group-hover:opacity-40">
+                <span className="text-neon-cyan text-2xl font-black font-orbitron">
+                  {(profile?.username?.[0] || user.email?.[0] || '?').toUpperCase()}
+                </span>
+              </div>
+            )}
+            <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="text-[9px] font-black uppercase text-neon-cyan tracking-wider">Subir</span>
+            </div>
+          </label>
           <div className="flex-1 min-w-0">
             <p className="text-white text-lg font-bold font-orbitron truncate">
               {profile?.username || 'Usuario Sin Nickname'}
