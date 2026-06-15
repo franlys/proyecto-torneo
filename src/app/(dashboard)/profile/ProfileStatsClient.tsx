@@ -469,12 +469,14 @@ export function ProfileStatsClient({
               <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl flex flex-col gap-1.5 mb-4">
                 <span className="text-[9px] uppercase font-bold tracking-wider text-white/40">Tu ID Único de Amigo</span>
                 <div className="flex items-center justify-between gap-2">
-                  <code className="text-xs font-mono text-neon-cyan select-all break-all">{user.id}</code>
+                  <code className="text-xs font-mono text-neon-cyan select-all">{profile?.shortId || 'KX-XXXXXX'}</code>
                   <button
                     type="button"
                     onClick={() => {
-                      navigator.clipboard.writeText(user.id)
-                      toast.success('¡ID Copiado al portapapeles!')
+                      if (profile?.shortId) {
+                        navigator.clipboard.writeText(profile.shortId)
+                        toast.success('¡ID Copiado al portapapeles!')
+                      }
                     }}
                     className="px-2.5 py-1 bg-white/5 border border-white/10 hover:bg-neon-cyan hover:text-black hover:border-neon-cyan transition-all rounded text-[9px] font-black uppercase tracking-wider shrink-0"
                   >
@@ -576,6 +578,7 @@ export function ProfileStatsClient({
                           </div>
                           <div className="min-w-0">
                             <p className="text-xs font-bold text-white truncate">{result.username || 'Sin Nickname'}</p>
+                            <span className="text-[9px] text-white/40 block font-mono">{result.short_id}</span>
                             {result.stream_url && (
                               <span className="text-[9px] text-neon-cyan block truncate max-w-[120px]">📺 {result.stream_url}</span>
                             )}
@@ -622,6 +625,7 @@ export function ProfileStatsClient({
                         </div>
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-white truncate">{friend.username || 'Sin Nickname'}</p>
+                          <span className="text-[9px] text-white/40 block font-mono mb-1">{friend.short_id}</span>
                           {friend.stream_url ? (
                             <a 
                               href={friend.stream_url} 

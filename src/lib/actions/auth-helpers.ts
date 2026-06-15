@@ -10,6 +10,7 @@ export type Profile = {
   subscriptionExpiry: string | null
   avatarUrl: string | null
   usernameChangesCount: number
+  shortId: string | null
 }
 
 /**
@@ -20,7 +21,7 @@ export async function getProfile(): Promise<Profile | null> {
   const { data: { user } } = await supabase.auth.getUser()
   
   if (!user) return null
-
+ 
   const { data: profile } = await supabase
     .from('profiles')
     .select('*')
@@ -36,7 +37,8 @@ export async function getProfile(): Promise<Profile | null> {
     subscriptionStatus: profile.subscription_status,
     subscriptionExpiry: profile.subscription_expiry,
     avatarUrl: profile.avatar_url,
-    usernameChangesCount: profile.username_changes_count || 0
+    usernameChangesCount: profile.username_changes_count || 0,
+    shortId: profile.short_id || null
   }
 }
 

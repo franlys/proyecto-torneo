@@ -15,16 +15,24 @@ export async function searchUsersForFriends(query: string) {
 
     const adminSupabase = await createAdminClient()
     
-    // Check if query is a valid UUID
+    // Normalize search query
+    let formattedQuery = query.trim().toUpperCase()
+    if (/^[0-9A-Z]{6}$/i.test(formattedQuery)) {
+      formattedQuery = `KX-${formattedQuery}`
+    }
+
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(query.trim())
+    const isShortId = /^KX-[0-9A-Z]{6}$/i.test(formattedQuery)
     
     let queryBuilder = adminSupabase
       .from('profiles')
-      .select('id, username, avatar_url, stream_url')
+      .select('id, username, avatar_url, stream_url, short_id')
       .neq('id', user.id)
 
     if (isUuid) {
       queryBuilder = queryBuilder.eq('id', query.trim())
+    } else if (isShortId) {
+      queryBuilder = queryBuilder.eq('short_id', formattedQuery)
     } else {
       queryBuilder = queryBuilder.ilike('username', `%${query.trim()}%`)
     }
@@ -106,7 +114,7 @@ export async function getFriendsList() {
     // Fetch friend profiles
     const { data: profiles, error: profilesErr } = await adminSupabase
       .from('profiles')
-      .select('id, username, avatar_url, stream_url')
+      .select('id, username, avatar_url, stream_url, short_id')
       .in('id', friendIds)
 
     if (profilesErr) throw profilesErr
