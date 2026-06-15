@@ -21,8 +21,11 @@ export async function updateProfile(formData: FormData) {
 
   const { error } = await supabase
     .from('profiles')
-    .update({ username: parsed.data.username, updated_at: new Date().toISOString() })
-    .eq('id', user.id)
+    .upsert({ 
+      id: user.id, 
+      username: parsed.data.username, 
+      updated_at: new Date().toISOString() 
+    })
 
   if (error) return { error: error.message }
 
