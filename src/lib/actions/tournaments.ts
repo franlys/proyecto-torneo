@@ -282,6 +282,17 @@ export async function updateTournament(
     updatePayload.discipline = input.discipline
   if (input.badgeUrl !== undefined)
     updatePayload.badge_url = input.badgeUrl
+  if (input.maxTeams !== undefined)
+    updatePayload.max_teams = input.maxTeams
+  if (input.isPrivate !== undefined)
+    updatePayload.is_private = input.isPrivate
+  if (input.registrationPassword !== undefined)
+    updatePayload.registration_password = input.registrationPassword
+  if (input.registrationStartDate !== undefined)
+    updatePayload.registration_start_date = input.registrationStartDate || null
+  if (input.registrationEndDate !== undefined)
+    updatePayload.registration_end_date = input.registrationEndDate || null
+
   
   // Finance Model
   if (input.entryFee !== undefined) updatePayload.entry_fee = input.entryFee
