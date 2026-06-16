@@ -168,6 +168,7 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
   const rulesText = watch('rulesText') ?? ''
   const isPrivate = watch('isPrivate')
   const discipline = watch('discipline')
+  const maxPointsLimit = watch('maxPointsLimit')
 
   const maxMatches = level === 'casual' ? 3 : level === 'profesional' ? 12 : undefined
   const minMatches = level === 'profesional' ? 6 : 1
@@ -175,6 +176,12 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
   async function onSubmit(data: CreateTournamentInput) {
     setServerError(null)
     const cleanedData = { ...data }
+    
+    // Si se establece un limite de puntos maximos, el torneo empieza con 1 partida (o la cantidad actual si se edita)
+    if (cleanedData.maxPointsLimit && cleanedData.maxPointsLimit > 0) {
+      cleanedData.totalMatches = initialData?.totalMatches ?? 1
+    }
+
     if (!cleanedData.entryFee || cleanedData.entryFee === 0) {
       cleanedData.organizerSplit = 0
       cleanedData.streamerSplit = 0
@@ -547,23 +554,31 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
               <div>
                 <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
                   Total de partidas *
-                  {level === 'casual' && (
-                    <span className="ml-2 text-white/30 normal-case font-normal">(máx. 3)</span>
-                  )}
-                  {level === 'profesional' && (
-                    <span className="ml-2 text-white/30 normal-case font-normal">(6–12)</span>
-                  )}
                 </label>
-                <input
-                  type="number"
-                  min={minMatches}
-                  max={maxMatches}
-                  {...register('totalMatches', { valueAsNumber: true })}
-                  className="w-32 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm
-                    focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/20 focus:outline-none
-                    transition-all duration-150"
-                />
-                {err(errors.totalMatches?.message)}
+                {maxPointsLimit && maxPointsLimit > 0 ? (
+                  <div className="text-neon-cyan text-[11px] font-bold bg-neon-cyan/5 border border-neon-cyan/20 rounded-xl px-4 py-3 max-w-md shadow-[0_0_15px_rgba(0,245,255,0.05)]">
+                    ⚡ Partidas Dinámicas Activadas: Las partidas se abrirán de forma progresiva hasta alcanzar el límite de {maxPointsLimit} puntos.
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      type="number"
+                      min={minMatches}
+                      max={maxMatches}
+                      {...register('totalMatches', { valueAsNumber: true })}
+                      className="w-32 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm
+                        focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/20 focus:outline-none
+                        transition-all duration-150"
+                    />
+                    {level === 'casual' && (
+                      <span className="ml-3 text-white/30 text-xs normal-case font-normal">(máx. 3)</span>
+                    )}
+                    {level === 'profesional' && (
+                      <span className="ml-3 text-white/30 text-xs normal-case font-normal">(6–12)</span>
+                    )}
+                    {err(errors.totalMatches?.message)}
+                  </>
+                )}
               </div>
             )}
 

@@ -62,6 +62,18 @@ const tournamentBaseSchema = z.object({
 
 function refineTournament<T extends z.ZodTypeAny>(schema: T) {
   return schema.superRefine((data: z.infer<typeof tournamentBaseSchema>, ctx: z.RefinementCtx) => {
+    // Si se usa limite de puntos maximos, las partidas se abren dinámicamente y progresivamente, por lo que se omiten los limites rigidos
+    if (data.maxPointsLimit && data.maxPointsLimit > 0) {
+      if (data.format === 'kill_race' && !data.killRaceTimeLimitMinutes) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['killRaceTimeLimitMinutes'],
+          message: 'Kill Race requiere un límite de tiempo',
+        })
+      }
+      return
+    }
+
     if (data.level === 'casual' && data.totalMatches > 3) {
       ctx.addIssue({
         code: 'custom',
