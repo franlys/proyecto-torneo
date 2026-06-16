@@ -20,7 +20,7 @@ export async function registerTournament(
     // 1. Obtener detalles del torneo
     const { data: tournament, error: tourneyErr } = await supabase
       .from('tournaments')
-      .select('id, name, mode, status, is_private, registration_password, max_teams')
+      .select('id, name, mode, status, is_private, registration_password, max_teams, creator_id, created_at')
       .eq('id', tournamentId)
       .single()
 
@@ -30,6 +30,52 @@ export async function registerTournament(
 
     if (tournament.status !== 'pending' && tournament.status !== 'active') {
       return { error: 'Las inscripciones están cerradas para este torneo.' }
+    }
+
+    // 1.5. Verificar si hay un baneo activo por abandono
+    const pListTemp = (formData.participants || []).filter(p => p.displayName.trim() !== '')
+    const userIdsToCheckTemp = pListTemp
+      .map(p => p.userId)
+      .filter((id): id is string => !!id)
+    
+    const allUserIds = [user.id, ...userIdsToCheckTemp]
+    const allDisplayNames = pListTemp.map(p => p.displayName.trim())
+
+    let banQuery = supabase
+      .from('creator_bans')
+      .select('user_id, display_name, banned_at')
+      .eq('creator_id', tournament.creator_id)
+
+    const orConditions = []
+    if (allUserIds.length > 0) orConditions.push(`user_id.in.(${allUserIds.join(',')})`)
+    if (allDisplayNames.length > 0) {
+      const escapedNames = allDisplayNames.map(name => `"${name.replace(/"/g, '""')}"`).join(',')
+      orConditions.push(`display_name.in.(${escapedNames})`)
+    }
+
+    if (orConditions.length > 0) {
+      banQuery = banQuery.or(orConditions.join(','))
+      const { data: activeBans } = await banQuery
+
+      if (activeBans && activeBans.length > 0) {
+        for (const ban of activeBans) {
+          // Count tournaments created by the creator after the ban date
+          const { count, error: countErr } = await supabase
+            .from('tournaments')
+            .select('id', { count: 'exact', head: true })
+            .eq('creator_id', tournament.creator_id)
+            .gt('created_at', ban.banned_at)
+            .lte('created_at', tournament.created_at || new Date().toISOString())
+
+          if (!countErr && count !== null && count < 3) {
+            const bannedName = ban.display_name
+            const remaining = 3 - count
+            return {
+              error: `El jugador '${bannedName}' está suspendido por el organizador para este torneo y ${remaining === 1 ? 'el siguiente' : `los siguientes ${remaining}`} torneos debido a abandono previo.`
+            }
+          }
+        }
+      }
     }
 
     // Validar Contraseña si el torneo es privado

@@ -73,6 +73,27 @@ export function ParticipantsManager({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const currentUploadRef = useRef<{ id: string, type: 'team' | 'participant' } | null>(null)
 
+  const [banningId, setBanningId] = useState<string | null>(null)
+
+  const handleAbandon = async (teamId: string, teamName: string) => {
+    if (!confirm(`¿Estás seguro de que el equipo "${teamName}" abandonó el torneo? Esto aplicará un baneo de inmediato por los próximos 3 torneos a todos sus miembros y liberará su cupo.`)) {
+      return
+    }
+
+    setBanningId(teamId)
+    const { banTeamForAbandonment } = await import('@/lib/actions/bans')
+    const res = await banTeamForAbandonment(tournamentId, teamId)
+    setBanningId(null)
+
+    if ('error' in res) {
+      toast.error(res.error)
+    } else {
+      toast.success('Equipo marcado como abandonado. Miembros baneados y cupo liberado.')
+      setTeams(teams.filter(t => t.id !== teamId))
+      setParticipants(participants.filter(p => p.teamId !== teamId))
+    }
+  }
+
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -395,6 +416,18 @@ export function ParticipantsManager({
                       </svg>
                       Copiar Portal
                     </button>
+                    {tournamentStatus === 'active' && (
+                      <button
+                        onClick={() => handleAbandon(team.id, team.name)}
+                        disabled={banningId === team.id}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-red-500/10 
+                          hover:bg-red-500/20 text-red-400 rounded-xl text-xs font-bold border border-red-500/20 transition-all disabled:opacity-40"
+                        title="Marcar como abandono y aplicar ban por los próximos 3 torneos"
+                      >
+                        <span>🚫</span>
+                        <span>{banningId === team.id ? 'Baneando...' : 'Marcar Abandono'}</span>
+                      </button>
+                    )}
                     {!isLocked && (
                       <button
                         onClick={() => handleRemoveTeam(team.id)}
