@@ -1294,7 +1294,7 @@ export function LeaderboardClient({
 
                   {/* Center stream player */}
                   {streamUrl && (
-                    <div className="w-full max-w-2xl rounded-2xl overflow-hidden border border-neon-cyan/30 shadow-[0_0_20px_rgba(0,245,255,0.15)] bg-black/50 aspect-video relative">
+                    <div className="w-full max-w-lg rounded-2xl overflow-hidden border border-neon-cyan/30 shadow-[0_0_20px_rgba(0,245,255,0.15)] bg-black/50 aspect-video relative">
                       <div className="absolute top-3 left-3 z-10 bg-red-600 text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-widest animate-pulse">
                         EN VIVO
                       </div>
