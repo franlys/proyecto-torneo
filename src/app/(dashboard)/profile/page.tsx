@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { updateProfile } from '@/lib/actions/profile'
 import { SubscriptionUpload } from './SubscriptionUpload'
 import { ProfileStatsClient } from './ProfileStatsClient'
+import { GameAccountsSection } from '@/components/profile/GameAccountsSection'
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -64,6 +65,13 @@ export default async function ProfilePage() {
     .eq('user_id', user.id)
     .order('created_at', { ascending: true })
 
+  // 5. Fetch game accounts
+  const { data: gameAccounts } = await supabase
+    .from('game_accounts')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('game')
+
   const subscriptionCard = (
     profile?.role !== 'ADMIN' && (
       <div className="bg-[#0d0d0f] border border-white/5 rounded-2xl p-6 space-y-4">
@@ -115,6 +123,18 @@ export default async function ProfilePage() {
     )
   )
 
+  const gameAccountsSection = (
+    <div className="bg-[#0d0d0f] border border-white/5 rounded-2xl p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-white font-orbitron font-bold text-sm uppercase tracking-wider">🎮 Mis Cuentas de Juego</h2>
+          <p className="text-white/30 text-xs mt-0.5">Vincula tu ID y nombre de cuenta para cada juego. Se usarán en tus inscripciones.</p>
+        </div>
+      </div>
+      <GameAccountsSection initialAccounts={gameAccounts || []} />
+    </div>
+  )
+
   return (
     <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
       <div>
@@ -131,6 +151,7 @@ export default async function ProfilePage() {
         pointsHistory={pointsHistory || []}
         updateProfileForm={null}
         subscriptionCard={subscriptionCard}
+        gameAccountsSection={gameAccountsSection}
       />
     </div>
   )

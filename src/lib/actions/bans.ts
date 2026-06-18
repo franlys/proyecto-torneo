@@ -31,7 +31,7 @@ export async function banTeamForAbandonment(
     // Fetch all participants of this team
     const { data: teamParticipants, error: partErr } = await supabase
       .from('participants')
-      .select('user_id, display_name')
+      .select('user_id, display_name, game_id')
       .eq('team_id', teamId)
       .eq('tournament_id', tournamentId)
 
@@ -47,6 +47,7 @@ export async function banTeamForAbandonment(
       creator_id: tournament.creator_id,
       user_id: p.user_id || null,
       display_name: p.display_name,
+      game_id: p.game_id || null,
       source_tournament_id: tournamentId,
       reason: 'Abandono de torneo sin previo aviso'
     }))

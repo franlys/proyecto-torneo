@@ -8,7 +8,7 @@ export async function registerTournament(
   formData: {
     teamName: string
     streamUrl?: string
-    participants: { displayName: string; contactId?: string; streamUrl?: string; userId?: string }[]
+    participants: { displayName: string; contactId?: string; streamUrl?: string; userId?: string; gameId?: string; gameUsername?: string }[]
     password?: string
   }
 ): Promise<{ success: boolean } | { error: string }> {
@@ -57,10 +57,11 @@ export async function registerTournament(
     
     const allUserIds = [user.id, ...userIdsToCheckTemp]
     const allDisplayNames = pListTemp.map(p => p.displayName.trim())
+    const allGameIds = pListTemp.map(p => p.gameId?.trim()).filter(Boolean) as string[]
 
     let banQuery = supabase
       .from('creator_bans')
-      .select('user_id, display_name, banned_at')
+      .select('user_id, display_name, game_id, banned_at')
       .eq('creator_id', tournament.creator_id)
 
     const orConditions = []
@@ -68,6 +69,10 @@ export async function registerTournament(
     if (allDisplayNames.length > 0) {
       const escapedNames = allDisplayNames.map(name => `"${name.replace(/"/g, '""')}"`).join(',')
       orConditions.push(`display_name.in.(${escapedNames})`)
+    }
+    if (allGameIds.length > 0) {
+      const escapedIds = allGameIds.map(id => `"${id.replace(/"/g, '""')}"`).join(',')
+      orConditions.push(`game_id.in.(${escapedIds})`)
     }
 
     if (orConditions.length > 0) {
@@ -166,6 +171,15 @@ export async function registerTournament(
       }
     }
 
+    // 3.1. Validar que el capitán (primer participante) tenga Game ID y Game Username
+    const captain = pList[0]
+    if (!captain.gameId || !captain.gameId.trim()) {
+      return { error: 'El ID de cuenta del juego es obligatorio para inscribirse.' }
+    }
+    if (!captain.gameUsername || !captain.gameUsername.trim()) {
+      return { error: 'El nombre de cuenta en el juego es obligatorio para inscribirse.' }
+    }
+
     // 4. Usar cliente admin para realizar inserciones seguras saltando RLS (ya que los usuarios generales no tienen permisos directos de inserción)
     const adminSupabase = await createAdminClient()
 
@@ -220,7 +234,9 @@ export async function registerTournament(
           contact_id: pData.contactId || null,
           stream_url: pData.streamUrl || null,
           is_captain: isCaptain,
-          user_id: isCaptain ? user.id : (pData.userId || null) // Asignamos el user_id del amigo si está disponible
+          user_id: isCaptain ? user.id : (pData.userId || null),
+          game_id: pData.gameId?.trim() || null,
+          game_username: pData.gameUsername?.trim() || null,
         })
         .select()
         .single()

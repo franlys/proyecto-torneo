@@ -42,6 +42,7 @@ export interface Tournament {
   championImageUrl?: string;
   logoUrl?: string;
   hideLogoInLeaderboard?: boolean;
+  streamUrl?: string | null;
 
   // Finance Model
   entryFee: number;

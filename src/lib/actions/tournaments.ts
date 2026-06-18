@@ -72,6 +72,7 @@ function mapTournamentRow(row: Record<string, unknown>): Tournament {
     clashRoyaleTag: row.clash_royale_tag as string | undefined | null,
     discipline: (row.discipline as string) || 'warzone',
     badgeUrl: row.badge_url as string | undefined | null,
+    streamUrl: row.stream_url as string | undefined | null,
     maxPointsLimit: row.max_points_limit !== undefined && row.max_points_limit !== null ? Number(row.max_points_limit) : null,
   }
 }
@@ -143,6 +144,7 @@ export async function createTournament(
       clash_royale_tag: input.clashRoyaleTag || null,
       discipline: input.discipline || 'warzone',
       badge_url: input.badgeUrl || null,
+      stream_url: input.streamUrl || null,
       max_points_limit: input.maxPointsLimit || null,
       // Finance Model
       entry_fee: input.entryFee || 0,
@@ -286,6 +288,8 @@ export async function updateTournament(
     updatePayload.discipline = input.discipline
   if (input.badgeUrl !== undefined)
     updatePayload.badge_url = input.badgeUrl
+  if (input.streamUrl !== undefined)
+    updatePayload.stream_url = input.streamUrl || null
   if (input.maxTeams !== undefined)
     updatePayload.max_teams = input.maxTeams
   if (input.isPrivate !== undefined)

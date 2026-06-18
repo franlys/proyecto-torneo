@@ -15,7 +15,9 @@ import type { AdBanner } from '@/lib/actions/federation'
 import { trackEvent } from '@/lib/analytics'
 import { registerTournament } from '@/lib/actions/registration'
 import { getFriendsList } from '@/lib/actions/friends'
+import { getGameAccountForUser, GAME_LABELS } from '@/lib/actions/game-accounts'
 import { toast } from 'sonner'
+import { NicknameModal } from '@/components/profile/NicknameModal'
 
 const orbitron = Orbitron({ subsets: ['latin'] })
 
@@ -54,6 +56,7 @@ export function LeaderboardClient({
   prizeMvp = 0,
   clashRoyaleTag,
   discipline = 'warzone',
+  streamUrl,
 }: {
   tournamentId: string
   tournamentName: string
@@ -89,6 +92,7 @@ export function LeaderboardClient({
   prizeMvp?: number
   clashRoyaleTag?: string | null
   discipline?: string
+  streamUrl?: string | null
 }) {
   // Stable supabase client — created once, not on every render.
   // If this were inside the component body without useMemo, every render would produce
@@ -112,6 +116,11 @@ export function LeaderboardClient({
   const [userFriends, setUserFriends] = useState<any[]>([])
   const [regPassword, setRegPassword] = useState('')
   const [regLoading, setRegLoading] = useState(false)
+  // Game account fields (captain only)
+  const [regGameId, setRegGameId] = useState('')
+  const [regGameUsername, setRegGameUsername] = useState('')
+  // Nickname modal: show if user has no username
+  const [showNicknameModal, setShowNicknameModal] = useState(false)
 
   const handleOpenRegistration = async () => {
     const size = { individual: 1, duos: 2, trios: 3, cuartetos: 4, quintas: 5 }[mode] || 1
@@ -137,6 +146,21 @@ export function LeaderboardClient({
         initialParticipants[0] = currentUser.email.split('@')[0]
       }
       initialUserIds[0] = currentUser.id
+
+      // Auto-load game account for this discipline
+      try {
+        const gameRes = await getGameAccountForUser(currentUser.id, discipline)
+        if ('data' in gameRes && gameRes.data) {
+          setRegGameId(gameRes.data.game_id)
+          setRegGameUsername(gameRes.data.game_username)
+        } else {
+          setRegGameId('')
+          setRegGameUsername('')
+        }
+      } catch {
+        setRegGameId('')
+        setRegGameUsername('')
+      }
     }
 
     setRegParticipants(initialParticipants)
@@ -169,6 +193,17 @@ export function LeaderboardClient({
         return
       }
 
+      if (!regGameId.trim()) {
+        toast.error('El ID de tu cuenta en el juego es obligatorio.')
+        setRegLoading(false)
+        return
+      }
+      if (!regGameUsername.trim()) {
+        toast.error('Tu nombre en el juego es obligatorio.')
+        setRegLoading(false)
+        return
+      }
+
       if (isPrivate && !regPassword.trim()) {
         toast.error('Por favor, ingresa la contraseña del torneo.')
         setRegLoading(false)
@@ -178,7 +213,10 @@ export function LeaderboardClient({
       const members = regParticipants.map((name, index) => ({
         displayName: name,
         userId: regParticipantUserIds[index] || undefined,
-        streamUrl: regParticipantStreams[index] || undefined
+        streamUrl: regParticipantStreams[index] || undefined,
+        // Solo el capitán (índice 0) lleva el game_id
+        gameId: index === 0 ? regGameId : undefined,
+        gameUsername: index === 0 ? regGameUsername : undefined,
       }))
 
       const res = await registerTournament(tournamentId, {
@@ -209,7 +247,7 @@ export function LeaderboardClient({
   const [currentSubmissions, setCurrentSubmissions] = useState(submissions || [])
   const [currentMatches, setCurrentMatches] = useState(matches || [])
   const [currentLiveViewers, setCurrentLiveViewers] = useState(totalLiveViewers || 0)
-  const [activeTab, setActiveTab] = useState<'ranking' | 'participants' | 'matches' | 'rules' | 'statistics'>('ranking')
+  const [activeTab, setActiveTab] = useState<'ranking' | 'participants' | 'matches' | 'rules' | 'statistics' | 'evidences'>('ranking')
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null)
   const [watchingStream, setWatchingStream] = useState<string | null>(null)
 
@@ -249,6 +287,15 @@ export function LeaderboardClient({
           .limit(1)
         if (registration && registration.length > 0) {
           setIsUserRegistered(true)
+        }
+        // Check if user has a nickname set — if not, show modal
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('id', user.id)
+          .maybeSingle()
+        if (!prof?.username || prof.username.trim() === '') {
+          setShowNicknameModal(true)
         }
       }
     }
@@ -1359,6 +1406,25 @@ export function LeaderboardClient({
           })()}
         </div>
 
+      {streamUrl && (
+        <div className="w-full max-w-5xl mx-auto mb-8 rounded-2xl overflow-hidden border border-neon-cyan/30 shadow-[0_0_30px_rgba(0,245,255,0.15)] bg-black/50 aspect-video relative">
+          <div className="absolute top-4 left-4 z-10 bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest animate-pulse">
+            EN VIVO
+          </div>
+          <iframe 
+            src={
+              streamUrl.includes('twitch.tv') 
+                ? `https://player.twitch.tv/?channel=${streamUrl.split('/').pop()}&parent=${host}`
+                : streamUrl.includes('youtube.com/watch') || streamUrl.includes('youtu.be')
+                  ? `https://www.youtube.com/embed/${streamUrl.includes('youtu.be') ? streamUrl.split('/').pop() : new URL(streamUrl).searchParams.get('v')}`
+                  : streamUrl
+            }
+            className="w-full h-full border-0"
+            allowFullScreen
+          ></iframe>
+        </div>
+      )}
+
       {/* Tabs — scrollable on mobile */}
       <div className="flex gap-1 mb-6 sm:mb-8 sm:justify-center overflow-x-auto pb-1 px-2 sm:px-0 scrollbar-hide">
         <button
@@ -1409,6 +1475,15 @@ export function LeaderboardClient({
           style={{ borderColor: activeTab === 'rules' ? primaryColor : 'transparent', borderWidth: 1 }}
         >
           Reglas
+        </button>
+        <button
+          onClick={() => setActiveTab('evidences')}
+          className={`shrink-0 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg ${
+            activeTab === 'evidences' ? 'bg-neon-purple/20 text-white' : 'text-white/40 hover:text-white/80'
+          }`}
+          style={{ borderColor: activeTab === 'evidences' ? '#b026ff' : 'transparent', borderWidth: 1 }}
+        >
+          Subir Evidencias
         </button>
       </div>
 
@@ -1720,7 +1795,7 @@ export function LeaderboardClient({
           participants={participantsWithCalculatedKills}
           primaryColor={primaryColor} 
         />
-      ) : (
+      ) : activeTab === 'rules' ? (
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1761,7 +1836,57 @@ export function LeaderboardClient({
             </div>
           </div>
         </motion.div>
-      )}
+      ) : activeTab === 'evidences' ? (
+        <motion.div 
+          key="evidences-tab"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-dark-card/60 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl"
+        >
+          <div className="flex items-center gap-4 mb-8">
+            <div className="w-12 h-12 rounded-2xl bg-neon-purple/10 border border-neon-purple/30 flex items-center justify-center text-2xl shadow-[0_0_15px_rgba(176,38,255,0.1)]">
+              📤
+            </div>
+            <div>
+              <h2 className={`${orbitron.className} text-2xl font-black text-white uppercase tracking-tighter`}>
+                Portal de Evidencias
+              </h2>
+              <p className="text-white/40 text-xs uppercase tracking-widest font-bold">Selecciona tu equipo para subir capturas</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {currentTeams.map(team => (
+              <Link 
+                key={team.id}
+                href={`/t/${slug}/team/${team.id}`}
+                className="group flex items-center gap-4 p-4 bg-white/[0.03] hover:bg-neon-purple/10 border border-white/5 hover:border-neon-purple/50 rounded-2xl transition-all duration-300 hover:shadow-[0_0_20px_rgba(176,38,255,0.15)]"
+              >
+                {team.avatarUrl ? (
+                  <img src={team.avatarUrl} alt={team.name} className="w-12 h-12 rounded-xl object-cover border border-white/10 group-hover:border-neon-purple/50 transition-colors" />
+                ) : (
+                  <div className="w-12 h-12 rounded-xl bg-white/5 group-hover:bg-neon-purple/20 border border-white/10 group-hover:border-neon-purple/30 flex items-center justify-center text-xl transition-colors">
+                    🎮
+                  </div>
+                )}
+                <div>
+                  <h3 className="font-orbitron font-bold text-white group-hover:text-neon-purple transition-colors truncate max-w-[150px]">
+                    {team.name}
+                  </h3>
+                  <p className="text-[10px] text-white/40 uppercase tracking-widest group-hover:text-neon-purple/60 transition-colors mt-1">
+                    Acceder al Portal →
+                  </p>
+                </div>
+              </Link>
+            ))}
+            {currentTeams.length === 0 && (
+              <div className="col-span-full py-12 text-center border border-dashed border-white/10 rounded-2xl">
+                <p className="text-white/20 italic">Aún no hay equipos inscritos en este torneo.</p>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      ) : null}
         <AnimatePresence>
           {showHallOfFame && (
             <motion.div

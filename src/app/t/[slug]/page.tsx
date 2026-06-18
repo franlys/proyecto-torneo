@@ -246,6 +246,7 @@ export default async function PublicLeaderboardPage({
         prize2nd={Number(tournament.prize_2nd || 0)}
         prize3rd={Number(tournament.prize_3rd || 0)}
         prizeMvp={Number(tournament.prize_mvp || 0)}
+        streamUrl={tournament.stream_url}
       />
     </main>
   )

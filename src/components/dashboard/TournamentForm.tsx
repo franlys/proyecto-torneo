@@ -143,6 +143,7 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
     format: initialData?.format ?? 'battle_royale_clasico',
     level: initialData?.level ?? 'casual',
     badgeUrl: initialData?.badgeUrl ?? '',
+    streamUrl: initialData?.streamUrl ?? '',
     scoringRule: initialData?.scoringRule ?? {
       killPoints: 1,
       placementPoints: { '1': 15, '2': 12, '3': 10, '4': 8, '5': 6, '6': 4, '7': 2, '8': 1 },
@@ -192,6 +193,20 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
       cleanedData.streamerSplit = 0
     }
     
+    // Parse dates to UTC ISO strings if they exist to prevent timezone offset bugs
+    if (cleanedData.startDate) {
+      cleanedData.startDate = new Date(cleanedData.startDate).toISOString()
+    }
+    if (cleanedData.endDate) {
+      cleanedData.endDate = new Date(cleanedData.endDate).toISOString()
+    }
+    if (cleanedData.registrationStartDate) {
+      cleanedData.registrationStartDate = new Date(cleanedData.registrationStartDate).toISOString()
+    }
+    if (cleanedData.registrationEndDate) {
+      cleanedData.registrationEndDate = new Date(cleanedData.registrationEndDate).toISOString()
+    }
+
     let result
     if (tournamentId) {
       result = await updateTournament(tournamentId, cleanedData)
@@ -277,6 +292,22 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
                 className={`${inputClass} resize-none`}
               />
               {err(errors.description?.message)}
+            </div>
+
+            {/* Stream URL */}
+            <div>
+              <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
+                Enlace de Transmisión Oficial (Opcional)
+              </label>
+              <input
+                {...register('streamUrl')}
+                placeholder="Ej: https://twitch.tv/kronix"
+                className={inputClass}
+              />
+              <p className="text-xs text-white/40 mt-1">
+                Aparecerá un reproductor en la parte superior del tablero del torneo. Compatible con Twitch, YouTube, etc.
+              </p>
+              {err(errors.streamUrl?.message)}
             </div>
 
             {/* Dates */}
