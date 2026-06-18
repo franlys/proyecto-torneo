@@ -20,7 +20,7 @@ export async function registerTournament(
     // 1. Obtener detalles del torneo
     const { data: tournament, error: tourneyErr } = await supabase
       .from('tournaments')
-      .select('id, name, mode, status, is_private, registration_password, max_teams, creator_id, created_at')
+      .select('id, name, mode, status, is_private, registration_password, max_teams, creator_id, created_at, registration_start_date, registration_end_date')
       .eq('id', tournamentId)
       .single()
 
@@ -30,6 +30,23 @@ export async function registerTournament(
 
     if (tournament.status !== 'pending' && tournament.status !== 'active') {
       return { error: 'Las inscripciones están cerradas para este torneo.' }
+    }
+
+    // 1.2. Verificar ventana de inscripciones por fecha/hora exacta
+    const now = new Date()
+    if (tournament.registration_start_date && now < new Date(tournament.registration_start_date)) {
+      const opens = new Date(tournament.registration_start_date).toLocaleString('es-ES', {
+        day: '2-digit', month: 'long', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      })
+      return { error: `Las inscripciones aún no han abierto. Abren el ${opens}.` }
+    }
+    if (tournament.registration_end_date && now > new Date(tournament.registration_end_date)) {
+      const closed = new Date(tournament.registration_end_date).toLocaleString('es-ES', {
+        day: '2-digit', month: 'long', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      })
+      return { error: `Las inscripciones cerraron el ${closed}.` }
     }
 
     // 1.5. Verificar si hay un baneo activo por abandono

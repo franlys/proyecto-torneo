@@ -72,7 +72,12 @@ interface TournamentFormProps {
 
 function formatDateForInput(dateStr?: string | null) {
   if (!dateStr) return ''
-  return dateStr.split('T')[0]
+  // For datetime-local input we need format: YYYY-MM-DDTHH:mm
+  // If value is date-only like 2026-06-17, append T00:00
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 export function TournamentForm({ onSuccess, initialData, tournamentId }: TournamentFormProps) {
@@ -278,20 +283,20 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
-                  Fecha de inicio
+                  Fecha y Hora de inicio
                 </label>
                 <input
-                  type="date"
+                  type="datetime-local"
                   {...register('startDate')}
                   className={inputClass}
                 />
               </div>
               <div>
                 <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
-                  Fecha de fin
+                  Fecha y Hora de fin
                 </label>
                 <input
-                  type="date"
+                  type="datetime-local"
                   {...register('endDate')}
                   className={inputClass}
                 />
@@ -729,10 +734,10 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
 
             <div>
               <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
-                Fecha Inicio de Inscripciones
+                Fecha y Hora de apertura de inscripciones
               </label>
               <input
-                type="date"
+                type="datetime-local"
                 {...register('registrationStartDate')}
                 className={inputClass}
               />
@@ -740,10 +745,10 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
 
             <div>
               <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
-                Fecha Límite de Inscripciones
+                Fecha y Hora límite de inscripciones
               </label>
               <input
-                type="date"
+                type="datetime-local"
                 {...register('registrationEndDate')}
                 className={inputClass}
               />

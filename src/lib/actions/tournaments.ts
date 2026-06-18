@@ -338,6 +338,14 @@ export async function updateTournament(
 
   const mappedUpdated = mapTournamentRow(updated as Record<string, unknown>)
   pushToAC('tournaments', 'upsert', mappedUpdated as unknown as Record<string, unknown>)
+
+  // Invalidate all relevant caches so the frontend reflects changes immediately
+  revalidatePath(`/tournaments/${id}`)
+  revalidatePath(`/tournaments/${id}/edit`)
+  revalidatePath('/tournaments')
+  revalidatePath(`/t/${(updated as any).slug}`)
+  revalidatePath('/')
+
   return { data: mappedUpdated }
 }
 
