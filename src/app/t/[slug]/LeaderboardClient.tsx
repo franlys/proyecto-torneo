@@ -262,6 +262,15 @@ export function LeaderboardClient({
   const [showHallOfFame, setShowHallOfFame] = useState(false)
   const [isTableMaximized, setIsTableMaximized] = useState(false)
 
+  const isClosedOrFull = useMemo(() => {
+    const totalTeamsRegistered = currentTeams.length
+    const isFull = maxTeams ? totalTeamsRegistered >= maxTeams : false
+    const now = new Date()
+    const regEnd = registrationEndDate ? new Date(registrationEndDate) : null
+    const hasRegEnded = regEnd ? now > regEnd : false
+    return isFull || hasRegEnded || currentStatus === 'active'
+  }, [currentTeams.length, maxTeams, registrationEndDate, currentStatus])
+
   useEffect(() => {
     setIsMounted(true)
     setHost(window.location.hostname)
@@ -1247,24 +1256,7 @@ export function LeaderboardClient({
           )}
 
           {/* Registration Section */}
-          {(currentStatus === 'pending' || currentStatus === 'active') && (() => {
-            // If tournament is already active (started), show locked message
-            if (currentStatus === 'active') {
-              return (
-                <div className="mt-8 p-5 rounded-2xl bg-white/[0.02] border border-white/5 max-w-2xl mx-auto flex items-center gap-4 w-full">
-                  <div className="w-10 h-10 rounded-xl bg-neon-cyan/10 border border-neon-cyan/20 flex items-center justify-center shrink-0">
-                    <svg className="w-5 h-5 text-neon-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-xs font-black uppercase tracking-widest text-neon-cyan">Torneo en Curso</p>
-                    <p className="text-white/40 text-xs mt-0.5">Las inscripciones están cerradas. El torneo ya ha comenzado.</p>
-                  </div>
-                </div>
-              )
-            }
-            return (() => {
+          {(() => {
             const totalTeamsRegistered = currentTeams.length
             const isFull = maxTeams ? totalTeamsRegistered >= maxTeams : false
             
@@ -1276,7 +1268,6 @@ export function LeaderboardClient({
 
             const hasRegStarted = regStart ? now >= regStart : true
             const hasRegEnded = regEnd ? now > regEnd : false
-            const isRegistrationOpen = hasRegStarted && !hasRegEnded
 
             const formatDate = (date: Date) => {
               return date.toLocaleDateString('es-ES', {
@@ -1286,6 +1277,42 @@ export function LeaderboardClient({
                 hour: '2-digit',
                 minute: '2-digit',
               })
+            }
+
+            if (isClosedOrFull) {
+              return (
+                <div className="mt-8 flex flex-col items-center gap-6 w-full max-w-4xl mx-auto">
+                  {/* Clean start date display */}
+                  {tourneyStart && (
+                    <div className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-white/[0.03] border border-white/5 backdrop-blur-md">
+                      <span className="text-xl">🚀</span>
+                      <span className="text-xs sm:text-sm font-orbitron font-bold text-white uppercase tracking-wider">
+                        Inicio del Torneo: <span className="text-neon-cyan">{formatDate(tourneyStart)}</span>
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Center stream player */}
+                  {streamUrl && (
+                    <div className="w-full max-w-2xl rounded-2xl overflow-hidden border border-neon-cyan/30 shadow-[0_0_20px_rgba(0,245,255,0.15)] bg-black/50 aspect-video relative">
+                      <div className="absolute top-3 left-3 z-10 bg-red-600 text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-widest animate-pulse">
+                        EN VIVO
+                      </div>
+                      <iframe 
+                        src={
+                          streamUrl.includes('twitch.tv') 
+                            ? `https://player.twitch.tv/?channel=${streamUrl.split('/').pop()}&parent=${host}`
+                            : streamUrl.includes('youtube.com/watch') || streamUrl.includes('youtu.be')
+                              ? `https://www.youtube.com/embed/${streamUrl.includes('youtu.be') ? streamUrl.split('/').pop() : new URL(streamUrl).searchParams.get('v')}`
+                              : streamUrl
+                        }
+                        className="w-full h-full border-0"
+                        allowFullScreen
+                      ></iframe>
+                    </div>
+                  )}
+                </div>
+              )
             }
 
             return (
@@ -1402,7 +1429,6 @@ export function LeaderboardClient({
                 </div>
               </div>
             )
-            })()
           })()}
         </div>
 
@@ -1493,7 +1519,7 @@ export function LeaderboardClient({
               </div>
             </div>
             <div className="lg:col-span-3 lg:sticky lg:top-24 space-y-6">
-              {streamUrl && (
+              {streamUrl && !isClosedOrFull && (
                 <div className="w-full rounded-2xl overflow-hidden border border-neon-cyan/30 shadow-[0_0_20px_rgba(0,245,255,0.1)] bg-black/50 aspect-video relative">
                   <div className="absolute top-2 left-2 z-10 bg-red-600 text-white text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest animate-pulse">
                     EN VIVO
