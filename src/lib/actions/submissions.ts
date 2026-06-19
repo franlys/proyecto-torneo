@@ -257,7 +257,7 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
       const { pushToAC } = await import('./ac-push')
       const { data: updatedTourney } = await supabase.from('tournaments').select('*').eq('id', tournamentId).single()
       if (updatedTourney) {
-        const { mapTournamentRow } = await import('./tournaments')
+        const { mapTournamentRow } = await import('@/lib/utils')
         pushToAC(
           'tournaments',
           'upsert',
