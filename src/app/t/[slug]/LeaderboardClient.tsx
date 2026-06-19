@@ -687,57 +687,80 @@ export function LeaderboardClient({
         {/* Center Space: Empty for branding */}
         <div className="hidden lg:block lg:col-span-2 min-h-[100px]" />
 
-        {/* Right Table: Details & Ratios */}
+        {/* Right Table: Top 3 Top Fraggers (MVPs) */}
         <div className="lg:col-span-5 bg-dark-card/75 backdrop-blur-md border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
-          <div className="px-6 py-4 border-b border-white/5 bg-white/[0.02]">
-            <span className="font-orbitron font-bold text-xs text-white uppercase tracking-widest">Estadísticas de Rendimiento</span>
+          <div className="px-6 py-4 border-b border-white/5 bg-white/[0.02] flex justify-between items-center bg-gradient-to-r from-neon-purple/10 to-transparent">
+            <span className="font-orbitron font-bold text-xs text-white uppercase tracking-widest flex items-center gap-2">
+              <span className="text-neon-purple">⚔️</span> Top Fraggers (MVP)
+            </span>
+            <span className="text-[10px] text-neon-purple font-bold uppercase tracking-wider">Top 3 Jugadores</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-white/[0.03] border-b border-white/5 text-[10px] text-white/40 uppercase tracking-widest font-semibold">
                   <th className="px-4 py-3 w-16 text-center">Rank</th>
+                  <th className="px-4 py-3">Jugador</th>
                   <th className="px-4 py-3">Equipo</th>
-                  {potTopEnabled && <th className="px-4 py-3 text-center">Top 1</th>}
-                  {killRateEnabled && <th className="px-4 py-3 text-center">Kill Rate</th>}
+                  <th className="px-4 py-3 text-center">Kills</th>
                 </tr>
               </thead>
               <tbody>
-                {standings.map((s, idx) => (
-                  <tr 
-                    key={s.teamId} 
-                    className={`border-b border-white/5 hover:bg-white/[0.04] transition-colors cursor-pointer ${
-                      expandedTeamId === s.teamId ? 'bg-white/[0.03]' : ''
-                    }`}
-                    onClick={() => setExpandedTeamId(expandedTeamId === s.teamId ? null : s.teamId)}
-                  >
-                    <td className="px-4 py-3.5 text-center font-orbitron font-black text-sm" style={{ color: (idx+1) === 1 ? '#FFD700' : (idx+1) === 2 ? '#C0C0C0' : (idx+1) === 3 ? '#CD7F32' : 'rgba(255,255,255,0.4)' }}>
-                      {idx + 1}
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-2">
-                        {s.avatarUrl ? (
-                          <img src={s.avatarUrl} alt="" className="w-7 h-7 rounded-lg object-cover" />
-                        ) : (
-                          <div className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[10px] font-bold">
-                            {s.teamName.substring(0, 1)}
-                          </div>
-                        )}
-                        <span className="font-orbitron font-bold text-xs truncate max-w-[120px]">{s.teamName}</span>
-                      </div>
-                    </td>
-                    {potTopEnabled && (
-                      <td className="px-4 py-3.5 text-center font-orbitron font-bold text-xs text-gold">
-                        {s.potTopCount}
+                {(() => {
+                  const topFraggers = currentTeams
+                    .flatMap((t: any) => 
+                      (t.participants || []).map((p: any) => ({
+                        ...p,
+                        teamName: t.name,
+                        teamAvatar: t.avatarUrl
+                      }))
+                    )
+                    .sort((a: any, b: any) => (b.totalKills || 0) - (a.totalKills || 0))
+                    .slice(0, 3)
+
+                  return topFraggers.map((p, idx) => (
+                    <tr 
+                      key={p.id} 
+                      className="border-b border-white/5 hover:bg-white/[0.04] transition-colors"
+                    >
+                      <td className="px-4 py-3.5 text-center font-orbitron font-black text-sm" style={{ color: (idx+1) === 1 ? '#FFD700' : (idx+1) === 2 ? '#C0C0C0' : '#CD7F32' }}>
+                        {idx + 1 === 1 ? '🥇' : idx + 1 === 2 ? '🥈' : '🥉'}
                       </td>
-                    )}
-                    {killRateEnabled && (
-                      <td className="px-4 py-3.5 text-center font-mono text-xs text-white/60">
-                        {s.killRate.toFixed(1)}
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-2">
+                          {p.avatarUrl ? (
+                            <img src={p.avatarUrl} alt="" className="w-7 h-7 rounded-lg object-cover" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-lg bg-neon-purple/10 border border-neon-purple/20 flex items-center justify-center text-[10px] font-bold text-neon-purple">
+                              {p.displayName.substring(0, 2).toUpperCase()}
+                            </div>
+                          )}
+                          <span className="font-orbitron font-bold text-xs text-white truncate max-w-[120px]">{p.displayName}</span>
+                        </div>
                       </td>
-                    )}
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-1.5">
+                          {p.teamAvatar ? (
+                            <img src={p.teamAvatar} alt="" className="w-4 h-4 rounded object-cover" />
+                          ) : (
+                            <span className="text-[10px]">🎮</span>
+                          )}
+                          <span className="text-xs text-white/50 truncate max-w-[100px]">{p.teamName}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 text-center font-orbitron font-black text-sm text-neon-purple">
+                        {p.totalKills || 0}
+                      </td>
+                    </tr>
+                  ))
+                })()}
+                {currentTeams.flatMap(t => t.participants || []).length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-white/20 text-xs italic">
+                      Aún no hay bajas registradas en este torneo.
+                    </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
