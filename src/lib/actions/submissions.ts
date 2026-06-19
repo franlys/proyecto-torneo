@@ -551,6 +551,13 @@ async function fetchYoutubeViewers(youtubeUser: string): Promise<number> {
 
 export async function syncTournamentViewers(supabase: any, tournamentId: string): Promise<number> {
   try {
+    // Fetch tournament stream_url
+    const { data: tourney } = await supabase
+      .from('tournaments')
+      .select('stream_url')
+      .eq('id', tournamentId)
+      .single()
+
     // 1. Fetch all teams and participants stream URLs for this tournament
     const { data: teams } = await supabase
       .from('teams')
@@ -560,6 +567,7 @@ export async function syncTournamentViewers(supabase: any, tournamentId: string)
     if (!teams) return 0
 
     const urls: string[] = []
+    if (tourney?.stream_url) urls.push(tourney.stream_url)
     for (const t of teams) {
       if (t.stream_url) urls.push(t.stream_url)
       if (t.participants) {
