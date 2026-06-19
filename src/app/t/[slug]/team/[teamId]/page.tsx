@@ -42,7 +42,7 @@ export default async function TeamPortalPage({
   // Fetch all matches for the tournament
   const { data: matches } = await supabase
     .from('matches')
-    .select('id, name, match_number')
+    .select('id, name, match_number, is_active, parent_match_id, round_number, map_name')
     .eq('tournament_id', tournament.id)
     .eq('is_completed', false)
     .order('match_number', { ascending: true })

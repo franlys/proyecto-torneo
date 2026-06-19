@@ -37,10 +37,15 @@ export function TeamPortalClient({
     }
   }, [participants])
 
-  // Identify parent matches (Encuentros)
-  const parentMatches = matches.filter(m => !m.parent_match_id)
-  // Identify rounds for the selected parent
-  const availableRounds = matches.filter(m => m.parent_match_id === selectedParentId)
+  // Identify parent matches (Encuentros) that are active or contain active rounds
+  const parentMatches = matches.filter(m => {
+    if (m.parent_match_id) return false
+    const isSelfActive = m.is_active || m.isActive
+    const hasActiveRound = matches.some(r => r.parent_match_id === m.id && (r.is_active || r.isActive))
+    return isSelfActive || hasActiveRound
+  })
+  // Identify rounds for the selected parent that are active
+  const availableRounds = matches.filter(m => m.parent_match_id === selectedParentId && (m.is_active || m.isActive))
 
   // Calculate total team kills in real-time
   const teamTotalKills = useMemo(() => {
@@ -155,6 +160,18 @@ export function TeamPortalClient({
         >
           Enviar otra partida
         </button>
+      </div>
+    )
+  }
+
+  if (parentMatches.length === 0) {
+    return (
+      <div className="text-center py-8 px-4 space-y-3 bg-white/[0.01] border border-dashed border-white/10 rounded-2xl animate-in fade-in duration-300">
+        <span className="text-3xl block">⏳</span>
+        <h3 className="text-sm text-white font-orbitron font-bold uppercase tracking-wider">Esperando Partida en Curso</h3>
+        <p className="text-xs text-white/40 max-w-xs mx-auto leading-relaxed">
+          El organizador del torneo aún no ha iniciado ningún encuentro. Una vez que se marque una partida como "En curso", se habilitará esta sección automáticamente para subir tu evidencia.
+        </p>
       </div>
     )
   }
