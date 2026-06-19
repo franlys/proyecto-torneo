@@ -402,6 +402,7 @@ export async function updateParticipant(
       classification_rank:   d.classificationRank ?? null,
       br_avg_placement:      d.brAvgPlacement  ?? null,
       color:                 data.color       ?? null,
+      user_id:               d.userId !== undefined ? d.userId : undefined,
     })
     .eq('id', participantId)
     .eq('tournament_id', tournamentId)
@@ -436,7 +437,39 @@ export async function updateParticipant(
       classificationRank:  participant.classification_rank ?? undefined,
       brAvgPlacement:      participant.br_avg_placement  ?? undefined,
       color:               participant.color            ?? undefined,
+      userId:              participant.user_id          ?? undefined,
     }
+  }
+}
+
+export async function findUserByShortId(shortId: string): Promise<{ data: any } | { error: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autenticado' }
+
+    if (await assertAdmin(supabase, user.id)) {
+      return { error: 'Sin permisos' }
+    }
+
+    let formattedShortId = shortId.trim().toUpperCase()
+    if (/^[0-9A-Z]{6}$/i.test(formattedShortId)) {
+      formattedShortId = `KX-${formattedShortId}`
+    }
+
+    const adminSupabase = await createAdminClient()
+    const { data: profile, error } = await adminSupabase
+      .from('profiles')
+      .select('id, username, avatar_url, stream_url, short_id')
+      .eq('short_id', formattedShortId)
+      .maybeSingle()
+
+    if (error) throw error
+    if (!profile) return { error: 'No se encontró ningún usuario con ese ID único' }
+
+    return { data: profile }
+  } catch (err: any) {
+    return { error: err.message || 'Error al buscar el usuario' }
   }
 }
 

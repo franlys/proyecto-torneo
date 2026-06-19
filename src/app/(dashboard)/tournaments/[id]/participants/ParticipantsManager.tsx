@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import type { Team, Participant, TournamentMode } from '@/types'
-import { createTeam, addParticipant, deleteTeam, deleteParticipant, updateTeam, updateParticipant, uploadAvatar } from '@/lib/actions/participants'
+import { createTeam, addParticipant, deleteTeam, deleteParticipant, updateTeam, updateParticipant, uploadAvatar, findUserByShortId } from '@/lib/actions/participants'
 import { toast } from 'sonner'
 
 export function ParticipantsManager({
@@ -69,6 +69,11 @@ export function ParticipantsManager({
   const [editColor, setEditColor] = useState('')
   const [editStreamUrl, setEditStreamUrl] = useState('')
   const [editStatsLoading, setEditStatsLoading] = useState(false)
+  const [editDisplayName, setEditDisplayName] = useState('')
+  const [editShortId, setEditShortId] = useState('')
+  const [linkedUser, setLinkedUser] = useState<{ id: string, username: string, avatarUrl?: string, shortId?: string } | null>(null)
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [searchError, setSearchError] = useState('')
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const currentUploadRef = useRef<{ id: string, type: 'team' | 'participant' } | null>(null)
@@ -207,31 +212,83 @@ export function ParticipantsManager({
     setEditBrPlacement(p.brAvgPlacement != null ? String(p.brAvgPlacement) : '')
     setEditColor(p.color ?? '')
     setEditStreamUrl(p.streamUrl ?? '')
+    setEditDisplayName(p.displayName || '')
+    setEditShortId('')
+    setSearchError('')
+    setSearchLoading(false)
+    if (p.userId) {
+      setLinkedUser({
+        id: p.userId,
+        username: p.displayName,
+        avatarUrl: p.avatarUrl
+      })
+    } else {
+      setLinkedUser(null)
+    }
+  }
+
+  const handleSearchUser = async () => {
+    if (!editShortId.trim()) return
+    setSearchLoading(true)
+    setSearchError('')
+    try {
+      const res = await findUserByShortId(editShortId)
+      if ('error' in res) {
+        setSearchError(res.error)
+        setLinkedUser(null)
+      } else {
+        const profile = res.data
+        setLinkedUser({
+          id: profile.id,
+          username: profile.username,
+          avatarUrl: profile.avatar_url ?? undefined,
+          shortId: profile.short_id
+        })
+        setEditDisplayName(profile.username)
+        if (profile.stream_url) {
+          setEditStreamUrl(profile.stream_url)
+        }
+      }
+    } catch (err: any) {
+      setSearchError('Error al buscar el jugador')
+    } finally {
+      setSearchLoading(false)
+    }
   }
 
   const handleSaveStats = async () => {
     if (!editingStats) return
     setEditStatsLoading(true)
     const res = await updateParticipant(tournamentId, editingStats.id, {
+      displayName:        editDisplayName.trim() || editingStats.displayName,
       kdRatio:            editKd          ? Number(editKd)          : undefined,
       avgKills:           editAvgKills     ? Number(editAvgKills)     : undefined,
       classificationRank: editRank         || undefined,
       brAvgPlacement:     editBrPlacement  ? Number(editBrPlacement)  : undefined,
       color:              editColor       || undefined,
       streamUrl:          editStreamUrl   || null,
+      userId:             linkedUser ? linkedUser.id : null,
+      avatarUrl:          linkedUser ? (linkedUser.avatarUrl || null) : editingStats.avatarUrl,
     } as any)
     if ('error' in res) {
       toast.error(res.error)
     } else {
       if (isIndividual && editingStats.teamId) {
         await updateTeam(tournamentId, editingStats.teamId, {
-          name: editingStats.displayName,
+          name: editDisplayName.trim() || editingStats.displayName,
           streamUrl: editStreamUrl || null,
         } as any)
-        setTeams(teams.map(t => t.id === editingStats.teamId ? { ...t, streamUrl: editStreamUrl || undefined } : t))
+        setTeams(teams.map(t => t.id === editingStats.teamId ? {
+          ...t,
+          name: editDisplayName.trim() || editingStats.displayName,
+          streamUrl: editStreamUrl || undefined
+        } : t))
       }
       setParticipants(participants.map(p => p.id === editingStats.id ? {
         ...p,
+        displayName:        editDisplayName.trim() || p.displayName,
+        avatarUrl:          linkedUser ? (linkedUser.avatarUrl || undefined) : p.avatarUrl,
+        userId:             linkedUser ? linkedUser.id : undefined,
         kdRatio:            editKd          ? Number(editKd)          : undefined,
         avgKills:           editAvgKills     ? Number(editAvgKills)     : undefined,
         classificationRank: editRank         || undefined,
@@ -239,7 +296,7 @@ export function ParticipantsManager({
         color:              editColor       || undefined,
         streamUrl:          editStreamUrl   || undefined,
       } : p))
-      toast.success('Stats actualizadas')
+      toast.success('Participante actualizado')
       setEditingStats(null)
     }
     setEditStatsLoading(false)
@@ -672,8 +729,74 @@ export function ParticipantsManager({
               )}
               <div>
                 <h3 className="text-white font-bold text-sm">{editingStats.displayName}</h3>
-                <p className="text-white/30 text-[10px] uppercase tracking-widest">Editar estadísticas</p>
+                <p className="text-white/30 text-[10px] uppercase tracking-widest">Editar y Sustituir</p>
               </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-[9px] text-white/40 uppercase tracking-widest mb-1.5">Nombre del Jugador</label>
+              <input 
+                type="text" 
+                value={editDisplayName} 
+                onChange={e => setEditDisplayName(e.target.value)}
+                placeholder="Nombre en el juego"
+                className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/20 outline-none focus:border-neon-cyan/50" 
+              />
+            </div>
+
+            <div className="mb-4 border-t border-white/5 pt-4">
+              <label className="block text-[9px] text-neon-purple uppercase tracking-widest font-bold mb-1.5">Cuenta Vinculada (Sustitución)</label>
+              
+              {linkedUser ? (
+                <div className="flex items-center justify-between bg-white/[0.02] border border-white/10 rounded-lg p-2.5">
+                  <div className="flex items-center gap-2">
+                    {linkedUser.avatarUrl ? (
+                      <img src={linkedUser.avatarUrl} alt="" className="w-8 h-8 rounded-lg object-cover" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-lg bg-neon-purple/10 border border-neon-purple/20 flex items-center justify-center text-xs font-bold text-neon-purple">
+                        {linkedUser.username.substring(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-white text-xs font-bold block leading-tight">{linkedUser.username}</span>
+                      {linkedUser.shortId && <span className="text-[9px] text-white/40 font-mono leading-none">{linkedUser.shortId}</span>}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLinkedUser(null);
+                      toast.info("Cuenta desvinculada. El participante quedará como invitado.");
+                    }}
+                    className="text-[10px] bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-md px-2 py-1 transition-all animate-pulse"
+                  >
+                    Desvincular
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="ID Único (Ej: KX-A1B2C3)" 
+                      value={editShortId} 
+                      onChange={e => setEditShortId(e.target.value)}
+                      className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-white/20 outline-none focus:border-neon-cyan/50" 
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSearchUser}
+                      disabled={searchLoading || !editShortId.trim()}
+                      className="px-3 bg-neon-purple hover:bg-neon-purple/90 disabled:opacity-50 text-xs font-bold text-white rounded-lg transition-colors shrink-0"
+                    >
+                      {searchLoading ? 'Buscando...' : 'Buscar'}
+                    </button>
+                  </div>
+                  {searchError && (
+                    <p className="text-[10px] text-red-400 font-medium">{searchError}</p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
