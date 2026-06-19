@@ -131,7 +131,7 @@ export async function registerTournament(
       return { error: 'Ya estás inscrito en este torneo.' }
     }
 
-    const maxPerTeam = { individual: 1, duos: 2, trios: 3, cuartetos: 4, quintas: 5 }[tournament.mode] || 1
+    const maxPerTeam = ({ individual: 1, duos: 2, trios: 3, cuartetos: 4, quintas: 5 } as any)[tournament.mode] || 1
     const pList = formData.participants.filter(p => p.displayName.trim() !== '')
 
     // Verificar si alguno de los compañeros seleccionados ya está inscrito en este torneo

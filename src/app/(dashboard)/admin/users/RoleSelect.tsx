@@ -15,7 +15,9 @@ export function RoleSelect({ userId, currentRole }: RoleSelectProps) {
     const formData = new FormData()
     formData.set('userId', userId)
     formData.set('role', e.target.value)
-    startTransition(() => changeUserRole(formData))
+    startTransition(async () => {
+      await changeUserRole(formData)
+    })
   }
 
   return (

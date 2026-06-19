@@ -32,7 +32,7 @@ export function DashboardStreamerCodeManager({
     startTransition(async () => {
       const res = await generateStreamerCode(tournamentId, streamerName.trim(), customCode.trim())
       if ('error' in res) {
-        setError(res.error)
+        setError(res.error || 'Error al generar código')
       } else {
         setStreamerName('')
         setCustomCode('')

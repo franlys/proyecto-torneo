@@ -21,11 +21,12 @@ export function NumberTicker({
     setIsMounted(true)
     // Restart from 0 to target if we want the actual "counting" effect upon first load
     // or just follow changes. Let's make it count from 0 to value on mount.
-    animate(count, value, {
+    const controls = animate(0, value, {
       duration: 1.2,
       ease: 'easeOut',
-      from: 0 
+      onUpdate: (latest) => count.set(latest)
     })
+    return () => controls.stop()
   }, [value, count])
 
   if (!isMounted) {

@@ -94,7 +94,7 @@ export function ProfileStatsClient({
         setLoadingFriends(true)
         const res = await getFriendsList()
         if (res && 'data' in res) {
-          setFriends(res.data)
+          setFriends(res.data || [])
         } else if (res && 'error' in res) {
           toast.error(res.error)
         }
@@ -113,7 +113,7 @@ export function ProfileStatsClient({
     setSearchingUsers(true)
     const res = await searchUsersForFriends(searchQuery)
     if (res && 'data' in res) {
-      setSearchResults(res.data)
+      setSearchResults(res.data || [])
     } else if (res && 'error' in res) {
       toast.error(res.error)
     }
@@ -127,7 +127,7 @@ export function ProfileStatsClient({
       setSearchResults(prev => prev.filter(p => p.id !== friendId))
       const listRes = await getFriendsList()
       if (listRes && 'data' in listRes) {
-        setFriends(listRes.data)
+        setFriends(listRes.data || [])
       }
     } else if (res && 'error' in res) {
       toast.error(res.error)
@@ -197,18 +197,18 @@ export function ProfileStatsClient({
     }
   }
 
-  const roleLabel = {
+  const roleLabel = (({
     ADMIN: { label: 'Administrador', color: 'text-neon-cyan border-neon-cyan/30 bg-neon-cyan/10' },
     STREAMER: { label: 'Streamer', color: 'text-neon-purple border-neon-purple/30 bg-neon-purple/10' },
     USER: { label: 'Usuario', color: 'text-white/40 border-white/10 bg-white/5' },
-  }[profile?.role ?? 'USER']
+  } as any)[profile?.role ?? 'USER']) || { label: 'Usuario', color: 'text-white/40 border-white/10 bg-white/5' }
 
-  const subLabel = {
+  const subLabel = (({
     ACTIVE: { label: 'Activa', color: 'text-green-400 border-green-500/30 bg-green-500/10' },
     PENDING: { label: 'Pendiente', color: 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10' },
     NONE: { label: 'Free', color: 'text-white/30 border-white/10 bg-white/5' },
     EXPIRED: { label: 'Expirada', color: 'text-red-400 border-red-500/30 bg-red-500/10' },
-  }[profile?.subscriptionStatus ?? 'NONE']
+  } as any)[profile?.subscriptionStatus ?? 'NONE']) || { label: 'Free', color: 'text-white/30 border-white/10 bg-white/5' }
 
   // 1. Chart Data: Ranking Evolution (Cumulative Points)
   const rankingChartData = useMemo(() => {

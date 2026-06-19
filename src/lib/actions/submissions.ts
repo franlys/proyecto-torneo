@@ -193,10 +193,10 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
   // STRATEGY: Only count the LATEST approved submission for each team/match pair
   // This solves the issue where duplicate records (e.g. from retries or bugs) inflate the scores.
   const uniqueApprovedSubs = mappedSubs
-    .filter(s => s.status === 'approved')
-    .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())
-    .filter((sub, index, self) => 
-      index === self.findIndex((t) => (
+    .filter((s: any) => s.status === 'approved')
+    .sort((a: any, b: any) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())
+    .filter((sub: any, index: number, self: any[]) => 
+      index === self.findIndex((t: any) => (
         t.teamId === sub.teamId && t.matchId === sub.matchId
       ))
     )
@@ -272,7 +272,7 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
   // Aggregate kills per participant from ONLY approved submissions in this tournament
   const playerKillsMap: Record<string, number> = {}
   
-  const approvedSubs = (subs || []).filter(s => s.status === 'approved')
+  const approvedSubs = (subs || []).filter((s: any) => s.status === 'approved')
   
   for (const s of approvedSubs) {
     if (s.player_kills && typeof s.player_kills === 'object') {

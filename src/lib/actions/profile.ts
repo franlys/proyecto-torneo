@@ -28,7 +28,7 @@ export async function updateProfile(formData: FormData) {
   // Fetch existing profile to preserve role, avatar_url, check changes limit and uniqueness
   const { data: existingProfile } = await adminSupabase
     .from('profiles')
-    .select('role, username, username_changes_count, avatar_url')
+    .select('role, username, username_changes_count, avatar_url, stream_url')
     .eq('id', user.id)
     .maybeSingle()
 

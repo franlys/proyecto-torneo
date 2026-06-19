@@ -121,10 +121,10 @@ export async function syncClashRoyaleTournamentData(
     .select('*')
     .eq('tournament_id', tournamentId)
 
-  const participantsByContact = new Map(
+  const participantsByContact = new Map<string, any>(
     existingParticipants?.filter((p: any) => p.contact_id).map((p: any) => [p.contact_id, p]) || []
   )
-  const participantsByName = new Map(
+  const participantsByName = new Map<string, any>(
     existingParticipants?.map((p: any) => [p.display_name.toLowerCase(), p]) || []
   )
 

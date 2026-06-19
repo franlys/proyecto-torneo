@@ -141,7 +141,9 @@ import { createMissingProfile } from '@/lib/actions/admin'
 
 function CreateProfileButton({ userId }: { userId: string }) {
   return (
-    <form action={createMissingProfile}>
+    <form action={async (formData) => {
+      await createMissingProfile(formData)
+    }}>
       <input type="hidden" name="userId" value={userId} />
       <button
         type="submit"

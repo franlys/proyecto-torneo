@@ -381,7 +381,7 @@ export function RankingList({ initialPlayers }: RankingListProps) {
                                 <XAxis dataKey="cup" tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 'bold' }} stroke="rgba(255,255,255,0.1)" />
                                 <YAxis tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10 }} stroke="rgba(255,255,255,0.1)" />
                                 <Tooltip
-                                  contentStyle={{ bg: '#0e0e13', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                                  contentStyle={{ backgroundColor: '#0e0e13', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '12px' }}
                                   labelStyle={{ color: 'rgba(255,255,255,0.6)', fontWeight: 'bold', fontSize: 11 }}
                                   itemStyle={{ color: '#00f5ff', fontSize: 12 }}
                                 />

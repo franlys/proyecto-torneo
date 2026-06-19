@@ -24,7 +24,7 @@ function generateSlug(name: string): string {
   return `${base}-${shortId}`
 }
 
-function mapTournamentRow(row: Record<string, unknown>): Tournament {
+export function mapTournamentRow(row: Record<string, unknown>): Tournament {
   return {
     id: row.id as string,
     creatorId: row.creator_id as string,
@@ -404,7 +404,7 @@ export async function activateTournament(
   // Verify ownership
   const { data: tournament, error: fetchErr } = await supabase
     .from('tournaments')
-    .select('status, creator_id, format, kill_race_time_limit_minutes')
+    .select('status, creator_id, format, kill_race_time_limit_minutes, name')
     .eq('id', id)
     .single()
 
@@ -529,7 +529,7 @@ export async function finishTournament(
   if (finishErr) return { error: finishErr.message }
 
   // --- Financial Calculation ---
-  const { data: teamsCount } = await supabase
+  const { count: teamsCount } = await supabase
     .from('teams')
     .select('id', { count: 'exact', head: true })
     .eq('tournament_id', id)
