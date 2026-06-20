@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getTournament } from '@/lib/actions/tournaments'
 import { getSubmissions } from '@/lib/actions/submissions'
+import { getTeamsWithParticipants } from '@/lib/actions/participants'
 import { SubmissionsManager } from './SubmissionsManager'
 
 export default async function SubmissionsPage({
@@ -11,9 +12,10 @@ export default async function SubmissionsPage({
 }) {
   const { id } = await params
   
-  const [tournamentResult, submissionsResult] = await Promise.all([
+  const [tournamentResult, submissionsResult, teamsResult] = await Promise.all([
     getTournament(id),
-    getSubmissions(id)
+    getSubmissions(id),
+    getTeamsWithParticipants(id)
   ])
 
   if ('error' in tournamentResult) notFound()
@@ -23,6 +25,7 @@ export default async function SubmissionsPage({
 
   const { data: tournament } = tournamentResult
   const submissions = submissionsResult.data ?? []
+  const teams = 'error' in teamsResult ? [] : (teamsResult.teams ?? [])
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
@@ -36,7 +39,7 @@ export default async function SubmissionsPage({
           {tournament.name}
         </Link>
         <span>/</span>
-        <span className="text-white/50">Moderación de Envios</span>
+        <span className="text-white/50">Moderación de Envíos</span>
       </div>
 
       <div className="mb-8">
@@ -51,6 +54,7 @@ export default async function SubmissionsPage({
       <SubmissionsManager 
         tournamentId={id} 
         initialSubmissions={submissions as any} 
+        allTeams={teams as any}
       />
     </div>
   )

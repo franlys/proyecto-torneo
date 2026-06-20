@@ -45,9 +45,11 @@ function getEvidenceUrl(storagePath: string): string {
 export function SubmissionsManager({
   tournamentId,
   initialSubmissions,
+  allTeams = [],
 }: {
   tournamentId: string
   initialSubmissions: PendingSubmission[]
+  allTeams?: { id: string; name: string }[]
 }) {
   const [submissions, setSubmissions] = useState(initialSubmissions)
   const [loadingId, setLoadingId] = useState<string | null>(null)
@@ -168,14 +170,30 @@ export function SubmissionsManager({
   return (
     <div className="space-y-12">
       {submissions.length === 0 ? (
-        <div className="py-12 text-center border border-dashed border-white/10 rounded-xl bg-white/[0.02]">
+        <div className="py-12 text-center border border-dashed border-white/10 rounded-xl bg-white/[0.02] space-y-4">
           <p className="text-white/40 text-sm">No hay envíos registrados aún</p>
+          {allTeams.length > 0 && (
+            <div className="max-w-md mx-auto text-left bg-dark-card border border-white/5 p-6 rounded-xl">
+              <h3 className="text-xs font-bold text-white/60 uppercase tracking-widest mb-3">Equipos Registrados (Sin envíos):</h3>
+              <div className="flex flex-wrap gap-2">
+                {allTeams.map(t => (
+                  <span key={t.id} className="text-xs px-2.5 py-1 bg-white/[0.03] border border-white/10 rounded-lg text-white/70">
+                    {t.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         sortedMatchIds.map(matchId => {
           const matchSubmissions = submissionsByMatch[matchId]
           const matchName = getMatchName(matchSubmissions[0])
           
+          // Find teams that have NOT submitted for this specific match
+          const submittedTeamIds = new Set(matchSubmissions.map(s => s.team_id))
+          const missingTeams = allTeams.filter(t => !submittedTeamIds.has(t.id))
+
           return (
             <div key={matchId} className="space-y-4">
               <div className="flex items-center gap-4">
@@ -187,6 +205,25 @@ export function SubmissionsManager({
                   {matchSubmissions.length} ENVÍOS
                 </span>
               </div>
+
+              {missingTeams.length > 0 && (
+                <div className="bg-red-500/5 border border-red-500/10 rounded-xl p-4 space-y-2">
+                  <h4 className="text-xs font-bold text-red-400 uppercase tracking-wider flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                    </span>
+                    Falta evidencia de {missingTeams.length} {missingTeams.length === 1 ? 'equipo' : 'equipos'}:
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {missingTeams.map(t => (
+                      <span key={t.id} className="text-xs px-2 py-0.5 bg-red-950/20 border border-red-900/30 text-red-300 rounded font-medium">
+                        {t.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
               
               <div className="bg-dark-card border border-white/5 rounded-xl overflow-hidden shadow-lg shadow-black/20">
                 <div className="overflow-x-auto">
