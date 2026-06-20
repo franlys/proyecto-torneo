@@ -109,6 +109,11 @@ export function TeamPortalClient({
       uploadFormData.append('filePath', filePath)
 
       const uploadResult = await uploadEvidence(uploadFormData)
+      
+      if (!uploadResult) {
+        throw new Error('El archivo es demasiado pesado (límite de 4 MB) o hubo un error de conexión. Intenta recortar la foto o bajarle la calidad.')
+      }
+      
       if ('error' in uploadResult) {
         throw new Error('Error al subir la imagen: ' + uploadResult.error)
       }
