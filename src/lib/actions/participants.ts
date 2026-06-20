@@ -112,8 +112,19 @@ export async function deleteTeam(
     return { error: 'Sin permisos' }
   }
 
+  const adminSupabase = await createAdminClient()
+
+  // 0. Eliminar envíos (submissions) de este equipo para evitar constraint error
+  const { error: subDeleteErr } = await adminSupabase
+    .from('submissions')
+    .delete()
+    .eq('team_id', teamId)
+    .eq('tournament_id', tournamentId)
+  
+  if (subDeleteErr) return { error: subDeleteErr.message }
+
   // 1. Eliminar todos los participantes vinculados a este equipo primero
-  const { error: partDeleteErr } = await supabase
+  const { error: partDeleteErr } = await adminSupabase
     .from('participants')
     .delete()
     .eq('team_id', teamId)
@@ -122,7 +133,7 @@ export async function deleteTeam(
   if (partDeleteErr) return { error: partDeleteErr.message }
 
   // 2. Eliminar el equipo
-  const { error } = await supabase
+  const { error } = await adminSupabase
     .from('teams')
     .delete()
     .eq('id', teamId)
@@ -223,7 +234,15 @@ export async function deleteParticipant(
     return { error: 'Sin permisos' }
   }
 
-  const { error } = await supabase
+  const adminSupabase = await createAdminClient()
+
+  // 0. Eliminar envíos (submissions) de este participante para evitar constraint error
+  await adminSupabase
+    .from('submissions')
+    .delete()
+    .eq('submitted_by', participantId)
+
+  const { error } = await adminSupabase
     .from('participants')
     .delete()
     .eq('id', participantId)
