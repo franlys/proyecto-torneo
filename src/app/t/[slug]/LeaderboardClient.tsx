@@ -535,7 +535,7 @@ export function LeaderboardClient({
                     </div>
                   </td>
                   <td className="px-3 sm:px-6 py-4 sm:py-6 text-center font-orbitron font-black text-2xl sm:text-4xl text-neon-cyan">
-                    <NumberTicker value={s.totalPoints} />
+                    <NumberTicker value={s.totalPoints} precision={s.totalPoints % 1 === 0 ? 0 : 1} />
                   </td>
                   {isShooter && (
                     <td className="px-3 sm:px-6 py-4 sm:py-6 text-center">
@@ -670,7 +670,7 @@ export function LeaderboardClient({
                       </div>
                     </td>
                     <td className="px-4 py-3.5 text-center font-orbitron font-black text-sm text-neon-cyan">
-                      {s.totalPoints}
+                      {Math.round(s.totalPoints * 10) / 10}
                     </td>
                     {isShooter && (
                       <td className="px-4 py-3.5 text-center font-orbitron font-bold text-xs text-white/80">
@@ -1785,7 +1785,9 @@ export function LeaderboardClient({
                         </div>
                      </div>
                      <div className="text-right">
-                        <div className="text-xl font-black text-white leading-none">{team.totalPoints}</div>
+                        <div className="text-xl font-black text-white leading-none">
+                          <NumberTicker value={Math.round(team.totalPoints * 10) / 10} precision={1} />
+                        </div>
                         <div className="text-[8px] text-white/30 uppercase font-bold tracking-tighter">Puntos</div>
                      </div>
                   </div>
@@ -1975,9 +1977,9 @@ export function LeaderboardClient({
                     </div>
                     <div className="flex items-center gap-6 text-sm text-white/60 font-orbitron mt-1">
                       {discipline === 'clash_royale' ? (
-                        <span><b className="text-neon-cyan">{standings[0].totalPoints}</b> COPAS</span>
+                        <span><b className="text-neon-cyan">{Math.round(standings[0].totalPoints * 10) / 10}</b> COPAS</span>
                       ) : (
-                        <span><b className="text-neon-cyan">{standings[0].totalPoints}</b> PTS</span>
+                        <span><b className="text-neon-cyan">{Math.round(standings[0].totalPoints * 10) / 10}</b> PTS</span>
                       )}
                       {isShooter && (
                         <span><b className="text-white">{standings[0].totalKills}</b> KILLS</span>

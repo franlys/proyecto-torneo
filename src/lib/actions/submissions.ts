@@ -223,7 +223,7 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
   const standingRows = standings.map((s: any) => ({
     tournament_id: tournamentId,
     team_id: s.teamId,
-    total_points: s.totalPoints,
+    total_points: Math.round(s.totalPoints * 10) / 10,
     total_kills: s.totalKills,
     kill_rate: s.killRate,
     pot_top_count: s.potTopCount,
@@ -290,9 +290,17 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
   }))
 
   if (playerUpdates.length > 0) {
-    console.log(`[STANDINGS] Updating total_kills for ${playerUpdates.length} participants`)
-    const { error: pErr } = await supabase.from('participants').upsert(playerUpdates)
-    if (pErr) console.error(`[STANDINGS] Participant KILLS Update ERROR:`, pErr)
+    console.log(`[STANDINGS] Updating total_kills for ${playerUpdates.length} participants individually to prevent NOT NULL constraint issues`)
+    const updatePromises = playerUpdates.map(async (update) => {
+      const { error: pErr } = await supabase
+        .from('participants')
+        .update({ total_kills: update.total_kills })
+        .eq('id', update.id)
+      if (pErr) {
+        console.error(`[STANDINGS] Failed to update total_kills for participant ${update.id}:`, pErr.message)
+      }
+    })
+    await Promise.all(updatePromises)
   }
 
   // Auto-sync streamer live viewers in the background
