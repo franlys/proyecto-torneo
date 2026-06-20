@@ -240,6 +240,8 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
   }
 
   // Check if any team reached the max points limit to auto-finish the tournament
+  // (Desactivado a petición del usuario para que el cierre sea estrictamente manual)
+  /*
   if (tourney?.max_points_limit && standingRows.length > 0) {
     const limit = Number(tourney.max_points_limit)
     const reachedLimit = standingRows.some((s: any) => Number(s.total_points) >= limit)
@@ -268,6 +270,7 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
       }
     }
   }
+  */
 
   // ─── NEW: Update Individual Participant Kills ─────────────────────────────
   
