@@ -678,7 +678,7 @@ export async function updateSubmissionAction(
   // Verify tournament creator permission
   const { data: submission, error: subErr } = await supabase
     .from('submissions')
-    .select('tournament_id, status, tournaments!inner(creator_id)')
+    .select('tournament_id, match_id, status, tournaments!inner(creator_id)')
     .eq('id', submissionId)
     .single()
 
@@ -691,6 +691,18 @@ export async function updateSubmissionAction(
   if (creatorId !== user.id) return { error: 'Sin permisos' }
 
   const adminSupabase = await createAdminClient()
+
+  // If a specific rank is being assigned, automatically clear it from any other submission in the same match
+  // to avoid the 'idx_submissions_unique_rank_per_match' unique constraint violation.
+  if (typeof data.rank === 'number') {
+    await adminSupabase
+      .from('submissions')
+      .update({ rank: null, pot_top: false })
+      .eq('match_id', submission.match_id)
+      .eq('rank', data.rank)
+      .neq('id', submissionId)
+  }
+
   const { error: updateErr } = await adminSupabase
     .from('submissions')
     .update({
@@ -701,7 +713,12 @@ export async function updateSubmissionAction(
     })
     .eq('id', submissionId)
 
-  if (updateErr) return { error: updateErr.message }
+  if (updateErr) {
+    if (updateErr.message.includes('unique constraint')) {
+      return { error: 'La posición ingresada ya está asignada a otro equipo en esta partida.' }
+    }
+    return { error: updateErr.message }
+  }
 
   // Recalculate standings if this submission is approved, since scores might change!
   if (submission.status === 'approved') {
