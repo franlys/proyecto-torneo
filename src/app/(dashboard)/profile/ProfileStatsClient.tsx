@@ -5,6 +5,8 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { updateProfile, uploadProfileAvatar } from '@/lib/actions/profile'
 import { getFriendsList, searchUsersForFriends, sendFriendRequest, removeFriend } from '@/lib/actions/friends'
 import { toast } from 'sonner'
+import { SubscriptionUpload } from './SubscriptionUpload'
+import { GameAccountsSection } from '@/components/profile/GameAccountsSection'
 
 interface ProfileStatsClientProps {
   profile: any
@@ -13,9 +15,7 @@ interface ProfileStatsClientProps {
   badges: any[]
   rankings: any[]
   pointsHistory: any[]
-  updateProfileForm?: React.ReactNode
-  subscriptionCard: React.ReactNode
-  gameAccountsSection?: React.ReactNode
+  gameAccounts?: any[]
 }
 
 const GAME_NAMES: Record<string, string> = {
@@ -72,9 +72,7 @@ export function ProfileStatsClient({
   badges,
   rankings,
   pointsHistory,
-  updateProfileForm,
-  subscriptionCard,
-  gameAccountsSection,
+  gameAccounts = [],
 }: ProfileStatsClientProps) {
   const [activeTab, setActiveTab] = useState<'inicio' | 'profile' | 'history' | 'badges' | 'stats' | 'friends'>('inicio')
   const [username, setUsername] = useState(profile?.username ?? '')
@@ -717,8 +715,58 @@ export function ProfileStatsClient({
                 </button>
               </form>
             </div>
-            {subscriptionCard}
-            {gameAccountsSection}
+            {/* Subscription card */}
+            {profile?.role !== 'ADMIN' && profile?.role !== 'SUPER_ADMIN' && (
+              <div className="bg-[#0d0d0f] border border-white/5 rounded-2xl p-6 space-y-4">
+                <h2 className="text-white font-orbitron font-bold text-sm uppercase tracking-wider mb-2">Suscripción</h2>
+                {profile?.subscriptionStatus === 'ACTIVE' ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-green-400" />
+                      <p className="text-green-400 text-sm font-semibold">Suscripción activa</p>
+                    </div>
+                    {profile?.subscriptionExpiry && (
+                      <p className="text-white/30 text-xs">
+                        Renovar antes del: {new Date(profile.subscriptionExpiry).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </p>
+                    )}
+                    <p className="text-white/20 text-xs">Para renovar, sube un nuevo comprobante antes de que expire.</p>
+                  </div>
+                ) : profile?.subscriptionStatus === 'PENDING' ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+                      <p className="text-yellow-400 text-sm font-semibold">Solicitud en revisión</p>
+                    </div>
+                    <p className="text-white/40 text-sm">Tu comprobante fue recibido. Te notificaremos cuando el administrador lo apruebe.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-neon-purple/5 border border-neon-purple/20 rounded-xl">
+                      <p className="text-neon-purple text-sm font-bold">Plan Streamer Pro — $15 / mes</p>
+                      <p className="text-white/40 text-xs mt-1">Torneos ilimitados · Leaderboard en vivo · Bridge ArenaCrypto · Streamer codes</p>
+                    </div>
+                    <div className="text-white/40 text-xs space-y-1">
+                      <p className="font-semibold text-white/60">Cómo activar:</p>
+                      <p>1. Realiza el pago de $15 a la cuenta indicada por el administrador.</p>
+                      <p>2. Toma un screenshot del comprobante y súbelo aquí.</p>
+                      <p>3. El administrador lo revisará y activará tu cuenta.</p>
+                    </div>
+                    <SubscriptionUpload />
+                  </div>
+                )}
+              </div>
+            )}
+            {/* Game accounts */}
+            <div className="bg-[#0d0d0f] border border-white/5 rounded-2xl p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-white font-orbitron font-bold text-sm uppercase tracking-wider">🎮 Mis Cuentas de Juego</h2>
+                  <p className="text-white/30 text-xs mt-0.5">Vincula tu ID y nombre de cuenta para cada juego. Se usarán en tus inscripciones.</p>
+                </div>
+              </div>
+              <GameAccountsSection initialAccounts={gameAccounts} />
+            </div>
           </>
         )}
 
