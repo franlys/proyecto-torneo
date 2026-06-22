@@ -107,3 +107,37 @@ export async function signOut() {
   await supabase.auth.signOut()
   redirect('/login')
 }
+
+export async function requestPasswordReset(
+  _prevState: { error?: string; success?: string } | null,
+  formData: FormData
+): Promise<{ error: string } | { success: string }> {
+  const email = formData.get('email') as string
+  if (!email || !email.includes('@')) {
+    return { error: 'Por favor, ingresa un email válido.' }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?next=/reset-password`,
+  })
+
+  if (error) return { error: error.message }
+  return { success: 'Si el correo existe en nuestra base de datos, recibirás un enlace para restablecer tu contraseña.' }
+}
+
+export async function updatePassword(
+  _prevState: { error?: string; success?: string } | null,
+  formData: FormData
+): Promise<{ error: string } | { success: string }> {
+  const password = formData.get('password') as string
+  if (!password || password.length < 8) {
+    return { error: 'La contraseña debe tener al menos 8 caracteres.' }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.auth.updateUser({ password })
+
+  if (error) return { error: error.message }
+  return { success: 'Contraseña actualizada correctamente. Redirigiendo...' }
+}
