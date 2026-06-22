@@ -1,7 +1,7 @@
 'use client'
 
 import { useTransition } from 'react'
-import { approveSubscription, deactivateSubscription } from '@/lib/actions/subscriptions'
+import { approveSubscription, deactivateSubscription, activateSubscription, approveDirectly } from '@/lib/actions/subscriptions'
 import { useRouter } from 'next/navigation'
 
 interface SubToggleProps {
@@ -63,6 +63,3 @@ export function SubToggle({ userId, status }: SubToggleProps) {
     </button>
   )
 }
-
-// Import here to avoid circular in server actions file
-import { activateSubscription, approveDirectly } from '@/lib/actions/subscriptions'

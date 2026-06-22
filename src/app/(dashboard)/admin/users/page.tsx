@@ -8,6 +8,7 @@ import { LicenseToggle } from './LicenseToggle'
 import { CreateUserForm } from './CreateUserForm'
 import { DeleteUserButton } from './DeleteUserButton'
 import { AdminErrorCard } from '@/components/ui/AdminErrorCard'
+import { createMissingProfile } from '@/lib/actions/admin'
 
 export default async function AdminUsersPage() {
   const admin = await isAdmin()
@@ -149,14 +150,14 @@ export default async function AdminUsersPage() {
   }
 }
 
-// Inline server action button para crear perfil faltante
-import { createMissingProfile } from '@/lib/actions/admin'
-
+// Inline server action button to create missing profile
 function CreateProfileButton({ userId }: { userId: string }) {
+  async function handleCreate(formData: FormData) {
+    'use server'
+    await createMissingProfile(formData)
+  }
   return (
-    <form action={async (formData) => {
-      await createMissingProfile(formData)
-    }}>
+    <form action={handleCreate}>
       <input type="hidden" name="userId" value={userId} />
       <button
         type="submit"
