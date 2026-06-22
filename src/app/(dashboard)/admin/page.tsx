@@ -178,7 +178,7 @@ export default async function AdminPage() {
         </div>
       </div>
     )
-  } catch (err) {
-    return <AdminErrorCard section="Resumen del Panel" error={err} />
+  } catch (err: any) {
+    return <AdminErrorCard section="Resumen del Panel" error={err?.message || String(err)} />
   }
 }

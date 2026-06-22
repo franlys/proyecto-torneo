@@ -31,7 +31,7 @@ export default async function AdminSettingsPage() {
         totalViewers={totalViewers} 
       />
     )
-  } catch (err) {
-    return <AdminErrorCard section="Configuración del Home" error={err} />
+  } catch (err: any) {
+    return <AdminErrorCard section="Configuración del Home" error={err?.message || String(err)} />
   }
 }

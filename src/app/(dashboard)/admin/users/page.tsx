@@ -144,8 +144,8 @@ export default async function AdminUsersPage() {
         </div>
       </div>
     )
-  } catch (err) {
-    return <AdminErrorCard section="Gestión de Usuarios" error={err} />
+  } catch (err: any) {
+    return <AdminErrorCard section="Gestión de Usuarios" error={err?.message || String(err)} />
   }
 }
 

@@ -314,7 +314,7 @@ export default async function AdminRevenuePage() {
         )}
       </div>
     )
-  } catch (err) {
-    return <AdminErrorCard section="Control de Ingresos" error={err} />
+  } catch (err: any) {
+    return <AdminErrorCard section="Control de Ingresos" error={err?.message || String(err)} />
   }
 }

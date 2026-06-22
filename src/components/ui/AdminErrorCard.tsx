@@ -8,8 +8,12 @@ interface AdminErrorCardProps {
 }
 
 export function AdminErrorCard({ section, error }: AdminErrorCardProps) {
-  const errorMessage = error?.message || String(error)
-  const isServiceRoleError = errorMessage.includes('SUPABASE_SERVICE_ROLE_KEY') || errorMessage.includes('service_role')
+  const errorMessage = typeof error === 'string' ? error : (error?.message || String(error || ''))
+  const isServiceRoleError = errorMessage.includes('SUPABASE_SERVICE_ROLE_KEY') || 
+                             errorMessage.includes('service_role') || 
+                             errorMessage.includes('service role') || 
+                             errorMessage.includes('API key') ||
+                             errorMessage.includes('service-role')
 
   return (
     <div className="max-w-xl mx-auto my-12 p-8 bg-[#121219] border border-red-500/20 rounded-2xl shadow-xl shadow-red-500/5 space-y-6">
@@ -35,7 +39,7 @@ export function AdminErrorCard({ section, error }: AdminErrorCardProps) {
       <div className="space-y-3">
         <h3 className="text-sm font-bold text-white uppercase tracking-wider">¿Cómo solucionarlo?</h3>
         <p className="text-sm text-white/60 leading-relaxed">
-          {isServiceRoleError || !process.env.SUPABASE_SERVICE_ROLE_KEY ? (
+          {isServiceRoleError ? (
             <span>
               La clave de rol de servicio (<code className="text-neon-cyan bg-neon-cyan/5 px-1.5 py-0.5 rounded font-mono text-xs">SUPABASE_SERVICE_ROLE_KEY</code>) no se encuentra definida o no es correcta en el entorno de producción. Debes configurarla en el panel de control de tu hosting (como Vercel) con los valores obtenidos de tu proyecto de Supabase.
             </span>
