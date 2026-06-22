@@ -23,7 +23,10 @@ interface DraggableEvidenceModalProps {
     playerKillsBreakdown?: Array<{ name: string; kills: number }>
     aiData?: { team_name?: string; kill_count?: number; rank?: number }
     aiStatus?: string
+    status?: 'pending' | 'approved' | 'rejected'
   }
+  onApprove?: () => void
+  onReject?: () => void
 }
 
 export function DraggableEvidenceModal({
@@ -32,7 +35,9 @@ export function DraggableEvidenceModal({
   onClose,
   title = 'Visualizador de Evidencia',
   evidenceFiles = [],
-  submissionDetails
+  submissionDetails,
+  onApprove,
+  onReject
 }: DraggableEvidenceModalProps) {
   const [scale, setScale] = useState(1)
   const [rotation, setRotation] = useState(0)
@@ -312,6 +317,62 @@ export function DraggableEvidenceModal({
                       </div>
                     )}
 
+                    {/* Moderation Actions (Approve/Reject) */}
+                    {(onApprove || onReject) && submissionDetails.status && (
+                      <div className="bg-white/[0.01] border border-white/5 rounded-xl p-3.5 space-y-3 mt-4">
+                        <h4 className="text-[9px] font-black text-white/40 uppercase tracking-widest border-b border-white/5 pb-1.5">
+                          Moderación de Envío
+                        </h4>
+                        
+                        {submissionDetails.status === 'pending' ? (
+                          <div className="flex flex-col gap-2">
+                            <button
+                              onClick={onApprove}
+                              type="button"
+                              className="w-full py-2.5 rounded-lg bg-green-500 hover:bg-green-400 text-black font-orbitron font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(34,197,94,0.2)]"
+                            >
+                              ✓ Aprobar Envío
+                            </button>
+                            <button
+                              onClick={onReject}
+                              type="button"
+                              className="w-full py-2.5 rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-orbitron font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5"
+                            >
+                              ✗ Rechazar Envío
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-2.5">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-white/50">Estado actual:</span>
+                              <span className={`font-orbitron font-black uppercase text-xs ${
+                                submissionDetails.status === 'approved' ? 'text-green-400' : 'text-red-400'
+                              }`}>
+                                {submissionDetails.status === 'approved' ? '✓ Aprobado' : '✗ Rechazado'}
+                              </span>
+                            </div>
+                            
+                            {submissionDetails.status === 'approved' ? (
+                              <button
+                                onClick={onReject}
+                                type="button"
+                                className="w-full py-2 rounded-lg border border-red-500/20 hover:border-red-500/30 hover:bg-red-500/5 text-red-400/80 hover:text-red-400 text-[10px] font-bold uppercase tracking-wider transition-all"
+                              >
+                                Cambiar a Rechazado
+                              </button>
+                            ) : (
+                              <button
+                                onClick={onApprove}
+                                type="button"
+                                className="w-full py-2 rounded-lg border border-green-500/20 hover:border-green-500/30 hover:bg-green-500/5 text-green-400/80 hover:text-green-400 text-[10px] font-bold uppercase tracking-wider transition-all"
+                              >
+                                Cambiar a Aprobado
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

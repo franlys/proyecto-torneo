@@ -127,6 +127,12 @@ export function SubmissionsManager({
       if ('error' in res) throw new Error(res.error)
       
       setSubmissions(submissions.map(s => s.id === id ? { ...s, status: 'approved' } : s))
+      setSelectedSubmissionDetails((prev: any) => {
+        if (prev && prev.id === id) {
+          return { ...prev, status: 'approved' }
+        }
+        return prev
+      })
     } catch (err: any) {
       alert(err.message)
     } finally {
@@ -144,6 +150,12 @@ export function SubmissionsManager({
       if ('error' in res) throw new Error(res.error)
       
       setSubmissions(submissions.map(s => s.id === id ? { ...s, status: 'rejected', rejection_reason: reason || 'Envío inválido' } : s))
+      setSelectedSubmissionDetails((prev: any) => {
+        if (prev && prev.id === id) {
+          return { ...prev, status: 'rejected' }
+        }
+        return prev
+      })
     } catch (err: any) {
       alert(err.message)
     } finally {
@@ -386,13 +398,15 @@ export function SubmissionsManager({
                                         })
 
                                         setSelectedSubmissionDetails({
+                                          id: sub.id,
                                           teamName: teamObj?.name || 'Equipo',
                                           killCount: sub.kill_count,
                                           rank: sub.rank,
                                           potTop: sub.pot_top,
                                           playerKillsBreakdown,
                                           aiData: sub.ai_data,
-                                          aiStatus: sub.ai_status
+                                          aiStatus: sub.ai_status,
+                                          status: sub.status
                                         })
                                         
                                         setModalEvidenceFiles(resolvedFiles)
@@ -567,6 +581,8 @@ export function SubmissionsManager({
         imageUrl={modalImageUrl} 
         evidenceFiles={modalEvidenceFiles}
         submissionDetails={selectedSubmissionDetails}
+        onApprove={selectedSubmissionDetails ? () => handleApprove(selectedSubmissionDetails.id) : undefined}
+        onReject={selectedSubmissionDetails ? () => handleReject(selectedSubmissionDetails.id) : undefined}
         onClose={() => {
           setModalOpen(false)
           setModalEvidenceFiles([])
