@@ -36,14 +36,15 @@ export function RoleSelect({ userId, currentRole }: RoleSelectProps) {
       defaultValue={currentRole}
       onChange={handleChange}
       disabled={isPending}
-      className="bg-white/5 border border-white/10 text-white/60 text-xs rounded-lg px-2 py-1 focus:outline-none focus:border-neon-cyan/50 cursor-pointer disabled:opacity-40"
+      className="bg-[#1a1a24] border border-white/10 text-white text-xs rounded-lg px-2 py-1 focus:outline-none focus:border-neon-cyan/50 cursor-pointer disabled:opacity-40"
+      style={{ colorScheme: 'dark' }}
     >
-      <option value="USER">USER</option>
-      <option value="STREAMER">STREAMER</option>
-      <option value="FEDERATION">FEDERATION</option>
-      <option value="KRONIX_STAFF">KRONIX STAFF</option>
-      <option value="ADMIN">ADMIN</option>
-      <option value="SUPER_ADMIN">SUPER ADMIN</option>
+      <option value="USER"        className="bg-[#1a1a24] text-white">USER</option>
+      <option value="STREAMER"    className="bg-[#1a1a24] text-white">STREAMER</option>
+      <option value="FEDERATION"  className="bg-[#1a1a24] text-white">FEDERATION</option>
+      <option value="KRONIX_STAFF" className="bg-[#1a1a24] text-white">KRONIX STAFF</option>
+      <option value="ADMIN"       className="bg-[#1a1a24] text-white">ADMIN</option>
+      <option value="SUPER_ADMIN" className="bg-[#1a1a24] text-white">SUPER ADMIN</option>
     </select>
   )
 }
