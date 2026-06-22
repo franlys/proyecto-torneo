@@ -25,9 +25,16 @@ export async function createClient() {
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 export async function createAdminClient() {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!serviceRoleKey) {
+    throw new Error(
+      'SUPABASE_SERVICE_ROLE_KEY no está definida en las variables de entorno del servidor. ' +
+      'Configúrala en el panel de Cloud Run (o tu hosting) para habilitar las funciones de administración.'
+    )
+  }
   return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    serviceRoleKey,
     {
       auth: {
         autoRefreshToken: false,

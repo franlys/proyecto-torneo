@@ -15,20 +15,22 @@ const supabaseKey = keyMatch[1].trim();
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function checkQuery() {
-  const tournamentId = '99aa6551-d52c-4c46-b545-3e514fab2d17';
-  
-  const { data: teams, error } = await supabase
-    .from('teams')
-    .select('stream_url, participants(stream_url)')
-    .eq('tournament_id', tournamentId);
+  const { data: tournaments, error } = await supabase
+    .from('tournaments')
+    .select(`
+      *,
+      profiles:creator_id (
+        username
+      )
+    `)
+    .order('created_at', { ascending: false })
 
   if (error) {
     console.error("Query Error:", error);
     return;
   }
 
-  console.log("Query Result:");
-  console.log(JSON.stringify(teams, null, 2));
+  console.log("Query Result:", tournaments);
 }
 
 checkQuery();
