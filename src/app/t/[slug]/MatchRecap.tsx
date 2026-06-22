@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Participant } from '@/types'
+import { DraggableEvidenceModal } from '@/components/ui/DraggableEvidenceModal'
 
 interface SubmissionData {
   id: string
@@ -44,6 +45,8 @@ export function MatchRecap({ matches, submissions, participants, primaryColor }:
   
   const [isMounted, setIsMounted] = useState(false)
   const [activeEncounterId, setActiveEncounterId] = useState<string | null>(encounters[0]?.id || null)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalImageUrl, setModalImageUrl] = useState('')
 
   useEffect(() => {
     setIsMounted(true)
@@ -344,11 +347,13 @@ export function MatchRecap({ matches, submissions, participants, primaryColor }:
                                       ? ef.storagePath
                                       : `${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '')}/storage/v1/object/public/evidences/${ef.storagePath.replace(/^evidences\//, '')}`
                                     return (
-                                      <a 
+                                      <button 
                                         key={idx}
-                                        href={imageUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
+                                        type="button"
+                                        onClick={() => {
+                                          setModalImageUrl(imageUrl)
+                                          setModalOpen(true)
+                                        }}
                                         className="group relative w-full h-24 rounded-xl overflow-hidden border border-white/5 hover:border-neon-cyan/50 transition-all bg-black/40 flex items-center justify-center p-1"
                                       >
                                         <img 
@@ -356,10 +361,10 @@ export function MatchRecap({ matches, submissions, participants, primaryColor }:
                                           alt="Evidencia"
                                           className="w-full h-full object-cover rounded-lg opacity-60 group-hover:opacity-100 transition-opacity"
                                         />
-                                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-[2px]">
-                                        <span className="text-[10px] font-black text-neon-cyan uppercase tracking-tighter shadow-lg">Ver Foto Completa</span>
-                                      </div>
-                                      </a>
+                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-[2px]">
+                                          <span className="text-[10px] font-black text-neon-cyan uppercase tracking-tighter shadow-lg">Ver Foto Completa</span>
+                                        </div>
+                                      </button>
                                     )
                                   })}
                                </div>
@@ -374,6 +379,12 @@ export function MatchRecap({ matches, submissions, participants, primaryColor }:
           </motion.div>
         )}
       </AnimatePresence>
+      <DraggableEvidenceModal
+        isOpen={modalOpen}
+        imageUrl={modalImageUrl}
+        onClose={() => setModalOpen(false)}
+        title="Evidencia de Partida Pública"
+      />
     </div>
   )
 }

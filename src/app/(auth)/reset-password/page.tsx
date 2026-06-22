@@ -21,14 +21,17 @@ export default function ResetPasswordPage() {
   const [state, action] = useFormState(updatePassword, null)
   const router = useRouter()
 
+  const isSuccess = state != null && 'success' in state
+  const isError   = state != null && 'error' in state
+
   useEffect(() => {
-    if (state?.success) {
+    if (isSuccess) {
       const timer = setTimeout(() => {
         router.push('/tournaments')
       }, 2000)
       return () => clearTimeout(timer)
     }
-  }, [state?.success, router])
+  }, [isSuccess, router])
 
   return (
     <div>
@@ -48,7 +51,7 @@ export default function ResetPasswordPage() {
           Ingresa tu nueva contraseña para acceder a tu cuenta.
         </p>
 
-        {state?.success ? (
+        {isSuccess ? (
           <div className="text-center py-6">
             <div className="w-16 h-16 rounded-full bg-neon-cyan/20 border border-neon-cyan mx-auto flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(0,245,255,0.2)]">
               <span className="text-neon-cyan text-3xl">✓</span>
@@ -75,7 +78,7 @@ export default function ResetPasswordPage() {
               />
             </div>
 
-            {state?.error && (
+            {isError && (
               <p className="text-red-400 text-sm bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">
                 {state.error}
               </p>

@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { isAdmin } from '@/lib/actions/auth-helpers'
+import { isAdmin, isSuperAdmin, getProfile } from '@/lib/actions/auth-helpers'
 import Link from 'next/link'
 
 export default async function AdminLayout({
@@ -8,37 +8,49 @@ export default async function AdminLayout({
   children: React.ReactNode
 }) {
   const allowed = await isAdmin()
-
   if (!allowed) {
     redirect('/tournaments')
   }
 
+  const isSuperAdminUser = await isSuperAdmin()
+  const profile = await getProfile()
+
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white">
-      {/* Admin Sidebar/Navbar */}
-      <nav className="fixed top-0 left-0 right-0 h-16 bg-[#121219] border-b border-white/5 flex items-center px-8 z-50">
-        <div className="flex items-center gap-8">
-          <Link href="/admin" className="font-black tracking-tighter text-xl">
-            ARENA<span className="text-neon-cyan">ADMIN</span>
-          </Link>
-          
-          <div className="flex items-center gap-6 text-sm font-bold uppercase tracking-widest text-white/60">
-            <Link href="/admin/subscriptions" className="hover:text-neon-cyan transition-colors">Suscripciones</Link>
-            <Link href="/admin/tournaments" className="hover:text-neon-cyan transition-colors">Torneos</Link>
-            <Link href="/admin/analytics" className="hover:text-neon-cyan transition-colors">Analíticas</Link>
-            <Link href="/admin/ads" className="hover:text-neon-cyan transition-colors">Publicidad</Link>
-            <Link href="/admin/settings" className="hover:text-neon-cyan transition-colors">Configuración</Link>
-          </div>
+      {/* Admin Navbar */}
+      <nav className="fixed top-0 left-0 right-0 h-14 bg-[#121219]/95 backdrop-blur-md border-b border-white/5 flex items-center px-6 z-50 gap-6">
+        <Link href="/admin" className="font-black tracking-tighter text-lg mr-2 shrink-0">
+          KRONIX<span className="text-neon-cyan">ADMIN</span>
+        </Link>
+
+        <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest text-white/50 overflow-x-auto">
+          <Link href="/admin/subscriptions" className="hover:text-neon-cyan transition-colors whitespace-nowrap">Suscripciones</Link>
+          <Link href="/admin/tickets" className="hover:text-neon-cyan transition-colors whitespace-nowrap">Tickets</Link>
+          <Link href="/admin/analytics" className="hover:text-neon-cyan transition-colors whitespace-nowrap">Analíticas</Link>
+          <Link href="/admin/ads" className="hover:text-neon-cyan transition-colors whitespace-nowrap">Publicidad</Link>
+          {isSuperAdminUser && (
+            <>
+              <Link href="/admin/users" className="hover:text-yellow-300 transition-colors whitespace-nowrap text-yellow-400/70">Usuarios</Link>
+              <Link href="/admin/revenue" className="hover:text-yellow-300 transition-colors whitespace-nowrap text-yellow-400/70">Ingresos</Link>
+              <Link href="/admin/settings" className="hover:text-yellow-300 transition-colors whitespace-nowrap text-yellow-400/70">Config. Inicio</Link>
+            </>
+          )}
         </div>
-        
-        <div className="ml-auto">
+
+        <div className="ml-auto flex items-center gap-4 shrink-0">
+          <span className="hidden sm:flex items-center gap-2 text-xs text-white/30">
+            <span className={`w-2 h-2 rounded-full ${
+              profile?.role === 'SUPER_ADMIN' ? 'bg-yellow-400' : 'bg-orange-400'
+            }`} />
+            {profile?.username || 'Admin'}
+          </span>
           <Link href="/tournaments" className="text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white transition-colors">
-            Volver al App
+            ← App
           </Link>
         </div>
       </nav>
 
-      <main className="pt-24 pb-12 px-8">
+      <main className="pt-20 pb-12 px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           {children}
         </div>

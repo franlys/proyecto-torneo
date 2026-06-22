@@ -3,6 +3,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
+import { getProfile } from './auth-helpers'
 
 const updateProfileSchema = z.object({
   username: z.string().min(2, 'Mínimo 2 caracteres').max(30, 'Máximo 30 caracteres').regex(/^[a-zA-Z0-9_]+$/, 'Solo letras, números y guión bajo').nullable().optional(),
@@ -218,3 +219,55 @@ export async function uploadProfileAvatar(formData: FormData) {
   revalidatePath('/profile')
   return { success: true, url: urlWithBust }
 }
+
+const updateStreamerSettingsSchema = z.object({
+  organization_name: z.string().max(100, 'Máximo 100 caracteres').nullable().optional(),
+  payment_details: z.string().max(2000, 'Máximo 2000 caracteres').nullable().optional(),
+  discord_link: z.string().url('URL de Discord inválida').or(z.literal('')).nullable().optional(),
+  whatsapp_link: z.string().url('URL de WhatsApp inválida').or(z.literal('')).nullable().optional(),
+})
+
+export async function updateStreamerSettings(formData: FormData): Promise<{ success: boolean } | { error: string }> {
+  const profile = await getProfile()
+  if (!profile) return { error: 'No autenticado' }
+
+  if (
+    profile.role !== 'STREAMER' &&
+    profile.role !== 'SUPER_ADMIN' &&
+    profile.role !== 'ADMIN'
+  ) {
+    return { error: 'No autorizado' }
+  }
+
+  const rawOrgName = formData.get('organization_name')
+  const rawPaymentDetails = formData.get('payment_details')
+  const rawDiscordLink = formData.get('discord_link')
+  const rawWhatsappLink = formData.get('whatsapp_link')
+
+  const parsed = updateStreamerSettingsSchema.safeParse({
+    organization_name: rawOrgName === '' ? null : (rawOrgName ? String(rawOrgName) : undefined),
+    payment_details: rawPaymentDetails === '' ? null : (rawPaymentDetails ? String(rawPaymentDetails) : undefined),
+    discord_link: rawDiscordLink === '' ? '' : (rawDiscordLink ? String(rawDiscordLink) : undefined),
+    whatsapp_link: rawWhatsappLink === '' ? '' : (rawWhatsappLink ? String(rawWhatsappLink) : undefined),
+  })
+
+  if (!parsed.success) return { error: parsed.error.errors[0].message }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      organization_name: parsed.data.organization_name !== undefined ? parsed.data.organization_name : undefined,
+      payment_details: parsed.data.payment_details !== undefined ? parsed.data.payment_details : undefined,
+      discord_link: parsed.data.discord_link !== undefined ? (parsed.data.discord_link || null) : undefined,
+      whatsapp_link: parsed.data.whatsapp_link !== undefined ? (parsed.data.whatsapp_link || null) : undefined,
+    })
+    .eq('id', profile.id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/tournaments/payments')
+  revalidatePath('/profile')
+  return { success: true }
+}
+

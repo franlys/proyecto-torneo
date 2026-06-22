@@ -5,7 +5,26 @@ import Link from 'next/link'
 import { signOut } from '@/lib/actions/auth'
 import { motion, AnimatePresence } from 'framer-motion'
 
-export default function DashboardShell({ children, userRole }: { children: React.ReactNode; userRole: 'ADMIN' | 'STREAMER' | 'USER' }) {
+const ROLE_BADGE: Record<string, { label: string; color: string }> = {
+  SUPER_ADMIN: { label: '⭐ Super Admin', color: 'text-yellow-300' },
+  ADMIN:       { label: '⚡ Admin',       color: 'text-neon-cyan' },
+  KRONIX_STAFF:{ label: '🔧 Staff',       color: 'text-orange-300' },
+  FEDERATION:  { label: '🏛 Federación',  color: 'text-green-400' },
+  STREAMER:    { label: '🎮 Streamer',    color: 'text-purple-400' },
+  USER:        { label: '👤 Usuario',     color: 'text-white/40' },
+}
+
+export default function DashboardShell({
+  children,
+  userRole,
+  username,
+  avatarUrl,
+}: {
+  children: React.ReactNode
+  userRole: 'SUPER_ADMIN' | 'ADMIN' | 'KRONIX_STAFF' | 'FEDERATION' | 'STREAMER' | 'USER'
+  username?: string | null
+  avatarUrl?: string | null
+}) {
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   // Close drawer on route change
@@ -16,16 +35,53 @@ export default function DashboardShell({ children, userRole }: { children: React
   const NavLinks = () => (
     <nav className="flex-1 px-3 py-4 space-y-1">
       {userRole !== 'USER' && (
-        <Link
-          href="/tournaments"
-          onClick={() => setDrawerOpen(false)}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-        >
-          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7h18M3 12h18M3 17h18" />
-          </svg>
-          Mis Torneos
-        </Link>
+        <>
+          <Link
+            href="/tournaments"
+            onClick={() => setDrawerOpen(false)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+          >
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7h18M3 12h18M3 17h18" />
+            </svg>
+            Mis Torneos
+          </Link>
+          
+          {(userRole === 'STREAMER' || userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && (
+            <>
+              <Link
+                href="/tournaments/staff"
+                onClick={() => setDrawerOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Mi Staff
+              </Link>
+              <Link
+                href="/tournaments/payments"
+                onClick={() => setDrawerOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+                Métodos de Pago
+              </Link>
+              <Link
+                href="/tournaments/support"
+                onClick={() => setDrawerOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                Soporte Kronix
+              </Link>
+            </>
+          )}
+        </>
       )}
 
       <div className="px-3 pt-4 pb-1">
@@ -73,61 +129,75 @@ export default function DashboardShell({ children, userRole }: { children: React
         Hall of Fame
       </Link>
 
-      {userRole === 'ADMIN' && (
+      {(userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'KRONIX_STAFF') && (
         <>
           <div className="px-3 pt-4 pb-1">
             <span className="text-[10px] font-bold uppercase tracking-widest text-white/20">Administración</span>
           </div>
+          {(userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && (
+            <>
+              <Link
+                href="/admin"
+                onClick={() => setDrawerOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-neon-cyan/70 hover:text-neon-cyan hover:bg-neon-cyan/5 transition-colors"
+              >
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Panel Admin
+              </Link>
+              <Link
+                href="/admin/users"
+                onClick={() => setDrawerOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Usuarios
+              </Link>
+              <Link
+                href="/admin/subscriptions"
+                onClick={() => setDrawerOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Suscripciones
+              </Link>
+              <Link
+                href="/admin/revenue"
+                onClick={() => setDrawerOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Ingresos
+              </Link>
+              <Link
+                href="/admin/settings"
+                onClick={() => setDrawerOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+                Personalizar Inicio
+              </Link>
+            </>
+          )}
           <Link
-            href="/admin"
-            onClick={() => setDrawerOpen(false)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-neon-cyan/70 hover:text-neon-cyan hover:bg-neon-cyan/5 transition-colors"
-          >
-            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            Panel Admin
-          </Link>
-          <Link
-            href="/admin/users"
+            href="/admin/tickets"
             onClick={() => setDrawerOpen(false)}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
           >
             <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
             </svg>
-            Usuarios
-          </Link>
-          <Link
-            href="/admin/subscriptions"
-            onClick={() => setDrawerOpen(false)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-          >
-            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Suscripciones
-          </Link>
-          <Link
-            href="/admin/revenue"
-            onClick={() => setDrawerOpen(false)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-          >
-            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Ingresos
-          </Link>
-          <Link
-            href="/admin/settings"
-            onClick={() => setDrawerOpen(false)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-          >
-            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-            Personalizar Inicio
+            Soporte Tickets
           </Link>
         </>
       )}
@@ -136,16 +206,33 @@ export default function DashboardShell({ children, userRole }: { children: React
 
   const SidebarFooter = () => (
     <div className="px-3 py-4 border-t border-white/5 space-y-1">
+      {/* User Info */}
       <Link
         href="/profile"
         onClick={() => setDrawerOpen(false)}
-        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/40 hover:text-white/70 hover:bg-white/5 transition-colors"
+        className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 transition-colors group"
       >
-        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-        Mi Perfil
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={username || 'Avatar'}
+            className="w-8 h-8 rounded-lg object-cover border border-white/10 shrink-0"
+          />
+        ) : (
+          <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0 text-sm">
+            👤
+          </div>
+        )}
+        <div className="min-w-0">
+          <p className="text-xs font-bold text-white/80 group-hover:text-white transition-colors truncate">
+            {username || 'Mi Perfil'}
+          </p>
+          <p className={`text-[10px] font-semibold ${ROLE_BADGE[userRole]?.color ?? 'text-white/40'}`}>
+            {ROLE_BADGE[userRole]?.label ?? userRole}
+          </p>
+        </div>
       </Link>
+
       <form action={signOut}>
         <button
           type="submit"
@@ -157,7 +244,7 @@ export default function DashboardShell({ children, userRole }: { children: React
           Cerrar sesión
         </button>
       </form>
-      <div className="mt-6 text-center opacity-30 pointer-events-none select-none">
+      <div className="mt-4 text-center opacity-30 pointer-events-none select-none">
         <span className="text-[9px] uppercase tracking-widest block font-orbitron">Powered by</span>
         <span className="text-xs font-bold uppercase tracking-wider mt-0.5 block font-orbitron text-neon-cyan">GonzalezLabs</span>
       </div>

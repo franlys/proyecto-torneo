@@ -25,7 +25,34 @@ function generateSlug(name: string): string {
   return `${base}-${shortId}`
 }
 
+async function checkTournamentAccess(creatorId: string, userId: string): Promise<boolean> {
+  if (creatorId === userId) return true
+  
+  const supabase = await createClient()
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .single()
+    
+  if (
+    profile?.role === 'SUPER_ADMIN' ||
+    profile?.role === 'ADMIN' ||
+    profile?.role === 'KRONIX_STAFF' ||
+    profile?.role === 'FEDERATION'
+  ) {
+    return true
+  }
 
+  const { data: staff } = await supabase
+    .from('streamer_staff')
+    .select('id')
+    .eq('streamer_id', creatorId)
+    .eq('staff_id', userId)
+    .maybeSingle()
+
+  return !!staff
+}
 
 function mapScoringRuleRow(row: Record<string, unknown>): ScoringRule {
   return {
@@ -203,7 +230,7 @@ export async function updateTournament(
     .single()
 
   if (fetchErr || !existing) return { error: 'Torneo no encontrado' }
-  if (existing.creator_id !== user.id) return { error: 'Sin permisos' }
+  if (!(await checkTournamentAccess(existing.creator_id, user.id))) return { error: 'Sin permisos' }
   if (existing.status !== 'draft' && existing.status !== 'pending') {
     return { error: 'No se puede modificar un torneo activo o finalizado' }
   }
@@ -318,9 +345,7 @@ export async function publishTournament(
 
   if (fetchErr || !tournament) return { error: 'Torneo no encontrado' }
 
-  const { isAdmin } = await import('./auth-helpers')
-  const admin = await isAdmin()
-  if (!admin && tournament.creator_id !== user.id) return { error: 'Sin permisos' }
+  if (!(await checkTournamentAccess(tournament.creator_id, user.id))) return { error: 'Sin permisos' }
 
   if (tournament.status !== 'draft') {
     return { error: 'Solo se puede anunciar un torneo en estado Borrador' }
@@ -359,7 +384,7 @@ export async function activateTournament(
     .single()
 
   if (fetchErr || !tournament) return { error: 'Torneo no encontrado' }
-  if (tournament.creator_id !== user.id) return { error: 'Sin permisos' }
+  if (!(await checkTournamentAccess(tournament.creator_id, user.id))) return { error: 'Sin permisos' }
   if (tournament.status !== 'draft' && tournament.status !== 'pending') {
     return { error: 'El torneo ya está activo o finalizado' }
   }
@@ -461,7 +486,7 @@ export async function finishTournament(
     .single()
 
   if (fetchErr || !tournament) return { error: 'Torneo no encontrado' }
-  if (tournament.creator_id !== user.id) return { error: 'Sin permisos' }
+  if (!(await checkTournamentAccess(tournament.creator_id, user.id))) return { error: 'Sin permisos' }
   if (tournament.status !== 'active') {
     return { error: 'Solo se pueden finalizar torneos activos' }
   }
@@ -775,7 +800,7 @@ export async function reactivateTournament(
     .single()
 
   if (fetchErr || !tournament) return { error: 'Torneo no encontrado' }
-  if (tournament.creator_id !== user.id) return { error: 'Sin permisos' }
+  if (!(await checkTournamentAccess(tournament.creator_id, user.id))) return { error: 'Sin permisos' }
   if (tournament.status !== 'finished') {
     return { error: 'Solo se pueden reactivar torneos finalizados' }
   }
@@ -829,7 +854,18 @@ export async function getTournaments(): Promise<
     .order('created_at', { ascending: false })
 
   if (!admin) {
-    query = query.eq('creator_id', user.id)
+    const { data: staffData } = await supabase
+      .from('streamer_staff')
+      .select('streamer_id')
+      .eq('staff_id', user.id)
+    const streamerIds = staffData?.map((s: any) => s.streamer_id) || []
+
+    if (streamerIds.length > 0) {
+      const formattedIds = streamerIds.map(id => `"${id}"`).join(',')
+      query = query.or(`creator_id.eq.${user.id},creator_id.in.(${formattedIds})`)
+    } else {
+      query = query.eq('creator_id', user.id)
+    }
   }
 
   const { data, error } = await query
@@ -851,18 +887,17 @@ export async function getTournament(
 
   const admin = await isAdmin()
 
-  let query = supabase
+  const { data: tournament, error: tErr } = await supabase
     .from('tournaments')
     .select('*')
     .eq('id', id)
-
-  if (!admin) {
-    query = query.eq('creator_id', user.id)
-  }
-
-  const { data: tournament, error: tErr } = await query.single()
+    .single()
 
   if (tErr || !tournament) return { error: 'Torneo no encontrado' }
+
+  if (!admin && !(await checkTournamentAccess(tournament.creator_id, user.id))) {
+    return { error: 'Torneo no encontrado' }
+  }
 
   const { data: rule } = await supabase
     .from('scoring_rules')
@@ -905,7 +940,7 @@ export async function deleteTournament(
     .eq('id', user.id)
     .single()
 
-  const isUserAdmin = profile?.role === 'ADMIN'
+  const isUserAdmin = profile?.role === 'ADMIN' || profile?.role === 'SUPER_ADMIN'
 
   if (tournament.creator_id !== user.id && !isUserAdmin) {
     return { error: 'Sin permisos para eliminar este torneo' }
@@ -1004,8 +1039,7 @@ export async function toggleTournamentPrivacy(
 
   if (fetchErr || !tournament) return { error: 'Torneo no encontrado' }
 
-  const admin = await isAdmin()
-  if (!admin && tournament.creator_id !== user.id) return { error: 'Sin permisos' }
+  if (!(await checkTournamentAccess(tournament.creator_id, user.id))) return { error: 'Sin permisos' }
 
   const { error } = await supabase
     .from('tournaments')
@@ -1048,8 +1082,7 @@ export async function addDynamicMatch(
 
   if (fetchErr || !tournament) return { error: 'Torneo no encontrado' }
 
-  const admin = await isAdmin()
-  if (!admin && tournament.creator_id !== user.id) return { error: 'Sin permisos' }
+  if (!(await checkTournamentAccess(tournament.creator_id, user.id))) return { error: 'Sin permisos' }
   if (tournament.status !== 'active') return { error: 'El torneo debe estar activo para agregar partidas' }
 
   const nextMatchNumber = (tournament.total_matches || 0) + 1

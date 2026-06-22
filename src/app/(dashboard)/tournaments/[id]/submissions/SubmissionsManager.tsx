@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { approveSubmission, rejectSubmission, updateSubmissionAction } from '@/lib/actions/submissions'
+import { DraggableEvidenceModal } from '@/components/ui/DraggableEvidenceModal'
 
 type EvidenceFile = {
   id: string
@@ -53,6 +54,8 @@ export function SubmissionsManager({
 }) {
   const [submissions, setSubmissions] = useState(initialSubmissions)
   const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalImageUrl, setModalImageUrl] = useState('')
 
   const [editingSub, setEditingSub] = useState<PendingSubmission | null>(null)
   const [editKills, setEditKills] = useState<number>(0)
@@ -366,10 +369,11 @@ export function SubmissionsManager({
                           <td className="px-6 py-4 text-right">
                              <div className="flex items-center justify-end gap-2">
                                {sub.evidence_files && sub.evidence_files.length > 0 && (
-                                   <a
-                                     href={getEvidenceUrl(sub.evidence_files[0].storage_path)}
-                                     target="_blank"
-                                     rel="noreferrer"
+                                   <button
+                                     onClick={() => {
+                                       setModalImageUrl(getEvidenceUrl(sub.evidence_files?.[0]?.storage_path ?? ''))
+                                       setModalOpen(true)
+                                     }}
                                      className="p-1.5 text-white/50 hover:text-neon-cyan hover:bg-neon-cyan/10 rounded transition-colors"
                                      title="Ver Evidencia"
                                    >
@@ -377,7 +381,7 @@ export function SubmissionsManager({
                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                      </svg>
-                                   </a>
+                                   </button>
                                )}
                                
                                <button
@@ -533,6 +537,12 @@ export function SubmissionsManager({
           </div>
         </div>
       )}
+      <DraggableEvidenceModal 
+        isOpen={modalOpen} 
+        imageUrl={modalImageUrl} 
+        onClose={() => setModalOpen(false)} 
+        title="Evidencia de Partida"
+      />
     </div>
   )
 }

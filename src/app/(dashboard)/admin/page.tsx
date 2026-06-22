@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server'
-import { isAdmin } from '@/lib/actions/auth-helpers'
+import { isAdmin, isSuperAdmin } from '@/lib/actions/auth-helpers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { SendRemindersButton } from './SendRemindersButton'
@@ -8,6 +8,7 @@ import { RankingManager } from './RankingManager'
 export default async function AdminPage() {
   const admin = await isAdmin()
   if (!admin) redirect('/tournaments')
+  const superAdmin = await isSuperAdmin()
 
   const supabase = await createAdminClient()
 
@@ -61,12 +62,14 @@ export default async function AdminPage() {
 
       {/* Quick Actions */}
       <div className="flex flex-wrap gap-3 items-center">
-        <Link
-          href="/admin/users"
-          className="px-4 py-2 bg-neon-cyan/10 border border-neon-cyan/20 text-neon-cyan text-sm rounded-lg hover:bg-neon-cyan/20 transition-colors"
-        >
-          Gestionar usuarios
-        </Link>
+        {superAdmin && (
+          <Link
+            href="/admin/users"
+            className="px-4 py-2 bg-neon-cyan/10 border border-neon-cyan/20 text-neon-cyan text-sm rounded-lg hover:bg-neon-cyan/20 transition-colors"
+          >
+            Gestionar usuarios
+          </Link>
+        )}
         <Link
           href="/admin/subscriptions"
           className="px-4 py-2 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-sm rounded-lg hover:bg-yellow-500/20 transition-colors"
@@ -74,17 +77,25 @@ export default async function AdminPage() {
           Ver solicitudes pendientes
         </Link>
         <Link
+          href="/admin/tickets"
+          className="px-4 py-2 bg-orange-500/10 border border-orange-500/20 text-orange-400 text-sm rounded-lg hover:bg-orange-500/20 transition-colors"
+        >
+          Tickets de Soporte
+        </Link>
+        <Link
           href="/admin/analytics"
           className="px-4 py-2 bg-purple-500/10 border border-purple-500/20 text-purple-400 text-sm rounded-lg hover:bg-purple-500/20 transition-colors"
         >
           Ver Analíticas y Tráfico
         </Link>
-        <Link
-          href="/admin/settings"
-          className="px-4 py-2 bg-green-500/10 border border-green-500/20 text-green-400 text-sm rounded-lg hover:bg-green-500/20 transition-colors"
-        >
-          Configurar Inicio (Home)
-        </Link>
+        {superAdmin && (
+          <Link
+            href="/admin/settings"
+            className="px-4 py-2 bg-green-500/10 border border-green-500/20 text-green-400 text-sm rounded-lg hover:bg-green-500/20 transition-colors"
+          >
+            Configurar Inicio (Home)
+          </Link>
+        )}
         <SendRemindersButton />
       </div>
 
@@ -102,14 +113,22 @@ export default async function AdminPage() {
                   <p className="text-white text-sm">{u.username ?? <span className="text-white/30 italic">Sin username</span>}</p>
                   <p className="text-white/30 text-xs mt-0.5">{new Date(u.created_at).toLocaleDateString('es')}</p>
                 </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full border ${
-                  u.role === 'ADMIN'
+                <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${
+                  u.role === 'SUPER_ADMIN'
+                    ? 'border-yellow-400/50 text-yellow-300 bg-yellow-400/15'
+                    : u.role === 'ADMIN'
                     ? 'border-neon-cyan/30 text-neon-cyan bg-neon-cyan/10'
-                    : u.subscription_status === 'ACTIVE'
+                    : u.role === 'KRONIX_STAFF'
+                    ? 'border-orange-400/40 text-orange-300 bg-orange-400/10'
+                    : u.role === 'STREAMER'
+                    ? 'border-purple-400/40 text-purple-300 bg-purple-400/10'
+                    : u.role === 'FEDERATION'
                     ? 'border-green-500/30 text-green-400 bg-green-500/10'
                     : 'border-white/10 text-white/40'
                 }`}>
-                  {u.role === 'ADMIN' ? 'ADMIN' : u.subscription_status === 'ACTIVE' ? 'ACTIVO' : 'FREE'}
+                  {u.role === 'SUPER_ADMIN' ? '⭐ SUPER ADMIN'
+                    : u.role === 'KRONIX_STAFF' ? '🔧 STAFF'
+                    : u.role}
                 </span>
               </div>
             ))}

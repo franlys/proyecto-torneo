@@ -83,14 +83,17 @@ export function CreateUserForm() {
             <label className="block text-[10px] uppercase font-black tracking-widest text-white/40 mb-1.5">Rol en la plataforma</label>
             <select
               name="role"
-              defaultValue="FEDERATION"
+              defaultValue="STREAMER"
               className="w-full bg-[#121219] border border-white/10 rounded-xl px-4 py-2 text-white focus:border-neon-cyan outline-none"
             >
-              <option value="USER">USER</option>
-              <option value="STREAMER">STREAMER (Creador de Torneo)</option>
-              <option value="FEDERATION">FEDERATION (Gestor Oficial)</option>
-              <option value="ADMIN">ADMIN (Super Administrador)</option>
+              <option value="USER">USER — Jugador estándar</option>
+              <option value="STREAMER">STREAMER — Creador de torneos</option>
+              <option value="FEDERATION">FEDERATION — Gestor oficial</option>
+              <option value="KRONIX_STAFF">KRONIX STAFF — Soporte Kronix</option>
+              <option value="ADMIN">ADMIN — Administrador</option>
+              <option value="SUPER_ADMIN">SUPER ADMIN — Acceso total</option>
             </select>
+            <p className="text-[10px] text-white/30 mt-1">⚠ Los roles KRONIX STAFF y SUPER ADMIN otorgan acceso privilegiado a toda la plataforma.</p>
           </div>
 
           {error && (

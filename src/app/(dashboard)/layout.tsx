@@ -16,7 +16,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const profile = await getProfile()
 
   return (
-    <DashboardShell userRole={(profile?.role as any) ?? 'USER'}>
+    <DashboardShell
+      userRole={(profile?.role as any) ?? 'USER'}
+      username={profile?.username ?? null}
+      avatarUrl={profile?.avatarUrl ?? null}
+    >
       {children}
     </DashboardShell>
   )

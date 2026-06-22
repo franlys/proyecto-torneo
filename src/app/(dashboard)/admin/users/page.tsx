@@ -67,16 +67,22 @@ export default async function AdminUsersPage() {
                     </td>
                     <td className="px-5 py-3">
                       {profile ? (
-                        <span className={`text-xs px-2 py-0.5 rounded-full border ${
-                          profile.role === 'ADMIN'
+                        <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${
+                          profile.role === 'SUPER_ADMIN'
+                            ? 'border-yellow-400/50 text-yellow-300 bg-yellow-400/15'
+                            : profile.role === 'ADMIN'
                             ? 'border-neon-cyan/30 text-neon-cyan bg-neon-cyan/10'
+                            : profile.role === 'KRONIX_STAFF'
+                            ? 'border-orange-400/40 text-orange-300 bg-orange-400/10'
                             : profile.role === 'STREAMER'
                             ? 'border-neon-purple/30 text-neon-purple bg-neon-purple/10'
                             : profile.role === 'FEDERATION'
                             ? 'border-green-500/30 text-green-400 bg-green-500/10'
                             : 'border-white/10 text-white/40'
                         }`}>
-                          {profile.role}
+                          {profile.role === 'SUPER_ADMIN' ? '⭐ SUPER ADMIN' 
+                            : profile.role === 'KRONIX_STAFF' ? '🔧 KRONIX STAFF'
+                            : profile.role}
                         </span>
                       ) : (
                         <span className="text-xs text-yellow-500/60 border border-yellow-500/20 bg-yellow-500/5 px-2 py-0.5 rounded-full">
@@ -115,7 +121,7 @@ export default async function AdminUsersPage() {
                     <td className="px-5 py-3 flex items-center gap-2">
                       {profile ? (
                         <>
-                          {profile.role !== 'ADMIN' && (
+                          {profile.role !== 'ADMIN' && profile.role !== 'SUPER_ADMIN' && (
                             <SubToggle userId={u.id} status={profile.subscription_status} />
                           )}
                           <RoleSelect userId={u.id} currentRole={profile.role} />

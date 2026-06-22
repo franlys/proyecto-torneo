@@ -57,7 +57,7 @@ export async function sendSubscriptionReminders(): Promise<{ sent: number } | { 
 
 const changeRoleSchema = z.object({
   userId: z.string().uuid(),
-  role: z.enum(['ADMIN', 'FEDERATION', 'STREAMER', 'USER']),
+  role: z.enum(['SUPER_ADMIN', 'ADMIN', 'KRONIX_STAFF', 'FEDERATION', 'STREAMER', 'USER']),
 })
 
 export async function changeUserRole(formData: FormData) {
@@ -86,7 +86,7 @@ const createUserSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   username: z.string().min(3),
-  role: z.enum(['ADMIN', 'FEDERATION', 'STREAMER', 'USER']),
+  role: z.enum(['SUPER_ADMIN', 'ADMIN', 'KRONIX_STAFF', 'FEDERATION', 'STREAMER', 'USER']),
 })
 
 export async function createUserByAdmin(formData: FormData) {

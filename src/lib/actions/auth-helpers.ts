@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 export type Profile = {
   id: string
   username: string | null
-  role: 'ADMIN' | 'FEDERATION' | 'STREAMER' | 'USER'
+  role: 'SUPER_ADMIN' | 'ADMIN' | 'KRONIX_STAFF' | 'FEDERATION' | 'STREAMER' | 'USER'
   subscriptionStatus: 'NONE' | 'PENDING' | 'ACTIVE' | 'EXPIRED'
   subscriptionExpiry: string | null
   avatarUrl: string | null
@@ -43,19 +43,32 @@ export async function getProfile(): Promise<Profile | null> {
 }
 
 /**
- * Checks if the current user is an admin or federation member.
+ * Checks if the current user is an admin, super admin, kronix staff, or federation member.
  */
 export async function isAdmin() {
   const profile = await getProfile()
-  return profile?.role === 'ADMIN' || profile?.role === 'FEDERATION'
+  return (
+    profile?.role === 'SUPER_ADMIN' ||
+    profile?.role === 'ADMIN' ||
+    profile?.role === 'KRONIX_STAFF' ||
+    profile?.role === 'FEDERATION'
+  )
 }
 
 /**
- * Checks if the current user is specifically Super Admin (role = ADMIN).
+ * Checks if the current user is specifically a Super Admin.
  */
 export async function isSuperAdmin() {
   const profile = await getProfile()
-  return profile?.role === 'ADMIN'
+  return profile?.role === 'SUPER_ADMIN' || profile?.role === 'ADMIN'
+}
+
+/**
+ * Checks if the current user is specifically Kronix Support Staff.
+ */
+export async function isKronixStaff() {
+  const profile = await getProfile()
+  return profile?.role === 'KRONIX_STAFF'
 }
 
 /**
@@ -64,5 +77,12 @@ export async function isSuperAdmin() {
 export async function isActiveStreamer() {
   const profile = await getProfile()
   if (profile?.role === 'USER') return false
-  return profile?.role === 'ADMIN' || profile?.role === 'FEDERATION' || profile?.subscriptionStatus === 'ACTIVE'
+  return (
+    profile?.role === 'SUPER_ADMIN' ||
+    profile?.role === 'ADMIN' ||
+    profile?.role === 'KRONIX_STAFF' ||
+    profile?.role === 'FEDERATION' ||
+    profile?.subscriptionStatus === 'ACTIVE'
+  )
 }
+
