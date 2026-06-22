@@ -47,7 +47,7 @@ export function DraggableEvidenceModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/85 backdrop-blur-sm cursor-pointer"
+            className="absolute inset-0 bg-black/10 cursor-pointer"
           />
 
           {/* Draggable Modal Window */}
