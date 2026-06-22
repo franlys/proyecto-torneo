@@ -88,37 +88,57 @@ export function TeamPortalClient({
     const finalRank = rank === '' ? undefined : rank
     const finalPotTop = potTop
     
-    const fileBase = form.elements.namedItem('evidenceFile') as HTMLInputElement
-    const file = fileBase?.files?.[0]
+    const fileKillsBase = form.elements.namedItem('evidenceKillsFile') as HTMLInputElement
+    const fileTopBase = form.elements.namedItem('evidenceTopFile') as HTMLInputElement
+    const fileKills = fileKillsBase?.files?.[0]
+    const fileTop = fileTopBase?.files?.[0]
 
-    if (!file) {
-      setError('Debes subir una imagen de evidencia')
+    if (!fileKills || !fileTop) {
+      setError('Debes subir ambas imágenes de evidencia (Kills y Top)')
       setLoading(false)
       return
     }
 
     try {
-      // 1. Upload file via Server Action (browser → Vercel → Supabase Storage)
-      //    This avoids DNS resolution failures on mobile carrier networks.
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${crypto.randomUUID()}.${fileExt}`
-      const filePath = `${tournament.id}/${team.id}/${matchId}/${fileName}`
+      // 1. Upload Kills file via Server Action
+      const fileKillsExt = fileKills.name.split('.').pop()
+      const fileKillsName = `${crypto.randomUUID()}.${fileKillsExt}`
+      const fileKillsPath = `${tournament.id}/${team.id}/${matchId}/kills_${fileKillsName}`
 
-      const uploadFormData = new FormData()
-      uploadFormData.append('file', file)
-      uploadFormData.append('filePath', filePath)
+      const uploadFormDataKills = new FormData()
+      uploadFormDataKills.append('file', fileKills)
+      uploadFormDataKills.append('filePath', fileKillsPath)
 
-      const uploadResult = await uploadEvidence(uploadFormData)
+      const uploadResultKills = await uploadEvidence(uploadFormDataKills)
       
-      if (!uploadResult) {
-        throw new Error('El archivo es demasiado pesado (límite de 4 MB) o hubo un error de conexión. Intenta recortar la foto o bajarle la calidad.')
+      if (!uploadResultKills) {
+        throw new Error('La imagen de Kills es demasiado pesada (límite de 4 MB) o hubo un error de conexión.')
       }
       
-      if ('error' in uploadResult) {
-        throw new Error('Error al subir la imagen: ' + uploadResult.error)
+      if ('error' in uploadResultKills) {
+        throw new Error('Error al subir la imagen de Kills: ' + uploadResultKills.error)
       }
 
-      // 2. Submit with player breakdown
+      // 2. Upload Top file via Server Action
+      const fileTopExt = fileTop.name.split('.').pop()
+      const fileTopName = `${crypto.randomUUID()}.${fileTopExt}`
+      const fileTopPath = `${tournament.id}/${team.id}/${matchId}/top_${fileTopName}`
+
+      const uploadFormDataTop = new FormData()
+      uploadFormDataTop.append('file', fileTop)
+      uploadFormDataTop.append('filePath', fileTopPath)
+
+      const uploadResultTop = await uploadEvidence(uploadFormDataTop)
+      
+      if (!uploadResultTop) {
+        throw new Error('La imagen del Top es demasiado pesada (límite de 4 MB) o hubo un error de conexión.')
+      }
+      
+      if ('error' in uploadResultTop) {
+        throw new Error('Error al subir la imagen del Top: ' + uploadResultTop.error)
+      }
+
+      // 3. Submit with player breakdown and both evidences
       const res = await createSubmission({
         tournamentId: tournament.id,
         teamId: team.id,
@@ -128,11 +148,17 @@ export function TeamPortalClient({
         playerKills: playerKills,
         rank: finalRank,
         potTop: finalPotTop,
-        evidence: {
-          storagePath: uploadResult.path,
-          fileName: file.name,
-          fileSize: file.size,
-          mimeType: file.type,
+        evidenceKills: {
+          storagePath: uploadResultKills.path,
+          fileName: fileKills.name,
+          fileSize: fileKills.size,
+          mimeType: fileKills.type,
+        },
+        evidenceTop: {
+          storagePath: uploadResultTop.path,
+          fileName: fileTop.name,
+          fileSize: fileTop.size,
+          mimeType: fileTop.type,
         }
       })
 
@@ -319,16 +345,31 @@ export function TeamPortalClient({
       </div>
 
       {/* File Upload */}
-      <div>
-        <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-2 ml-1">Captura de evidencia</label>
-        <div className="relative group">
-          <input 
-            type="file" 
-            name="evidenceFile" 
-            accept="image/*"
-            required
-            className="w-full text-xs text-white/50 file:mr-4 file:py-3 file:px-6 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:uppercase file:tracking-[0.1em] file:bg-neon-cyan/20 file:text-neon-cyan hover:file:bg-neon-cyan/30 file:transition-all bg-black/40 border border-white/10 rounded-xl p-2 group-hover:border-white/20 transition-all cursor-pointer"
-          />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-[10px] font-black uppercase tracking-widest text-neon-cyan mb-2 ml-1">💀 Evidencia de Kills (Tabla)</label>
+          <div className="relative group">
+            <input 
+              type="file" 
+              name="evidenceKillsFile" 
+              accept="image/*"
+              required
+              className="w-full text-xs text-white/50 file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-[9px] file:font-black file:uppercase file:tracking-[0.1em] file:bg-neon-cyan/20 file:text-neon-cyan hover:file:bg-neon-cyan/30 file:transition-all bg-black/40 border border-white/10 rounded-xl p-2 group-hover:border-white/20 transition-all cursor-pointer"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-[10px] font-black uppercase tracking-widest text-gold mb-2 ml-1">🏆 Evidencia de Top / Victoria</label>
+          <div className="relative group">
+            <input 
+              type="file" 
+              name="evidenceTopFile" 
+              accept="image/*"
+              required
+              className="w-full text-xs text-white/50 file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-[9px] file:font-black file:uppercase file:tracking-[0.1em] file:bg-gold/20 file:text-gold hover:file:bg-gold/30 file:transition-all bg-black/40 border border-white/10 rounded-xl p-2 group-hover:border-white/20 transition-all cursor-pointer"
+            />
+          </div>
         </div>
       </div>
 

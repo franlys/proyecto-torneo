@@ -140,7 +140,19 @@ export const submissionSchema = z.object({
     fileName: z.string(),
     fileSize: z.number(),
     mimeType: z.string(),
-  }),
+  }).optional(),
+  evidenceKills: z.object({
+    storagePath: z.string(),
+    fileName: z.string(),
+    fileSize: z.number(),
+    mimeType: z.string(),
+  }).optional(),
+  evidenceTop: z.object({
+    storagePath: z.string(),
+    fileName: z.string(),
+    fileSize: z.number(),
+    mimeType: z.string(),
+  }).optional(),
 })
 
 export type CreateTeamInput = z.infer<typeof teamSchema>

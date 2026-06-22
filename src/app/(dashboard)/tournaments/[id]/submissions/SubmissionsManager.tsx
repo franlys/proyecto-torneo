@@ -56,6 +56,8 @@ export function SubmissionsManager({
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [modalImageUrl, setModalImageUrl] = useState('')
+  const [modalEvidenceFiles, setModalEvidenceFiles] = useState<Array<{ url: string; evidence_type: string }>>([])
+  const [selectedSubmissionDetails, setSelectedSubmissionDetails] = useState<any>(null)
 
   const [editingSub, setEditingSub] = useState<PendingSubmission | null>(null)
   const [editKills, setEditKills] = useState<number>(0)
@@ -371,8 +373,31 @@ export function SubmissionsManager({
                                {sub.evidence_files && sub.evidence_files.length > 0 && (
                                    <button
                                      onClick={() => {
-                                       setModalImageUrl(getEvidenceUrl(sub.evidence_files?.[0]?.storage_path ?? ''))
-                                       setModalOpen(true)
+                                        const resolvedFiles = sub.evidence_files?.map(f => ({
+                                          url: getEvidenceUrl(f.storage_path),
+                                          evidence_type: (f as any).evidence_type || 'kills'
+                                        })) || []
+                                        
+                                        const teamObj: any = Array.isArray(sub.teams) ? sub.teams[0] : sub.teams
+                                        const teamParticipants = teamObj?.participants || []
+                                        const playerKillsBreakdown = Object.entries(sub.player_kills || {}).map(([pId, kills]) => {
+                                          const pName = teamParticipants.find((p: any) => p.id === pId)?.display_name || 'Jugador'
+                                          return { name: pName, kills }
+                                        })
+
+                                        setSelectedSubmissionDetails({
+                                          teamName: teamObj?.name || 'Equipo',
+                                          killCount: sub.kill_count,
+                                          rank: sub.rank,
+                                          potTop: sub.pot_top,
+                                          playerKillsBreakdown,
+                                          aiData: sub.ai_data,
+                                          aiStatus: sub.ai_status
+                                        })
+                                        
+                                        setModalEvidenceFiles(resolvedFiles)
+                                        setModalImageUrl(resolvedFiles[0]?.url || '')
+                                        setModalOpen(true)
                                      }}
                                      className="p-1.5 text-white/50 hover:text-neon-cyan hover:bg-neon-cyan/10 rounded transition-colors"
                                      title="Ver Evidencia"
@@ -540,7 +565,13 @@ export function SubmissionsManager({
       <DraggableEvidenceModal 
         isOpen={modalOpen} 
         imageUrl={modalImageUrl} 
-        onClose={() => setModalOpen(false)} 
+        evidenceFiles={modalEvidenceFiles}
+        submissionDetails={selectedSubmissionDetails}
+        onClose={() => {
+          setModalOpen(false)
+          setModalEvidenceFiles([])
+          setSelectedSubmissionDetails(null)
+        }} 
         title="Evidencia de Partida"
       />
     </div>

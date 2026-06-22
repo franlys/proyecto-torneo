@@ -839,7 +839,8 @@ export function LeaderboardClient({
         id: f.id,
         storagePath: f.storage_path,
         mimeType: f.mime_type,
-        fileSize: f.file_size
+        fileSize: f.file_size,
+        evidenceType: f.evidence_type || 'kills'
       }))
     }))
 

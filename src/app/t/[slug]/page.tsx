@@ -171,7 +171,8 @@ export default async function PublicLeaderboardPage({
     teams: s.teams,
     evidenceFiles: (s.evidence_files || []).map((ev: any) => ({
       storagePath: ev.storage_path,
-      mimeType: ev.mime_type
+      mimeType: ev.mime_type,
+      evidenceType: ev.evidence_type || 'kills'
     }))
   }))
 

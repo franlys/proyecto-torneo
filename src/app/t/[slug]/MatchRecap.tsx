@@ -47,6 +47,8 @@ export function MatchRecap({ matches, submissions, participants, primaryColor }:
   const [activeEncounterId, setActiveEncounterId] = useState<string | null>(encounters[0]?.id || null)
   const [modalOpen, setModalOpen] = useState(false)
   const [modalImageUrl, setModalImageUrl] = useState('')
+  const [modalEvidenceFiles, setModalEvidenceFiles] = useState<Array<{ url: string; evidence_type: string }>>([])
+  const [selectedSubmissionDetails, setSelectedSubmissionDetails] = useState<any>(null)
 
   useEffect(() => {
     setIsMounted(true)
@@ -339,37 +341,62 @@ export function MatchRecap({ matches, submissions, participants, primaryColor }:
 
                           {/* Evidence View (Admin/Check) */}
                           {sub.evidenceFiles && sub.evidenceFiles.length > 0 && (
-                            <div className="mt-4 pt-4 border-t border-white/5">
-                               <p className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-2">Evidencia Adjunta</p>
-                               <div className="flex gap-2">
-                                  {sub.evidenceFiles.map((ef, idx) => {
-                                    const imageUrl = ef.storagePath.startsWith('http')
-                                      ? ef.storagePath
-                                      : `${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '')}/storage/v1/object/public/evidences/${ef.storagePath.replace(/^evidences\//, '')}`
-                                    return (
-                                      <button 
-                                        key={idx}
-                                        type="button"
-                                        onClick={() => {
-                                          setModalImageUrl(imageUrl)
-                                          setModalOpen(true)
-                                        }}
-                                        className="group relative w-full h-24 rounded-xl overflow-hidden border border-white/5 hover:border-neon-cyan/50 transition-all bg-black/40 flex items-center justify-center p-1"
-                                      >
-                                        <img 
-                                          src={imageUrl} 
-                                          alt="Evidencia"
-                                          className="w-full h-full object-cover rounded-lg opacity-60 group-hover:opacity-100 transition-opacity"
-                                        />
-                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-[2px]">
-                                          <span className="text-[10px] font-black text-neon-cyan uppercase tracking-tighter shadow-lg">Ver Foto Completa</span>
-                                        </div>
-                                      </button>
-                                    )
-                                  })}
-                               </div>
-                            </div>
-                          )}
+                             <div className="mt-4 pt-4 border-t border-white/5">
+                                <p className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-2">Evidencia Adjunta</p>
+                                <div className="flex gap-2">
+                                   {sub.evidenceFiles.map((ef, idx) => {
+                                     const imageUrl = ef.storagePath.startsWith('http')
+                                       ? ef.storagePath
+                                       : `${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '')}/storage/v1/object/public/evidences/${ef.storagePath.replace(/^evidences\//, '')}`
+                                     
+                                     const evType = (ef as any).evidenceType || 'kills'
+                                     
+                                     return (
+                                       <button 
+                                         key={idx}
+                                         type="button"
+                                         onClick={() => {
+                                           const resolvedFiles = sub.evidenceFiles?.map(f => ({
+                                             url: f.storagePath.startsWith('http')
+                                               ? f.storagePath
+                                               : `${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '')}/storage/v1/object/public/evidences/${f.storagePath.replace(/^evidences\//, '')}`,
+                                             evidence_type: (f as any).evidenceType || 'kills'
+                                           })) || []
+
+                                           const playerKillsBreakdown = Object.entries(sub.playerKills || {}).map(([pId, kills]) => {
+                                             const pName = participants.find(p => p.id === pId)?.displayName || 'Jugador'
+                                             return { name: pName, kills }
+                                           })
+
+                                           setSelectedSubmissionDetails({
+                                             teamName: sub.teams?.name || 'Equipo',
+                                             killCount: sub.killCount,
+                                             rank: sub.rank,
+                                             potTop: sub.potTop,
+                                             playerKillsBreakdown
+                                           })
+
+                                           setModalEvidenceFiles(resolvedFiles)
+                                           setModalImageUrl(imageUrl)
+                                           setModalOpen(true)
+                                         }}
+                                         className="group relative flex-1 h-20 rounded-xl overflow-hidden border border-white/5 hover:border-neon-cyan/50 transition-all bg-black/40 flex flex-col items-center justify-center p-1"
+                                       >
+                                         <img 
+                                           src={imageUrl} 
+                                           alt={`Evidencia ${evType}`}
+                                           className="w-full h-full object-cover rounded-lg opacity-60 group-hover:opacity-100 transition-opacity"
+                                         />
+                                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 opacity-100 group-hover:bg-black/60 transition-all">
+                                           <span className="text-[8px] font-black text-white/50 uppercase tracking-wider">{evType === 'kills' ? '💀 Kills' : '🏆 Top'}</span>
+                                           <span className="text-[6px] font-bold text-neon-cyan uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">Ampliar</span>
+                                         </div>
+                                       </button>
+                                     )
+                                   })}
+                                </div>
+                             </div>
+                           )}
                         </div>
                       </motion.div>
                     )
@@ -382,7 +409,13 @@ export function MatchRecap({ matches, submissions, participants, primaryColor }:
       <DraggableEvidenceModal
         isOpen={modalOpen}
         imageUrl={modalImageUrl}
-        onClose={() => setModalOpen(false)}
+        evidenceFiles={modalEvidenceFiles}
+        submissionDetails={selectedSubmissionDetails}
+        onClose={() => {
+          setModalOpen(false)
+          setModalEvidenceFiles([])
+          setSelectedSubmissionDetails(null)
+        }}
         title="Evidencia de Partida Pública"
       />
     </div>

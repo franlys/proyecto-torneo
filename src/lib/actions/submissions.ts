@@ -87,7 +87,55 @@ export async function createSubmission(
 
   if (subErr) return { error: subErr.message }
 
-  if (parsed.data.evidence) {
+  let hasEvidence = false;
+  let aiStoragePath = '';
+  let aiMimeType = '';
+
+  if (parsed.data.evidenceKills) {
+    hasEvidence = true;
+    aiStoragePath = parsed.data.evidenceKills.storagePath;
+    aiMimeType = parsed.data.evidenceKills.mimeType;
+    
+    const { error: evErr } = await adminSupabase
+      .from('evidence_files')
+      .insert({
+        submission_id: submission.id,
+        storage_path: parsed.data.evidenceKills.storagePath,
+        file_name: parsed.data.evidenceKills.fileName,
+        file_size: parsed.data.evidenceKills.fileSize,
+        mime_type: parsed.data.evidenceKills.mimeType,
+        evidence_type: 'kills',
+      });
+      
+    if (evErr) {
+      return { error: 'Envío creado, pero hubo un error al registrar la evidencia de Kills: ' + evErr.message };
+    }
+  }
+
+  if (parsed.data.evidenceTop) {
+    hasEvidence = true;
+    const { error: evErr } = await adminSupabase
+      .from('evidence_files')
+      .insert({
+        submission_id: submission.id,
+        storage_path: parsed.data.evidenceTop.storagePath,
+        file_name: parsed.data.evidenceTop.fileName,
+        file_size: parsed.data.evidenceTop.fileSize,
+        mime_type: parsed.data.evidenceTop.mimeType,
+        evidence_type: 'top',
+      });
+      
+    if (evErr) {
+      return { error: 'Envío creado, pero hubo un error al registrar la evidencia de Top: ' + evErr.message };
+    }
+  }
+
+  // Fallback for legacy single evidence
+  if (parsed.data.evidence && !parsed.data.evidenceKills) {
+    hasEvidence = true;
+    aiStoragePath = parsed.data.evidence.storagePath;
+    aiMimeType = parsed.data.evidence.mimeType;
+    
     const { error: evErr } = await adminSupabase
       .from('evidence_files')
       .insert({
@@ -96,19 +144,18 @@ export async function createSubmission(
         file_name: parsed.data.evidence.fileName,
         file_size: parsed.data.evidence.fileSize,
         mime_type: parsed.data.evidence.mimeType,
-      })
+        evidence_type: 'kills',
+      });
       
     if (evErr) {
-      // NOTE: Normally we might rollback the submission here, but for simplicity
-      // we'll return an error and leave the pending submission without evidence.
-      // A cron or manual check can clean up orphaned submissions.
-      return { error: 'Envío creado, pero hubo un error al registrar la evidencia: ' + evErr.message }
+      return { error: 'Envío creado, pero hubo un error al registrar la evidencia: ' + evErr.message };
     }
+  }
 
-    // NEW: Trigger AI Validation asynchronously (Wait for it in this action for demo purposes or fire and forget)
-    // For now, we'll let it run and update the DB in the background
-    processAIValidation(submission.id, parsed.data.evidence.storagePath, parsed.data.evidence.mimeType)
-      .catch(err => console.error('Background AI validation failed:', err))
+  if (hasEvidence && aiStoragePath && aiMimeType) {
+    // NEW: Trigger AI Validation asynchronously
+    processAIValidation(submission.id, aiStoragePath, aiMimeType)
+      .catch(err => console.error('Background AI validation failed:', err));
   }
 
   return {
