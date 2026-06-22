@@ -26,6 +26,7 @@ export default function DashboardShell({
   avatarUrl?: string | null
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const isAdminUser = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'KRONIX_STAFF'
 
   // Close drawer on route change
   useEffect(() => {
@@ -88,7 +89,7 @@ export default function DashboardShell({
         <span className="text-[10px] font-bold uppercase tracking-widest text-white/20">Explorar</span>
       </div>
       <Link
-        href="/torneos"
+        href={isAdminUser ? "/admin/tournaments" : "/torneos"}
         onClick={() => setDrawerOpen(false)}
         className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
       >
@@ -99,7 +100,7 @@ export default function DashboardShell({
         Torneos Públicos
       </Link>
       <Link
-        href="/rankings"
+        href={isAdminUser ? "/admin" : "/rankings"}
         onClick={() => setDrawerOpen(false)}
         className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
       >
@@ -109,7 +110,7 @@ export default function DashboardShell({
         Rankings Nacionales
       </Link>
       <Link
-        href="/copas"
+        href={isAdminUser ? "/admin/tournaments" : "/copas"}
         onClick={() => setDrawerOpen(false)}
         className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
       >

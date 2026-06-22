@@ -18,7 +18,7 @@ export default async function AdminLayout({
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white">
       {/* Admin Navbar */}
-      <nav className="fixed top-0 left-0 right-0 h-14 bg-[#121219]/95 backdrop-blur-md border-b border-white/5 flex items-center px-6 z-50 gap-6">
+      <nav className="hidden lg:flex fixed top-0 left-0 right-0 h-14 bg-[#121219]/95 backdrop-blur-md border-b border-white/5 items-center px-6 z-50 gap-6">
         <Link href="/admin" className="font-black tracking-tighter text-lg mr-2 shrink-0">
           KRONIX<span className="text-neon-cyan">ADMIN</span>
         </Link>
@@ -50,7 +50,7 @@ export default async function AdminLayout({
         </div>
       </nav>
 
-      <main className="pt-20 pb-12 px-6 lg:px-8">
+      <main className="pt-20 pb-12 px-4 lg:px-8">
         <div className="max-w-7xl mx-auto">
           {children}
         </div>
