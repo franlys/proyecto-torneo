@@ -64,15 +64,23 @@ export default function RegisterPage() {
             Leaderboard Platform
           </p>
         </div>
-        <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 text-center">
-          <div className="w-12 h-12 rounded-full bg-neon-cyan/20 border border-neon-cyan/40 flex items-center justify-center mx-auto mb-4">
-            <span className="text-neon-cyan text-xl">✓</span>
+        <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 text-center space-y-5">
+          <div className="w-12 h-12 rounded-full bg-neon-cyan/20 border border-neon-cyan/40 flex items-center justify-center mx-auto mb-2 shadow-[0_0_15px_rgba(0,245,255,0.2)]">
+            <span className="text-neon-cyan text-xl font-bold">✓</span>
           </div>
-          <h2 className="text-white font-semibold text-xl mb-2">¡Revisa tu email!</h2>
-          <p className="text-white/60 text-sm">{state.success}</p>
+          <h2 className="text-white font-orbitron font-bold text-xl uppercase tracking-wider">¡Revisa tu email!</h2>
+          <p className="text-white/80 text-sm leading-relaxed">{state.success}</p>
+          
+          <div className="p-3.5 bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 rounded-xl text-xs text-left space-y-1">
+            <span className="font-bold block uppercase tracking-wider text-[10px]">⚠️ Nota Importante:</span>
+            <p className="leading-relaxed">
+              El correo de confirmación puede tardar un par de minutos. Si no lo encuentras en tu bandeja de entrada principal, <strong>revisa obligatoriamente tu carpeta de Correo no deseado (SPAM)</strong>, Correo secundario o la pestaña de Promociones.
+            </p>
+          </div>
+
           <Link
             href="/login"
-            className="inline-block mt-6 text-neon-cyan text-sm hover:underline"
+            className="inline-block mt-4 text-neon-cyan text-sm hover:underline font-orbitron font-semibold uppercase tracking-wider"
           >
             Volver al login
           </Link>
