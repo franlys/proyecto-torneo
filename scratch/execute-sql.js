@@ -9,30 +9,15 @@ const client = new Client({
   }
 });
 
-const sql = `
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO public.profiles (id, username, role)
-  VALUES (
-    new.id, 
-    new.raw_user_meta_data->>'username',
-    CASE WHEN (SELECT COUNT(*) FROM public.profiles) = 0 THEN 'ADMIN'::user_role ELSE 'USER'::user_role END
-  );
-  RETURN new;
-EXCEPTION WHEN OTHERS THEN
-  RETURN new;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-`;
+const sql = `SELECT id, username, role, subscription_status FROM public.profiles;`;
 
 async function run() {
   try {
     console.log('Connecting to database...');
     await client.connect();
     console.log('Connected. Running SQL query...');
-    await client.query(sql);
-    console.log('SQL trigger safety function updated successfully!');
+    const res = await client.query(sql);
+    console.log('Query result:', res.rows);
   } catch (err) {
     console.error('Database query error:', err.message);
   } finally {
