@@ -84,7 +84,7 @@ export async function signUp(
     },
   })
   if (error) return { error: error.message }
-  return { success: 'Revisa tu email para confirmar tu cuenta y activar tu perfil.' }
+  return { success: 'Revisa tu email (incluyendo la carpeta de SPAM) para confirmar tu cuenta.' }
 }
 
 export async function resendVerificationEmail(
@@ -99,7 +99,7 @@ export async function resendVerificationEmail(
     },
   })
   if (error) return { error: error.message }
-  return { success: 'Correo de verificación reenviado. Revisa tu bandeja de entrada.' }
+  return { success: 'Correo de verificación reenviado. Por favor revisa también tu carpeta de SPAM o correo no deseado.' }
 }
 
 export async function signOut() {
@@ -123,7 +123,7 @@ export async function requestPasswordReset(
   })
 
   if (error) return { error: error.message }
-  return { success: 'Si el correo existe en nuestra base de datos, recibirás un enlace para restablecer tu contraseña.' }
+  return { success: 'Si el correo existe, recibirás un enlace para restablecer tu contraseña. Revisa también tu carpeta de SPAM.' }
 }
 
 export async function updatePassword(
