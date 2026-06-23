@@ -17,6 +17,7 @@ interface ProfileStatsClientProps {
   pointsHistory: any[]
   gameAccounts?: any[]
   isStaff?: boolean
+  defaultTab?: 'inicio' | 'profile' | 'history' | 'badges' | 'stats' | 'friends'
 }
 
 const GAME_NAMES: Record<string, string> = {

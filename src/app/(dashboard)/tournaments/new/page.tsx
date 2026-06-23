@@ -71,7 +71,7 @@ export default async function NewTournamentPage() {
             </div>
           ) : (
             <Link
-              href="/profile"
+              href="/profile?tab=ajustes"
               className="inline-block px-6 py-3 bg-neon-purple text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity"
             >
               Activar suscripción →

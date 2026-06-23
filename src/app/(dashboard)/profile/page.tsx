@@ -3,7 +3,11 @@ import { getProfile } from '@/lib/actions/auth-helpers'
 import { redirect } from 'next/navigation'
 import { ProfileStatsClient } from './ProfileStatsClient'
 
-export default async function ProfilePage() {
+export default async function ProfilePage({
+  searchParams,
+}: {
+  searchParams: { tab?: string }
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -77,6 +81,8 @@ export default async function ProfilePage() {
     .limit(1)
   const isStaff = (staffData && staffData.length > 0) || false
 
+  const defaultTab = searchParams?.tab === 'ajustes' ? 'profile' : 'inicio'
+
   return (
     <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
       <div>
@@ -93,6 +99,7 @@ export default async function ProfilePage() {
         pointsHistory={pointsHistory || []}
         gameAccounts={gameAccounts || []}
         isStaff={isStaff}
+        defaultTab={defaultTab}
       />
     </div>
   )
