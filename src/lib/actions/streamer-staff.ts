@@ -50,28 +50,26 @@ export async function inviteStaffMember(
 
   if (existingInvite) return { error: 'Ya existe una invitación pendiente para este email' }
 
-  // 3. Check if user already has an account
-  const { data: targetProfile } = await supabase
-    .from('profiles')
-    .select('id, email')
-    .eq('email', cleanEmail)
-    .single()
-
   const adminSupabase = await createAdminClient()
 
-  if (!targetProfile) {
-    // User does not exist, invite them via Supabase Auth (emails are sent via Resend SMTP)
+  // 3. Check if user already has an account in Supabase Auth
+  const { data: userList } = await adminSupabase.auth.admin.listUsers()
+  const existingAuthUser = userList?.users?.find(
+    (u) => u.email?.toLowerCase() === cleanEmail
+  )
+
+  if (!existingAuthUser) {
+    // User does not exist — send invite email via Supabase Auth
     const { error: inviteError } = await adminSupabase.auth.admin.inviteUserByEmail(
       cleanEmail,
       {
         redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/tournaments/staff`,
-        data: {
-          role: 'USER', // default role
-        },
+        data: { role: 'USER' },
       }
     )
     if (inviteError) return { error: inviteError.message }
   }
+  // If user already exists, we just create the invitation record below — they'll see it on login
 
   // 4. Create the invitation record
   const { error: insertError } = await supabase
