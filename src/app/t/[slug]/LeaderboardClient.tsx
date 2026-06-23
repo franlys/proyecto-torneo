@@ -15,7 +15,7 @@ import type { AdBanner } from '@/lib/actions/federation'
 import { trackEvent } from '@/lib/analytics'
 import { registerTournament } from '@/lib/actions/registration'
 import { getFriendsList } from '@/lib/actions/friends'
-import { getGameAccountForUser, GAME_LABELS } from '@/lib/actions/game-accounts'
+import { getGameAccountForUser, upsertGameAccount, GAME_LABELS } from '@/lib/actions/game-accounts'
 import { toast } from 'sonner'
 import { NicknameModal } from '@/components/profile/NicknameModal'
 
@@ -218,6 +218,9 @@ export function LeaderboardClient({
         gameId: index === 0 ? regGameId : undefined,
         gameUsername: index === 0 ? regGameUsername : undefined,
       }))
+
+      // Auto-save game account to profile for future use (silent, no blocking)
+      upsertGameAccount({ game: discipline, gameId: regGameId.trim(), gameUsername: regGameUsername.trim() }).catch(() => {})
 
       const res = await registerTournament(tournamentId, {
         teamName: mode === 'individual' ? regParticipants[0] : regTeamName,
@@ -2210,6 +2213,64 @@ export function LeaderboardClient({
                       </div>
                     ))}
                   </div>
+
+                  {/* ── Game Account Section ── */}
+                  {(() => {
+                    const gameInfo = GAME_LABELS[discipline] || {
+                      label: discipline,
+                      idLabel: 'ID de cuenta',
+                      usernameLabel: 'Nombre en el juego',
+                      idPlaceholder: 'Ej: TuID123',
+                      usernamePlaceholder: 'Ej: TuNombre',
+                      icon: '🎮'
+                    }
+                    return (
+                      <div className="rounded-2xl border border-neon-cyan/20 bg-neon-cyan/[0.04] p-4 space-y-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-lg">{gameInfo.icon}</span>
+                          <div>
+                            <p className="text-xs font-black text-neon-cyan uppercase tracking-wider">
+                              Cuenta de {gameInfo.label}
+                            </p>
+                            <p className="text-[10px] text-white/30 mt-0.5">
+                              {regGameId && regGameUsername
+                                ? '✓ Cargada desde tu perfil — puedes editarla si cambió'
+                                : 'Obligatorio para participar en este torneo'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[10px] text-white/50 uppercase tracking-widest font-bold mb-1 ml-1">
+                              {gameInfo.idLabel} <span className="text-red-400">*</span>
+                            </label>
+                            <input
+                              required
+                              type="text"
+                              value={regGameId}
+                              onChange={e => setRegGameId(e.target.value)}
+                              placeholder={gameInfo.idPlaceholder}
+                              className="w-full bg-black/40 border border-neon-cyan/20 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/20 outline-none focus:border-neon-cyan/60 focus:ring-1 focus:ring-neon-cyan/30 transition-all font-mono"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-white/50 uppercase tracking-widest font-bold mb-1 ml-1">
+                              {gameInfo.usernameLabel} <span className="text-red-400">*</span>
+                            </label>
+                            <input
+                              required
+                              type="text"
+                              value={regGameUsername}
+                              onChange={e => setRegGameUsername(e.target.value)}
+                              placeholder={gameInfo.usernamePlaceholder}
+                              className="w-full bg-black/40 border border-neon-cyan/20 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/20 outline-none focus:border-neon-cyan/60 focus:ring-1 focus:ring-neon-cyan/30 transition-all"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })()}
 
                   <div className="flex gap-3 pt-4 border-t border-white/5">
                     <button
