@@ -73,6 +73,7 @@ export interface Tournament {
   badgeUrl?: string | null;
   maxPointsLimit?: number | null;
   discordUrl?: string | null;
+  registrationStatus?: 'pending_approval' | 'approved_to_pay' | 'pending_payment_validation' | 'confirmed';
 }
 
 export interface ScoringRule {

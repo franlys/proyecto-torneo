@@ -36,6 +36,35 @@ function StatusBadge({ status }: { status: Tournament['status'] }) {
   )
 }
 
+function ParticipantStatusBadge({ status }: { status: string }) {
+  if (status === 'pending_approval') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+        ⏳ Sol. Pendiente
+      </span>
+    )
+  }
+  if (status === 'approved_to_pay') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-orange-500/10 text-orange-400 border border-orange-500/20 animate-pulse">
+        💳 Pagar Inscripción
+      </span>
+    )
+  }
+  if (status === 'pending_payment_validation') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-blue-500/10 text-blue-400 border border-blue-500/20">
+        ⏳ Validando Pago
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-green-500/10 text-green-400 border border-green-500/20">
+      ✅ Confirmado
+    </span>
+  )
+}
+
 // ─── Format badge ─────────────────────────────────────────────────────────────
 
 const FORMAT_LABELS: Record<Tournament['format'], { label: string; color: string }> = {
@@ -61,6 +90,9 @@ export function TournamentCard({ tournament }: { tournament: Tournament }) {
   const router = useRouter()
   const [deleting, setDeleting] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+
+  const isParticipant = !!tournament.registrationStatus
+  const linkHref = isParticipant ? `/t/${tournament.slug}` : `/tournaments/${tournament.id}`
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -97,7 +129,7 @@ export function TournamentCard({ tournament }: { tournament: Tournament }) {
         <div className="flex items-start gap-2 px-5 pt-5 pb-3">
           {/* Título — ocupa todo el espacio disponible */}
           <Link
-            href={`/tournaments/${tournament.id}`}
+            href={linkHref}
             className="flex-1 min-w-0"
           >
             <h3 className="font-semibold text-white text-sm leading-snug group-hover:text-neon-cyan
@@ -106,37 +138,43 @@ export function TournamentCard({ tournament }: { tournament: Tournament }) {
             </h3>
           </Link>
 
-          {/* Badge de estado — tamaño fijo */}
-          <StatusBadge status={tournament.status} />
+          {/* Badge de estado ─ Participante o Creador */}
+          {isParticipant ? (
+            <ParticipantStatusBadge status={tournament.registrationStatus!} />
+          ) : (
+            <StatusBadge status={tournament.status} />
+          )}
 
-          {/* Botón borrar — alineado con el badge, nunca encima */}
-          <button
-            onClick={handleDeleteClick}
-            disabled={deleting}
-            title="Eliminar torneo"
-            className="shrink-0 p-1.5 rounded-lg
-              text-white/0 group-hover:text-white/25
-              hover:!text-red-400 hover:bg-red-400/10
-              transition-all duration-150
-              disabled:cursor-not-allowed"
-            aria-label="Eliminar torneo"
-          >
-            {deleting ? (
-              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            )}
-          </button>
+          {/* Botón borrar — solo para creadores, nunca para participantes */}
+          {!isParticipant && (
+            <button
+              onClick={handleDeleteClick}
+              disabled={deleting}
+              title="Eliminar torneo"
+              className="shrink-0 p-1.5 rounded-lg
+                text-white/0 group-hover:text-white/25
+                hover:!text-red-400 hover:bg-red-400/10
+                transition-all duration-150
+                disabled:cursor-not-allowed"
+              aria-label="Eliminar torneo"
+            >
+              {deleting ? (
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              )}
+            </button>
+          )}
         </div>
 
         {/* ── Body — toda esta área es clickable hacia el detalle ── */}
-        <Link href={`/tournaments/${tournament.id}`} className="block px-5 pb-5">
+        <Link href={linkHref} className="block px-5 pb-5">
           <div className="flex flex-wrap gap-2 mb-4">
             <FormatBadge format={tournament.format} />
             <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium
@@ -155,6 +193,17 @@ export function TournamentCard({ tournament }: { tournament: Tournament }) {
               </span>
             )}
           </div>
+
+          {isParticipant && (
+            <div className="mt-4 pt-3 border-t border-white/5">
+              <span className="w-full text-center inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all bg-neon-cyan/10 hover:bg-neon-cyan text-neon-cyan hover:text-black border border-neon-cyan/20">
+                {tournament.registrationStatus === 'approved_to_pay' && '💳 Proceder al Pago'}
+                {tournament.registrationStatus === 'pending_payment_validation' && '⏳ Verificando Comprobante'}
+                {tournament.registrationStatus === 'pending_approval' && '⏳ Esperando Aprobación'}
+                {tournament.registrationStatus === 'confirmed' && '🏆 Ver Torneo / Evidencias'}
+              </span>
+            </div>
+          )}
         </Link>
       </div>
 

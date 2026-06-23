@@ -921,6 +921,19 @@ export async function getTournaments(): Promise<
 
   const admin = await isAdmin()
 
+  // Fetch participated tournaments and their status for this user
+  const { data: participations } = await supabase
+    .from('participants')
+    .select('tournament_id, team:teams(registration_status)')
+    .eq('user_id', user.id)
+
+  const participationMap: Record<string, 'pending_approval' | 'approved_to_pay' | 'pending_payment_validation' | 'confirmed'> = {}
+  participations?.forEach((p: any) => {
+    if (p.tournament_id && p.team?.registration_status) {
+      participationMap[p.tournament_id] = p.team.registration_status
+    }
+  })
+
   let query = supabase
     .from('tournaments')
     .select('*')
@@ -942,6 +955,11 @@ export async function getTournaments(): Promise<
       orParts.push(`creator_id.in.(${formattedIds})`)
       orParts.push(`collaborator_id.in.(${formattedIds})`)
     }
+    const participatedIds = Object.keys(participationMap)
+    if (participatedIds.length > 0) {
+      const formattedTourneyIds = participatedIds.map(id => `"${id}"`).join(',')
+      orParts.push(`id.in.(${formattedTourneyIds})`)
+    }
     query = query.or(orParts.join(','))
   }
 
@@ -949,7 +967,13 @@ export async function getTournaments(): Promise<
 
   if (error) return { error: error.message }
   return {
-    data: (data ?? []).map((row) => mapTournamentRow(row as Record<string, unknown>)),
+    data: (data ?? []).map((row) => {
+      const tourney = mapTournamentRow(row as Record<string, unknown>)
+      return {
+        ...tourney,
+        registrationStatus: participationMap[tourney.id] || undefined
+      }
+    }),
   }
 }
 
