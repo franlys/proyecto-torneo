@@ -141,3 +141,16 @@ export async function updatePassword(
   if (error) return { error: error.message }
   return { success: 'Contraseña actualizada correctamente. Redirigiendo...' }
 }
+
+export async function verifyInvitationOtp(
+  tokenHash: string
+): Promise<{ success: boolean } | { error: string }> {
+  const supabase = await createClient()
+  const { error } = await supabase.auth.verifyOtp({
+    token_hash: tokenHash,
+    type: 'invite',
+  })
+
+  if (error) return { error: error.message }
+  return { success: true }
+}
