@@ -26,9 +26,9 @@ export default async function StaffManagementPage() {
   const pendingInvitesResult = await getPendingInvitations()
   const myInvitesResult = await getMyInvitations()
 
-  const activeStaff = 'error' in activeStaffResult ? [] : activeStaffResult
-  const pendingInvites = 'error' in pendingInvitesResult ? [] : pendingInvitesResult
-  const myInvites = 'error' in myInvitesResult ? [] : myInvitesResult
+  const activeStaff = JSON.parse(JSON.stringify('error' in activeStaffResult ? [] : activeStaffResult))
+  const pendingInvites = JSON.parse(JSON.stringify('error' in pendingInvitesResult ? [] : pendingInvitesResult))
+  const myInvites = JSON.parse(JSON.stringify('error' in myInvitesResult ? [] : myInvitesResult))
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
