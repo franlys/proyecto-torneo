@@ -45,7 +45,8 @@ const tournamentBaseSchema = z.object({
   badgeUrl: z.string().url().optional().or(z.literal('')).or(z.null()),
   streamUrl: z.string().url().optional().or(z.literal('')).or(z.null()),
   maxPointsLimit: z.number().int().min(1).optional().nullable(),
-  collaboratorId: z.string().uuid().optional().nullable(),
+  collaboratorId: z.union([z.string().uuid(), z.literal(''), z.null()]).optional().transform(v => v === '' ? null : v),
+
   
   // Finance Model
   entryFee: z.number().min(0).default(0),
