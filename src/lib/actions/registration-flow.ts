@@ -28,7 +28,7 @@ export async function approveRegistrationRequest(teamId: string): Promise<{ succ
     // 2. Fetch tournament to verify permissions
     const { data: tournament } = await supabase
       .from('tournaments')
-      .select('id, name, creator_id, collaborator_id')
+      .select('id, name, slug, creator_id, collaborator_id')
       .eq('id', team.tournament_id)
       .single()
 
@@ -69,7 +69,7 @@ export async function approveRegistrationRequest(teamId: string): Promise<{ succ
         email: captainEmail,
         captainName: captain.display_name,
         tournamentName: tournament.name,
-        portalUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/t/${tournament.id || team.tournament_id}`
+        portalUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/t/${tournament.slug}`
       }).catch(e => console.error('Error al enviar correo de aprobación de registro:', e))
     }
 
@@ -299,7 +299,7 @@ export async function rejectRegistrationRequest(
     // 2. Fetch tournament
     const { data: tournament } = await supabase
       .from('tournaments')
-      .select('id, name, creator_id, collaborator_id')
+      .select('id, name, slug, creator_id, collaborator_id')
       .eq('id', team.tournament_id)
       .single()
 
@@ -350,7 +350,7 @@ export async function rejectRegistrationRequest(
           email: captainEmail,
           captainName: captain.display_name,
           tournamentName: `${tournament.name} (Pago Rechazado${reason ? `: ${reason}` : ''})`,
-          portalUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/t/${tournament.id || team.tournament_id}`
+          portalUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/t/${tournament.slug}`
         }).catch(e => console.error('Error al notificar rechazo de pago:', e))
       }
     } else {
