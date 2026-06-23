@@ -3,46 +3,63 @@
 import { useFormContext } from 'react-hook-form'
 import type { CreateTournamentInput } from '@/lib/validations/schemas'
 
-const PRESETS = {
+// Presets de SUMA de puntos (modo estándar)
+const STANDARD_PRESETS = {
   battle_royale: {
-    label: 'Battle Royale estándar',
+    label: 'Battle Royale BR (8 pos.)',
     points: { '1': 15, '2': 12, '3': 10, '4': 8, '5': 6, '6': 4, '7': 2, '8': 1 },
     useMultiplier: false,
   },
+  br_top5: {
+    label: 'Solo Top 5',
+    points: { '1': 10, '2': 7, '3': 5, '4': 3, '5': 1 },
+    useMultiplier: false,
+  },
   kill_race: {
-    label: 'Kill Race',
+    label: 'Kill Race (solo kills)',
     points: { '1': 0, '2': 0, '3': 0, '4': 0 },
     useMultiplier: false,
   },
-  wsow: {
-    label: 'WSOW Multipliers',
-    points: {
-      '1': 2.0,
-      '2': 1.5,
-      '3': 1.5,
-      '4': 1.5,
-      '5': 1.5,
-      '6': 1.25,
-      '7': 1.25,
-      '8': 1.25,
-      '9': 1.25,
-      '10': 1.25,
-      '11': 1.25,
-      '12': 1.25,
-      '13': 1.25,
-      '14': 1.25,
-      '15': 1.25
-    },
-    useMultiplier: true,
-  },
-  custom: {
-    label: 'Custom',
+  custom_standard: {
+    label: 'Personalizado (vacío)',
     points: {},
     useMultiplier: false,
   },
 } as const
 
-type PresetKey = keyof typeof PRESETS
+// Presets de MULTIPLICADOR por posición (WSOW / Apex Legends style)
+const MULTIPLIER_PRESETS = {
+  wsow_top15: {
+    label: 'WSOW Top 15',
+    points: {
+      '1': 2.0, '2': 1.5, '3': 1.5, '4': 1.5, '5': 1.5,
+      '6': 1.25, '7': 1.25, '8': 1.25, '9': 1.25, '10': 1.25,
+      '11': 1.25, '12': 1.25, '13': 1.25, '14': 1.25, '15': 1.25
+    },
+    useMultiplier: true,
+  },
+  apex_top10: {
+    label: 'Apex / BR Top 10',
+    points: {
+      '1': 2.0, '2': 1.8, '3': 1.6, '4': 1.4, '5': 1.2,
+      '6': 1.1, '7': 1.1, '8': 1.05, '9': 1.05, '10': 1.0
+    },
+    useMultiplier: true,
+  },
+  top5_multiplier: {
+    label: 'Solo Top 5',
+    points: { '1': 2.0, '2': 1.5, '3': 1.25, '4': 1.1, '5': 1.0 },
+    useMultiplier: true,
+  },
+  custom_multiplier: {
+    label: 'Personalizado (vacío)',
+    points: {},
+    useMultiplier: true,
+  },
+} as const
+
+type StandardPresetKey = keyof typeof STANDARD_PRESETS
+type MultiplierPresetKey = keyof typeof MULTIPLIER_PRESETS
 
 export function ScoringRuleEditor() {
   const { register, watch, setValue, formState: { errors } } = useFormContext<CreateTournamentInput>()
@@ -56,9 +73,14 @@ export function ScoringRuleEditor() {
     .map(([pos, pts]) => ({ pos: Number(pos), pts: Number(pts) }))
     .sort((a, b) => a.pos - b.pos)
 
-  function applyPreset(key: PresetKey) {
-    setValue('scoringRule.placementPoints', PRESETS[key].points as Record<string, number>)
-    setValue('scoringRule.useMultiplier', PRESETS[key].useMultiplier)
+  function applyStandardPreset(key: StandardPresetKey) {
+    setValue('scoringRule.placementPoints', STANDARD_PRESETS[key].points as Record<string, number>)
+    setValue('scoringRule.useMultiplier', false)
+  }
+
+  function applyMultiplierPreset(key: MultiplierPresetKey) {
+    setValue('scoringRule.placementPoints', MULTIPLIER_PRESETS[key].points as Record<string, number>)
+    setValue('scoringRule.useMultiplier', true)
   }
 
   function addRow() {
@@ -165,19 +187,32 @@ export function ScoringRuleEditor() {
           <label className="text-xs font-medium text-white/50 uppercase tracking-wider">
             {useMultiplier ? 'Multiplicador por Posición' : 'Puntos por Posición'}
           </label>
-          {/* Preset buttons */}
+          {/* Preset buttons - solo los del modo activo */}
           <div className="flex flex-wrap gap-2">
-            {(Object.keys(PRESETS) as PresetKey[]).map((key) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => applyPreset(key)}
-                className="px-2.5 py-1 rounded text-xs text-white/50 border border-white/10
-                  hover:border-neon-purple/40 hover:text-white/80 transition-all duration-150"
-              >
-                {PRESETS[key].label}
-              </button>
-            ))}
+            {!useMultiplier
+              ? (Object.keys(STANDARD_PRESETS) as StandardPresetKey[]).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => applyStandardPreset(key)}
+                  className="px-2.5 py-1 rounded text-xs text-white/50 border border-white/10
+                    hover:border-neon-cyan/40 hover:text-white/80 transition-all duration-150"
+                >
+                  {STANDARD_PRESETS[key].label}
+                </button>
+              ))
+              : (Object.keys(MULTIPLIER_PRESETS) as MultiplierPresetKey[]).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => applyMultiplierPreset(key)}
+                  className="px-2.5 py-1 rounded text-xs text-white/50 border border-white/10
+                    hover:border-neon-purple/40 hover:text-white/80 transition-all duration-150"
+                >
+                  {MULTIPLIER_PRESETS[key].label}
+                </button>
+              ))
+            }
           </div>
         </div>
 

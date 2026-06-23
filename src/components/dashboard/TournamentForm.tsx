@@ -284,12 +284,52 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
     )
   }
 
+  // Helper: extrae mensajes de error de forma recursiva
+  function collectErrorMessages(errObj: Record<string, any>, msgs: string[] = []): string[] {
+    for (const key of Object.keys(errObj)) {
+      const val = errObj[key]
+      if (!val) continue
+      if (typeof val.message === 'string' && val.message) {
+        msgs.push(val.message)
+      } else if (typeof val === 'object') {
+        collectErrorMessages(val, msgs)
+      }
+    }
+    return msgs
+  }
+
+  // Helper: scroll al primer campo inválido
+  function scrollToFirstError(errObj: Record<string, any>) {
+    const firstKey = Object.keys(errObj)[0]
+    if (!firstKey) return
+    // react-hook-form registra los inputs con el name como atributo
+    const el = document.querySelector(`[name="${firstKey}"]`) ||
+               document.querySelector(`[data-field="${firstKey}"]`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      ;(el as HTMLElement).focus?.({ preventScroll: true })
+    }
+  }
+
   return (
     <FormProvider {...methods}>
       <form 
-        onSubmit={handleSubmit(onSubmit, (errors) => {
-          console.error('Validation errors:', errors)
-          toast.error('Por favor, completa todos los campos requeridos del formulario.')
+        onSubmit={handleSubmit(onSubmit, (validationErrors) => {
+          console.error('Validation errors:', validationErrors)
+          const messages = collectErrorMessages(validationErrors as Record<string, any>)
+          if (messages.length > 0) {
+            toast.error(
+              <div className="space-y-1">
+                <p className="font-semibold">Corrige los siguientes campos:</p>
+                <ul className="list-disc list-inside text-xs space-y-0.5">
+                  {messages.map((m, i) => <li key={i}>{m}</li>)}
+                </ul>
+              </div>
+            )
+          } else {
+            toast.error('Por favor, completa todos los campos requeridos del formulario.')
+          }
+          scrollToFirstError(validationErrors as Record<string, any>)
         })} 
         className="space-y-10"
       >

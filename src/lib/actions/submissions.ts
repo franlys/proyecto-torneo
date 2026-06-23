@@ -286,38 +286,85 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
     console.error(`[STANDINGS] Upsert ERROR:`, upsertErr)
   }
 
-  // Check if any team reached the max points limit to auto-finish the tournament
-  // (Desactivado a petición del usuario para que el cierre sea estrictamente manual)
-  /*
-  if (tourney?.max_points_limit && standingRows.length > 0) {
+
+  // ─── MATCH POINT LOGIC (estilo Apex Legends / Custom Rooms) ──────────────────
+  // La regla: si un equipo llega al límite de puntos (max_points_limit),
+  // NO se termina el torneo automáticamente. El equipo entra en "Match Point".
+  // Para ganar el torneo, el equipo en Match Point DEBE ganar (rank === 1)
+  // la siguiente partida que juegue. Solo ENTONCES el torneo se finaliza.
+  if (tourney?.max_points_limit && tourney.max_points_limit > 0) {
     const limit = Number(tourney.max_points_limit)
-    const reachedLimit = standingRows.some((s: any) => Number(s.total_points) >= limit)
-    if (reachedLimit) {
-      console.log(`[STANDINGS] A team reached the Max Points Limit of ${limit}! Auto-finishing tournament...`)
-      await supabase
-        .from('tournaments')
-        .update({ status: 'finished' })
-        .eq('id', tournamentId)
-      
-      const { revalidatePath } = await import('next/cache')
-      revalidatePath(`/tournaments/${tournamentId}`)
-      revalidatePath(`/t/${tourney.slug}`)
-      revalidatePath('/tournaments')
-      revalidatePath('/')
-      
-      const { pushToAC } = await import('./ac-push')
-      const { data: updatedTourney } = await supabase.from('tournaments').select('*').eq('id', tournamentId).single()
-      if (updatedTourney) {
-        const { mapTournamentRow } = await import('@/lib/utils')
-        pushToAC(
-          'tournaments',
-          'upsert',
-          mapTournamentRow(updatedTourney as Record<string, unknown>) as unknown as Record<string, unknown>
-        )
+
+    // Obtener todas las partidas ordenadas por número de partida/fecha
+    const { data: allMatches } = await supabase
+      .from('matches')
+      .select('id, match_number, created_at')
+      .eq('tournament_id', tournamentId)
+      .order('match_number', { ascending: true })
+
+    if (allMatches && allMatches.length >= 2) {
+      // La última partida aprobada para verificar si alguien ganó con rank=1
+      // Agrupamos submissions aprobadas por matchId
+      const subsByMatch: Record<string, typeof uniqueApprovedSubs> = {}
+      for (const sub of uniqueApprovedSubs) {
+        if (!subsByMatch[sub.matchId]) subsByMatch[sub.matchId] = []
+        subsByMatch[sub.matchId].push(sub)
+      }
+
+      // Recorremos las partidas en orden para calcular puntos acumulados
+      // ANTES de cada partida y verificar si el ganador de esa partida
+      // ya estaba en Match Point al iniciarla
+      const cumulativePoints: Record<string, number> = {}
+
+      for (const match of allMatches) {
+        const matchSubs = subsByMatch[match.id] || []
+
+        // ¿Algún equipo en Match Point ganó esta partida?
+        const winner = matchSubs.find((s: any) => s.rank === 1)
+        if (winner && (cumulativePoints[winner.teamId] ?? 0) >= limit) {
+          // ¡Match Point confirmado! Este equipo ganó siendo ya Match Point
+          console.log(`[MATCH POINT] Equipo ${winner.teamId} ya tenía ${cumulativePoints[winner.teamId]} pts (>= ${limit}) y acaba de ganar la partida ${match.id}. ¡CAMPEÓN!`)
+
+          await supabase
+            .from('tournaments')
+            .update({ status: 'finished' })
+            .eq('id', tournamentId)
+
+          const { revalidatePath } = await import('next/cache')
+          revalidatePath(`/tournaments/${tournamentId}`)
+          revalidatePath(`/t/${tourney.slug}`)
+          revalidatePath('/tournaments')
+          revalidatePath('/')
+
+          const { pushToAC } = await import('./ac-push')
+          const { data: updatedTourney } = await supabase.from('tournaments').select('*').eq('id', tournamentId).single()
+          if (updatedTourney) {
+            const { mapTournamentRow } = await import('@/lib/utils')
+            pushToAC(
+              'tournaments',
+              'upsert',
+              mapTournamentRow(updatedTourney as Record<string, unknown>) as unknown as Record<string, unknown>
+            )
+          }
+
+          // Salir tras finalizar el torneo
+          break
+        }
+
+        // Acumular puntos de esta partida para el siguiente ciclo
+        for (const sub of matchSubs) {
+          const placementPts = Number(rule.placementPoints[String(sub.rank)] ?? 0)
+          const killPts = sub.killCount * rule.killPoints
+          const matchScore = rule.useMultiplier
+            ? sub.killCount * rule.killPoints * placementPts
+            : placementPts + killPts
+          cumulativePoints[sub.teamId] = (cumulativePoints[sub.teamId] ?? 0) + matchScore
+        }
       }
     }
   }
-  */
+
+
 
   // ─── NEW: Update Individual Participant Kills ─────────────────────────────
   

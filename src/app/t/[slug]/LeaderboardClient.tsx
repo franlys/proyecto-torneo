@@ -60,6 +60,7 @@ export function LeaderboardClient({
   creatorProfile,
   collaboratorProfile,
   entryFee = 0,
+  maxPointsLimit,
 }: {
   tournamentId: string
   tournamentName: string
@@ -110,6 +111,7 @@ export function LeaderboardClient({
   clashRoyaleTag?: string | null
   discipline?: string
   streamUrl?: string | null
+  maxPointsLimit?: number
 }) {
   // Stable supabase client — created once, not on every render.
   // If this were inside the component body without useMemo, every render would produce
@@ -537,13 +539,21 @@ export function LeaderboardClient({
                          )}
                       </div>
                       <div className="flex-1">
-                         <div className="flex items-center gap-3">
-                           <span className="font-orbitron font-black text-sm sm:text-xl tracking-tight text-white group-hover:text-neon-cyan transition-colors">{s.teamName}</span>
-                           {s.streams && s.streams.length > 0 && (
-                             <div className="flex items-center gap-1 text-[8px] bg-red-500/20 text-red-500 font-bold px-1.5 py-0.5 rounded border border-red-500/30 uppercase tracking-tighter">
-                                LIVE
-                             </div>
-                           )}
+                         <div className="flex items-center gap-3 flex-wrap">
+                            <span className="font-orbitron font-black text-sm sm:text-xl tracking-tight text-white group-hover:text-neon-cyan transition-colors">{s.teamName}</span>
+                            {s.streams && s.streams.length > 0 && (
+                              <div className="flex items-center gap-1 text-[8px] bg-red-500/20 text-red-500 font-bold px-1.5 py-0.5 rounded border border-red-500/30 uppercase tracking-tighter">
+                                 LIVE
+                              </div>
+                            )}
+                            {/* Badge Match Point */}
+                            {maxPointsLimit && maxPointsLimit > 0 && s.totalPoints >= maxPointsLimit && status === 'active' && (
+                              <div className="flex items-center gap-1 animate-pulse">
+                                <span className="text-[9px] font-black px-2 py-0.5 rounded-full border uppercase tracking-wider bg-orange-500/20 text-orange-400 border-orange-500/40 shadow-[0_0_8px_rgba(249,115,22,0.4)]">
+                                  🎯 MATCH POINT
+                                </span>
+                              </div>
+                            )}
                          </div>
                          <div className="flex items-center gap-2 mt-1">
                             <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest">Ver Detalles</span>
