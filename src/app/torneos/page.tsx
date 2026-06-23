@@ -12,7 +12,15 @@ const orbitron = Orbitron({ subsets: ['latin'] })
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ 
+  status, 
+  registrationStartDate, 
+  registrationEndDate 
+}: { 
+  status: string
+  registrationStartDate?: string | null
+  registrationEndDate?: string | null
+}) {
   if (status === 'active') {
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20">
@@ -28,6 +36,28 @@ function StatusBadge({ status }: { status: string }) {
       </span>
     )
   }
+
+  const now = new Date()
+  const regStart = registrationStartDate ? new Date(registrationStartDate) : null
+  const regEnd = registrationEndDate ? new Date(registrationEndDate) : null
+
+  if (regStart && now < regStart) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white/10 text-white/60 border border-white/20">
+        <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
+        Próximamente
+      </span>
+    )
+  }
+
+  if (regEnd && now > regEnd) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-red-500/10 text-red-400 border border-red-500/20">
+        Cerrado
+      </span>
+    )
+  }
+
   return (
     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-neon-purple/10 text-neon-purple border border-neon-purple/20">
       <span className="w-1.5 h-1.5 rounded-full bg-neon-purple animate-pulse" />
@@ -81,7 +111,7 @@ export default async function TorneosPublicosPage() {
               Torneos
             </h1>
             <p className="text-white/40 text-xs sm:text-sm max-w-xl mt-1.5 leading-relaxed">
-              Inscríbete en los torneos abiertos de la comunidad y compite contra los mejores streamers y jugadores.
+              Inscríbete en los torneos abiertos de la comunidad y compite contra los mejores streamers and jugadores.
             </p>
           </div>
         </div>
@@ -117,7 +147,11 @@ export default async function TorneosPublicosPage() {
                     {/* Upper row: Status & Mode */}
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-1.5">
-                        <StatusBadge status={t.status} />
+                        <StatusBadge 
+                          status={t.status} 
+                          registrationStartDate={t.registration_start_date}
+                          registrationEndDate={t.registration_end_date}
+                        />
                         {t.is_private && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-neon-purple/10 text-neon-purple border border-neon-purple/20">
                             <span>🔒</span> Privado
@@ -166,7 +200,7 @@ export default async function TorneosPublicosPage() {
 
                           return (
                             <p className="text-white/50 text-[9px] mt-1 font-semibold flex items-center gap-1">
-                              <span className="text-neon-cyan">👑</span> {organizerText}
+                              <span className="text-neon-cyan">👑</span> Organizador: {organizerText}
                             </p>
                           )
                         })()}

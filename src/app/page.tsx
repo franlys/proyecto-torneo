@@ -50,7 +50,7 @@ export default async function Home() {
       getLandingSettings().catch(err => null),
       adminSupabase.from('tournaments').select('total_live_viewers, status, is_private').neq('status', 'draft'),
       adminSupabase.from('tournaments')
-        .select('*, teams(id)')
+        .select('*, teams(id), creator:profiles!creator_id(username, organization_name, role), collaborator:profiles!collaborator_id(username, organization_name)')
         .neq('status', 'draft')
         .neq('status', 'finished')
         .order('created_at', { ascending: false })
@@ -228,21 +228,48 @@ export default async function Home() {
                     {/* Header: Badge & Mode */}
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-1.5">
-                        {t.status === 'active' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20">
-                            <span className="w-1.5 h-1.5 rounded-full bg-neon-cyan animate-pulse" />
-                            En Curso
-                          </span>
-                        ) : t.status === 'finished' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-gold/10 text-gold border border-gold/20">
-                            Finalizado
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-neon-purple/10 text-neon-purple border border-neon-purple/20">
-                            <span className="w-1.5 h-1.5 rounded-full bg-neon-purple animate-pulse" />
-                            Inscripciones Abiertas
-                          </span>
-                        )}
+                        {(() => {
+                          if (t.status === 'active') {
+                            return (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20">
+                                <span className="w-1.5 h-1.5 rounded-full bg-neon-cyan animate-pulse" />
+                                En Curso
+                              </span>
+                            )
+                          }
+                          if (t.status === 'finished') {
+                            return (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-gold/10 text-gold border border-gold/20">
+                                Finalizado
+                              </span>
+                            )
+                          }
+                          const now = new Date()
+                          const regStart = t.registration_start_date ? new Date(t.registration_start_date) : null
+                          const regEnd = t.registration_end_date ? new Date(t.registration_end_date) : null
+
+                          if (regStart && now < regStart) {
+                            return (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-white/10 text-white/60 border border-white/20">
+                                <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
+                                Próximamente
+                              </span>
+                            )
+                          }
+                          if (regEnd && now > regEnd) {
+                            return (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-red-500/10 text-red-400 border border-red-500/20">
+                                Cerrado
+                              </span>
+                            )
+                          }
+                          return (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-neon-purple/10 text-neon-purple border border-neon-purple/20">
+                              <span className="w-1.5 h-1.5 rounded-full bg-neon-purple animate-pulse" />
+                              Inscripciones Abiertas
+                            </span>
+                          )
+                        })()}
                         {t.is_private && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-neon-purple/10 text-neon-purple border border-neon-purple/20">
                             <span>🔒</span> Privado
@@ -273,6 +300,28 @@ export default async function Home() {
                         <p className="text-white/40 text-[9px] uppercase tracking-wide mt-0.5">
                           Formato: {t.format ? t.format.replace(/_/g, ' ') : 'Estándar'}
                         </p>
+                        {(() => {
+                          const creatorProfile = (t as any).creator
+                          const collaboratorProfile = (t as any).collaborator
+                          const isCreatorAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(creatorProfile?.role || '')
+
+                          let organizerText = ''
+                          if (isCreatorAdmin) {
+                            if (collaboratorProfile) {
+                              organizerText = `Kronix & ${collaboratorProfile.organization_name || collaboratorProfile.username}`
+                            } else {
+                              organizerText = 'Kronix'
+                            }
+                          } else {
+                            organizerText = creatorProfile?.organization_name || creatorProfile?.username || 'Organizador'
+                          }
+
+                          return (
+                            <p className="text-white/50 text-[9px] mt-1 font-semibold flex items-center gap-1">
+                              <span className="text-neon-cyan">👑</span> Organizador: {organizerText}
+                            </p>
+                          )
+                        })()}
                       </div>
                     </div>
 
