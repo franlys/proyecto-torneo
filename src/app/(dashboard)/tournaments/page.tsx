@@ -113,7 +113,7 @@ export default async function TournamentsPage() {
   } catch (err: any) {
     return (
       <div className="p-4 sm:p-8">
-        <AdminErrorCard section="Mis Torneos" error={err} />
+        <AdminErrorCard section="Mis Torneos" error={err?.message || String(err)} />
       </div>
     )
   }
