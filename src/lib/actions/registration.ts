@@ -20,7 +20,7 @@ export async function registerTournament(
     // 1. Obtener detalles del torneo
     const { data: tournament, error: tourneyErr } = await supabase
       .from('tournaments')
-      .select('id, name, mode, status, is_private, registration_password, max_teams, creator_id, created_at, registration_start_date, registration_end_date')
+      .select('id, name, mode, status, is_private, registration_password, max_teams, creator_id, created_at, registration_start_date, registration_end_date, entry_fee')
       .eq('id', tournamentId)
       .single()
 
@@ -100,12 +100,7 @@ export async function registerTournament(
       }
     }
 
-    // Validar Contraseña si el torneo es privado
-    if (tournament.is_private) {
-      if (!formData.password || formData.password.trim() !== tournament.registration_password) {
-        return { error: 'Contraseña de inscripción incorrecta.' }
-      }
-    }
+    // La contraseña del torneo privado ya no se valida al inscribirse, sino al subir evidencias.
 
     // Validar Límite de Equipos (Capacidad Máxima)
     if (tournament.max_teams && tournament.max_teams > 0) {
@@ -196,19 +191,43 @@ export async function registerTournament(
       return { error: `El nombre '${finalTeamName}' ya está registrado en este torneo.` }
     }
 
+    const hasEntryFee = tournament.entry_fee && Number(tournament.entry_fee) > 0
+    const initialStatus = hasEntryFee ? 'pending_approval' : 'confirmed'
+
     // 6. Insertar Equipo
     const { data: team, error: teamErr } = await adminSupabase
       .from('teams')
       .insert({
         tournament_id: tournamentId,
         name: finalTeamName,
-        stream_url: formData.streamUrl || null
+        stream_url: formData.streamUrl || null,
+        registration_status: initialStatus
       })
       .select()
       .single()
 
     if (teamErr || !team) {
       return { error: teamErr?.message || 'Error al registrar el equipo.' }
+    }
+
+    // Si es de pago y requiere aprobación, notificar al streamer por correo
+    if (initialStatus === 'pending_approval') {
+      const { data: streamerProfile } = await adminSupabase
+        .from('profiles')
+        .select('email, username, organization_name')
+        .eq('id', tournament.creator_id)
+        .single()
+
+      if (streamerProfile?.email) {
+        const { sendRegistrationRequestEmail } = await import('@/lib/services/email')
+        await sendRegistrationRequestEmail({
+          email: streamerProfile.email,
+          streamerName: streamerProfile.organization_name || streamerProfile.username || 'Streamer',
+          tournamentName: tournament.name,
+          teamName: finalTeamName,
+          portalUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/tournaments/${tournament.id}/participants`
+        }).catch(e => console.error('Error al enviar correo de solicitud:', e))
+      }
     }
 
     // Sincronizar equipo a ArenaCrypto
@@ -256,24 +275,26 @@ export async function registerTournament(
       }
     }
 
-    // 8. Inicializar la tabla de posiciones (Standings) del equipo
-    const { error: standingsErr } = await adminSupabase
-      .from('team_standings')
-      .upsert({
-        tournament_id: tournamentId,
-        team_id: team.id,
-        total_points: 0,
-        total_kills: 0,
-        kill_rate: 0,
-        pot_top_count: 0,
-        vip_score: 0,
-        rank: 99,
-        previous_rank: 99,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'tournament_id,team_id' })
+    // 8. Inicializar la tabla de posiciones (Standings) del equipo solo si está confirmado directamente
+    if (initialStatus === 'confirmed') {
+      const { error: standingsErr } = await adminSupabase
+        .from('team_standings')
+        .upsert({
+          tournament_id: tournamentId,
+          team_id: team.id,
+          total_points: 0,
+          total_kills: 0,
+          kill_rate: 0,
+          pot_top_count: 0,
+          vip_score: 0,
+          rank: 99,
+          previous_rank: 99,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'tournament_id,team_id' })
 
-    if (standingsErr) {
-      console.error('[registerTournament] Failed to initialize team_standings:', standingsErr.message)
+      if (standingsErr) {
+        console.error('[registerTournament] Failed to initialize team_standings:', standingsErr.message)
+      }
     }
 
     return { success: true }

@@ -271,6 +271,7 @@ export default async function PublicLeaderboardPage({
         prizeMvp={Number(tournament.prize_mvp || 0)}
         streamUrl={tournament.stream_url}
         maxPointsLimit={tournament.max_points_limit ? Number(tournament.max_points_limit) : undefined}
+        discordUrl={tournament.discord_url}
       />
     </main>
   )

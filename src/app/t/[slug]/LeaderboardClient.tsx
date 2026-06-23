@@ -21,6 +21,71 @@ import { NicknameModal } from '@/components/profile/NicknameModal'
 
 const orbitron = Orbitron({ subsets: ['latin'] })
 
+function PaymentEvidenceUpload({ teamId, onUploadSuccess }: { teamId: string, onUploadSuccess: (url: string) => void }) {
+  const [loading, setLoading] = useState(false)
+  const [file, setFile] = useState<File | null>(null)
+  const [error, setError] = useState('')
+
+  const handleUpload = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!file) return
+    setLoading(true)
+    setError('')
+
+    try {
+      const { uploadEvidence } = await import('@/lib/actions/storage')
+      const { uploadPaymentEvidence } = await import('@/lib/actions/registration-flow')
+      
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Math.random().toString(36).slice(2, 10)}.${fileExt}`
+      const filePath = `payments/${teamId}/${fileName}`
+
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('filePath', filePath)
+
+      const res = await uploadEvidence(formData)
+      if (!res || 'error' in res) {
+        throw new Error(res?.error || 'Error al subir comprobante')
+      }
+
+      const flowRes = await uploadPaymentEvidence(teamId, res.path)
+      if ('error' in flowRes) {
+        throw new Error(flowRes.error)
+      }
+
+      onUploadSuccess(res.path)
+    } catch (err: any) {
+      setError(err.message || 'Error al subir la transferencia')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleUpload} className="space-y-3">
+      <p className="font-bold text-neon-cyan uppercase tracking-widest text-[10px]">Subir Comprobante de Transferencia</p>
+      <div className="flex flex-col gap-2">
+        <input 
+          type="file" 
+          required
+          accept="image/*"
+          onChange={(e) => setFile(e.target.files?.[0] || null)}
+          className="w-full text-xs text-white/40 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-white/5 file:text-white file:cursor-pointer hover:file:bg-white/10"
+        />
+        {error && <p className="text-red-400 text-[10px]">{error}</p>}
+        <button 
+          type="submit"
+          disabled={loading || !file}
+          className="w-full bg-neon-cyan text-black font-black uppercase tracking-wider py-2.5 rounded-xl hover:bg-[#00D1DB] transition-all disabled:opacity-40 text-center flex items-center justify-center gap-2"
+        >
+          {loading ? 'Subiendo...' : 'Enviar Comprobante'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
 export function LeaderboardClient({
   tournamentId,
   tournamentName,
@@ -61,6 +126,7 @@ export function LeaderboardClient({
   collaboratorProfile,
   entryFee = 0,
   maxPointsLimit,
+  discordUrl,
 }: {
   tournamentId: string
   tournamentName: string
@@ -112,6 +178,7 @@ export function LeaderboardClient({
   discipline?: string
   streamUrl?: string | null
   maxPointsLimit?: number
+  discordUrl?: string | null
 }) {
   // Stable supabase client — created once, not on every render.
   // If this were inside the component body without useMemo, every render would produce
@@ -126,6 +193,7 @@ export function LeaderboardClient({
 
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [isUserRegistered, setIsUserRegistered] = useState(false)
+  const [userTeam, setUserTeam] = useState<any>(null)
   const [isRegistering, setIsRegistering] = useState(false)
   const [regTeamName, setRegTeamName] = useState('')
   const [regStreamUrl, setRegStreamUrl] = useState('')
@@ -223,12 +291,6 @@ export function LeaderboardClient({
         return
       }
 
-      if (isPrivate && !regPassword.trim()) {
-        toast.error('Por favor, ingresa la contraseña del torneo.')
-        setRegLoading(false)
-        return
-      }
-
       const members = regParticipants.map((name, index) => ({
         displayName: name,
         userId: regParticipantUserIds[index] || undefined,
@@ -244,8 +306,7 @@ export function LeaderboardClient({
       const res = await registerTournament(tournamentId, {
         teamName: mode === 'individual' ? regParticipants[0] : regTeamName,
         streamUrl: regStreamUrl || undefined,
-        participants: members,
-        password: isPrivate ? regPassword : undefined
+        participants: members
       })
 
       if (res && 'error' in res) {
@@ -266,6 +327,9 @@ export function LeaderboardClient({
   const [host, setHost] = useState('localhost')
   const [standings, setStandings] = useState(initialStandings)
   const [currentTeams, setCurrentTeams] = useState(teams || [])
+  const confirmedTeams = useMemo(() => {
+    return (currentTeams || []).filter((team: any) => !team.registration_status || team.registration_status === 'confirmed')
+  }, [currentTeams])
   const [currentSubmissions, setCurrentSubmissions] = useState(submissions || [])
   const [currentMatches, setCurrentMatches] = useState(matches || [])
   const [currentLiveViewers, setCurrentLiveViewers] = useState(totalLiveViewers || 0)
@@ -319,12 +383,16 @@ export function LeaderboardClient({
         // Check if user is registered in this tournament
         const { data: registration } = await supabase
           .from('participants')
-          .select('id')
+          .select('id, team:teams(id, name, registration_status, payment_evidence_url)')
           .eq('tournament_id', tournamentId)
           .eq('user_id', user.id)
-          .limit(1)
-        if (registration && registration.length > 0) {
+          .maybeSingle()
+
+        if (registration) {
           setIsUserRegistered(true)
+          if (registration.team) {
+            setUserTeam(registration.team)
+          }
         }
         // Check if user has a nickname set — if not, show modal
         const { data: prof } = await supabase
@@ -422,7 +490,7 @@ export function LeaderboardClient({
       })
 
     // Enriquecemos los participantes con sus bajas calculadas
-    return (currentTeams || []).flatMap((t: any) => 
+    return (confirmedTeams || []).flatMap((t: any) => 
       (t.participants || []).map((p: any) => ({
         ...p,
         teamId: t.id,
@@ -431,7 +499,7 @@ export function LeaderboardClient({
         totalKills: killsMap[p.id] || 0 // Sobrescribimos con el dato real/calculado
       }))
     )
-  }, [currentTeams, currentSubmissions])
+  }, [confirmedTeams, currentSubmissions])
 
   // NUEVO: Mapa de búsqueda rápida por ID de jugador para las listas
   const calculatedKillsLookup = useMemo(() => {
@@ -737,7 +805,7 @@ export function LeaderboardClient({
               </thead>
               <tbody>
                 {(() => {
-                  const topFraggers = currentTeams
+                  const topFraggers = confirmedTeams
                     .flatMap((t: any) => 
                       (t.participants || []).map((p: any) => ({
                         ...p,
@@ -784,7 +852,7 @@ export function LeaderboardClient({
                     </tr>
                   ))
                 })()}
-                {currentTeams.flatMap(t => t.participants || []).length === 0 && (
+                {confirmedTeams.flatMap(t => t.participants || []).length === 0 && (
                   <tr>
                     <td colSpan={4} className="py-8 text-center text-white/20 text-xs italic">
                       Aún no hay bajas registradas en este torneo.
@@ -1444,7 +1512,7 @@ export function LeaderboardClient({
                     {maxTeams ? `Cupos: ${totalTeamsRegistered} / ${maxTeams} Equipos` : `Inscritos: ${totalTeamsRegistered} Equipos`}
                   </p>
 
-                  {entryFee > 0 && (
+                  {entryFee > 0 && (!isUserRegistered || userTeam?.registration_status === 'approved_to_pay') && (
                     <div className="mt-4 p-4 rounded-xl bg-neon-cyan/5 border border-neon-cyan/20 space-y-3 text-left">
                       <div className="flex items-center gap-2 text-neon-cyan">
                         <span className="text-sm">💰</span>
@@ -1496,15 +1564,102 @@ export function LeaderboardClient({
                           </a>
                         )}
                       </div>
+
+                      {isUserRegistered && userTeam?.registration_status === 'approved_to_pay' && (
+                        <div className="mt-4 p-4 rounded-xl bg-black/40 border border-white/10 text-left">
+                          <PaymentEvidenceUpload 
+                            teamId={userTeam.id} 
+                            onUploadSuccess={(path) => {
+                              toast.success('¡Comprobante subido! Esperando validación.')
+                              setUserTeam((prev: any) => ({
+                                ...prev,
+                                registration_status: 'pending_payment_validation',
+                                payment_evidence_url: path
+                              }))
+                            }}
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
 
                 <div className="shrink-0 w-full md:w-auto text-right z-10">
                   {isUserRegistered ? (
-                    <span className="inline-block w-full md:w-auto text-center text-xs font-bold bg-green-500/20 text-green-400 px-5 py-3 rounded-xl border border-green-500/30 uppercase tracking-wider">
-                      ✓ Inscrito
-                    </span>
+                    (() => {
+                      const status = userTeam?.registration_status
+                      if (status === 'pending_approval') {
+                        return (
+                          <div className="flex flex-col items-end gap-1.5">
+                            <span className="inline-block w-full md:w-auto text-center text-xs font-bold bg-yellow-500/20 text-yellow-400 px-5 py-3 rounded-xl border border-yellow-500/30 uppercase tracking-wider">
+                              ⏳ Solicitud Pendiente
+                            </span>
+                            <span className="text-[9px] text-white/40 text-right max-w-[200px] leading-tight">
+                              El organizador debe aprobar tu solicitud para que puedas pagar.
+                            </span>
+                          </div>
+                        )
+                      }
+                      if (status === 'approved_to_pay') {
+                        return (
+                          <div className="flex flex-col items-end gap-1.5">
+                            <span className="inline-block w-full md:w-auto text-center text-xs font-bold bg-orange-500/20 text-orange-400 px-5 py-3 rounded-xl border border-orange-500/30 uppercase tracking-wider animate-pulse">
+                              💳 Pendiente de Pago
+                            </span>
+                            <span className="text-[9px] text-white/40 text-right max-w-[200px] leading-tight">
+                              Completa el pago siguiendo las instrucciones a la izquierda.
+                            </span>
+                          </div>
+                        )
+                      }
+                      if (status === 'pending_payment_validation') {
+                        const evidencePublicUrl = userTeam.payment_evidence_url
+                          ? supabase.storage.from('evidences').getPublicUrl(userTeam.payment_evidence_url).data.publicUrl
+                          : null
+                        return (
+                          <div className="flex flex-col items-end gap-1.5">
+                            <span className="inline-block w-full md:w-auto text-center text-xs font-bold bg-blue-500/20 text-blue-400 px-5 py-3 rounded-xl border border-blue-500/30 uppercase tracking-wider">
+                              ⏳ Validando Transferencia
+                            </span>
+                            {evidencePublicUrl && (
+                              <a
+                                href={evidencePublicUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] text-neon-cyan hover:underline flex items-center gap-1 font-semibold"
+                              >
+                                🖼️ Ver Comprobante Enviado
+                              </a>
+                            )}
+                            <span className="text-[9px] text-white/40 text-right max-w-[200px] leading-tight">
+                              El organizador está validando tu comprobante de pago.
+                            </span>
+                          </div>
+                        )
+                      }
+                      
+                      // Default is 'confirmed'
+                      return (
+                        <div className="flex flex-col items-end gap-2">
+                          <span className="inline-block w-full md:w-auto text-center text-xs font-bold bg-green-500/20 text-green-400 px-5 py-3 rounded-xl border border-green-500/30 uppercase tracking-wider">
+                            ✓ Inscrito
+                          </span>
+                          {discordUrl && (
+                            <a
+                              href={discordUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#5865F2] hover:bg-[#4752C4] active:scale-95 text-white text-[10px] font-bold uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(88,101,242,0.2)]"
+                            >
+                              <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                                <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.094 13.094 0 0 1-1.873-.894.077.077 0 0 1-.008-.128c.126-.093.252-.19.372-.287a.075.075 0 0 1 .077-.011c3.92 1.793 8.18 1.793 12.061 0a.073.073 0 0 1 .078.009c.12.099.246.195.373.289a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.156-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.156 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.156-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.156 2.418z" />
+                              </svg>
+                              Unirse a Discord
+                            </a>
+                          )}
+                        </div>
+                      )
+                    })()
                   ) : !hasRegStarted ? (
                     <span className="inline-block w-full md:w-auto text-center text-xs font-bold bg-white/10 text-white/40 px-5 py-3 rounded-xl border border-white/5 uppercase tracking-wider">
                       Próximamente
@@ -1639,12 +1794,12 @@ export function LeaderboardClient({
         )
       ) : activeTab === 'participants' ? (
         <div className="space-y-4">
-          {(!currentTeams || currentTeams.length === 0) ? (
+          {(!confirmedTeams || confirmedTeams.length === 0) ? (
             <div className="py-16 text-center border border-dashed border-white/10 rounded-2xl">
               <p className="text-white/40">No hay participantes registrados aún</p>
             </div>
           ) : (
-            currentTeams.map((team: any) => (
+            confirmedTeams.map((team: any) => (
               <div key={team.id} className="bg-dark-card/80 backdrop-blur-md border border-white/5 rounded-2xl p-5 hover:border-white/10 transition-colors">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -2207,21 +2362,7 @@ export function LeaderboardClient({
                     />
                   </div>
 
-                  {isPrivate && (
-                    <div>
-                      <label className="block text-xs text-neon-purple uppercase tracking-widest font-bold mb-1.5 ml-1 flex items-center gap-1">
-                        <span>🔒</span> Contraseña de Inscripción
-                      </label>
-                      <input
-                        required
-                        type="password"
-                        value={regPassword}
-                        onChange={e => setRegPassword(e.target.value)}
-                        placeholder="Contraseña provista por el organizador"
-                        className="w-full bg-black/40 border border-neon-purple/20 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/30 transition-all font-mono"
-                      />
-                    </div>
-                  )}
+
 
                   <div className="space-y-3">
                     <label className="block text-xs text-white/60 uppercase tracking-widest font-bold mb-1 ml-1">

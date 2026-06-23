@@ -72,6 +72,7 @@ export interface Tournament {
   discipline: string;
   badgeUrl?: string | null;
   maxPointsLimit?: number | null;
+  discordUrl?: string | null;
 }
 
 export interface ScoringRule {
@@ -89,6 +90,8 @@ export interface Team {
   avatarUrl?: string;
   streamUrl?: string;
   vipScore: number;
+  registrationStatus?: 'pending_approval' | 'approved_to_pay' | 'pending_payment_validation' | 'confirmed';
+  paymentEvidenceUrl?: string | null;
 }
 
 export interface Participant {

@@ -160,6 +160,7 @@ export async function createTournament(
       stream_url: input.streamUrl || null,
       max_points_limit: input.maxPointsLimit || null,
       collaborator_id: collaboratorId,
+      discord_url: input.discordUrl || null,
       // Finance Model
       entry_fee: input.entryFee || 0,
       prize_1st: input.prize1st || 0,
@@ -323,6 +324,9 @@ export async function updateTournament(
   if (input.collaboratorId !== undefined) {
     updatePayload.collaborator_id = isSuperAdminOrAdmin ? (input.collaboratorId || null) : null
   }
+  if (input.discordUrl !== undefined) {
+    updatePayload.discord_url = input.discordUrl || null
+  }
 
   // Finance Model
   if (input.entryFee !== undefined) updatePayload.entry_fee = input.entryFee
@@ -384,6 +388,7 @@ export async function updateTournament(
   revalidatePath(`/tournaments/${id}`)
   revalidatePath(`/tournaments/${id}/edit`)
   revalidatePath('/tournaments')
+  revalidatePath('/torneos')
   revalidatePath(`/t/${(updated as any).slug}`)
   revalidatePath('/')
 
@@ -399,13 +404,17 @@ export async function publishTournament(
 
   const { data: tournament, error: fetchErr } = await supabase
     .from('tournaments')
-    .select('status, creator_id, collaborator_id')
+    .select('status, creator_id, collaborator_id, arena_betting_enabled')
     .eq('id', id)
     .single()
 
   if (fetchErr || !tournament) return { error: 'Torneo no encontrado' }
 
   if (!(await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id))) return { error: 'Sin permisos' }
+
+  if (!tournament.arena_betting_enabled) {
+    return { error: 'La acción de anunciar torneos es exclusiva para torneos con el módulo de apuestas ArenaCrypto habilitado.' }
+  }
 
   if (tournament.status !== 'draft') {
     return { error: 'Solo se puede anunciar un torneo en estado Borrador' }
@@ -424,6 +433,7 @@ export async function publishTournament(
 
   revalidatePath(`/tournaments/${id}`)
   revalidatePath('/tournaments')
+  revalidatePath('/torneos')
   return { success: true }
 }
 
@@ -524,6 +534,7 @@ export async function activateTournament(
 
   revalidatePath(`/tournaments/${id}`)
   revalidatePath('/tournaments')
+  revalidatePath('/torneos')
 
   return { success: true }
 }
@@ -837,6 +848,7 @@ export async function finishTournament(
 
   revalidatePath(`/tournaments/${id}`)
   revalidatePath('/tournaments')
+  revalidatePath('/torneos')
   revalidatePath('/hall-of-fame')
   // Invalidate the public leaderboard page so the next visit gets fresh status
   if (tournament.slug) revalidatePath(`/t/${tournament.slug}`)
@@ -891,6 +903,7 @@ export async function reactivateTournament(
 
   revalidatePath(`/tournaments/${id}`)
   revalidatePath('/tournaments')
+  revalidatePath('/torneos')
   revalidatePath('/hall-of-fame')
   if (tournament.slug) revalidatePath(`/t/${tournament.slug}`)
 
@@ -1124,6 +1137,7 @@ export async function toggleTournamentPrivacy(
 
   revalidatePath(`/tournaments/${id}`)
   revalidatePath('/tournaments')
+  revalidatePath('/torneos')
   revalidatePath('/')
   return { success: true }
 }
@@ -1218,6 +1232,7 @@ export async function addDynamicMatch(
   revalidatePath(`/tournaments/${tournamentId}`)
   revalidatePath(`/t/${updatedTourney?.slug}`)
   revalidatePath('/tournaments')
+  revalidatePath('/torneos')
   return { success: true }
 }
 

@@ -87,6 +87,8 @@ export async function createTeam(
       avatarUrl: team.avatar_url,
       streamUrl: team.stream_url,
       vipScore: team.vip_score,
+      registrationStatus: team.registration_status || 'confirmed',
+      paymentEvidenceUrl: team.payment_evidence_url || null,
     }
   }
 }
@@ -286,6 +288,8 @@ export async function getTeamsWithParticipants(tournamentId: string) {
     avatarUrl: t.avatar_url,
     streamUrl: t.stream_url,
     vipScore: t.vip_score,
+    registrationStatus: t.registration_status || 'confirmed',
+    paymentEvidenceUrl: t.payment_evidence_url,
   }))
 
   const mappedParticipants: Participant[] = participants.map(p => ({
@@ -388,6 +392,8 @@ export async function updateTeam(
       avatarUrl: team.avatar_url,
       streamUrl: team.stream_url,
       vipScore: team.vip_score,
+      registrationStatus: team.registration_status || 'confirmed',
+      paymentEvidenceUrl: team.payment_evidence_url || null,
     }
   }
 }

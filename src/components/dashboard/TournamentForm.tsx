@@ -169,6 +169,7 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
     streamerSplit: initialData?.streamerSplit ?? 50,
     arenaBettingEnabled: initialData?.arenaBettingEnabled ?? false,
     collaboratorId: initialData?.collaboratorId ?? '',
+    discordUrl: initialData?.discordUrl ?? '',
     discipline: initialData?.discipline ?? 'warzone',
     mode: initialData?.mode ?? 'duos',
     format: initialData?.format ?? 'battle_royale_clasico',
@@ -392,6 +393,22 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
                 Aparecerá un reproductor en la parte superior del tablero del torneo. Compatible con Twitch, YouTube, etc.
               </p>
               {err(errors.streamUrl?.message)}
+            </div>
+
+            {/* Discord de los Equipos */}
+            <div>
+              <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
+                Enlace de Discord para Equipos (Solo visible a participantes confirmados)
+              </label>
+              <input
+                {...register('discordUrl')}
+                placeholder="Ej: https://discord.gg/invitacion"
+                className={inputClass}
+              />
+              <p className="text-xs text-white/40 mt-1">
+                Los participantes confirmados verán este enlace en el panel para unirse y coordinar las partidas.
+              </p>
+              {err(errors.discordUrl?.message)}
             </div>
 
             {/* Dates */}

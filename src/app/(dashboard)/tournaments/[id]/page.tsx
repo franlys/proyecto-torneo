@@ -379,7 +379,7 @@ export default async function TournamentOverviewPage({
       )}
 
       {/* Publish button (draft → pending) */}
-      {tournament.status === 'draft' && (
+      {tournament.status === 'draft' && tournament.arenaBettingEnabled && (
         <div className="bg-dark-card border border-neon-purple/10 rounded-2xl p-6 mb-8">
           <h2 className="text-sm font-semibold text-white mb-1">Anunciar torneo</h2>
           <p className="text-xs text-white/30 mb-4">

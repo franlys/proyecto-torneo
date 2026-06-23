@@ -64,5 +64,6 @@ export function mapTournamentRow(row: Record<string, unknown>): Tournament {
     badgeUrl: row.badge_url as string | undefined | null,
     streamUrl: row.stream_url as string | undefined | null,
     maxPointsLimit: row.max_points_limit !== undefined && row.max_points_limit !== null ? Number(row.max_points_limit) : null,
+    discordUrl: row.discord_url as string | undefined | null,
   }
 }

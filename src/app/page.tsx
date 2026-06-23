@@ -51,7 +51,7 @@ export default async function Home() {
       adminSupabase.from('tournaments').select('total_live_viewers, status, is_private').neq('status', 'draft'),
       adminSupabase.from('tournaments')
         .select('*, teams(id)')
-        .or('is_private.eq.false,is_private.is.null')
+        .neq('status', 'draft')
         .neq('status', 'finished')
         .order('created_at', { ascending: false })
         .limit(3)
@@ -227,21 +227,28 @@ export default async function Home() {
                   <div>
                     {/* Header: Badge & Mode */}
                     <div className="flex items-center justify-between mb-4">
-                      {t.status === 'active' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20">
-                          <span className="w-1.5 h-1.5 rounded-full bg-neon-cyan animate-pulse" />
-                          En Curso
-                        </span>
-                      ) : t.status === 'finished' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-gold/10 text-gold border border-gold/20">
-                          Finalizado
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-neon-purple/10 text-neon-purple border border-neon-purple/20">
-                          <span className="w-1.5 h-1.5 rounded-full bg-neon-purple animate-pulse" />
-                          Inscripciones Abiertas
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5">
+                        {t.status === 'active' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-neon-cyan animate-pulse" />
+                            En Curso
+                          </span>
+                        ) : t.status === 'finished' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-gold/10 text-gold border border-gold/20">
+                            Finalizado
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-neon-purple/10 text-neon-purple border border-neon-purple/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-neon-purple animate-pulse" />
+                            Inscripciones Abiertas
+                          </span>
+                        )}
+                        {t.is_private && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-neon-purple/10 text-neon-purple border border-neon-purple/20">
+                            <span>🔒</span> Privado
+                          </span>
+                        )}
+                      </div>
                       <span className="text-[9px] bg-white/5 border border-white/10 px-2 py-0.5 rounded text-white/60 font-bold uppercase tracking-wider">
                         {t.mode ? t.mode.toUpperCase() : 'TODOS'}
                       </span>

@@ -54,11 +54,11 @@ export default async function TorneosPublicosPage() {
   const { data: { user } } = await supabase.auth.getUser()
   const profile = user ? await getProfile() : null
 
-  // Fetch all public tournaments (is_private = false or null) and not finished
+  // Fetch all tournaments (including private) that are not finished and not draft
   const { data: tournaments, error } = await adminSupabase
     .from('tournaments')
-    .select('*, teams(id)')
-    .or('is_private.eq.false,is_private.is.null')
+    .select('*, teams(id), creator:profiles!creator_id(username, organization_name, role), collaborator:profiles!collaborator_id(username, organization_name)')
+    .neq('status', 'draft')
     .neq('status', 'finished')
     .order('created_at', { ascending: false })
 
@@ -78,7 +78,7 @@ export default async function TorneosPublicosPage() {
           <div>
             <span className="text-[10px] font-black uppercase tracking-widest text-neon-cyan">Arena de Competición</span>
             <h1 className={`${orbitron.className} text-3xl sm:text-5xl font-black uppercase tracking-tighter text-white mt-2`}>
-              Torneos Públicos
+              Torneos
             </h1>
             <p className="text-white/40 text-xs sm:text-sm max-w-xl mt-1.5 leading-relaxed">
               Inscríbete en los torneos abiertos de la comunidad y compite contra los mejores streamers y jugadores.
@@ -116,7 +116,14 @@ export default async function TorneosPublicosPage() {
                   <div className="relative z-10">
                     {/* Upper row: Status & Mode */}
                     <div className="flex items-center justify-between mb-4">
-                      <StatusBadge status={t.status} />
+                      <div className="flex items-center gap-1.5">
+                        <StatusBadge status={t.status} />
+                        {t.is_private && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-neon-purple/10 text-neon-purple border border-neon-purple/20">
+                            <span>🔒</span> Privado
+                          </span>
+                        )}
+                      </div>
                       <span className="text-[9px] bg-white/5 border border-white/10 px-2 py-0.5 rounded text-white/60 font-bold uppercase tracking-wider">
                         {t.mode ? t.mode.toUpperCase() : 'TODOS'}
                       </span>
@@ -141,6 +148,28 @@ export default async function TorneosPublicosPage() {
                         <p className="text-white/40 text-[9px] uppercase tracking-wide mt-0.5">
                           Formato: {t.format ? t.format.replace(/_/g, ' ') : 'Estándar'}
                         </p>
+                        {(() => {
+                          const creatorProfile = (t as any).creator
+                          const collaboratorProfile = (t as any).collaborator
+                          const isCreatorAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(creatorProfile?.role || '')
+
+                          let organizerText = ''
+                          if (isCreatorAdmin) {
+                            if (collaboratorProfile) {
+                              organizerText = `Kronix & ${collaboratorProfile.organization_name || collaboratorProfile.username}`
+                            } else {
+                              organizerText = 'Kronix'
+                            }
+                          } else {
+                            organizerText = creatorProfile?.organization_name || creatorProfile?.username || 'Organizador'
+                          }
+
+                          return (
+                            <p className="text-white/50 text-[9px] mt-1 font-semibold flex items-center gap-1">
+                              <span className="text-neon-cyan">👑</span> {organizerText}
+                            </p>
+                          )
+                        })()}
                       </div>
                     </div>
 

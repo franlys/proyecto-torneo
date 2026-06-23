@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import type { Team, Participant, TournamentMode } from '@/types'
 import { createTeam, addParticipant, deleteTeam, deleteParticipant, updateTeam, updateParticipant, uploadAvatar, findUserByShortId } from '@/lib/actions/participants'
 import { toast } from 'sonner'
+import { createClient } from '@/lib/supabase/client'
 
 export function ParticipantsManager({
   tournamentId,
@@ -80,6 +81,101 @@ export function ParticipantsManager({
   const currentUploadRef = useRef<{ id: string, type: 'team' | 'participant' } | null>(null)
 
   const [banningId, setBanningId] = useState<string | null>(null)
+
+  const supabase = useMemo(() => createClient(), [])
+
+  // Manager Tabs
+  const [activeTab, setActiveTab] = useState<'confirmed' | 'pending' | 'validation'>('confirmed')
+  
+  // Modals and loading states for registration flow
+  const [selectedEvidenceUrl, setSelectedEvidenceUrl] = useState<string | null>(null)
+  const [rejectingTeamId, setRejectingTeamId] = useState<string | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
+
+  const confirmedTeams = useMemo(() => {
+    return teams.filter(t => !t.registrationStatus || t.registrationStatus === 'confirmed')
+  }, [teams])
+
+  const pendingTeams = useMemo(() => {
+    return teams.filter(t => t.registrationStatus === 'pending_approval' || t.registrationStatus === 'approved_to_pay')
+  }, [teams])
+
+  const validationTeams = useMemo(() => {
+    return teams.filter(t => t.registrationStatus === 'pending_payment_validation')
+  }, [teams])
+
+  const displayedTeams = useMemo(() => {
+    if (activeTab === 'confirmed') return confirmedTeams
+    if (activeTab === 'pending') return pendingTeams
+    return validationTeams
+  }, [activeTab, confirmedTeams, pendingTeams, validationTeams])
+
+  const handleApprove = async (teamId: string) => {
+    setActionLoadingId(teamId)
+    try {
+      const { approveRegistrationRequest } = await import('@/lib/actions/registration-flow')
+      const res = await approveRegistrationRequest(teamId)
+      if ('error' in res) {
+        toast.error(res.error)
+      } else {
+        toast.success('¡Solicitud aprobada! Se notificó al capitán por correo.')
+        setTeams(prev => prev.map(t => t.id === teamId ? { ...t, registrationStatus: 'approved_to_pay' } : t))
+      }
+    } catch (err: any) {
+      toast.error('Error al aprobar la solicitud.')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const handleConfirmPayment = async (teamId: string) => {
+    setActionLoadingId(teamId)
+    try {
+      const { confirmPaymentRegistration } = await import('@/lib/actions/registration-flow')
+      const res = await confirmPaymentRegistration(teamId)
+      if ('error' in res) {
+        toast.error(res.error)
+      } else {
+        toast.success('¡Inscripción confirmada! Standings inicializados y correo enviado.')
+        setTeams(prev => prev.map(t => t.id === teamId ? { ...t, registrationStatus: 'confirmed' } : t))
+      }
+    } catch (err: any) {
+      toast.error('Error al confirmar el pago.')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const handleReject = async (teamId: string) => {
+    if (!rejectReason.trim()) {
+      toast.error('Por favor, ingresa una razón para el rechazo.')
+      return
+    }
+    setActionLoadingId(teamId)
+    try {
+      const { rejectRegistrationRequest } = await import('@/lib/actions/registration-flow')
+      const res = await rejectRegistrationRequest(teamId, rejectReason.trim())
+      if ('error' in res) {
+        toast.error(res.error)
+      } else {
+        toast.success('Solicitud rechazada con éxito.')
+        const team = teams.find(t => t.id === teamId)
+        if (team?.registrationStatus === 'pending_approval') {
+          setTeams(prev => prev.filter(t => t.id !== teamId))
+          setParticipants(prev => prev.filter(p => p.teamId !== teamId))
+        } else {
+          setTeams(prev => prev.map(t => t.id === teamId ? { ...t, registrationStatus: 'approved_to_pay', paymentEvidenceUrl: null } : t))
+        }
+        setRejectingTeamId(null)
+        setRejectReason('')
+      }
+    } catch (err: any) {
+      toast.error('Error al rechazar la solicitud.')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
 
   const handleAbandon = async (teamId: string, teamName: string) => {
     if (!confirm(`¿Estás seguro de que el equipo "${teamName}" abandonó el torneo? Esto aplicará un baneo de inmediato por los próximos 3 torneos a todos sus miembros y liberará su cupo.`)) {
@@ -421,13 +517,47 @@ export function ParticipantsManager({
         </div>
       )}
 
-      {teams.length === 0 ? (
+      {/* Tabs list */}
+      <div className="flex border-b border-white/5 mb-6 gap-2">
+        <button
+          onClick={() => setActiveTab('confirmed')}
+          className={`px-4 py-2.5 font-orbitron text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
+            activeTab === 'confirmed'
+              ? 'border-neon-cyan text-white font-black'
+              : 'border-transparent text-white/40 hover:text-white/80 font-medium'
+          }`}
+        >
+          Inscritos ({confirmedTeams.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('pending')}
+          className={`px-4 py-2.5 font-orbitron text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
+            activeTab === 'pending'
+              ? 'border-neon-purple text-white font-black'
+              : 'border-transparent text-white/40 hover:text-white/80 font-medium'
+          }`}
+        >
+          Pendientes ({pendingTeams.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('validation')}
+          className={`px-4 py-2.5 font-orbitron text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
+            activeTab === 'validation'
+              ? 'border-gold text-white font-black'
+              : 'border-transparent text-white/40 hover:text-white/80 font-medium'
+          }`}
+        >
+          Comprobantes ({validationTeams.length})
+        </button>
+      </div>
+
+      {displayedTeams.length === 0 ? (
         <div className="py-12 text-center border border-dashed border-white/10 rounded-xl bg-white/[0.02]">
-          <p className="text-white/40 text-sm">No hay {isIndividual ? 'jugadores' : 'equipos'} registrados aún</p>
+          <p className="text-white/40 text-sm">No hay {isIndividual ? 'jugadores' : 'equipos'} en esta sección</p>
         </div>
       ) : (
         <div className="grid gap-4">
-          {teams.map((team) => {
+          {displayedTeams.map((team) => {
             const roster = getTeamRoster(team.id)
             const isCollapsed = collapsedTeams.has(team.id)
             
@@ -474,42 +604,114 @@ export function ParticipantsManager({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        const url = `${window.location.origin}/t/${tournamentSlug}/team/${team.id}`
-                        navigator.clipboard.writeText(url)
-                        toast.success('¡Enlace del portal copiado!')
-                      }}
-                      className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-neon-cyan/10 
-                        hover:bg-neon-cyan/20 text-neon-cyan rounded-xl text-xs font-bold border border-neon-cyan/20 transition-all"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                      </svg>
-                      Copiar Portal
-                    </button>
-                    {tournamentStatus === 'active' && (
-                      <button
-                        onClick={() => handleAbandon(team.id, team.name)}
-                        disabled={banningId === team.id}
-                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-red-500/10 
-                          hover:bg-red-500/20 text-red-400 rounded-xl text-xs font-bold border border-red-500/20 transition-all disabled:opacity-40"
-                        title="Marcar como abandono y aplicar ban por los próximos 3 torneos"
-                      >
-                        <span>🚫</span>
-                        <span>{banningId === team.id ? 'Baneando...' : 'Marcar Abandono'}</span>
-                      </button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {team.registrationStatus === 'pending_approval' && (
+                      <>
+                        <button
+                          disabled={actionLoadingId === team.id}
+                          onClick={() => handleApprove(team.id)}
+                          className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded-xl text-xs font-bold border border-green-500/20 transition-all disabled:opacity-40"
+                        >
+                          {actionLoadingId === team.id ? 'Aprobando...' : 'Aprobar Solicitud'}
+                        </button>
+                        <button
+                          disabled={actionLoadingId === team.id}
+                          onClick={() => setRejectingTeamId(team.id)}
+                          className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl text-xs font-bold border border-red-500/20 transition-all"
+                        >
+                          Rechazar
+                        </button>
+                      </>
                     )}
-                    {!isLocked && (
-                      <button
-                        onClick={() => handleRemoveTeam(team.id)}
-                        className="p-2 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
+                    {team.registrationStatus === 'approved_to_pay' && (
+                      <>
+                        <span className="text-[10px] bg-orange-500/10 text-orange-400 border border-orange-500/20 px-3 py-1.5 rounded-xl uppercase font-bold tracking-wider">
+                          ⏳ Esperando Pago
+                        </span>
+                        <button
+                          disabled={actionLoadingId === team.id}
+                          onClick={() => setRejectingTeamId(team.id)}
+                          className="p-2 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                          title="Eliminar solicitud"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </>
+                    )}
+                    {team.registrationStatus === 'pending_payment_validation' && (
+                      <>
+                        <button
+                          onClick={() => {
+                            const publicUrl = team.paymentEvidenceUrl
+                              ? supabase.storage.from('evidences').getPublicUrl(team.paymentEvidenceUrl).data.publicUrl
+                              : null
+                            if (publicUrl) {
+                              setSelectedEvidenceUrl(publicUrl)
+                            } else {
+                              toast.error('No hay archivo de comprobante para este equipo.')
+                            }
+                          }}
+                          className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-xl text-xs font-bold border border-blue-500/20 transition-all"
+                        >
+                          🖼️ Ver Comprobante
+                        </button>
+                        <button
+                          disabled={actionLoadingId === team.id}
+                          onClick={() => handleConfirmPayment(team.id)}
+                          className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-xl text-xs font-bold border border-green-500/30 transition-all disabled:opacity-40"
+                        >
+                          {actionLoadingId === team.id ? 'Confirmando...' : 'Confirmar Pago'}
+                        </button>
+                        <button
+                          disabled={actionLoadingId === team.id}
+                          onClick={() => setRejectingTeamId(team.id)}
+                          className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl text-xs font-bold border border-red-500/20 transition-all"
+                        >
+                          Rechazar
+                        </button>
+                      </>
+                    )}
+                    {(!team.registrationStatus || team.registrationStatus === 'confirmed') && (
+                      <>
+                        <button
+                          onClick={() => {
+                            const url = `${window.location.origin}/t/${tournamentSlug}/team/${team.id}`
+                            navigator.clipboard.writeText(url)
+                            toast.success('¡Enlace del portal copiado!')
+                          }}
+                          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-neon-cyan/10 
+                            hover:bg-neon-cyan/20 text-neon-cyan rounded-xl text-xs font-bold border border-neon-cyan/20 transition-all"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                          </svg>
+                          Copiar Portal
+                        </button>
+                        {tournamentStatus === 'active' && (
+                          <button
+                            onClick={() => handleAbandon(team.id, team.name)}
+                            disabled={banningId === team.id}
+                            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-red-500/10 
+                              hover:bg-red-500/20 text-red-400 rounded-xl text-xs font-bold border border-red-500/20 transition-all disabled:opacity-40"
+                            title="Marcar como abandono y aplicar ban por los próximos 3 torneos"
+                          >
+                            <span>🚫</span>
+                            <span>{banningId === team.id ? 'Baneando...' : 'Marcar Abandono'}</span>
+                          </button>
+                        )}
+                        {!isLocked && (
+                          <button
+                            onClick={() => handleRemoveTeam(team.id)}
+                            className="p-2 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -896,6 +1098,83 @@ export function ParticipantsManager({
                 className="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-white/50 text-sm rounded-xl transition-colors"
               >
                 Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Comprobante Evidence Modal */}
+      {selectedEvidenceUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-dark-card border border-white/10 rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative">
+            <button 
+              onClick={() => setSelectedEvidenceUrl(null)}
+              className="absolute top-4 right-4 text-white/40 hover:text-white text-lg font-bold"
+            >
+              ✕
+            </button>
+            <h3 className="font-orbitron font-bold text-white text-base mb-4 uppercase tracking-wider">Comprobante de Pago</h3>
+            <div className="w-full aspect-[4/3] bg-black/60 rounded-xl overflow-hidden border border-white/5 relative">
+              <img 
+                src={selectedEvidenceUrl} 
+                alt="Comprobante" 
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button 
+                onClick={() => setSelectedEvidenceUrl(null)}
+                className="px-5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold uppercase tracking-wider transition-all"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rejection Reason Modal */}
+      {rejectingTeamId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-dark-card border border-white/10 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <button 
+              onClick={() => {
+                setRejectingTeamId(null);
+                setRejectReason('');
+              }}
+              className="absolute top-4 right-4 text-white/40 hover:text-white text-lg font-bold"
+            >
+              ✕
+            </button>
+            <h3 className="font-orbitron font-bold text-white text-base mb-2 uppercase tracking-wider">Rechazar Solicitud / Comprobante</h3>
+            <p className="text-xs text-white/50 mb-4 leading-relaxed">
+              Ingresa la razón del rechazo para notificar al equipo por correo.
+            </p>
+            <textarea
+              required
+              rows={3}
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Ej. El comprobante no es válido o los fondos no han sido recibidos aún."
+              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder:text-white/20 outline-none focus:border-neon-purple focus:ring-1 focus:ring-neon-purple transition-all resize-none"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button 
+                onClick={() => {
+                  setRejectingTeamId(null);
+                  setRejectReason('');
+                }}
+                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold uppercase tracking-wider transition-all"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={() => handleReject(rejectingTeamId)}
+                disabled={actionLoadingId === rejectingTeamId}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(220,38,38,0.2)] disabled:opacity-40"
+              >
+                {actionLoadingId === rejectingTeamId ? 'Rechazando...' : 'Rechazar'}
               </button>
             </div>
           </div>

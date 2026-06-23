@@ -19,6 +19,35 @@ export function TeamPortalClient({
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
   const [selectedParentId, setSelectedParentId] = useState('')
+
+  // Private tournament password gate states
+  const [isVerified, setIsVerified] = useState(false)
+  const [passwordInput, setPasswordInput] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+
+  useEffect(() => {
+    const isPrivate = tournament?.isPrivate || tournament?.is_private
+    if (!isPrivate) {
+      setIsVerified(true)
+    } else {
+      const verified = localStorage.getItem(`kronix_tourney_${tournament.id}_verified`)
+      if (verified === 'true') {
+        setIsVerified(true)
+      }
+    }
+  }, [tournament])
+
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    setPasswordError('')
+    const expectedPassword = tournament?.registrationPassword || tournament?.registration_password
+    if (passwordInput === expectedPassword) {
+      localStorage.setItem(`kronix_tourney_${tournament.id}_verified`, 'true')
+      setIsVerified(true)
+    } else {
+      setPasswordError('Contraseña incorrecta. Por favor, inténtalo de nuevo.')
+    }
+  }
   
   // New state for individual kills
   const [playerKills, setPlayerKills] = useState<Record<string, number>>({})
@@ -172,6 +201,37 @@ export function TeamPortalClient({
     } finally {
       setLoading(false)
     }
+  }
+
+  if (!isVerified) {
+    return (
+      <div className="max-w-md mx-auto py-10 px-6 bg-dark-card/80 backdrop-blur-md border border-neon-purple/20 rounded-2xl shadow-[0_0_30px_rgba(176,38,255,0.15)] text-center animate-in zoom-in duration-300">
+        <div className="w-16 h-16 rounded-full bg-neon-purple/10 border border-neon-purple/30 mx-auto flex items-center justify-center mb-6 shadow-[0_0_20px_rgba(176,38,255,0.2)] text-2xl">
+          🔒
+        </div>
+        <h3 className="text-xl font-orbitron font-bold text-white mb-2 uppercase tracking-wide">Acceso Privado</h3>
+        <p className="text-xs text-white/50 mb-6 leading-relaxed">
+          Este torneo es privado. Por favor, ingresa la contraseña para acceder al portal de subida de evidencias.
+        </p>
+        <form onSubmit={handlePasswordSubmit} className="space-y-4">
+          <input 
+            type="password"
+            required
+            placeholder="Contraseña del Torneo"
+            value={passwordInput}
+            onChange={(e) => setPasswordInput(e.target.value)}
+            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/30 transition-all font-mono text-center"
+          />
+          {passwordError && <p className="text-red-400 text-xs font-medium">{passwordError}</p>}
+          <button 
+            type="submit"
+            className="w-full bg-neon-purple text-white font-black uppercase tracking-wider py-3 rounded-xl hover:bg-neon-purple/90 transition-all shadow-[0_0_15px_rgba(176,38,255,0.3)] flex items-center justify-center gap-2"
+          >
+            Verificar Acceso
+          </button>
+        </form>
+      </div>
+    )
   }
 
   if (success) {

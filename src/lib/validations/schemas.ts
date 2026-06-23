@@ -46,6 +46,7 @@ const tournamentBaseSchema = z.object({
   streamUrl: z.string().url().optional().or(z.literal('')).or(z.null()),
   maxPointsLimit: z.number().int().min(1).optional().nullable(),
   collaboratorId: z.union([z.string().uuid(), z.literal(''), z.null()]).optional().transform(v => v === '' ? null : v),
+  discordUrl: z.union([z.string().url(), z.literal(''), z.null()]).optional(),
 
   
   // Finance Model
