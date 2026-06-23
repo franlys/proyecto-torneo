@@ -16,6 +16,7 @@ interface ProfileStatsClientProps {
   rankings: any[]
   pointsHistory: any[]
   gameAccounts?: any[]
+  isStaff?: boolean
 }
 
 const GAME_NAMES: Record<string, string> = {
@@ -73,6 +74,7 @@ export function ProfileStatsClient({
   rankings,
   pointsHistory,
   gameAccounts = [],
+  isStaff = false,
 }: ProfileStatsClientProps) {
   const [activeTab, setActiveTab] = useState<'inicio' | 'profile' | 'history' | 'badges' | 'stats' | 'friends'>('inicio')
   const [username, setUsername] = useState(profile?.username ?? '')
@@ -195,11 +197,13 @@ export function ProfileStatsClient({
     }
   }
 
-  const roleLabel = (({
-    ADMIN: { label: 'Administrador', color: 'text-neon-cyan border-neon-cyan/30 bg-neon-cyan/10' },
-    STREAMER: { label: 'Streamer', color: 'text-neon-purple border-neon-purple/30 bg-neon-purple/10' },
-    USER: { label: 'Usuario', color: 'text-white/40 border-white/10 bg-white/5' },
-  } as any)[profile?.role ?? 'USER']) || { label: 'Usuario', color: 'text-white/40 border-white/10 bg-white/5' }
+  const roleLabel = (isStaff && (profile?.role === 'USER' || !profile?.role))
+    ? { label: 'Colaborador Staff', color: 'text-orange-400 border-orange-500/30 bg-orange-500/10' }
+    : ((({
+        ADMIN: { label: 'Administrador', color: 'text-neon-cyan border-neon-cyan/30 bg-neon-cyan/10' },
+        STREAMER: { label: 'Streamer', color: 'text-neon-purple border-neon-purple/30 bg-neon-purple/10' },
+        USER: { label: 'Usuario', color: 'text-white/40 border-white/10 bg-white/5' },
+      } as any)[profile?.role ?? 'USER']) || { label: 'Usuario', color: 'text-white/40 border-white/10 bg-white/5' })
 
   const subLabel = (({
     ACTIVE: { label: 'Activa', color: 'text-green-400 border-green-500/30 bg-green-500/10' },

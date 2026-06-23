@@ -69,6 +69,14 @@ export default async function ProfilePage() {
     .eq('user_id', user.id)
     .order('game')
 
+  // 6. Check if they are a staff member of any streamer
+  const { data: staffData } = await supabase
+    .from('streamer_staff')
+    .select('id')
+    .eq('staff_id', user.id)
+    .limit(1)
+  const isStaff = (staffData && staffData.length > 0) || false
+
   return (
     <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
       <div>
@@ -84,6 +92,7 @@ export default async function ProfilePage() {
         rankings={rankings || []}
         pointsHistory={pointsHistory || []}
         gameAccounts={gameAccounts || []}
+        isStaff={isStaff}
       />
     </div>
   )

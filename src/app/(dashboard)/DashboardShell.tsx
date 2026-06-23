@@ -264,8 +264,8 @@ export default function DashboardShell({
           <p className="text-xs font-bold text-white/80 group-hover:text-white transition-colors truncate">
             {username || 'Mi Perfil'}
           </p>
-          <p className={`text-[10px] font-semibold ${ROLE_BADGE[userRole]?.color ?? 'text-white/40'}`}>
-            {ROLE_BADGE[userRole]?.label ?? userRole}
+          <p className={`text-[10px] font-semibold ${isStaff && userRole === 'USER' ? 'text-orange-300' : (ROLE_BADGE[userRole]?.color ?? 'text-white/40')}`}>
+            {isStaff && userRole === 'USER' ? '🔧 Staff Colaborador' : (ROLE_BADGE[userRole]?.label ?? userRole)}
           </p>
         </div>
       </Link>
