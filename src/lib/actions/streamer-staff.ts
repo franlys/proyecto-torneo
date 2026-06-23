@@ -58,18 +58,37 @@ export async function inviteStaffMember(
     (u) => u.email?.toLowerCase() === cleanEmail
   )
 
+  let inviteUrl = ''
+  const streamerName = streamerProfile.organizationName || streamerProfile.username || 'un Streamer'
+
   if (!existingAuthUser) {
-    // User does not exist — send invite email via Supabase Auth
-    const { error: inviteError } = await adminSupabase.auth.admin.inviteUserByEmail(
-      cleanEmail,
-      {
+    // User does not exist — generate invite link to send custom email via Resend
+    const { data: linkData, error: linkError } = await adminSupabase.auth.admin.generateLink({
+      type: 'invite',
+      email: cleanEmail,
+      options: {
         redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?next=/reset-password`,
-        data: { role: 'USER' },
+        data: { 
+          role: 'USER',
+          invited_by: streamerName
+        },
       }
-    )
-    if (inviteError) return { error: inviteError.message }
+    })
+    
+    if (linkError) return { error: linkError.message }
+    
+    const hashedToken = linkData?.properties?.hashed_token
+    if (hashedToken) {
+      inviteUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/auth/verify?token_hash=${hashedToken}&type=invite`
+    } else if (linkData?.properties?.action_link) {
+      inviteUrl = linkData.properties.action_link
+    } else {
+      return { error: 'No se pudo generar el enlace de invitación.' }
+    }
+  } else {
+    // User already exists - point them to the tournaments dashboard to accept invitation
+    inviteUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/tournaments`
   }
-  // If user already exists, we just create the invitation record below — they'll see it on login
 
   // 4. Create the invitation record
   const { error: insertError } = await supabase
@@ -82,6 +101,16 @@ export async function inviteStaffMember(
     })
 
   if (insertError) return { error: insertError.message }
+
+  // 5. Send invite email via Resend
+  const { sendStaffInviteEmail } = await import('@/lib/services/email')
+  sendStaffInviteEmail({
+    email: cleanEmail,
+    streamerName,
+    role,
+    inviteUrl,
+    isNewUser: !existingAuthUser
+  }).catch(err => console.error('Failed to send staff invite email:', err))
 
   revalidatePath('/tournaments/staff')
   return { success: true }

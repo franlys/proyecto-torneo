@@ -11,6 +11,7 @@ export type Profile = {
   avatarUrl: string | null
   usernameChangesCount: number
   shortId: string | null
+  organizationName: string | null
 }
 
 /**
@@ -38,7 +39,8 @@ export async function getProfile(): Promise<Profile | null> {
     subscriptionExpiry: profile.subscription_expiry,
     avatarUrl: profile.avatar_url,
     usernameChangesCount: profile.username_changes_count || 0,
-    shortId: profile.short_id || null
+    shortId: profile.short_id || null,
+    organizationName: profile.organization_name || null
   }
 }
 
