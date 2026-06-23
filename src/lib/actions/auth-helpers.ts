@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 
 export type Profile = {
   id: string
@@ -23,11 +23,42 @@ export async function getProfile(): Promise<Profile | null> {
   
   if (!user) return null
  
-  const { data: profile } = await supabase
+  let { data: profile } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
+
+  if (!profile) {
+    // Self-healing safety net: create profile using admin client
+    try {
+      const adminSupabase = await createAdminClient()
+      
+      const { count } = await adminSupabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+
+      const { data: newProfile, error: insertError } = await adminSupabase
+        .from('profiles')
+        .insert({
+          id: user.id,
+          username: null,
+          role: (count ?? 0) === 0 ? 'ADMIN' : 'USER',
+          email: user.email,
+        })
+        .select()
+        .maybeSingle()
+
+      if (insertError) {
+        console.error('Error auto-creating profile in getProfile:', insertError)
+        return null
+      }
+      profile = newProfile
+    } catch (err) {
+      console.error('Failed to run self-healing profile creation:', err)
+      return null
+    }
+  }
 
   if (!profile) return null
 
