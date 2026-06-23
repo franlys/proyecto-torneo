@@ -46,6 +46,7 @@ export default async function StaffManagementPage() {
         activeStaff={activeStaff}
         pendingInvites={pendingInvites}
         myInvites={myInvites}
+        currentUserRole={profile.role}
       />
     </div>
   )

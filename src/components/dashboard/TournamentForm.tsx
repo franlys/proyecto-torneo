@@ -219,6 +219,19 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
       cleanedData.totalMatches = initialData?.totalMatches ?? 1
     }
 
+    const isSuperAdminOrAdmin = currentUserProfile && ['ADMIN', 'SUPER_ADMIN'].includes(currentUserProfile.role)
+    if (!isSuperAdminOrAdmin) {
+      cleanedData.collaboratorId = ''
+      cleanedData.organizerSplit = 0
+      cleanedData.streamerSplit = 100
+      cleanedData.arenaBettingEnabled = false
+    } else {
+      if (!cleanedData.collaboratorId) {
+        cleanedData.organizerSplit = 100
+        cleanedData.streamerSplit = 0
+      }
+    }
+
     if (!cleanedData.entryFee || cleanedData.entryFee === 0) {
       cleanedData.organizerSplit = 0
       cleanedData.streamerSplit = 0
@@ -971,13 +984,13 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
 
               {/* Revenue Splits & Collaborator selection */}
               <div className="space-y-4 pt-2">
-                {watch('entryFee') > 0 && (
+                {currentUserProfile && ['ADMIN', 'SUPER_ADMIN'].includes(currentUserProfile.role) && watch('entryFee') > 0 && watch('collaboratorId') && (
                   <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                     <p className="text-xs font-bold text-neon-cyan uppercase tracking-widest mb-4">Repartición del Sobrante</p>
                     <div className="space-y-4">
                       <div>
                         <div className="flex justify-between text-xs mb-2">
-                          <span className="text-white/60">Organizador</span>
+                          <span className="text-white/60">Organizador (Kronix)</span>
                           <span className="text-white">{watch('organizerSplit')}%</span>
                         </div>
                         <input 
@@ -1035,28 +1048,58 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
 
           <div className="pt-6 border-t border-white/5">
             <SectionHeader title="ArenaCrypto Integration" subtitle="Habilita las apuestas de la comunidad" />
-            <button
-              type="button"
-              onClick={() => setValue('arenaBettingEnabled', !watch('arenaBettingEnabled'))}
-              className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all duration-150
-                ${watch('arenaBettingEnabled')
-                  ? 'border-neon-cyan bg-neon-cyan/10'
-                  : 'border-white/10 bg-white/5 hover:border-white/20'
-                }`}
-            >
-              <div className="flex items-center gap-4">
-                <div className={`p-2 rounded-lg ${watch('arenaBettingEnabled') ? 'bg-neon-cyan text-black' : 'bg-white/10 text-white/40'}`}>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            
+            {currentUserProfile && ['ADMIN', 'SUPER_ADMIN'].includes(currentUserProfile.role) ? (
+              <button
+                type="button"
+                onClick={() => setValue('arenaBettingEnabled', !watch('arenaBettingEnabled'))}
+                className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all duration-150
+                  ${watch('arenaBettingEnabled')
+                    ? 'border-neon-cyan bg-neon-cyan/10'
+                    : 'border-white/10 bg-white/5 hover:border-white/20'
+                  }`}
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`p-2 rounded-lg ${watch('arenaBettingEnabled') ? 'bg-neon-cyan text-black' : 'bg-white/10 text-white/40'}`}>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-bold text-white uppercase tracking-tight">Habilitar Apuestas Públicas</p>
+                    <p className="text-xs text-white/40">Los fans podrán apostar por sus equipos favoritos en ArenaCrypto.</p>
+                  </div>
                 </div>
-                <div className="text-left">
-                  <p className="text-sm font-bold text-white uppercase tracking-tight">Habilitar Apuestas Públicas</p>
-                  <p className="text-xs text-white/40">Los fans podrán apostar por sus equipos favoritos en ArenaCrypto.</p>
+                <div className={`w-12 h-6 rounded-full relative transition-colors ${watch('arenaBettingEnabled') ? 'bg-neon-cyan' : 'bg-white/20'}`}>
+                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${watch('arenaBettingEnabled') ? 'left-7' : 'left-1'}`} />
                 </div>
+              </button>
+            ) : (
+              <div className="w-full p-5 rounded-xl border border-white/5 bg-white/[0.01] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <div className="p-3.5 rounded-xl bg-neon-purple/10 text-neon-purple border border-neon-purple/20 shrink-0">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-white uppercase tracking-tight">Módulo de Apuestas (ArenaCrypto)</p>
+                      <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple border border-neon-purple/30 animate-pulse">
+                        ADD-ON PREMIUM
+                      </span>
+                    </div>
+                    <p className="text-xs text-white/50 mt-1 leading-relaxed max-w-xl">
+                      Permite que tus espectadores apuesten puntos o cripto en vivo durante el torneo. 
+                      Esta función requiere el add-on de ArenaCrypto activo en tu plan de Streamer.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled
+                  className="w-full md:w-auto px-5 py-2.5 bg-white/5 border border-white/10 text-white/40 text-xs font-black uppercase tracking-widest rounded-xl cursor-not-allowed"
+                >
+                  Indisponible en tu plan
+                </button>
               </div>
-              <div className={`w-12 h-6 rounded-full relative transition-colors ${watch('arenaBettingEnabled') ? 'bg-neon-cyan' : 'bg-white/20'}`}>
-                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${watch('arenaBettingEnabled') ? 'left-7' : 'left-1'}`} />
-              </div>
-            </button>
+            )}
           </div>
         </section>
 

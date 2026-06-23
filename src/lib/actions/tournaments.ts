@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { createTournamentSchema, updateTournamentSchema } from '@/lib/validations/schemas'
 import type { Tournament, ScoringRule } from '@/types'
 import type { CreateTournamentInput, UpdateTournamentInput } from '@/lib/validations/schemas'
-import { isActiveStreamer, isAdmin } from './auth-helpers'
+import { isActiveStreamer, isAdmin, getProfile } from './auth-helpers'
 import { pushToAC } from './ac-push'
 import { mapTournamentRow } from '@/lib/utils'
 
@@ -98,9 +98,33 @@ export async function createTournament(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
+  const profile = await getProfile()
+  if (!profile) return { error: 'No autenticado' }
+
+  const isSuperAdminOrAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(profile.role)
 
   const input = parsed.data
   const slug = generateSlug(input.name)
+
+  // Splits & Collaborator logic based on roles
+  let arenaBettingEnabled = input.arenaBettingEnabled || false
+  let collaboratorId = input.collaboratorId || null
+  let organizerSplit = input.organizerSplit ?? 50
+  let streamerSplit = input.streamerSplit ?? 50
+
+  if (!isSuperAdminOrAdmin) {
+    if (arenaBettingEnabled) {
+      return { error: 'La integración de apuestas requiere el add-on ArenaCrypto. Por favor, actualiza tu plan o contacta a Kronix.' }
+    }
+    collaboratorId = null
+    organizerSplit = 0
+    streamerSplit = 100
+  } else {
+    if (!collaboratorId) {
+      organizerSplit = 100
+      streamerSplit = 0
+    }
+  }
 
   // Insert tournament
   const { data: tournament, error: tErr } = await supabase
@@ -135,17 +159,17 @@ export async function createTournament(
       badge_url: input.badgeUrl || null,
       stream_url: input.streamUrl || null,
       max_points_limit: input.maxPointsLimit || null,
-      collaborator_id: input.collaboratorId || null,
+      collaborator_id: collaboratorId,
       // Finance Model
       entry_fee: input.entryFee || 0,
       prize_1st: input.prize1st || 0,
       prize_2nd: input.prize2nd || 0,
       prize_3rd: input.prize3rd || 0,
       prize_mvp: input.prizeMvp || 0,
-      organizer_split: input.organizerSplit ?? 50,
-      streamer_split: input.streamerSplit ?? 50,
+      organizer_split: organizerSplit,
+      streamer_split: streamerSplit,
       // Arena Betting
-      arena_betting_enabled: input.arenaBettingEnabled || false,
+      arena_betting_enabled: arenaBettingEnabled,
       arena_betting_status: 'closed',
     })
     .select()
@@ -234,6 +258,10 @@ export async function updateTournament(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
+  const profile = await getProfile()
+  if (!profile) return { error: 'No autenticado' }
+
+  const isSuperAdminOrAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(profile.role)
 
   // Verify ownership and draft status
   const { data: existing, error: fetchErr } = await supabase
@@ -292,22 +320,39 @@ export async function updateTournament(
     updatePayload.registration_end_date = input.registrationEndDate || null
   if (input.maxPointsLimit !== undefined)
     updatePayload.max_points_limit = input.maxPointsLimit || null
-  if (input.collaboratorId !== undefined)
-    updatePayload.collaborator_id = input.collaboratorId || null
+  if (input.collaboratorId !== undefined) {
+    updatePayload.collaborator_id = isSuperAdminOrAdmin ? (input.collaboratorId || null) : null
+  }
 
-
-  
   // Finance Model
   if (input.entryFee !== undefined) updatePayload.entry_fee = input.entryFee
   if (input.prize1st !== undefined) updatePayload.prize_1st = input.prize1st
   if (input.prize2nd !== undefined) updatePayload.prize_2nd = input.prize2nd
   if (input.prize3rd !== undefined) updatePayload.prize_3rd = input.prize3rd
   if (input.prizeMvp !== undefined) updatePayload.prize_mvp = input.prizeMvp
-  if (input.organizerSplit !== undefined) updatePayload.organizer_split = input.organizerSplit
-  if (input.streamerSplit !== undefined) updatePayload.streamer_split = input.streamerSplit
+
+  // Splits business rules
+  if (!isSuperAdminOrAdmin) {
+    updatePayload.organizer_split = 0
+    updatePayload.streamer_split = 100
+  } else {
+    const finalCollaboratorId = input.collaboratorId !== undefined ? input.collaboratorId : existing.collaborator_id
+    if (!finalCollaboratorId) {
+      updatePayload.organizer_split = 100
+      updatePayload.streamer_split = 0
+    } else {
+      if (input.organizerSplit !== undefined) updatePayload.organizer_split = input.organizerSplit
+      if (input.streamerSplit !== undefined) updatePayload.streamer_split = input.streamerSplit
+    }
+  }
 
   // Arena Betting
-  if (input.arenaBettingEnabled !== undefined) updatePayload.arena_betting_enabled = input.arenaBettingEnabled
+  if (input.arenaBettingEnabled !== undefined) {
+    if (input.arenaBettingEnabled && !isSuperAdminOrAdmin) {
+      return { error: 'La integración de apuestas requiere el add-on ArenaCrypto. Por favor, actualiza tu plan o contacta a Kronix.' }
+    }
+    updatePayload.arena_betting_enabled = input.arenaBettingEnabled
+  }
 
   const { data: updated, error: updateErr } = await supabase
     .from('tournaments')

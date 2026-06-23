@@ -28,6 +28,19 @@ export async function inviteStaffMember(
 
   const supabase = await createClient()
 
+  // Verify staff limit for STREAMER accounts
+  if (streamerProfile.role === 'STREAMER') {
+    const { count, error: countErr } = await supabase
+      .from('streamer_staff')
+      .select('id', { count: 'exact', head: true })
+      .eq('streamer_id', streamerProfile.id)
+
+    if (countErr) return { error: countErr.message }
+    if (count !== null && count >= 2) {
+      return { error: 'Has alcanzado el límite de 2 colaboradores incluidos en tu plan. Para agregar más, contacta a Kronix ($5/mes por usuario adicional).' }
+    }
+  }
+
   // 1. Check if user is already a staff member
   const { data: existingStaff } = await supabase
     .from('streamer_staff')
@@ -285,6 +298,25 @@ export async function acceptInvitation(invitationId: string): Promise<{ success:
 
   if (!userProfile?.email || userProfile.email.toLowerCase() !== invite.email.toLowerCase()) {
     return { error: 'Este correo no coincide con la invitación' }
+  }
+
+  // Verify staff limit for STREAMER accounts before accepting
+  const { data: streamerProfile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', invite.streamer_id)
+    .single()
+
+  if (streamerProfile?.role === 'STREAMER') {
+    const { count, error: countErr } = await supabase
+      .from('streamer_staff')
+      .select('id', { count: 'exact', head: true })
+      .eq('streamer_id', invite.streamer_id)
+
+    if (countErr) return { error: countErr.message }
+    if (count !== null && count >= 2) {
+      return { error: 'El streamer ha alcanzado el límite de 2 colaboradores activos. No se puede aceptar la invitación hasta que actualice su plan.' }
+    }
   }
 
   // 3. Use transaction / batch to accept

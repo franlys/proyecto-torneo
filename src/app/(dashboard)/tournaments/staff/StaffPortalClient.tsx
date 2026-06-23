@@ -9,6 +9,7 @@ interface StaffPortalClientProps {
   activeStaff: any[]
   pendingInvites: any[]
   myInvites: any[]
+  currentUserRole: string
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -27,6 +28,7 @@ export function StaffPortalClient({
   activeStaff,
   pendingInvites,
   myInvites,
+  currentUserRole,
 }: StaffPortalClientProps) {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<'editor' | 'referee' | 'analyst'>('editor')
@@ -90,6 +92,8 @@ export function StaffPortalClient({
       router.refresh()
     }
   }
+
+  const isAtLimit = currentUserRole === 'STREAMER' && activeStaff.length >= 2
 
   return (
     <div className="space-y-8">
@@ -170,6 +174,13 @@ export function StaffPortalClient({
                 </select>
               </div>
 
+              {isAtLimit && (
+                <div className="p-3.5 bg-neon-purple/10 border border-neon-purple/20 rounded-xl text-xs text-neon-purple font-semibold leading-relaxed">
+                  ⚠️ Has alcanzado el límite de 2 colaboradores incluidos en tu suscripción de Streamer. 
+                  Para agregar más personal, contáctanos para actualizar tu plan ($5/mes por usuario extra).
+                </div>
+              )}
+
               {message && (
                 <div className={`p-3.5 rounded-xl text-xs font-semibold ${
                   message.type === 'success' ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-500'
@@ -180,10 +191,10 @@ export function StaffPortalClient({
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || isAtLimit}
                 className="w-full bg-neon-cyan text-black font-black uppercase tracking-widest text-xs py-3.5 rounded-xl hover:bg-[#00D1DB] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                <Plus className="w-4 h-4" /> {loading ? 'Enviando...' : 'Enviar Invitación'}
+                <Plus className="w-4 h-4" /> {loading ? 'Enviando...' : isAtLimit ? 'Límite de staff alcanzado' : 'Enviar Invitación'}
               </button>
             </form>
           </div>
