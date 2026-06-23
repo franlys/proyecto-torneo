@@ -15,11 +15,20 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const profile = await getProfile()
 
+  // Check if they are a staff member of any streamer
+  const { data: staffData } = await supabase
+    .from('streamer_staff')
+    .select('id')
+    .eq('staff_id', user.id)
+    .limit(1)
+  const isStaff = (staffData && staffData.length > 0) || false
+
   return (
     <DashboardShell
       userRole={(profile?.role as any) ?? 'USER'}
       username={profile?.username ?? null}
       avatarUrl={profile?.avatarUrl ?? null}
+      isStaff={isStaff}
     >
       {children}
     </DashboardShell>

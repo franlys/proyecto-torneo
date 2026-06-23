@@ -19,11 +19,13 @@ export default function DashboardShell({
   userRole,
   username,
   avatarUrl,
+  isStaff = false,
 }: {
   children: React.ReactNode
   userRole: 'SUPER_ADMIN' | 'ADMIN' | 'KRONIX_STAFF' | 'FEDERATION' | 'STREAMER' | 'USER'
   username?: string | null
   avatarUrl?: string | null
+  isStaff?: boolean
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const isAdminUser = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'KRONIX_STAFF'
@@ -35,7 +37,7 @@ export default function DashboardShell({
 
   const NavLinks = () => (
     <nav className="flex-1 px-3 py-4 space-y-1">
-      {userRole !== 'USER' && (
+      {(userRole !== 'USER' || isStaff) && (
         <>
           <Link
             href="/tournaments"

@@ -63,7 +63,7 @@ export async function inviteStaffMember(
     const { error: inviteError } = await adminSupabase.auth.admin.inviteUserByEmail(
       cleanEmail,
       {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/tournaments/staff`,
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?next=/reset-password`,
         data: { role: 'USER' },
       }
     )

@@ -4,6 +4,8 @@ import { TournamentCard } from './TournamentCard'
 import { getProfile } from '@/lib/actions/auth-helpers'
 import { redirect } from 'next/navigation'
 import { AdminErrorCard } from '@/components/ui/AdminErrorCard'
+import { getMyInvitations } from '@/lib/actions/streamer-staff'
+import { StaffInviteBanner } from './StaffInviteBanner'
 
 // ─── Empty State para usuarios sin torneos ────────────────────────────────────
 function EmptyState({ canCreate }: { canCreate: boolean }) {
@@ -63,6 +65,9 @@ export default async function TournamentsPage() {
     }
     const tournaments = result.data
 
+    const myInvitesResult = await getMyInvitations()
+    const myInvites = 'error' in myInvitesResult ? [] : myInvitesResult
+
     const isAdminViewer = profile.role === 'SUPER_ADMIN' || profile.role === 'ADMIN' || profile.role === 'KRONIX_STAFF'
 
     return (
@@ -90,6 +95,9 @@ export default async function TournamentsPage() {
             </Link>
           )}
         </div>
+
+        {/* Pending staff invites banner */}
+        <StaffInviteBanner myInvites={myInvites} />
 
         {/* Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
