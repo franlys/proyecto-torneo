@@ -169,6 +169,19 @@ export async function removeStaffMember(staffRelationId: string): Promise<{ succ
   if (!profile) return { error: 'No autenticado' }
 
   const supabase = await createClient()
+
+  // Fetch details to send notification email before deleting
+  const { data: relation } = await supabase
+    .from('streamer_staff')
+    .select(`
+      role,
+      staff:profiles!streamer_staff_staff_id_fkey(email),
+      streamer:profiles!streamer_staff_streamer_id_fkey(username, organization_name)
+    `)
+    .eq('id', staffRelationId)
+    .eq('streamer_id', profile.id)
+    .maybeSingle()
+
   const { error } = await supabase
     .from('streamer_staff')
     .delete()
@@ -176,6 +189,20 @@ export async function removeStaffMember(staffRelationId: string): Promise<{ succ
     .eq('streamer_id', profile.id) // Ensure security
 
   if (error) return { error: error.message }
+
+  // Send notification email if staff email is available
+  const staffEmail = (relation?.staff as any)?.email
+  const streamerName = (relation?.streamer as any)?.organization_name || (relation?.streamer as any)?.username || 'Streamer'
+  const role = relation?.role || 'staff'
+
+  if (staffEmail) {
+    const { sendStaffRemovalEmail } = await import('@/lib/services/email')
+    sendStaffRemovalEmail({
+      email: staffEmail,
+      streamerName,
+      role
+    }).catch(err => console.error('Failed to send staff removal email:', err))
+  }
 
   revalidatePath('/tournaments/staff')
   return { success: true }
