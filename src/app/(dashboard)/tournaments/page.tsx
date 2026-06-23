@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import { AdminErrorCard } from '@/components/ui/AdminErrorCard'
 import { getMyInvitations } from '@/lib/actions/streamer-staff'
 import { StaffInviteBanner } from './StaffInviteBanner'
+import type { Tournament } from '@/types'
 
 // ─── Empty State para usuarios sin torneos ────────────────────────────────────
 function EmptyState({ canCreate }: { canCreate: boolean }) {
@@ -63,10 +64,10 @@ export default async function TournamentsPage() {
     if ('error' in result) {
       throw new Error(result.error)
     }
-    const tournaments = result.data
+    const tournaments: Tournament[] = JSON.parse(JSON.stringify(result.data))
 
     const myInvitesResult = await getMyInvitations()
-    const myInvites = 'error' in myInvitesResult ? [] : myInvitesResult
+    const myInvites: any[] = JSON.parse(JSON.stringify('error' in myInvitesResult ? [] : myInvitesResult))
 
     const isAdminViewer = profile.role === 'SUPER_ADMIN' || profile.role === 'ADMIN' || profile.role === 'KRONIX_STAFF'
 
