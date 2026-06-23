@@ -85,8 +85,38 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
   const [serverError, setServerError] = useState<string | null>(null)
   const [uploadingBadge, setUploadingBadge] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [currentUserProfile, setCurrentUserProfile] = useState<any>(null)
+  const [streamers, setStreamers] = useState<{ id: string; username: string }[]>([])
+
   useEffect(() => {
     setMounted(true)
+    async function loadData() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+      if (profile) {
+        setCurrentUserProfile(profile)
+        
+        if (profile.role === 'ADMIN' || profile.role === 'SUPER_ADMIN') {
+          const { data: streamerList } = await supabase
+            .from('profiles')
+            .select('id, username')
+            .eq('role', 'STREAMER')
+            .order('username', { ascending: true })
+          if (streamerList) {
+            setStreamers(streamerList)
+          }
+        }
+      }
+    }
+    loadData()
   }, [])
 
   const handleBadgeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -138,6 +168,7 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
     organizerSplit: initialData?.organizerSplit ?? 50,
     streamerSplit: initialData?.streamerSplit ?? 50,
     arenaBettingEnabled: initialData?.arenaBettingEnabled ?? false,
+    collaboratorId: initialData?.collaboratorId ?? '',
     discipline: initialData?.discipline ?? 'warzone',
     mode: initialData?.mode ?? 'duos',
     format: initialData?.format ?? 'battle_royale_clasico',
@@ -898,9 +929,9 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
                 </div>
               </div>
 
-              {/* Revenue Splits */}
-              {watch('entryFee') > 0 && (
-                <div className="space-y-4 pt-2">
+              {/* Revenue Splits & Collaborator selection */}
+              <div className="space-y-4 pt-2">
+                {watch('entryFee') > 0 && (
                   <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                     <p className="text-xs font-bold text-neon-cyan uppercase tracking-widest mb-4">Repartición del Sobrante</p>
                     <div className="space-y-4">
@@ -932,8 +963,33 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+
+                {currentUserProfile && ['ADMIN', 'SUPER_ADMIN'].includes(currentUserProfile.role) && (
+                  <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-4">
+                    <p className="text-xs font-bold text-neon-purple uppercase tracking-widest">Colaboración</p>
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-2">
+                        Streamer Colaborador
+                      </label>
+                      <select
+                        {...register('collaboratorId')}
+                        className={inputClass}
+                      >
+                        <option value="" className="bg-[#1a1a24] text-white">Ninguno (Solo Plataforma)</option>
+                        {streamers.map((s) => (
+                          <option key={s.id} value={s.id} className="bg-[#1a1a24] text-white">
+                            {s.username || 'Streamer sin nombre'}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-white/30 text-[9px] mt-1.5 leading-relaxed uppercase tracking-wider">
+                        Si seleccionas un streamer, este torneo aparecerá en su panel y las ganancias se repartirán según el split.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

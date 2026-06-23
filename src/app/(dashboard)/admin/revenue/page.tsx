@@ -37,6 +37,7 @@ export default async function AdminRevenuePage() {
       { count: finishedTournaments, error: finishedError },
       { data: activeCodes, count: activeCodesCount },
       acData,
+      { data: collabTournaments, error: collabError },
     ] = await Promise.all([
       supabase
         .from('subscription_requests')
@@ -52,11 +53,36 @@ export default async function AdminRevenuePage() {
         .order('created_at', { ascending: false })
         .limit(20),
       fetchACRevenue(),
+      supabase
+        .from('tournaments')
+        .select(`
+          id, 
+          name, 
+          creator_id, 
+          collaborator_id, 
+          entry_fee, 
+          organizer_split, 
+          streamer_split, 
+          status, 
+          created_at,
+          tournament_financials (
+            total_revenue,
+            total_prizes,
+            remainder,
+            organizer_payout,
+            streamer_payout
+          ),
+          collaborator:profiles!collaborator_id (username)
+        `)
+        .not('collaborator_id', 'is', null)
+        .eq('status', 'finished')
+        .order('created_at', { ascending: false }),
     ])
 
     if (subsError) throw subsError
     if (activeError) throw activeError
     if (finishedError) throw finishedError
+    if (collabError) throw collabError
 
     const totalSubRevenue = approvedSubs?.reduce((acc, s) => acc + Number(s.amount), 0) ?? 0
     const monthlySubRevenue = approvedSubs
@@ -66,6 +92,27 @@ export default async function AdminRevenuePage() {
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
       })
       .reduce((acc, s) => acc + Number(s.amount), 0) ?? 0
+
+    // Collaborative tournament calculations
+    const collabList = (collabTournaments || []).map((t: any) => {
+      const fin = Array.isArray(t.tournament_financials) ? t.tournament_financials[0] : t.tournament_financials
+      return {
+        id: t.id,
+        name: t.name,
+        streamer: t.collaborator?.username || 'Streamer',
+        revenue: Number(fin?.total_revenue || 0),
+        prizes: Number(fin?.total_prizes || 0),
+        remainder: Number(fin?.remainder || 0),
+        kronixShare: Number(fin?.organizer_payout || 0),
+        streamerShare: Number(fin?.streamer_payout || 0),
+        splitRatio: `${Math.round(t.organizer_split)}/${Math.round(t.streamer_split)}`,
+        createdAt: t.created_at
+      }
+    })
+
+    const totalCollabRevenue = collabList.reduce((acc, c) => acc + c.revenue, 0)
+    const totalKronixCollabShare = collabList.reduce((acc, c) => acc + c.kronixShare, 0)
+    const totalStreamerCollabShare = collabList.reduce((acc, c) => acc + c.streamerShare, 0)
 
     const acSummary = acData?.summary
     const acRecords: any[] = acData?.records ?? []
@@ -134,6 +181,68 @@ export default async function AdminRevenuePage() {
               <p className="text-white/20 text-xs mt-1">{finishedTournaments ?? 0} finalizados</p>
             </div>
           </div>
+        </div>
+
+        {/* Torneos Colaborativos */}
+        <div>
+          <h2 className="text-xs uppercase tracking-widest text-white/30 font-semibold mb-3">Torneos Colaborativos</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+            <div className="bg-white/5 border border-white/10 rounded-xl p-5">
+              <p className="text-white/40 text-xs uppercase tracking-widest">Recaudación total</p>
+              <p className="text-3xl font-bold text-white mt-2">${totalCollabRevenue.toFixed(2)}</p>
+              <p className="text-white/20 text-xs mt-1">Inscripciones brutas</p>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-xl p-5">
+              <p className="text-white/40 text-xs uppercase tracking-widest">Ganancia Kronix Split</p>
+              <p className="text-3xl font-bold text-cyan-400 mt-2">${totalKronixCollabShare.toFixed(2)}</p>
+              <p className="text-white/20 text-xs mt-1">Neto para la plataforma</p>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-xl p-5">
+              <p className="text-white/40 text-xs uppercase tracking-widest">Pago Streamers</p>
+              <p className="text-3xl font-bold text-neon-purple mt-2">${totalStreamerCollabShare.toFixed(2)}</p>
+              <p className="text-white/20 text-xs mt-1">Total a transferir</p>
+            </div>
+          </div>
+
+          {collabList.length > 0 ? (
+            <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/5">
+                      <th className="text-left px-5 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Torneo</th>
+                      <th className="text-left px-5 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Streamer</th>
+                      <th className="text-right px-4 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Recaudado</th>
+                      <th className="text-center px-4 py-3 text-xs uppercase tracking-widest text-white/30 font-medium">Split (K/S)</th>
+                      <th className="text-right px-4 py-3 text-xs uppercase tracking-widest text-cyan-400/70 font-medium">Neto Kronix</th>
+                      <th className="text-right px-5 py-3 text-xs uppercase tracking-widest text-neon-purple/70 font-medium">Pago Streamer</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {collabList.map((c) => (
+                      <tr key={c.id} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="px-5 py-3">
+                          <p className="text-white font-medium text-xs">{c.name}</p>
+                          <p className="text-white/20 text-xs mt-0.5">
+                            {new Date(c.createdAt).toLocaleDateString('es')}
+                          </p>
+                        </td>
+                        <td className="px-5 py-3 text-xs text-white/60">@{c.streamer}</td>
+                        <td className="px-4 py-3 text-right text-white/80 tabular-nums">${c.revenue.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-center text-white/40 font-mono text-xs">{c.splitRatio}</td>
+                        <td className="px-4 py-3 text-right text-cyan-400 font-bold tabular-nums">${c.kronixShare.toFixed(2)}</td>
+                        <td className="px-5 py-3 text-right text-neon-purple font-bold tabular-nums">${c.streamerShare.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <p className="text-white/25 text-xs text-center py-6 bg-white/[0.02] border border-white/5 rounded-xl">
+              No hay torneos colaborativos finalizados aún.
+            </p>
+          )}
         </div>
 
         {/* Bridge ArenaCrypto — datos reales */}

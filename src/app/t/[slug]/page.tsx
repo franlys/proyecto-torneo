@@ -44,6 +44,23 @@ export default async function PublicLeaderboardPage({
 
   if (!tournament) notFound()
 
+  // Fetch profiles for payments / contact details
+  const { data: creatorProfile } = await supabase
+    .from('profiles')
+    .select('organization_name, payment_details, discord_link, whatsapp_link')
+    .eq('id', tournament.creator_id)
+    .single()
+
+  let collaboratorProfile = null
+  if (tournament.collaborator_id) {
+    const { data: colab } = await supabase
+      .from('profiles')
+      .select('organization_name, payment_details, discord_link, whatsapp_link, username')
+      .eq('id', tournament.collaborator_id)
+      .single()
+    collaboratorProfile = colab
+  }
+
   // Fetch ALL teams with their participants (for the Participants tab)
   const { data: allTeams } = await supabase
     .from('teams')
@@ -221,6 +238,9 @@ export default async function PublicLeaderboardPage({
         hideLogoInLeaderboard={tournament.hide_logo_in_leaderboard || false}
         description={tournament.description}
         format={tournament.format}
+        creatorProfile={creatorProfile}
+        collaboratorProfile={collaboratorProfile}
+        entryFee={Number(tournament.entry_fee || 0)}
         status={tournament.status}
         mode={tournament.mode}
         clashRoyaleTag={tournament.clash_royale_tag}

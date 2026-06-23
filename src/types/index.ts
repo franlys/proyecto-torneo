@@ -21,6 +21,7 @@ export type SubmissionStatus = 'pending' | 'approved' | 'rejected';
 export interface Tournament {
   id: string;
   creatorId: string;
+  collaboratorId?: string | null;
   name: string;
   description?: string;
   rulesText?: string;

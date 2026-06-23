@@ -30,6 +30,42 @@ export default async function PaymentsConfigurationPage() {
     .eq('id', profile.id)
     .single()
 
+  // Load collaborative earnings
+  const { data: collabEarnings } = await supabase
+    .from('tournaments')
+    .select(`
+      id,
+      name,
+      entry_fee,
+      organizer_split,
+      streamer_split,
+      created_at,
+      tournament_financials (
+        total_revenue,
+        total_prizes,
+        remainder,
+        organizer_payout,
+        streamer_payout
+      )
+    `)
+    .eq('collaborator_id', profile.id)
+    .eq('status', 'finished')
+    .order('created_at', { ascending: false })
+
+  const formattedCollabEarnings = (collabEarnings || []).map((t: any) => {
+    const fin = Array.isArray(t.tournament_financials) ? t.tournament_financials[0] : t.tournament_financials
+    return {
+      id: t.id,
+      name: t.name,
+      revenue: Number(fin?.total_revenue || 0),
+      prizes: Number(fin?.total_prizes || 0),
+      remainder: Number(fin?.remainder || 0),
+      payout: Number(fin?.streamer_payout || 0),
+      splitRatio: `${Math.round(t.organizer_split)}/${Math.round(t.streamer_split)}`,
+      createdAt: t.created_at
+    }
+  })
+
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
       {/* Header */}
@@ -47,6 +83,7 @@ export default async function PaymentsConfigurationPage() {
         initialPaymentDetails={dbProfile?.payment_details || ''}
         initialDiscordLink={dbProfile?.discord_link || ''}
         initialWhatsappLink={dbProfile?.whatsapp_link || ''}
+        colabEarnings={formattedCollabEarnings}
       />
     </div>
   )

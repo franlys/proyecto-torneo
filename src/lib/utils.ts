@@ -17,6 +17,7 @@ export function mapTournamentRow(row: Record<string, unknown>): Tournament {
   return {
     id: row.id as string,
     creatorId: row.creator_id as string,
+    collaboratorId: row.collaborator_id as string | undefined | null,
     name: row.name as string,
     description: row.description as string | undefined,
     rulesText: row.rules_text as string | undefined,

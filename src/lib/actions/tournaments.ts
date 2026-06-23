@@ -25,8 +25,8 @@ function generateSlug(name: string): string {
   return `${base}-${shortId}`
 }
 
-async function checkTournamentAccess(creatorId: string, userId: string): Promise<boolean> {
-  if (creatorId === userId) return true
+async function checkTournamentAccess(creatorId: string, userId: string, collaboratorId?: string | null): Promise<boolean> {
+  if (creatorId === userId || (collaboratorId && collaboratorId === userId)) return true
   
   const supabase = await createClient()
   const { data: profile } = await supabase
@@ -51,7 +51,19 @@ async function checkTournamentAccess(creatorId: string, userId: string): Promise
     .eq('staff_id', userId)
     .maybeSingle()
 
-  return !!staff
+  if (staff) return true
+
+  if (collaboratorId) {
+    const { data: staffColab } = await supabase
+      .from('streamer_staff')
+      .select('id')
+      .eq('streamer_id', collaboratorId)
+      .eq('staff_id', userId)
+      .maybeSingle()
+    if (staffColab) return true
+  }
+
+  return false
 }
 
 function mapScoringRuleRow(row: Record<string, unknown>): ScoringRule {
@@ -123,6 +135,7 @@ export async function createTournament(
       badge_url: input.badgeUrl || null,
       stream_url: input.streamUrl || null,
       max_points_limit: input.maxPointsLimit || null,
+      collaborator_id: input.collaboratorId || null,
       // Finance Model
       entry_fee: input.entryFee || 0,
       prize_1st: input.prize1st || 0,
@@ -225,12 +238,12 @@ export async function updateTournament(
   // Verify ownership and draft status
   const { data: existing, error: fetchErr } = await supabase
     .from('tournaments')
-    .select('status, creator_id')
+    .select('status, creator_id, collaborator_id')
     .eq('id', id)
     .single()
 
   if (fetchErr || !existing) return { error: 'Torneo no encontrado' }
-  if (!(await checkTournamentAccess(existing.creator_id, user.id))) return { error: 'Sin permisos' }
+  if (!(await checkTournamentAccess(existing.creator_id, user.id, existing.collaborator_id))) return { error: 'Sin permisos' }
   if (existing.status !== 'draft' && existing.status !== 'pending') {
     return { error: 'No se puede modificar un torneo activo o finalizado' }
   }
@@ -279,6 +292,8 @@ export async function updateTournament(
     updatePayload.registration_end_date = input.registrationEndDate || null
   if (input.maxPointsLimit !== undefined)
     updatePayload.max_points_limit = input.maxPointsLimit || null
+  if (input.collaboratorId !== undefined)
+    updatePayload.collaborator_id = input.collaboratorId || null
 
 
   
@@ -339,13 +354,13 @@ export async function publishTournament(
 
   const { data: tournament, error: fetchErr } = await supabase
     .from('tournaments')
-    .select('status, creator_id')
+    .select('status, creator_id, collaborator_id')
     .eq('id', id)
     .single()
 
   if (fetchErr || !tournament) return { error: 'Torneo no encontrado' }
 
-  if (!(await checkTournamentAccess(tournament.creator_id, user.id))) return { error: 'Sin permisos' }
+  if (!(await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id))) return { error: 'Sin permisos' }
 
   if (tournament.status !== 'draft') {
     return { error: 'Solo se puede anunciar un torneo en estado Borrador' }
@@ -379,12 +394,12 @@ export async function activateTournament(
   // Verify ownership
   const { data: tournament, error: fetchErr } = await supabase
     .from('tournaments')
-    .select('status, creator_id, format, kill_race_time_limit_minutes, name')
+    .select('status, creator_id, collaborator_id, format, kill_race_time_limit_minutes, name')
     .eq('id', id)
     .single()
 
   if (fetchErr || !tournament) return { error: 'Torneo no encontrado' }
-  if (!(await checkTournamentAccess(tournament.creator_id, user.id))) return { error: 'Sin permisos' }
+  if (!(await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id))) return { error: 'Sin permisos' }
   if (tournament.status !== 'draft' && tournament.status !== 'pending') {
     return { error: 'El torneo ya está activo o finalizado' }
   }
@@ -481,12 +496,12 @@ export async function finishTournament(
   // Verify ownership
   const { data: tournament, error: fetchErr } = await supabase
     .from('tournaments')
-    .select('creator_id, status, slug, is_sanctioned, mode, discipline, badge_url, name')
+    .select('creator_id, collaborator_id, status, slug, is_sanctioned, mode, discipline, badge_url, name')
     .eq('id', id)
     .single()
 
   if (fetchErr || !tournament) return { error: 'Torneo no encontrado' }
-  if (!(await checkTournamentAccess(tournament.creator_id, user.id))) return { error: 'Sin permisos' }
+  if (!(await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id))) return { error: 'Sin permisos' }
   if (tournament.status !== 'active') {
     return { error: 'Solo se pueden finalizar torneos activos' }
   }
@@ -795,12 +810,12 @@ export async function reactivateTournament(
 
   const { data: tournament, error: fetchErr } = await supabase
     .from('tournaments')
-    .select('creator_id, status, slug, arena_betting_enabled, is_sanctioned')
+    .select('creator_id, collaborator_id, status, slug, arena_betting_enabled, is_sanctioned')
     .eq('id', id)
     .single()
 
   if (fetchErr || !tournament) return { error: 'Torneo no encontrado' }
-  if (!(await checkTournamentAccess(tournament.creator_id, user.id))) return { error: 'Sin permisos' }
+  if (!(await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id))) return { error: 'Sin permisos' }
   if (tournament.status !== 'finished') {
     return { error: 'Solo se pueden reactivar torneos finalizados' }
   }
@@ -860,12 +875,16 @@ export async function getTournaments(): Promise<
       .eq('staff_id', user.id)
     const streamerIds = staffData?.map((s: any) => s.streamer_id) || []
 
+    const orParts = [
+      `creator_id.eq.${user.id}`,
+      `collaborator_id.eq.${user.id}`
+    ]
     if (streamerIds.length > 0) {
       const formattedIds = streamerIds.map(id => `"${id}"`).join(',')
-      query = query.or(`creator_id.eq.${user.id},creator_id.in.(${formattedIds})`)
-    } else {
-      query = query.eq('creator_id', user.id)
+      orParts.push(`creator_id.in.(${formattedIds})`)
+      orParts.push(`collaborator_id.in.(${formattedIds})`)
     }
+    query = query.or(orParts.join(','))
   }
 
   const { data, error } = await query
@@ -895,7 +914,7 @@ export async function getTournament(
 
   if (tErr || !tournament) return { error: 'Torneo no encontrado' }
 
-  if (!admin && !(await checkTournamentAccess(tournament.creator_id, user.id))) {
+  if (!admin && !(await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id))) {
     return { error: 'Torneo no encontrado' }
   }
 
@@ -1033,13 +1052,13 @@ export async function toggleTournamentPrivacy(
   // Verify ownership
   const { data: tournament, error: fetchErr } = await supabase
     .from('tournaments')
-    .select('creator_id')
+    .select('creator_id, collaborator_id')
     .eq('id', id)
     .single()
 
   if (fetchErr || !tournament) return { error: 'Torneo no encontrado' }
 
-  if (!(await checkTournamentAccess(tournament.creator_id, user.id))) return { error: 'Sin permisos' }
+  if (!(await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id))) return { error: 'Sin permisos' }
 
   const { error } = await supabase
     .from('tournaments')
@@ -1076,13 +1095,13 @@ export async function addDynamicMatch(
   // Verify ownership and fetch details
   const { data: tournament, error: fetchErr } = await supabase
     .from('tournaments')
-    .select('creator_id, total_matches, default_rounds_per_match, status')
+    .select('creator_id, collaborator_id, total_matches, default_rounds_per_match, status')
     .eq('id', tournamentId)
     .single()
 
   if (fetchErr || !tournament) return { error: 'Torneo no encontrado' }
 
-  if (!(await checkTournamentAccess(tournament.creator_id, user.id))) return { error: 'Sin permisos' }
+  if (!(await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id))) return { error: 'Sin permisos' }
   if (tournament.status !== 'active') return { error: 'El torneo debe estar activo para agregar partidas' }
 
   const nextMatchNumber = (tournament.total_matches || 0) + 1

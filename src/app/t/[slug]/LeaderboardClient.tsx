@@ -57,6 +57,9 @@ export function LeaderboardClient({
   clashRoyaleTag,
   discipline = 'warzone',
   streamUrl,
+  creatorProfile,
+  collaboratorProfile,
+  entryFee = 0,
 }: {
   tournamentId: string
   tournamentName: string
@@ -64,6 +67,20 @@ export function LeaderboardClient({
   hideLogoInLeaderboard?: boolean
   description?: string
   format: string
+  creatorProfile?: {
+    organization_name: string | null
+    payment_details: string | null
+    discord_link: string | null
+    whatsapp_link: string | null
+  } | null
+  collaboratorProfile?: {
+    organization_name: string | null
+    payment_details: string | null
+    discord_link: string | null
+    whatsapp_link: string | null
+    username: string | null
+  } | null
+  entryFee?: number
   status: string
   initialStandings: any[]
   teams?: any[]
@@ -1416,6 +1433,61 @@ export function LeaderboardClient({
                   <p className="text-neon-cyan text-[10px] font-bold uppercase tracking-widest mt-3">
                     {maxTeams ? `Cupos: ${totalTeamsRegistered} / ${maxTeams} Equipos` : `Inscritos: ${totalTeamsRegistered} Equipos`}
                   </p>
+
+                  {entryFee > 0 && (
+                    <div className="mt-4 p-4 rounded-xl bg-neon-cyan/5 border border-neon-cyan/20 space-y-3 text-left">
+                      <div className="flex items-center gap-2 text-neon-cyan">
+                        <span className="text-sm">💰</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">Información de Pago e Inscripción</span>
+                      </div>
+                      
+                      {collaboratorProfile ? (
+                        <p className="text-[11px] text-white/50 leading-relaxed">
+                          Este torneo es colaborativo. El costo de inscripción es de <strong className="text-white">${entryFee} USD</strong>.
+                          Para completar tu participación, sigue las instrucciones de pago provistas por <strong>{collaboratorProfile.username}</strong>:
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-white/50 leading-relaxed">
+                          El costo de inscripción es de <strong className="text-white">${entryFee} USD</strong>. 
+                          Para completar tu participación, sigue las instrucciones de pago provistas por el organizador:
+                        </p>
+                      )}
+
+                      {((collaboratorProfile?.payment_details) || (creatorProfile?.payment_details)) ? (
+                        <div className="bg-black/30 p-3 rounded-lg border border-white/5 text-[11px] text-white/80 whitespace-pre-wrap leading-relaxed">
+                          {collaboratorProfile?.payment_details || creatorProfile?.payment_details}
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-white/30 italic font-medium">
+                          Instrucciones de pago pendientes por definir por el organizador.
+                        </p>
+                      )}
+
+                      {/* Contact Links */}
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {((collaboratorProfile?.whatsapp_link) || (creatorProfile?.whatsapp_link)) && (
+                          <a
+                            href={collaboratorProfile?.whatsapp_link || creatorProfile?.whatsapp_link || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 text-[10px] font-bold uppercase tracking-wider transition-all"
+                          >
+                            <span>💬</span> Contactar WhatsApp
+                          </a>
+                        )}
+                        {((collaboratorProfile?.discord_link) || (creatorProfile?.discord_link)) && (
+                          <a
+                            href={collaboratorProfile?.discord_link || creatorProfile?.discord_link || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 text-[10px] font-bold uppercase tracking-wider transition-all"
+                          >
+                            <span>🎮</span> Servidor Discord
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="shrink-0 w-full md:w-auto text-right z-10">

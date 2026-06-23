@@ -9,6 +9,16 @@ interface PaymentsClientProps {
   initialPaymentDetails: string | null
   initialDiscordLink: string | null
   initialWhatsappLink: string | null
+  colabEarnings?: {
+    id: string
+    name: string
+    revenue: number
+    prizes: number
+    remainder: number
+    payout: number
+    splitRatio: string
+    createdAt: string
+  }[]
 }
 
 export function PaymentsClient({
@@ -16,6 +26,7 @@ export function PaymentsClient({
   initialPaymentDetails,
   initialDiscordLink,
   initialWhatsappLink,
+  colabEarnings = [],
 }: PaymentsClientProps) {
   const [orgName, setOrgName] = useState(initialOrgName || '')
   const [paymentDetails, setPaymentDetails] = useState(initialPaymentDetails || '')
@@ -24,6 +35,8 @@ export function PaymentsClient({
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
+
+  const totalPayout = colabEarnings.reduce((acc, c) => acc + c.payout, 0)
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -150,6 +163,44 @@ export function PaymentsClient({
 
       {/* Right Column: Visual Explanations & Walkthroughs */}
       <div className="space-y-6">
+        {/* Collaborative Earnings Card */}
+        <div className="bg-[#121219] border border-white/5 rounded-2xl p-6 space-y-4">
+          <div className="flex items-center gap-2 text-neon-purple">
+            <span className="text-base">🏆</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-white/85">Mis Ganancias (Colaborativos)</span>
+          </div>
+
+          <div className="bg-neon-purple/5 border border-neon-purple/20 rounded-xl p-4 text-center">
+            <p className="text-[10px] uppercase tracking-wider text-neon-purple font-black">Ganancia Acumulada</p>
+            <p className="text-3xl font-extrabold text-white mt-1">
+              ${totalPayout.toFixed(2)} <span className="text-xs text-white/40 font-normal">USD</span>
+            </p>
+            <p className="text-white/20 text-[9px] mt-1.5 uppercase font-medium">
+              Por torneos en conjunto con Kronix
+            </p>
+          </div>
+
+          {colabEarnings.length > 0 ? (
+            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+              {colabEarnings.map((c) => (
+                <div key={c.id} className="p-3 bg-white/[0.02] border border-white/5 rounded-xl flex items-center justify-between text-xs hover:border-white/10 transition-colors">
+                  <div className="min-w-0 pr-2 text-left">
+                    <p className="font-semibold text-white truncate">{c.name}</p>
+                    <p className="text-[10px] text-white/35 mt-0.5 font-medium">
+                      Split: {c.splitRatio.split('/')[1]}% · {new Date(c.createdAt).toLocaleDateString('es')}
+                    </p>
+                  </div>
+                  <span className="text-neon-purple font-bold shrink-0">${c.payout.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[10px] text-white/20 text-center py-4 italic font-medium">
+              No tienes ganancias colaborativas aún.
+            </p>
+          )}
+        </div>
+
         {/* Note Card: How players see this */}
         <div className="bg-[#121219] border border-white/5 rounded-2xl p-6 space-y-4">
           <div className="flex items-center gap-2 text-neon-cyan">
