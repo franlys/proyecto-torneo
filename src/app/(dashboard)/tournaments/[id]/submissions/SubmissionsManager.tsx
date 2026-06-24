@@ -568,6 +568,8 @@ export function SubmissionsManager({
                     setEditRank(val)
                     if (val === 1) {
                       setEditPotTop(true)
+                    } else {
+                      setEditPotTop(false)
                     }
                   }}
                   className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:border-neon-cyan focus:outline-none transition-colors"
@@ -575,15 +577,31 @@ export function SubmissionsManager({
                 />
               </div>
 
-              <div className="flex items-center gap-3 bg-white/[0.02] border border-white/5 p-4 rounded-xl">
+              <div className={`flex items-center gap-3 border p-4 rounded-xl transition-all ${
+                editRank !== 1 && editRank !== null 
+                  ? 'bg-black/20 border-white/5 opacity-40 cursor-not-allowed pointer-events-none' 
+                  : 'bg-white/[0.02] border-white/5'
+              }`}>
                 <input
                   id="potTop"
                   type="checkbox"
                   checked={editPotTop}
-                  onChange={(e) => setEditPotTop(e.target.checked)}
-                  className="w-4 h-4 rounded border-white/10 bg-white/[0.03] text-neon-cyan focus:ring-neon-cyan"
+                  onChange={(e) => {
+                    const checked = e.target.checked
+                    setEditPotTop(checked)
+                    if (checked) {
+                      setEditRank(1)
+                    }
+                  }}
+                  disabled={editRank !== 1 && editRank !== null}
+                  className="w-4 h-4 rounded border-white/10 bg-white/[0.03] text-neon-cyan focus:ring-neon-cyan cursor-pointer disabled:opacity-40"
                 />
-                <label htmlFor="potTop" className="text-sm font-medium text-white/80 select-none">
+                <label 
+                  htmlFor="potTop" 
+                  className={`text-sm font-medium select-none cursor-pointer ${
+                    editRank !== 1 && editRank !== null ? 'text-white/20 cursor-not-allowed' : 'text-white/80'
+                  }`}
+                >
                   ¿Potencial Top / Victoria? (Top 1)
                 </label>
               </div>

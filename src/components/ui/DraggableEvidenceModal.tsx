@@ -300,6 +300,8 @@ export function DraggableEvidenceModal({
                               setEditRank(val)
                               if (val === 1) {
                                 setEditPotTop(true)
+                              } else {
+                                setEditPotTop(false)
                               }
                             }}
                             className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-neon-cyan focus:outline-none transition-colors font-orbitron"
@@ -307,15 +309,31 @@ export function DraggableEvidenceModal({
                           />
                         </div>
 
-                        <div className="flex items-center gap-2 bg-white/[0.02] border border-white/5 p-3 rounded-xl">
+                        <div className={`flex items-center gap-2 border p-3 rounded-xl transition-all ${
+                          editRank !== 1 && editRank !== null 
+                            ? 'bg-black/20 border-white/5 opacity-40 cursor-not-allowed pointer-events-none' 
+                            : 'bg-white/[0.02] border-white/5'
+                        }`}>
                           <input
                             id="modal-potTop"
                             type="checkbox"
                             checked={editPotTop}
-                            onChange={(e) => setEditPotTop(e.target.checked)}
-                            className="w-3.5 h-3.5 rounded border-white/10 bg-white/[0.03] text-neon-cyan focus:ring-neon-cyan cursor-pointer"
+                            onChange={(e) => {
+                              const checked = e.target.checked
+                              setEditPotTop(checked)
+                              if (checked) {
+                                setEditRank(1)
+                              }
+                            }}
+                            disabled={editRank !== 1 && editRank !== null}
+                            className="w-3.5 h-3.5 rounded border-white/10 bg-white/[0.03] text-neon-cyan focus:ring-neon-cyan cursor-pointer disabled:opacity-40"
                           />
-                          <label htmlFor="modal-potTop" className="text-xs font-semibold text-white/80 select-none cursor-pointer">
+                          <label 
+                            htmlFor="modal-potTop" 
+                            className={`text-xs font-semibold select-none cursor-pointer ${
+                              editRank !== 1 && editRank !== null ? 'text-white/25 cursor-not-allowed' : 'text-white/80'
+                            }`}
+                          >
                             ¿Victoria? (Top 1)
                           </label>
                         </div>

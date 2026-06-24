@@ -380,17 +380,26 @@ export function TeamPortalClient({
         </div>
 
         {tournament.pot_top_enabled && (
-          <label className={`flex items-center gap-4 px-6 py-5 rounded-2xl border transition-all group cursor-pointer ${
-            potTop ? 'bg-gold/10 border-gold shadow-[0_0_15px_rgba(255,215,0,0.1)]' : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.04]'
+          <label className={`flex items-center gap-4 px-6 py-5 rounded-2xl border transition-all group ${
+            rank !== 1 && rank !== '' ? 'bg-black/20 border-white/5 opacity-40 cursor-not-allowed pointer-events-none' :
+            potTop ? 'bg-gold/10 border-gold shadow-[0_0_15px_rgba(255,215,0,0.1)] cursor-pointer' : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.04] cursor-pointer'
           }`}>
             <div className="relative">
               <input 
                 type="checkbox" 
                 checked={potTop}
-                onChange={(e) => setPotTop(e.target.checked)}
+                onChange={(e) => {
+                  const checked = e.target.checked
+                  setPotTop(checked)
+                  if (checked) {
+                    setRank(1)
+                  }
+                }}
+                disabled={rank !== 1 && rank !== ''}
                 className="peer sr-only" 
               />
               <div className={`w-6 h-6 border-2 rounded-lg flex items-center justify-center transition-all shadow-lg group-hover:scale-110 ${
+                rank !== 1 && rank !== '' ? 'border-white/5 bg-white/5' :
                 potTop ? 'bg-gold border-gold' : 'border-white/10'
               }`}>
                 <svg className={`w-4 h-4 text-black ${potTop ? 'opacity-100' : 'opacity-0'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
