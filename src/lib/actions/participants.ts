@@ -95,7 +95,8 @@ export async function createTeam(
 
 export async function deleteTeam(
   tournamentId: string,
-  teamId: string
+  teamId: string,
+  reason?: string
 ): Promise<{ success: boolean } | { error: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -115,6 +116,78 @@ export async function deleteTeam(
   }
 
   const adminSupabase = await createAdminClient()
+
+  // Si se proporciona una razón, notificar al capitán por correo antes de borrar los registros
+  if (reason) {
+    try {
+      const { data: teamData } = await adminSupabase
+        .from('teams')
+        .select('name, registration_status')
+        .eq('id', teamId)
+        .single()
+
+      if (teamData) {
+        // Obtener capitán del equipo
+        const { data: captainPart } = await adminSupabase
+          .from('participants')
+          .select('display_name, user_id')
+          .eq('team_id', teamId)
+          .eq('is_captain', true)
+          .maybeSingle()
+
+        let captainEmail = null
+        if (captainPart?.user_id) {
+          const { data: capProfile } = await adminSupabase
+            .from('profiles')
+            .select('email')
+            .eq('id', captainPart.user_id)
+            .maybeSingle()
+          captainEmail = capProfile?.email
+        }
+
+        if (captainEmail) {
+          // Obtener torneo completo y perfil del creador
+          const { data: fullTournament } = await adminSupabase
+            .from('tournaments')
+            .select('name, creator_id, collaborator_id')
+            .eq('id', tournamentId)
+            .single()
+
+          if (fullTournament) {
+            const { data: creatorProfile } = await adminSupabase
+              .from('profiles')
+              .select('username, email, whatsapp_link, discord_link, role')
+              .eq('id', fullTournament.creator_id)
+              .single()
+
+            if (creatorProfile) {
+              const { sendTeamRemovedEmail } = await import('@/lib/services/email')
+
+              const isKronixOfficial = creatorProfile.role === 'SUPER_ADMIN' || creatorProfile.role === 'ADMIN'
+              const isCollaboration = !isKronixOfficial && !!fullTournament.collaborator_id
+
+              await sendTeamRemovedEmail({
+                email: captainEmail,
+                captainName: captainPart?.display_name || 'Capitán',
+                teamName: teamData.name,
+                tournamentName: fullTournament.name,
+                reason: reason.trim(),
+                creatorName: creatorProfile.username || 'Organizador',
+                creatorEmail: creatorProfile.email || '',
+                whatsappLink: creatorProfile.whatsapp_link,
+                discordLink: creatorProfile.discord_link,
+                isKronixOfficial,
+                isCollaboration,
+              })
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error al intentar notificar expulsión de equipo por correo:', e)
+    }
+  }
+
 
   // 0. Eliminar envíos (submissions) de este equipo para evitar constraint error
   const { error: subDeleteErr } = await adminSupabase

@@ -100,6 +100,8 @@ export function ParticipantsManager({
   const [selectedEvidenceUrl, setSelectedEvidenceUrl] = useState<string | null>(null)
   const [rejectingTeamId, setRejectingTeamId] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState('')
+  const [removingTeamId, setRemovingTeamId] = useState<string | null>(null)
+  const [removeReason, setRemoveReason] = useState('')
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
 
   const confirmedTeams = useMemo(() => {
@@ -254,14 +256,58 @@ export function ParticipantsManager({
   }
 
   const handleRemoveTeam = async (teamId: string) => {
-    if (!confirm('¿Estás seguro de eliminar este participante/equipo?')) return
+    const team = teams.find(t => t.id === teamId)
+    if (!team) return
+
+    // Si el equipo ya fue confirmado, pedir la razón de la remoción obligatoriamente
+    if (team.registrationStatus === 'confirmed') {
+      setRemovingTeamId(teamId)
+      setRemoveReason('')
+      return
+    }
+
+    // De lo contrario (borradores o solicitudes sin confirmar), confirmación simple
+    if (!confirm(`¿Estás seguro de eliminar el equipo "${team.name}"?`)) return
     
-    const res = await deleteTeam(tournamentId, teamId)
-    if ('error' in res) {
-      alert(res.error)
-    } else {
-      setTeams(teams.filter(t => t.id !== teamId))
-      setParticipants(participants.filter(p => p.teamId !== teamId))
+    setActionLoadingId(teamId)
+    try {
+      const res = await deleteTeam(tournamentId, teamId)
+      if ('error' in res) {
+        toast.error(res.error)
+      } else {
+        setTeams(teams.filter(t => t.id !== teamId))
+        setParticipants(participants.filter(p => p.teamId !== teamId))
+        toast.success('Equipo eliminado con éxito.')
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Error al eliminar el equipo.')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const handleConfirmRemoveTeam = async (teamId: string) => {
+    if (!removeReason.trim()) {
+      toast.error('Por favor, ingresa la razón de la expulsión.')
+      return
+    }
+
+    setActionLoadingId(teamId)
+    try {
+      const res = await deleteTeam(tournamentId, teamId, removeReason.trim())
+      if ('error' in res) {
+        toast.error(res.error)
+      } else {
+        setTeams(prev => prev.filter(t => t.id !== teamId))
+        setParticipants(prev => prev.filter(p => p.teamId !== teamId))
+        toast.success('Equipo expulsado y notificado con éxito.')
+        setRemovingTeamId(null)
+        setRemoveReason('')
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Error al eliminar el equipo.')
+    } finally {
+      setActionLoadingId(null)
     }
   }
 
@@ -1189,6 +1235,54 @@ export function ParticipantsManager({
           </div>
         </div>
       )}
+
+      {/* Expulsion Reason Modal */}
+      {removingTeamId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-dark-card border border-white/10 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <button 
+              onClick={() => {
+                setRemovingTeamId(null);
+                setRemoveReason('');
+              }}
+              className="absolute top-4 right-4 text-white/40 hover:text-white text-lg font-bold"
+            >
+              ✕
+            </button>
+            <h3 className="font-orbitron font-bold text-white text-base mb-2 uppercase tracking-wider text-red-500">🚫 Expulsar Equipo Confirmado</h3>
+            <p className="text-xs text-white/50 mb-4 leading-relaxed">
+              Ingresa la razón por la que vas a remover a este equipo. Se le enviará un correo explicando el motivo de la expulsión y las vías para ponerse en contacto contigo para su devolución de pago.
+            </p>
+            <textarea
+              required
+              rows={3}
+              value={removeReason}
+              onChange={(e) => setRemoveReason(e.target.value)}
+              placeholder="Ej. Violación de las reglas del torneo o comportamiento antideportivo."
+              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder:text-white/20 outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-all resize-none"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button 
+                onClick={() => {
+                  setRemovingTeamId(null);
+                  setRemoveReason('');
+                }}
+                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold uppercase tracking-wider transition-all"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={() => handleConfirmRemoveTeam(removingTeamId)}
+                disabled={actionLoadingId === removingTeamId}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(220,38,38,0.2)] disabled:opacity-40"
+              >
+                {actionLoadingId === removingTeamId ? 'Expulsando...' : 'Confirmar Expulsión'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

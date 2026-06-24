@@ -21,14 +21,26 @@ import { NicknameModal } from '@/components/profile/NicknameModal'
 
 const orbitron = Orbitron({ subsets: ['latin'] })
 
-function PaymentEvidenceUpload({ teamId, onUploadSuccess }: { teamId: string, onUploadSuccess: (url: string) => void }) {
+function PaymentEvidenceUpload({ 
+  teamId, 
+  isKronixOfficial,
+  isCollaboration,
+  onUploadSuccess 
+}: { 
+  teamId: string, 
+  isKronixOfficial: boolean,
+  isCollaboration: boolean,
+  onUploadSuccess: (url: string) => void 
+}) {
   const [loading, setLoading] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState('')
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [showTermsDetails, setShowTermsDetails] = useState(false)
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!file) return
+    if (!file || !termsAccepted) return
     setLoading(true)
     setError('')
 
@@ -63,9 +75,9 @@ function PaymentEvidenceUpload({ teamId, onUploadSuccess }: { teamId: string, on
   }
 
   return (
-    <form onSubmit={handleUpload} className="space-y-3">
+    <form onSubmit={handleUpload} className="space-y-4">
       <p className="font-bold text-neon-cyan uppercase tracking-widest text-[10px]">Subir Comprobante de Transferencia</p>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3">
         <input 
           type="file" 
           required
@@ -73,11 +85,56 @@ function PaymentEvidenceUpload({ teamId, onUploadSuccess }: { teamId: string, on
           onChange={(e) => setFile(e.target.files?.[0] || null)}
           className="w-full text-xs text-white/40 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-white/5 file:text-white file:cursor-pointer hover:file:bg-white/10"
         />
+
+        {/* Disclaimer / Policies section */}
+        <div className="bg-black/30 border border-white/5 rounded-xl p-3 text-left">
+          <div className="flex items-start gap-2.5">
+            <input 
+              id="terms-checkbox"
+              type="checkbox"
+              checked={termsAccepted}
+              onChange={(e) => setTermsAccepted(e.target.checked)}
+              className="mt-0.5 rounded border-white/10 bg-black/50 text-neon-cyan focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4"
+            />
+            <label htmlFor="terms-checkbox" className="text-[11px] text-white/70 leading-normal select-none cursor-pointer">
+              Acepto los términos de inscripción y la{' '}
+              <button 
+                type="button"
+                onClick={() => setShowTermsDetails(!showTermsDetails)}
+                className="text-neon-cyan hover:underline font-bold"
+              >
+                política de pagos y reembolsos
+              </button>.
+            </label>
+          </div>
+
+          {showTermsDetails && (
+            <div className="mt-3 pt-3 border-t border-white/5 space-y-2 text-[10px] text-white/50 leading-relaxed animate-fadeIn">
+              {isKronixOfficial ? (
+                <div className="border-l-2 border-neon-cyan pl-2 bg-neon-cyan/5 p-2 rounded">
+                  <span className="text-neon-cyan font-bold block mb-1">🛡️ Torneo Oficial de Kronix</span>
+                  Este es un torneo oficial de Kronix E-sports. Las transacciones y reembolsos son gestionados y garantizados directamente por Kronix. En caso de cancelación o remoción de tu equipo, tu dinero de inscripción será devuelto en su totalidad.
+                </div>
+              ) : isCollaboration ? (
+                <div className="border-l-2 border-neon-purple pl-2 bg-neon-purple/5 p-2 rounded">
+                  <span className="text-neon-purple font-bold block mb-1">🤝 Torneo en Colaboración (50/50)</span>
+                  Este torneo cuenta con el respaldo y coorganización de Kronix. La devolución de tu pago de inscripción se coordinará en un 50% por el streamer organizador y el otro 50% por Kronix.
+                </div>
+              ) : (
+                <div className="border-l-2 border-red-500 pl-2 bg-red-500/5 p-2 rounded">
+                  <span className="text-red-400 font-bold block mb-1">⚠️ Deslinde de Responsabilidad</span>
+                  Este torneo es de organización independiente por el streamer. <strong>Kronix no se hace responsable por los cobros, pagos ni devoluciones</strong> de las inscripciones. Cualquier reembolso debe ser coordinado y reclamado directamente con el organizador.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {error && <p className="text-red-400 text-[10px]">{error}</p>}
         <button 
           type="submit"
-          disabled={loading || !file}
-          className="w-full bg-neon-cyan text-black font-black uppercase tracking-wider py-2.5 rounded-xl hover:bg-[#00D1DB] transition-all disabled:opacity-40 text-center flex items-center justify-center gap-2"
+          disabled={loading || !file || !termsAccepted}
+          className="w-full bg-neon-cyan text-black font-black uppercase tracking-wider py-2.5 rounded-xl hover:bg-[#00D1DB] transition-all disabled:opacity-30 disabled:hover:bg-neon-cyan disabled:cursor-not-allowed text-center flex items-center justify-center gap-2"
         >
           {loading ? 'Subiendo...' : 'Enviar Comprobante'}
         </button>
@@ -141,6 +198,7 @@ export function LeaderboardClient({
     payment_details: string | null
     discord_link: string | null
     whatsapp_link: string | null
+    role?: string | null
   } | null
   collaboratorProfile?: {
     organization_name: string | null
@@ -194,6 +252,9 @@ export function LeaderboardClient({
     discipline !== 'super_smash_bros_ultimate' && 
     discipline !== 'league_of_legends' && 
     discipline !== 'valorant'
+
+  const isKronixOfficial = creatorProfile?.role === 'SUPER_ADMIN' || creatorProfile?.role === 'ADMIN'
+  const isCollaboration = !isKronixOfficial && !!collaboratorId
 
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [isUserRegistered, setIsUserRegistered] = useState(false)
@@ -1609,6 +1670,8 @@ export function LeaderboardClient({
                         <div className="mt-4 p-4 rounded-xl bg-black/40 border border-white/10 text-left">
                           <PaymentEvidenceUpload 
                             teamId={userTeam.id} 
+                            isKronixOfficial={isKronixOfficial}
+                            isCollaboration={isCollaboration}
                             onUploadSuccess={(path) => {
                               toast.success('¡Comprobante subido! Esperando validación.')
                               setUserTeam((prev: any) => ({

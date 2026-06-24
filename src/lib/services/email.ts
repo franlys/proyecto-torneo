@@ -398,3 +398,125 @@ export async function sendTeammateRegisteredEmail({
   }
 }
 
+interface TeamRemovedEmailParams {
+  email: string
+  captainName: string
+  teamName: string
+  tournamentName: string
+  reason: string
+  creatorName: string
+  creatorEmail: string
+  whatsappLink?: string | null
+  discordLink?: string | null
+  isKronixOfficial: boolean
+  isCollaboration: boolean
+}
+
+export async function sendTeamRemovedEmail({
+  email,
+  captainName,
+  teamName,
+  tournamentName,
+  reason,
+  creatorName,
+  creatorEmail,
+  whatsappLink,
+  discordLink,
+  isKronixOfficial,
+  isCollaboration,
+}: TeamRemovedEmailParams) {
+  if (!resend) return { success: false }
+
+  try {
+    // Determinar la política de reembolso aplicable
+    let refundPolicyHtml = ''
+    if (isKronixOfficial) {
+      refundPolicyHtml = `
+        <div style="background-color: rgba(0, 245, 255, 0.05); border: 1px solid rgba(0, 245, 255, 0.2); padding: 16px; border-radius: 12px; margin-top: 20px;">
+          <p style="color: #00f5ff; font-size: 14px; font-weight: bold; margin: 0 0 8px 0;">🛡️ REEMBOLSO GESTIONADO POR KRONIX</p>
+          <p style="color: rgba(255,255,255,0.7); font-size: 13px; line-height: 1.6; margin: 0;">
+            Al ser este un torneo oficial organizado en su totalidad por nuestra plataforma, el reembolso de la inscripción será procesado directamente por el equipo de soporte técnico de Kronix. Recibirás una notificación adicional una vez se procese.
+          </p>
+        </div>
+      `
+    } else if (isCollaboration) {
+      refundPolicyHtml = `
+        <div style="background-color: rgba(176, 38, 255, 0.05); border: 1px solid rgba(176, 38, 255, 0.2); padding: 16px; border-radius: 12px; margin-top: 20px;">
+          <p style="color: #b026ff; font-size: 14px; font-weight: bold; margin: 0 0 8px 0;">🤝 TORNEO EN COLABORACIÓN (50/50)</p>
+          <p style="color: rgba(255,255,255,0.7); font-size: 13px; line-height: 1.6; margin: 0;">
+            Este torneo cuenta con el aval y coorganización de Kronix. La devolución de tu pago de inscripción se coordinará en un 50% por el streamer organizador y el otro 50% por el equipo de soporte de Kronix.
+          </p>
+        </div>
+      `
+    } else {
+      refundPolicyHtml = `
+        <div style="background-color: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); padding: 16px; border-radius: 12px; margin-top: 20px;">
+          <p style="color: #ef4444; font-size: 14px; font-weight: bold; margin: 0 0 8px 0;">⚠️ DESLINDE DE RESPONSABILIDAD DE PAGOS</p>
+          <p style="color: rgba(255,255,255,0.7); font-size: 13px; line-height: 1.6; margin: 0;">
+            Te recordamos que <strong>Kronix no se hace responsable por los cobros, pagos ni devoluciones</strong> de las inscripciones correspondientes a torneos organizados de forma independiente por streamers de la comunidad. Debes ponerte en contacto directo con el organizador para coordinar la devolución de tu dinero.
+          </p>
+        </div>
+      `
+    }
+
+    // Construir vías de contacto del organizador
+    let contactInfoHtml = `
+      <p style="color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.6; margin-top: 16px; margin-bottom: 8px;">
+        Ponte en contacto directo con el organizador para coordinar detalles:
+      </p>
+      <ul style="color: rgba(255,255,255,0.7); font-size: 13px; line-height: 1.6; margin: 0; padding-left: 20px; space-y: 6px;">
+        <li><strong>Organizador:</strong> ${creatorName}</li>
+        <li><strong>Correo:</strong> <a href="mailto:${creatorEmail}" style="color: #00f5ff; text-decoration: none;">${creatorEmail}</a></li>
+    `
+    if (whatsappLink) {
+      contactInfoHtml += `<li><strong>WhatsApp:</strong> <a href="${whatsappLink}" style="color: #00f5ff; text-decoration: none;">${whatsappLink}</a></li>`
+    }
+    if (discordLink) {
+      contactInfoHtml += `<li><strong>Discord:</strong> <a href="${discordLink}" style="color: #00f5ff; text-decoration: none;">${discordLink}</a></li>`
+    }
+    contactInfoHtml += '</ul>'
+
+    const { data, error } = await resend.emails.send({
+      from: 'Kronix E-sports <no-reply@kronix.do>',
+      to: [email],
+      subject: `Remoción del torneo: ${tournamentName}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0c0c12; color: #ffffff; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <img src="https://www.kronix.do/logo.png" alt="KRONIX Logo" style="width: 50px; height: auto; margin-bottom: 12px; display: inline-block;" />
+            <h1 style="font-size: 24px; font-weight: 900; letter-spacing: 0.2em; color: #00f5ff; margin: 0; text-transform: uppercase;">KRONIX</h1>
+          </div>
+          
+          <h2 style="color: #ffffff; font-size: 18px; margin-top: 0;">Hola ${captainName},</h2>
+          <p style="color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.6;">
+            Te notificamos que tu equipo <strong>${teamName}</strong> ha sido <strong>REMOVIDO</strong> del torneo <strong>${tournamentName}</strong> por decisión del organizador.
+          </p>
+          
+          <div style="background-color: rgba(255, 255, 255, 0.02); border-left: 4px solid #ef4444; padding: 16px; border-radius: 4px; margin: 24px 0;">
+            <p style="color: #ef4444; font-size: 12px; font-weight: bold; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.05em;">Razón de la expulsión:</p>
+            <p style="color: rgba(255,255,255,0.8); font-size: 13px; line-height: 1.6; margin: 0; font-style: italic;">
+              "${reason}"
+            </p>
+          </div>
+          
+          ${contactInfoHtml}
+          
+          ${refundPolicyHtml}
+          
+          <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 24px 0;" />
+          <p style="color: rgba(255,255,255,0.4); font-size: 11px; text-align: center;">
+            Este es un correo automático de la plataforma Kronix E-sports.
+          </p>
+        </div>
+      `,
+    })
+
+    if (error) throw error
+    return { success: true, data }
+  } catch (err: any) {
+    console.error('Error al enviar correo de expulsión:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+

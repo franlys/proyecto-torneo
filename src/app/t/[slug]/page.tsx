@@ -47,7 +47,7 @@ export default async function PublicLeaderboardPage({
   // Fetch profiles for payments / contact details
   const { data: creatorProfile } = await supabase
     .from('profiles')
-    .select('organization_name, payment_details, discord_link, whatsapp_link')
+    .select('organization_name, payment_details, discord_link, whatsapp_link, role')
     .eq('id', tournament.creator_id)
     .single()
 
