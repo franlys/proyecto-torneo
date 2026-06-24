@@ -25,11 +25,15 @@ export async function updateTheme(
   // Auth verification
   const { data: tournament } = await supabase
     .from('tournaments')
-    .select('creator_id, slug')
+    .select('creator_id, collaborator_id, slug')
     .eq('id', tournamentId)
     .single()
 
-  if (!tournament || (tournament.creator_id !== user.id && !admin)) {
+  if (!tournament) return { error: 'Torneo no encontrado' }
+
+  const { checkTournamentAccess } = await import('./tournaments')
+  const hasAccess = admin || await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id)
+  if (!hasAccess) {
     return { error: 'Sin permisos' }
   }
 

@@ -48,14 +48,18 @@ export async function updateMatch(
   // Verify ownership or admin
   const { data: tournament } = await supabase
     .from('tournaments')
-    .select('creator_id')
+    .select('creator_id, collaborator_id')
     .eq('id', tournamentId)
     .single()
 
   const { isAdmin } = await import('./auth-helpers')
   const admin = await isAdmin()
 
-  if (!tournament || (!admin && tournament.creator_id !== user.id)) {
+  if (!tournament) return { error: 'Torneo no encontrado' }
+
+  const { checkTournamentAccess } = await import('./tournaments')
+  const hasAccess = admin || await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id)
+  if (!hasAccess) {
     return { error: 'Sin permisos' }
   }
 
@@ -120,14 +124,18 @@ export async function createMatch(
   // Verify ownership or admin
   const { data: tournament } = await supabase
     .from('tournaments')
-    .select('creator_id')
+    .select('creator_id, collaborator_id')
     .eq('id', tournamentId)
     .single()
 
   const { isAdmin } = await import('./auth-helpers')
   const admin = await isAdmin()
 
-  if (!tournament || (!admin && tournament.creator_id !== user.id)) {
+  if (!tournament) return { error: 'Torneo no encontrado' }
+
+  const { checkTournamentAccess } = await import('./tournaments')
+  const hasAccess = admin || await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id)
+  if (!hasAccess) {
     return { error: 'Sin permisos' }
   }
 

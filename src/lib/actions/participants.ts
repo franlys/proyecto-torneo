@@ -29,11 +29,15 @@ export async function createTeam(
   // Verify tournament ownership
   const { data: tournament, error: authErr } = await supabase
     .from('tournaments')
-    .select('id')
+    .select('id, creator_id, collaborator_id')
     .eq('id', tournamentId)
     .single()
 
-  if (await assertAdmin(supabase, user.id)) {
+  if (authErr || !tournament) return { error: 'Torneo no encontrado' }
+
+  const { checkTournamentAccess } = await import('./tournaments')
+  const hasAccess = await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id)
+  if (!hasAccess) {
     return { error: 'Sin permisos para este torneo' }
   }
 
@@ -104,14 +108,15 @@ export async function deleteTeam(
 
   const { data: tournament } = await supabase
     .from('tournaments')
-    .select('id, creator_id')
+    .select('id, creator_id, collaborator_id')
     .eq('id', tournamentId)
     .single()
 
   if (!tournament) return { error: 'Torneo no encontrado' }
 
-  const admin = await assertAdmin(supabase, user.id)
-  if (admin && tournament.creator_id !== user.id) {
+  const { checkTournamentAccess } = await import('./tournaments')
+  const hasAccess = await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id)
+  if (!hasAccess) {
     return { error: 'Sin permisos' }
   }
 
@@ -238,11 +243,15 @@ export async function addParticipant(
   // Verify tournament ownership
   const { data: tournament, error: authErr } = await supabase
     .from('tournaments')
-    .select('id')
+    .select('id, creator_id, collaborator_id')
     .eq('id', tournamentId)
     .single()
 
-  if (await assertAdmin(supabase, user.id)) {
+  if (authErr || !tournament) return { error: 'Torneo no encontrado' }
+
+  const { checkTournamentAccess } = await import('./tournaments')
+  const hasAccess = await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id)
+  if (!hasAccess) {
     return { error: 'Sin permisos para este torneo' }
   }
 
@@ -301,11 +310,15 @@ export async function deleteParticipant(
 
   const { data: tournament } = await supabase
     .from('tournaments')
-    .select('id')
+    .select('id, creator_id, collaborator_id')
     .eq('id', tournamentId)
     .single()
 
-  if (await assertAdmin(supabase, user.id)) {
+  if (!tournament) return { error: 'Torneo no encontrado' }
+
+  const { checkTournamentAccess } = await import('./tournaments')
+  const hasAccess = await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id)
+  if (!hasAccess) {
     return { error: 'Sin permisos' }
   }
 
@@ -397,11 +410,15 @@ export async function updateParticipantKills(
   // Verify tournament ownership
   const { data: tournament, error: authErr } = await supabase
     .from('tournaments')
-    .select('id')
+    .select('id, creator_id, collaborator_id')
     .eq('id', tournamentId)
     .single()
 
-  if (await assertAdmin(supabase, user.id)) {
+  if (authErr || !tournament) return { error: 'Torneo no encontrado' }
+
+  const { checkTournamentAccess } = await import('./tournaments')
+  const hasAccess = await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id)
+  if (!hasAccess) {
     return { error: 'Sin permisos para este torneo' }
   }
 
@@ -427,11 +444,15 @@ export async function updateTeam(
 
   const { data: tournament } = await supabase
     .from('tournaments')
-    .select('id')
+    .select('id, creator_id, collaborator_id')
     .eq('id', tournamentId)
     .single()
 
-  if (await assertAdmin(supabase, user.id)) {
+  if (!tournament) return { error: 'Torneo no encontrado' }
+
+  const { checkTournamentAccess } = await import('./tournaments')
+  const hasAccess = await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id)
+  if (!hasAccess) {
     return { error: 'Sin permisos' }
   }
 
@@ -482,11 +503,15 @@ export async function updateParticipant(
 
   const { data: tournament } = await supabase
     .from('tournaments')
-    .select('id')
+    .select('id, creator_id, collaborator_id')
     .eq('id', tournamentId)
     .single()
 
-  if (await assertAdmin(supabase, user.id)) {
+  if (!tournament) return { error: 'Torneo no encontrado' }
+
+  const { checkTournamentAccess } = await import('./tournaments')
+  const hasAccess = await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id)
+  if (!hasAccess) {
     return { error: 'Sin permisos' }
   }
 
@@ -568,7 +593,41 @@ export async function findUserByShortId(shortId: string): Promise<{ data: any } 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'No autenticado' }
 
-    if (await assertAdmin(supabase, user.id)) {
+    const { data: userProfile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    const isAuthorized = 
+      userProfile?.role === 'SUPER_ADMIN' ||
+      userProfile?.role === 'ADMIN' ||
+      userProfile?.role === 'KRONIX_STAFF' ||
+      userProfile?.role === 'FEDERATION' ||
+      userProfile?.role === 'STREAMER'
+
+    let hasStaffAccess = isAuthorized
+    if (!hasStaffAccess) {
+      const { data: staff } = await supabase
+        .from('streamer_staff')
+        .select('id')
+        .eq('staff_id', user.id)
+        .limit(1)
+        .maybeSingle()
+      if (staff) hasStaffAccess = true
+    }
+
+    if (!hasStaffAccess) {
+      const { data: collab } = await supabase
+        .from('tournaments')
+        .select('id')
+        .eq('collaborator_id', user.id)
+        .limit(1)
+        .maybeSingle()
+      if (collab) hasStaffAccess = true
+    }
+
+    if (!hasStaffAccess) {
       return { error: 'Sin permisos' }
     }
 

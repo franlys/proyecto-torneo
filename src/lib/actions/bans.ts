@@ -14,17 +14,19 @@ export async function banTeamForAbandonment(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'No autenticado' }
 
-    // Fetch tournament to verify creator
+    // Fetch tournament to verify creator/collaborator
     const { data: tournament, error: tourneyErr } = await supabase
       .from('tournaments')
-      .select('id, creator_id, slug')
+      .select('id, creator_id, collaborator_id, slug')
       .eq('id', tournamentId)
       .single()
 
     if (tourneyErr || !tournament) return { error: 'Torneo no encontrado' }
 
     const admin = await isAdmin()
-    if (!admin && tournament.creator_id !== user.id) {
+    const { checkTournamentAccess } = await import('./tournaments')
+    const hasAccess = admin || await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id)
+    if (!hasAccess) {
       return { error: 'Sin permisos para banear en este torneo' }
     }
 
