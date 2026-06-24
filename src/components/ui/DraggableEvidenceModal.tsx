@@ -16,6 +16,7 @@ interface DraggableEvidenceModalProps {
   title?: string
   evidenceFiles?: EvidenceModalFile[]
   submissionDetails?: {
+    id: string
     teamName: string
     killCount: number
     rank?: number
@@ -24,9 +25,16 @@ interface DraggableEvidenceModalProps {
     aiData?: { team_name?: string; kill_count?: number; rank?: number }
     aiStatus?: string
     status?: 'pending' | 'approved' | 'rejected'
+    rawSubmission?: any
   }
   onApprove?: () => void
   onReject?: () => void
+  onSaveDetails?: (
+    killCount: number,
+    rank: number | null,
+    potTop: boolean,
+    playerKills: Record<string, number>
+  ) => Promise<void>
 }
 
 export function DraggableEvidenceModal({
@@ -37,12 +45,67 @@ export function DraggableEvidenceModal({
   evidenceFiles = [],
   submissionDetails,
   onApprove,
-  onReject
+  onReject,
+  onSaveDetails
 }: DraggableEvidenceModalProps) {
   const [scale, setScale] = useState(1)
   const [rotation, setRotation] = useState(0)
   const [selectedType, setSelectedType] = useState<'kills' | 'top'>('kills')
   const [showSidebar, setShowSidebar] = useState(true)
+
+  const [isEditing, setIsEditing] = useState(false)
+  const [editRank, setEditRank] = useState<number | null>(null)
+  const [editPotTop, setEditPotTop] = useState(false)
+  const [editPlayerKills, setEditPlayerKills] = useState<Record<string, number>>({})
+  const [editTotalKills, setEditTotalKills] = useState(0)
+  const [isSaving, setIsSaving] = useState(false)
+
+  // Initialize edit states when entering edit mode or when submissionDetails changes
+  useEffect(() => {
+    if (submissionDetails) {
+      setEditRank(submissionDetails.rank || null)
+      setEditPotTop(submissionDetails.potTop || false)
+      
+      const pKills: Record<string, number> = {}
+      const rawSub = submissionDetails.rawSubmission
+      const teamObj: any = Array.isArray(rawSub?.teams) ? rawSub.teams[0] : rawSub?.teams
+      const teamParticipants = teamObj?.participants || []
+      
+      teamParticipants.forEach((p: any) => {
+        pKills[p.id] = rawSub?.player_kills?.[p.id] || 0
+      })
+      setEditPlayerKills(pKills)
+      setEditTotalKills(submissionDetails.killCount)
+    }
+  }, [submissionDetails])
+
+  // Reset isEditing when modal closes/opens
+  useEffect(() => {
+    if (!isOpen) {
+      setIsEditing(false)
+    }
+  }, [isOpen])
+
+  const handlePlayerKillChange = (pId: string, val: string) => {
+    const num = parseInt(val, 10) || 0
+    const nextPlayerKills = { ...editPlayerKills, [pId]: num }
+    setEditPlayerKills(nextPlayerKills)
+    const total = Object.values(nextPlayerKills).reduce((a, b) => a + b, 0)
+    setEditTotalKills(total)
+  }
+
+  const handleSave = async () => {
+    if (!onSaveDetails) return
+    setIsSaving(true)
+    try {
+      await onSaveDetails(editTotalKills, editRank, editPotTop, editPlayerKills)
+      setIsEditing(false)
+    } catch (err: any) {
+      alert(err.message || 'Error al guardar')
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   // Resetear estados cuando abre/cambia de tipo
   useEffect(() => {
@@ -222,46 +285,147 @@ export function DraggableEvidenceModal({
                       </h3>
                     </div>
 
-                    {/* Resumen de Puntuaciones */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3.5 flex flex-col">
-                        <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">Top Logrado</span>
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <Trophy className={`w-4 h-4 ${submissionDetails.potTop ? 'text-gold' : 'text-white/50'}`} />
-                          <span className={`text-base font-orbitron font-black ${submissionDetails.potTop ? 'text-gold' : 'text-white'}`}>
-                            {submissionDetails.rank ? `#${submissionDetails.rank}` : 'N/A'}
-                          </span>
+                    {isEditing ? (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-[9px] font-black text-white/40 uppercase tracking-wider mb-1.5">
+                            Top Logrado (Rango)
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={editRank || ''}
+                            onChange={(e) => {
+                              const val = e.target.value ? parseInt(e.target.value, 10) : null
+                              setEditRank(val)
+                              if (val === 1) {
+                                setEditPotTop(true)
+                              }
+                            }}
+                            className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-neon-cyan focus:outline-none transition-colors font-orbitron"
+                            placeholder="Ej: 1, 2, 3..."
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-2 bg-white/[0.02] border border-white/5 p-3 rounded-xl">
+                          <input
+                            id="modal-potTop"
+                            type="checkbox"
+                            checked={editPotTop}
+                            onChange={(e) => setEditPotTop(e.target.checked)}
+                            className="w-3.5 h-3.5 rounded border-white/10 bg-white/[0.03] text-neon-cyan focus:ring-neon-cyan cursor-pointer"
+                          />
+                          <label htmlFor="modal-potTop" className="text-xs font-semibold text-white/80 select-none cursor-pointer">
+                            ¿Victoria? (Top 1)
+                          </label>
+                        </div>
+
+                        {/* Desglose de Jugadores (Edit Mode) */}
+                        <div className="bg-white/[0.01] border border-white/5 rounded-xl p-3.5 space-y-3">
+                          <h4 className="text-[9px] font-black text-white/40 uppercase tracking-widest border-b border-white/5 pb-1.5">
+                            Kills por Jugador
+                          </h4>
+                          <div className="space-y-2.5">
+                            {(() => {
+                              const rawSub = submissionDetails.rawSubmission
+                              const teamObj: any = Array.isArray(rawSub?.teams) ? rawSub.teams[0] : rawSub?.teams
+                              const teamParticipants = teamObj?.participants || []
+                              if (teamParticipants.length === 0) {
+                                return <p className="text-[10px] text-white/30 italic">Sin jugadores</p>
+                              }
+                              return teamParticipants.map((p: any) => (
+                                <div key={p.id} className="flex items-center justify-between gap-2 text-xs">
+                                  <span className="truncate pr-2 font-medium text-white/70">{p.display_name}</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={editPlayerKills[p.id] ?? 0}
+                                    onChange={(e) => handlePlayerKillChange(p.id, e.target.value)}
+                                    className="w-16 bg-white/[0.03] border border-white/10 rounded-lg px-2 py-1 text-right text-white focus:border-neon-cyan focus:outline-none transition-colors font-orbitron"
+                                  />
+                                </div>
+                              ))
+                            })()}
+                          </div>
+                        </div>
+
+                        <div className="bg-neon-cyan/5 border border-neon-cyan/15 px-3 py-2 rounded-xl flex justify-between items-center">
+                          <span className="text-[9px] font-black text-neon-cyan uppercase tracking-wider">Kills Totales</span>
+                          <span className="font-orbitron font-black text-sm text-neon-cyan">{editTotalKills}</span>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setIsEditing(false)}
+                            type="button"
+                            className="flex-1 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-white text-[10px] font-bold uppercase tracking-wider transition-all"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            type="button"
+                            className="flex-1 py-2 rounded-lg bg-neon-cyan hover:bg-[#00D1DB] text-black font-orbitron font-black text-[10px] uppercase tracking-wider transition-all disabled:opacity-50"
+                          >
+                            {isSaving ? 'Guardando...' : 'Guardar'}
+                          </button>
                         </div>
                       </div>
-
-                      <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3.5 flex flex-col">
-                        <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">Kills Equipo</span>
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <Users className="w-4 h-4 text-neon-cyan" />
-                          <span className="text-base font-orbitron font-black text-neon-cyan">
-                            {submissionDetails.killCount}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Desglose de Jugadores */}
-                    {submissionDetails.playerKillsBreakdown && submissionDetails.playerKillsBreakdown.length > 0 && (
-                      <div className="bg-white/[0.01] border border-white/5 rounded-xl p-3.5 space-y-2">
-                        <h4 className="text-[9px] font-black text-white/40 uppercase tracking-widest border-b border-white/5 pb-1.5">
-                          Desglose Individual
-                        </h4>
-                        <div className="space-y-1.5">
-                          {submissionDetails.playerKillsBreakdown.map((pk, idx) => (
-                            <div key={idx} className="flex justify-between items-center text-xs text-white/70">
-                              <span className="truncate pr-2 font-medium">{pk.name}</span>
-                              <span className="font-orbitron font-black text-neon-cyan bg-neon-cyan/5 px-2 py-0.5 rounded border border-neon-cyan/10">
-                                {pk.kills}
+                    ) : (
+                      <>
+                        {/* Resumen de Puntuaciones */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3.5 flex flex-col">
+                            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">Top Logrado</span>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <Trophy className={`w-4 h-4 ${submissionDetails.potTop ? 'text-gold' : 'text-white/50'}`} />
+                              <span className={`text-base font-orbitron font-black ${submissionDetails.potTop ? 'text-gold' : 'text-white'}`}>
+                                {submissionDetails.rank ? `#${submissionDetails.rank}` : 'N/A'}
                               </span>
                             </div>
-                          ))}
+                          </div>
+
+                          <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3.5 flex flex-col">
+                            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">Kills Equipo</span>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <Users className="w-4 h-4 text-neon-cyan" />
+                              <span className="text-base font-orbitron font-black text-neon-cyan">
+                                {submissionDetails.killCount}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
+
+                        {/* Desglose de Jugadores */}
+                        {submissionDetails.playerKillsBreakdown && submissionDetails.playerKillsBreakdown.length > 0 && (
+                          <div className="bg-white/[0.01] border border-white/5 rounded-xl p-3.5 space-y-2">
+                            <h4 className="text-[9px] font-black text-white/40 uppercase tracking-widest border-b border-white/5 pb-1.5">
+                              Desglose Individual
+                            </h4>
+                            <div className="space-y-1.5">
+                              {submissionDetails.playerKillsBreakdown.map((pk, idx) => (
+                                <div key={idx} className="flex justify-between items-center text-xs text-white/70">
+                                  <span className="truncate pr-2 font-medium">{pk.name}</span>
+                                  <span className="font-orbitron font-black text-neon-cyan bg-neon-cyan/5 px-2 py-0.5 rounded border border-neon-cyan/10">
+                                    {pk.kills}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {onSaveDetails && (
+                          <button
+                            onClick={() => setIsEditing(true)}
+                            type="button"
+                            className="w-full py-2 rounded-lg border border-neon-cyan/20 hover:border-neon-cyan/40 bg-neon-cyan/5 hover:bg-neon-cyan/10 text-neon-cyan text-[10px] font-bold uppercase tracking-wider transition-all"
+                          >
+                            ✏️ Editar Valores
+                          </button>
+                        )}
+                      </>
                     )}
 
                     {/* Validación IA */}

@@ -120,6 +120,70 @@ export function SubmissionsManager({
     }
   }
 
+  const handleSaveDetailsFromModal = async (
+    killCount: number,
+    rank: number | null,
+    potTop: boolean,
+    playerKills: Record<string, number>
+  ) => {
+    if (!selectedSubmissionDetails) return
+    const submissionId = selectedSubmissionDetails.id
+    setLoadingId(submissionId)
+    try {
+      const res = await updateSubmissionAction(submissionId, {
+        killCount,
+        rank,
+        potTop,
+        playerKills,
+      })
+      if ('error' in res) throw new Error(res.error)
+      
+      // Update local submissions list
+      setSubmissions(prev => prev.map(s => s.id === submissionId ? {
+        ...s,
+        kill_count: killCount,
+        rank: rank || undefined,
+        pot_top: potTop,
+        player_kills: playerKills,
+      } : s))
+
+      // Update selected details so the modal UI updates instantly
+      setSelectedSubmissionDetails((prev: any) => {
+        if (prev && prev.id === submissionId) {
+          const teamObj: any = Array.isArray(prev.rawSubmission?.teams) 
+            ? prev.rawSubmission.teams[0] 
+            : prev.rawSubmission?.teams
+          const teamParticipants = teamObj?.participants || []
+          const playerKillsBreakdown = Object.entries(playerKills).map(([pId, kills]) => {
+            const pName = teamParticipants.find((p: any) => p.id === pId)?.display_name || 'Jugador'
+            return { name: pName, kills }
+          })
+
+          return {
+            ...prev,
+            killCount,
+            rank: rank || undefined,
+            potTop,
+            playerKillsBreakdown,
+            rawSubmission: {
+              ...prev.rawSubmission,
+              kill_count: killCount,
+              rank: rank || undefined,
+              pot_top: potTop,
+              player_kills: playerKills,
+            }
+          }
+        }
+        return prev
+      })
+    } catch (err: any) {
+      alert(err.message)
+      throw err
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
   const handleApprove = async (id: string) => {
     setLoadingId(id)
     try {
@@ -406,7 +470,8 @@ export function SubmissionsManager({
                                           playerKillsBreakdown,
                                           aiData: sub.ai_data,
                                           aiStatus: sub.ai_status,
-                                          status: sub.status
+                                          status: sub.status,
+                                          rawSubmission: sub
                                         })
                                         
                                         setModalEvidenceFiles(resolvedFiles)
@@ -583,6 +648,7 @@ export function SubmissionsManager({
         submissionDetails={selectedSubmissionDetails}
         onApprove={selectedSubmissionDetails ? () => handleApprove(selectedSubmissionDetails.id) : undefined}
         onReject={selectedSubmissionDetails ? () => handleReject(selectedSubmissionDetails.id) : undefined}
+        onSaveDetails={handleSaveDetailsFromModal}
         onClose={() => {
           setModalOpen(false)
           setModalEvidenceFiles([])
