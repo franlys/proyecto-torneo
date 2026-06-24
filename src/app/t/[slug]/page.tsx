@@ -61,11 +61,12 @@ export default async function PublicLeaderboardPage({
     collaboratorProfile = colab
   }
 
-  // Fetch ALL teams with their participants (for the Participants tab)
+  // Fetch only confirmed teams with their participants (for the positions and Participants tab)
   const { data: allTeams } = await supabase
     .from('teams')
-    .select('id, name, avatar_url, stream_url, participants(id, team_id, user_id, display_name, is_captain, stream_url, total_kills, kd_ratio, avg_kills, classification_rank, br_avg_placement, color)')
+    .select('id, name, avatar_url, stream_url, registration_status, participants(id, team_id, user_id, display_name, is_captain, stream_url, total_kills, kd_ratio, avg_kills, classification_rank, br_avg_placement, color)')
     .eq('tournament_id', tournament.id)
+    .eq('registration_status', 'confirmed')
     .order('created_at', { ascending: true })
 
 
