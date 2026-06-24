@@ -906,15 +906,8 @@ export function LeaderboardClient({
               </thead>
               <tbody>
                 {(() => {
-                  const topFraggers = confirmedTeams
-                    .flatMap((t: any) => 
-                      (t.participants || []).map((p: any) => ({
-                        ...p,
-                        teamName: t.name,
-                        teamAvatar: t.avatarUrl
-                      }))
-                    )
-                    .sort((a: any, b: any) => (b.totalKills || 0) - (a.totalKills || 0))
+                  const topFraggers = [...participantsWithCalculatedKills]
+                    .sort((a, b) => (b.totalKills || 0) - (a.totalKills || 0))
                     .slice(0, 3)
 
                   return topFraggers.map((p, idx) => (
@@ -1896,6 +1889,49 @@ export function LeaderboardClient({
                     EN VIVO
                   </div>
                   {renderStreamPlayer(streamUrl)}
+                </div>
+              )}
+              {vipEnabled && (
+                <div className="bg-dark-card/85 backdrop-blur-md border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
+                  <div className="px-5 py-4 border-b border-white/5 bg-white/[0.02] flex justify-between items-center bg-gradient-to-r from-neon-purple/10 to-transparent">
+                    <span className="font-orbitron font-bold text-xs text-white uppercase tracking-widest flex items-center gap-2">
+                      <span className="text-neon-purple">⚔️</span> Top Fraggers (MVP)
+                    </span>
+                    <span className="text-[10px] text-neon-purple font-bold uppercase tracking-wider">Top 3</span>
+                  </div>
+                  <div className="divide-y divide-white/5">
+                    {(() => {
+                      const topFraggersList = [...participantsWithCalculatedKills]
+                        .sort((a, b) => (b.totalKills || 0) - (a.totalKills || 0))
+                        .slice(0, 3)
+
+                      if (topFraggersList.length === 0 || !topFraggersList.some(p => (p.totalKills || 0) > 0)) {
+                        return (
+                          <div className="p-5 text-center text-xs text-white/40 font-orbitron">
+                            Aún no hay bajas registradas
+                          </div>
+                        )
+                      }
+
+                      return topFraggersList.map((p, idx) => (
+                        <div key={p.id} className="px-5 py-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className="font-orbitron font-black text-sm" style={{ color: (idx+1) === 1 ? '#FFD700' : (idx+1) === 2 ? '#C0C0C0' : '#CD7F32' }}>
+                              {idx + 1 === 1 ? '🥇' : idx + 1 === 2 ? '🥈' : '🥉'}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="font-orbitron font-bold text-xs text-white truncate max-w-[140px]">{p.displayName}</p>
+                              <p className="text-[10px] text-white/40 truncate max-w-[140px]">{p.teamName}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-orbitron font-black text-sm text-neon-cyan block leading-none mb-1">{p.totalKills || 0}</span>
+                            <span className="text-[8px] text-white/30 block leading-none font-bold uppercase tracking-tighter">Kills</span>
+                          </div>
+                        </div>
+                      ))
+                    })()}
+                  </div>
                 </div>
               )}
               <AdPlacement banners={adBanners || []} slotName="leaderboard_sidebar" tournamentId={tournamentId} />
