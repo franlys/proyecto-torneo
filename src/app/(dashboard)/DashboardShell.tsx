@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { signOut } from '@/lib/actions/auth'
 import { motion, AnimatePresence } from 'framer-motion'
+import { updateTeammateGameCredentials, GAME_LABELS } from '@/lib/actions/game-accounts'
+import { AlertTriangle } from 'lucide-react'
+import { toast } from 'sonner'
 
 const ROLE_BADGE: Record<string, { label: string; color: string }> = {
   SUPER_ADMIN: { label: '⭐ Super Admin', color: 'text-yellow-300' },
@@ -20,15 +23,24 @@ export default function DashboardShell({
   username,
   avatarUrl,
   isStaff = false,
+  missingGameAccountInfo = null,
 }: {
   children: React.ReactNode
   userRole: 'SUPER_ADMIN' | 'ADMIN' | 'KRONIX_STAFF' | 'FEDERATION' | 'STREAMER' | 'USER'
   username?: string | null
   avatarUrl?: string | null
   isStaff?: boolean
+  missingGameAccountInfo?: { participantId: string; tournamentName: string; discipline: string; slug: string } | null
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const isAdminUser = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'KRONIX_STAFF'
+
+  // Game ID Modal states
+  const [showGameIdModal, setShowGameIdModal] = useState(false)
+  const [gameIdVal, setGameIdVal] = useState('')
+  const [gameUsernameVal, setGameUsernameVal] = useState('')
+  const [modalLoading, setModalLoading] = useState(false)
+  const [modalError, setModalError] = useState('')
 
   // Close drawer on route change
   useEffect(() => {
@@ -375,7 +387,141 @@ export default function DashboardShell({
 
       {/* Main content — padding top on mobile for the fixed header */}
       <main className="flex-1 overflow-auto pt-[52px] lg:pt-0">
+        {missingGameAccountInfo && (
+          <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-left">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="w-5 h-5 text-yellow-500 shrink-0 animate-bounce" />
+              <div className="text-xs">
+                <span className="font-bold text-white block">⚠️ ID de Juego Requerido</span>
+                <span className="text-white/60">
+                  Estás inscrito en el torneo <strong className="text-white">"{missingGameAccountInfo.tournamentName}"</strong> pero falta configurar tu ID de cuenta para <strong className="text-neon-cyan">{GAME_LABELS[missingGameAccountInfo.discipline]?.label || missingGameAccountInfo.discipline}</strong>.
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setGameIdVal('')
+                setGameUsernameVal('')
+                setModalError('')
+                setShowGameIdModal(true)
+              }}
+              className="shrink-0 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-black text-[11px] font-black uppercase tracking-wider rounded-lg transition-all active:scale-[0.97]"
+            >
+              Vincular ID de Cuenta
+            </button>
+          </div>
+        )}
         {children}
+
+        {/* Modal for vinculating Game ID */}
+        <AnimatePresence>
+          {showGameIdModal && missingGameAccountInfo && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowGameIdModal(false)}
+                className="absolute inset-0 bg-black/80 backdrop-blur-md"
+              />
+              <motion.div
+                initial={{ scale: 0.95, y: 15, opacity: 0 }}
+                animate={{ scale: 1, y: 0, opacity: 1 }}
+                exit={{ scale: 0.95, y: 15, opacity: 0 }}
+                className="relative w-full max-w-md bg-[#121219] border border-white/10 rounded-2xl p-6 shadow-2xl overflow-hidden z-10"
+              >
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-yellow-500 to-neon-purple" />
+                <h3 className="font-orbitron font-bold text-lg text-white mb-2 flex items-center gap-2">
+                  <span>🎮</span> Vincular Cuenta de Juego
+                </h3>
+                <p className="text-xs text-white/50 leading-relaxed mb-5">
+                  Ingresa los detalles de tu cuenta de juego para el torneo <strong>"{missingGameAccountInfo.tournamentName}"</strong>. Esto es necesario para que tus estadísticas se computen correctamente.
+                </p>
+
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault()
+                    if (!gameIdVal.trim() || !gameUsernameVal.trim()) {
+                      setModalError('Ambos campos son obligatorios.')
+                      return
+                    }
+                    setModalLoading(true)
+                    setModalError('')
+                    try {
+                      const res = await updateTeammateGameCredentials(
+                        missingGameAccountInfo.participantId,
+                        missingGameAccountInfo.discipline,
+                        gameIdVal.trim(),
+                        gameUsernameVal.trim()
+                      )
+                      if (res && 'error' in res) {
+                        setModalError(res.error)
+                      } else {
+                        toast.success('¡Cuenta de juego vinculada con éxito!')
+                        setShowGameIdModal(false)
+                        window.location.reload()
+                      }
+                    } catch (err: any) {
+                      setModalError(err.message || 'Error inesperado.')
+                    } finally {
+                      setModalLoading(false)
+                    }
+                  }}
+                  className="space-y-4"
+                >
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-white/45">
+                      {GAME_LABELS[missingGameAccountInfo.discipline]?.idLabel || 'ID de Cuenta'} *
+                    </label>
+                    <input
+                      required
+                      type="text"
+                      placeholder={GAME_LABELS[missingGameAccountInfo.discipline]?.idPlaceholder || 'Ej. ID de Jugador'}
+                      value={gameIdVal}
+                      onChange={(e) => setGameIdVal(e.target.value)}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none focus:border-yellow-500 transition-all text-white font-medium font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-white/45">
+                      {GAME_LABELS[missingGameAccountInfo.discipline]?.usernameLabel || 'Nombre en el Juego'} *
+                    </label>
+                    <input
+                      required
+                      type="text"
+                      placeholder={GAME_LABELS[missingGameAccountInfo.discipline]?.usernamePlaceholder || 'Ej. Nombre de Usuario'}
+                      value={gameUsernameVal}
+                      onChange={(e) => setGameUsernameVal(e.target.value)}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none focus:border-yellow-500 transition-all text-white font-medium"
+                    />
+                  </div>
+
+                  {modalError && (
+                    <p className="text-red-400 text-[11px] font-semibold">{modalError}</p>
+                  )}
+
+                  <div className="flex gap-3 pt-3">
+                    <button
+                      type="submit"
+                      disabled={modalLoading}
+                      className="flex-1 py-3 bg-yellow-500 hover:bg-yellow-600 text-black text-xs font-black uppercase tracking-wider rounded-xl transition-all disabled:opacity-50"
+                    >
+                      {modalLoading ? 'Vinculando...' : 'Vincular y Guardar'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowGameIdModal(false)}
+                      className="px-5 py-3 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   )

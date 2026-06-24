@@ -1,5 +1,5 @@
 'use server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 export const GAME_LABELS: Record<string, { label: string; idLabel: string; usernameLabel: string; idPlaceholder: string; usernamePlaceholder: string; icon: string }> = {
@@ -81,4 +81,57 @@ export async function getGameAccountForUser(userId: string, game: string): Promi
 
   if (error) return { error: error.message }
   return { data }
+}
+
+export async function updateTeammateGameCredentials(
+  participantId: string,
+  game: string,
+  gameId: string,
+  gameUsername: string
+): Promise<{ success: true } | { error: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const adminSupabase = await createAdminClient()
+
+  // 1. Verify participant belongs to the user
+  const { data: participant, error: pErr } = await adminSupabase
+    .from('participants')
+    .select('id, user_id')
+    .eq('id', participantId)
+    .single()
+
+  if (pErr || !participant || participant.user_id !== user.id) {
+    return { error: 'No tienes permisos para modificar este participante.' }
+  }
+
+  // 2. Update participant record
+  const { error: partUpdateErr } = await adminSupabase
+    .from('participants')
+    .update({
+      game_id: gameId.trim(),
+      game_username: gameUsername.trim(),
+    })
+    .eq('id', participantId)
+
+  if (partUpdateErr) return { error: partUpdateErr.message }
+
+  // 3. Upsert into game_accounts for future registrations
+  const { error: accUpsertErr } = await adminSupabase
+    .from('game_accounts')
+    .upsert({
+      user_id: user.id,
+      game: game,
+      game_id: gameId.trim(),
+      game_username: gameUsername.trim(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,game' })
+
+  if (accUpsertErr) {
+    console.error('Error auto-saving game account:', accUpsertErr.message)
+  }
+
+  revalidatePath('/tournaments')
+  return { success: true }
 }

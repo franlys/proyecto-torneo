@@ -17,10 +17,12 @@ export async function registerTournament(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'No autenticado. Por favor, inicia sesión.' }
 
+    const adminSupabase = await createAdminClient()
+
     // 1. Obtener detalles del torneo
-    const { data: tournament, error: tourneyErr } = await supabase
+    const { data: tournament, error: tourneyErr } = await adminSupabase
       .from('tournaments')
-      .select('id, name, mode, status, is_private, registration_password, max_teams, creator_id, created_at, registration_start_date, registration_end_date, entry_fee')
+      .select('id, name, slug, mode, status, is_private, registration_password, max_teams, creator_id, created_at, registration_start_date, registration_end_date, entry_fee, discipline')
       .eq('id', tournamentId)
       .single()
 
@@ -59,7 +61,7 @@ export async function registerTournament(
     const allDisplayNames = pListTemp.map(p => p.displayName.trim())
     const allGameIds = pListTemp.map(p => p.gameId?.trim()).filter(Boolean) as string[]
 
-    let banQuery = supabase
+    let banQuery = adminSupabase
       .from('creator_bans')
       .select('user_id, display_name, game_id, banned_at')
       .eq('creator_id', tournament.creator_id)
@@ -82,7 +84,7 @@ export async function registerTournament(
       if (activeBans && activeBans.length > 0) {
         for (const ban of activeBans) {
           // Count tournaments created by the creator after the ban date
-          const { count, error: countErr } = await supabase
+          const { count, error: countErr } = await adminSupabase
             .from('tournaments')
             .select('id', { count: 'exact', head: true })
             .eq('creator_id', tournament.creator_id)
@@ -100,11 +102,9 @@ export async function registerTournament(
       }
     }
 
-    // La contraseña del torneo privado ya no se valida al inscribirse, sino al subir evidencias.
-
     // Validar Límite de Equipos (Capacidad Máxima)
     if (tournament.max_teams && tournament.max_teams > 0) {
-      const { count, error: countErr } = await supabase
+      const { count, error: countErr } = await adminSupabase
         .from('teams')
         .select('*', { count: 'exact', head: true })
         .eq('tournament_id', tournamentId)
@@ -115,7 +115,7 @@ export async function registerTournament(
     }
 
     // 2. Verificar si el usuario ya está registrado en este torneo
-    const { data: existingPlayer } = await supabase
+    const { data: existingPlayer } = await adminSupabase
       .from('participants')
       .select('id')
       .eq('tournament_id', tournamentId)
@@ -135,7 +135,7 @@ export async function registerTournament(
       .filter((id): id is string => !!id)
 
     if (userIdsToCheck.length > 0) {
-      const { data: existingTeammates } = await supabase
+      const { data: existingTeammates } = await adminSupabase
         .from('participants')
         .select('user_id, display_name')
         .eq('tournament_id', tournamentId)
@@ -174,9 +174,6 @@ export async function registerTournament(
     if (!captain.gameUsername || !captain.gameUsername.trim()) {
       return { error: 'El nombre de cuenta en el juego es obligatorio para inscribirse.' }
     }
-
-    // 4. Usar cliente admin para realizar inserciones seguras saltando RLS (ya que los usuarios generales no tienen permisos directos de inserción)
-    const adminSupabase = await createAdminClient()
 
     // 5. Verificar si el nombre del equipo o del jugador individual ya está registrado
     const finalTeamName = tournament.mode === 'individual' ? pList[0].displayName.trim() : formData.teamName.trim()
@@ -242,7 +239,26 @@ export async function registerTournament(
     // 7. Insertar Participantes
     for (let i = 0; i < pList.length; i++) {
       const pData = pList[i]
-      const isCaptain = i === 0 // El primer participante listado (típicamente el que registra) es el capitán
+      const isCaptain = i === 0 // El primer participante listado es el capitán
+      const targetUserId = isCaptain ? user.id : (pData.userId || null)
+
+      let teammateGameId = pData.gameId?.trim() || null
+      let teammateGameUsername = pData.gameUsername?.trim() || null
+
+      // Si no es el capitán, intentar auto-completar desde sus cuentas de juego registradas
+      if (!isCaptain && targetUserId && (!teammateGameId || !teammateGameUsername)) {
+        const { data: savedAccount } = await adminSupabase
+          .from('game_accounts')
+          .select('game_id, game_username')
+          .eq('user_id', targetUserId)
+          .eq('game', tournament.discipline)
+          .maybeSingle()
+
+        if (savedAccount) {
+          teammateGameId = savedAccount.game_id
+          teammateGameUsername = savedAccount.game_username
+        }
+      }
 
       const { data: participant, error: partErr } = await adminSupabase
         .from('participants')
@@ -253,9 +269,9 @@ export async function registerTournament(
           contact_id: pData.contactId || null,
           stream_url: pData.streamUrl || null,
           is_captain: isCaptain,
-          user_id: isCaptain ? user.id : (pData.userId || null),
-          game_id: pData.gameId?.trim() || null,
-          game_username: pData.gameUsername?.trim() || null,
+          user_id: targetUserId,
+          game_id: teammateGameId,
+          game_username: teammateGameUsername,
         })
         .select()
         .single()
@@ -272,6 +288,30 @@ export async function registerTournament(
           totalKills: participant.total_kills || 0,
           isCaptain: participant.is_captain,
         })
+
+        // Si es un compañero y NO tiene su cuenta de juego vinculada/completada, notificarle por correo
+        if (!isCaptain && targetUserId && (!teammateGameId || !teammateGameUsername)) {
+          const { data: teammateProfile } = await adminSupabase
+            .from('profiles')
+            .select('email, username')
+            .eq('id', targetUserId)
+            .single()
+
+          if (teammateProfile?.email) {
+            const { sendTeammateRegisteredEmail } = await import('@/lib/services/email')
+            const { GAME_LABELS } = await import('./game-accounts')
+            const gameLabel = GAME_LABELS[tournament.discipline]?.label || tournament.discipline
+
+            await sendTeammateRegisteredEmail({
+              email: teammateProfile.email,
+              teammateName: pData.displayName.trim(),
+              captainName: pList[0].displayName.trim(),
+              tournamentName: tournament.name,
+              gameLabel: gameLabel,
+              portalUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/t/${tournament.slug}`
+            }).catch(e => console.error('Error al notificar al compañero por correo:', e))
+          }
+        }
       }
     }
 
