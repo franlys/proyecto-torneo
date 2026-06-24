@@ -431,10 +431,10 @@ export async function approveSubmission(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
-  // Validate ownership implicitly through RLS or explicitly
+  // Validate access using checkTournamentAccess
   const { data: submission, error: subErr } = await supabase
     .from('submissions')
-    .select('tournament_id, status, tournaments!inner(creator_id)')
+    .select('tournament_id, status, tournaments!inner(creator_id, collaborator_id)')
     .eq('id', submissionId)
     .single()
 
@@ -444,11 +444,20 @@ export async function approveSubmission(
     ? submission.tournaments[0]?.creator_id 
     : (submission.tournaments as any)?.creator_id
 
-  if (creatorId !== user.id) return { error: 'Sin permisos' }
+  const collaboratorId = Array.isArray(submission.tournaments) 
+    ? submission.tournaments[0]?.collaborator_id 
+    : (submission.tournaments as any)?.collaborator_id
+
+  const { checkTournamentAccess } = await import('./tournaments')
+  const hasAccess = await checkTournamentAccess(creatorId, user.id, collaboratorId)
+  if (!hasAccess) return { error: 'Sin permisos' }
+
   if (submission.status === 'approved') return { error: 'Ya está aprobado' }
 
-  // Update status
-  const { error: updateErr } = await supabase
+  const adminSupabase = await createAdminClient()
+
+  // Update status using admin client to bypass RLS
+  const { error: updateErr } = await adminSupabase
     .from('submissions')
     .update({ 
       status: 'approved',
@@ -460,7 +469,7 @@ export async function approveSubmission(
   if (updateErr) return { error: updateErr.message }
 
   // Trigger recalculation of standings
-  await recalculateStandings(supabase, submission.tournament_id)
+  await recalculateStandings(adminSupabase, submission.tournament_id)
 
   return { success: true }
 }
@@ -475,7 +484,7 @@ export async function rejectSubmission(
 
   const { data: submission, error: subErr } = await supabase
     .from('submissions')
-    .select('tournament_id, status, tournaments!inner(creator_id)')
+    .select('tournament_id, status, tournaments!inner(creator_id, collaborator_id)')
     .eq('id', submissionId)
     .single()
 
@@ -485,9 +494,17 @@ export async function rejectSubmission(
     ? submission.tournaments[0]?.creator_id 
     : (submission.tournaments as any)?.creator_id
 
-  if (creatorId !== user.id) return { error: 'Sin permisos' }
+  const collaboratorId = Array.isArray(submission.tournaments) 
+    ? submission.tournaments[0]?.collaborator_id 
+    : (submission.tournaments as any)?.collaborator_id
 
-  const { error: updateErr } = await supabase
+  const { checkTournamentAccess } = await import('./tournaments')
+  const hasAccess = await checkTournamentAccess(creatorId, user.id, collaboratorId)
+  if (!hasAccess) return { error: 'Sin permisos' }
+
+  const adminSupabase = await createAdminClient()
+
+  const { error: updateErr } = await adminSupabase
     .from('submissions')
     .update({ 
       status: 'rejected',
@@ -502,7 +519,7 @@ export async function rejectSubmission(
   // Potentially recalculate if it was previously approved, but a rejected submission is usually coming from 'pending' state. 
   // Safety call:
   if (submission.status === 'approved') {
-    await recalculateStandings(supabase, submission.tournament_id)
+    await recalculateStandings(adminSupabase, submission.tournament_id)
   }
 
   return { success: true }

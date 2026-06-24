@@ -25,7 +25,7 @@ function generateSlug(name: string): string {
   return `${base}-${shortId}`
 }
 
-async function checkTournamentAccess(creatorId: string, userId: string, collaboratorId?: string | null): Promise<boolean> {
+export async function checkTournamentAccess(creatorId: string, userId: string, collaboratorId?: string | null): Promise<boolean> {
   if (creatorId === userId || (collaboratorId && collaboratorId === userId)) return true
   
   const supabase = await createClient()
