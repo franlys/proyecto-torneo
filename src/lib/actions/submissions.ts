@@ -789,10 +789,10 @@ export async function updateSubmissionAction(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
-  // Verify tournament creator permission
+  // Verify tournament creator/collaborator permission
   const { data: submission, error: subErr } = await supabase
     .from('submissions')
-    .select('tournament_id, match_id, status, tournaments!inner(creator_id)')
+    .select('tournament_id, match_id, status, tournaments!inner(creator_id, collaborator_id)')
     .eq('id', submissionId)
     .single()
 
@@ -802,7 +802,13 @@ export async function updateSubmissionAction(
     ? submission.tournaments[0]?.creator_id 
     : (submission.tournaments as any)?.creator_id
 
-  if (creatorId !== user.id) return { error: 'Sin permisos' }
+  const collaboratorId = Array.isArray(submission.tournaments) 
+    ? submission.tournaments[0]?.collaborator_id 
+    : (submission.tournaments as any)?.collaborator_id
+
+  const { checkTournamentAccess } = await import('./tournaments')
+  const hasAccess = await checkTournamentAccess(creatorId, user.id, collaboratorId)
+  if (!hasAccess) return { error: 'Sin permisos' }
 
   const adminSupabase = await createAdminClient()
 
