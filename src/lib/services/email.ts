@@ -1,6 +1,6 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
 interface StaffRemovalEmailParams {
   email: string
@@ -23,7 +23,7 @@ export async function sendStaffInviteEmail({
   inviteUrl,
   isNewUser,
 }: StaffInviteEmailParams) {
-  if (!process.env.RESEND_API_KEY) {
+  if (!resend) {
     console.warn('RESEND_API_KEY no configurado. Saltando envío de correo de staff.')
     return { success: false, error: 'RESEND_API_KEY no configurado' }
   }
@@ -100,7 +100,7 @@ export async function sendStaffRemovalEmail({
   streamerName,
   role,
 }: StaffRemovalEmailParams) {
-  if (!process.env.RESEND_API_KEY) {
+  if (!resend) {
     console.warn('RESEND_API_KEY no configurado. Saltando envío de correo de staff.')
     return { success: false, error: 'RESEND_API_KEY no configurado' }
   }
@@ -184,7 +184,7 @@ export async function sendRegistrationRequestEmail({
   teamName,
   portalUrl,
 }: RegistrationRequestEmailParams) {
-  if (!process.env.RESEND_API_KEY) {
+  if (!resend) {
     console.warn('RESEND_API_KEY no configurado.')
     return { success: false }
   }
@@ -237,7 +237,7 @@ export async function sendRegistrationApprovedEmail({
   tournamentName,
   portalUrl,
 }: RegistrationApprovedEmailParams) {
-  if (!process.env.RESEND_API_KEY) return { success: false }
+  if (!resend) return { success: false }
 
   try {
     const { data, error } = await resend.emails.send({
@@ -288,7 +288,7 @@ export async function sendRegistrationConfirmedEmail({
   teamName,
   discordUrl,
 }: RegistrationConfirmedEmailParams) {
-  if (!process.env.RESEND_API_KEY) return { success: false }
+  if (!resend) return { success: false }
 
   try {
     const discordSection = discordUrl
@@ -351,7 +351,7 @@ export async function sendTeammateRegisteredEmail({
   gameLabel,
   portalUrl,
 }: TeammateRegisteredEmailParams) {
-  if (!process.env.RESEND_API_KEY) return { success: false }
+  if (!resend) return { success: false }
 
   try {
     const { data, error } = await resend.emails.send({

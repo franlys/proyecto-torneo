@@ -22,7 +22,7 @@ export async function registerTournament(
     // 1. Obtener detalles del torneo
     const { data: tournament, error: tourneyErr } = await adminSupabase
       .from('tournaments')
-      .select('id, name, slug, mode, status, is_private, registration_password, max_teams, creator_id, created_at, registration_start_date, registration_end_date, entry_fee, discipline')
+      .select('id, name, slug, mode, status, is_private, registration_password, max_teams, creator_id, collaborator_id, created_at, registration_start_date, registration_end_date, entry_fee, discipline')
       .eq('id', tournamentId)
       .single()
 
@@ -114,6 +114,35 @@ export async function registerTournament(
       }
     }
 
+    // 1.8. Validar si el que se registra o algún compañero es staff/creador/colaborador
+    const forbiddenIds = new Set<string>()
+    if (tournament.creator_id) forbiddenIds.add(tournament.creator_id)
+    if (tournament.collaborator_id) forbiddenIds.add(tournament.collaborator_id)
+
+    // Consultar el staff del streamer
+    const { data: staffData } = await adminSupabase
+      .from('streamer_staff')
+      .select('staff_id')
+      .eq('streamer_id', tournament.creator_id)
+
+    if (staffData) {
+      staffData.forEach((s: any) => {
+        if (s.staff_id) forbiddenIds.add(s.staff_id)
+      })
+    }
+
+    const pList = formData.participants.filter(p => p.displayName.trim() !== '')
+
+    if (forbiddenIds.has(user.id)) {
+      return { error: 'El creador del torneo, colaboradores o miembros de su staff no pueden inscribirse como jugadores.' }
+    }
+
+    for (const p of pList) {
+      if (p.userId && forbiddenIds.has(p.userId)) {
+        return { error: `El jugador '${p.displayName}' es organizador o staff de este torneo y no puede participar.` }
+      }
+    }
+
     // 2. Verificar si el usuario ya está registrado en este torneo
     const { data: existingPlayer } = await adminSupabase
       .from('participants')
@@ -127,7 +156,6 @@ export async function registerTournament(
     }
 
     const maxPerTeam = ({ individual: 1, duos: 2, trios: 3, cuartetos: 4, quintas: 5 } as any)[tournament.mode] || 1
-    const pList = formData.participants.filter(p => p.displayName.trim() !== '')
 
     // Verificar si alguno de los compañeros seleccionados ya está inscrito en este torneo
     const userIdsToCheck = pList

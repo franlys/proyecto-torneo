@@ -124,6 +124,8 @@ export function LeaderboardClient({
   streamUrl,
   creatorProfile,
   collaboratorProfile,
+  creatorId,
+  collaboratorId,
   entryFee = 0,
   maxPointsLimit,
   discordUrl,
@@ -147,6 +149,8 @@ export function LeaderboardClient({
     whatsapp_link: string | null
     username: string | null
   } | null
+  creatorId?: string | null
+  collaboratorId?: string | null
   entryFee?: number
   status: string
   initialStandings: any[]
@@ -193,6 +197,7 @@ export function LeaderboardClient({
 
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [isUserRegistered, setIsUserRegistered] = useState(false)
+  const [isForbiddenUser, setIsForbiddenUser] = useState(false)
   const [userTeam, setUserTeam] = useState<any>(null)
   const [isRegistering, setIsRegistering] = useState(false)
   const [regTeamName, setRegTeamName] = useState('')
@@ -260,7 +265,23 @@ export function LeaderboardClient({
     try {
       const friendsRes = await getFriendsList()
       if (friendsRes && 'data' in friendsRes) {
-        setUserFriends(friendsRes.data || [])
+        // Consultar los IDs del staff del creador del torneo
+        const { data: staffData } = await supabase
+          .from('streamer_staff')
+          .select('staff_id')
+          .eq('streamer_id', creatorId)
+
+        const staffIds = new Set<string>()
+        if (creatorId) staffIds.add(creatorId)
+        if (collaboratorId) staffIds.add(collaboratorId)
+        if (staffData) {
+          staffData.forEach((s: any) => {
+            if (s.staff_id) staffIds.add(s.staff_id)
+          })
+        }
+
+        const filteredFriends = (friendsRes.data || []).filter((f: any) => !staffIds.has(f.id))
+        setUserFriends(filteredFriends)
       }
     } catch (err) {
       console.error('Error fetching friends:', err)
@@ -380,6 +401,24 @@ export function LeaderboardClient({
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         setCurrentUser(user)
+
+        // Check if user is staff/creator/collaborator
+        const isCreatorOrCollab = user.id === creatorId || user.id === collaboratorId
+        if (isCreatorOrCollab) {
+          setIsForbiddenUser(true)
+        } else {
+          const { data: staffRel } = await supabase
+            .from('streamer_staff')
+            .select('id')
+            .eq('streamer_id', creatorId)
+            .eq('staff_id', user.id)
+            .maybeSingle()
+          
+          if (staffRel) {
+            setIsForbiddenUser(true)
+          }
+        }
+
         // Check if user is registered in this tournament
         const { data: registration } = await supabase
           .from('participants')
@@ -406,7 +445,8 @@ export function LeaderboardClient({
       }
     }
     fetchUser()
-  }, [supabase, tournamentId])
+  }, [supabase, tournamentId, creatorId, collaboratorId])
+
 
   const primaryColor = currentTheme?.primary_color || currentTheme?.primaryColor || '#00F5FF'
   const backgroundValue = currentTheme?.background_value
@@ -1673,12 +1713,18 @@ export function LeaderboardClient({
                       🚫 Cupos Llenos
                     </span>
                   ) : currentUser ? (
-                    <button
-                      onClick={handleOpenRegistration}
-                      className="w-full md:w-auto px-6 py-3 bg-neon-cyan hover:bg-neon-cyan/90 active:scale-95 text-black font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(0,245,255,0.2)] hover:shadow-[0_0_35px_rgba(0,245,255,0.35)]"
-                    >
-                      Inscribirse Ahora
-                    </button>
+                    isForbiddenUser ? (
+                      <span className="inline-block w-full md:w-auto text-center text-xs font-bold bg-yellow-500/10 text-yellow-500 px-5 py-3 rounded-xl border border-yellow-500/20 uppercase tracking-wider font-mono">
+                        🚫 Staff / Organizador
+                      </span>
+                    ) : (
+                      <button
+                        onClick={handleOpenRegistration}
+                        className="w-full md:w-auto px-6 py-3 bg-neon-cyan hover:bg-neon-cyan/90 active:scale-95 text-black font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(0,245,255,0.2)] hover:shadow-[0_0_35px_rgba(0,245,255,0.35)]"
+                      >
+                        Inscribirse Ahora
+                      </button>
+                    )
                   ) : (
                     <Link
                       href={`/login?redirectTo=/t/${slug}`}

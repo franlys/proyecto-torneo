@@ -240,6 +240,8 @@ export default async function PublicLeaderboardPage({
         format={tournament.format}
         creatorProfile={creatorProfile}
         collaboratorProfile={collaboratorProfile}
+        creatorId={tournament.creator_id}
+        collaboratorId={tournament.collaborator_id}
         entryFee={Number(tournament.entry_fee || 0)}
         status={tournament.status}
         mode={tournament.mode}
