@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import type { Team, Participant, TournamentMode } from '@/types'
 import { createTeam, addParticipant, deleteTeam, deleteParticipant, updateTeam, updateParticipant, uploadAvatar, findUserByShortId } from '@/lib/actions/participants'
 import { toast } from 'sonner'
@@ -25,6 +25,15 @@ export function ParticipantsManager({
 }) {
   const [teams, setTeams] = useState(initialTeams)
   const [participants, setParticipants] = useState(initialParticipants)
+
+  useEffect(() => {
+    setTeams(initialTeams)
+  }, [initialTeams])
+
+  useEffect(() => {
+    setParticipants(initialParticipants)
+  }, [initialParticipants])
+
   const [isAdding, setIsAdding] = useState(false)
   const [collapsedTeams, setCollapsedTeams] = useState<Set<string>>(new Set())
   
