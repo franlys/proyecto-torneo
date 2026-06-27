@@ -100,7 +100,7 @@ export function LiveWheel({
         ctx.lineWidth = 1
         ctx.stroke()
 
-        // Dibujar números de boletos
+        // Dibujar símbolos neutros
         ctx.save()
         ctx.shadowBlur = 0
         ctx.shadowColor = 'transparent'
@@ -111,8 +111,8 @@ export function LiveWheel({
         )
         ctx.rotate(angle + arc / 2 + Math.PI / 2)
         
-        ctx.font = '900 11px Outfit, system-ui, sans-serif'
-        const label = `${list[i].ticketNumber}`
+        ctx.font = '16px Outfit, system-ui, sans-serif'
+        const label = i % 2 === 0 ? '👑' : '🍀'
         ctx.fillText(label, -ctx.measureText(label).width / 2, 0)
         ctx.restore()
       }
