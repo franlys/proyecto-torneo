@@ -116,6 +116,7 @@ import { PublishTournamentButton } from './PublishTournamentButton'
 import { TournamentBranding } from './TournamentBranding'
 import { VisibilityToggle } from './VisibilityToggle'
 import { AddMatchButton } from './AddMatchButton'
+import { AnnounceToCommunityButton } from './AnnounceToCommunityButton'
 
 
 // ─── Export & Reports Component (Client Wrap) ──────────────────────────────────
@@ -387,6 +388,17 @@ export default async function TournamentOverviewPage({
             Podrás seguir editando participantes hasta activarlo.
           </p>
           <PublishTournamentButton id={id} />
+        </div>
+      )}
+
+      {/* Announce to community via email button */}
+      {(tournament.status === 'draft' || tournament.status === 'pending') && (
+        <div className="bg-dark-card border border-neon-cyan/10 rounded-2xl p-6 mb-8">
+          <h2 className="text-sm font-semibold text-white mb-1">📣 Anunciar torneo a la comunidad</h2>
+          <p className="text-xs text-white/30 mb-4">
+            Envía un correo de invitación a todos los usuarios de la plataforma anunciando que el torneo está listo para inscripciones.
+          </p>
+          <AnnounceToCommunityButton id={id} />
         </div>
       )}
 

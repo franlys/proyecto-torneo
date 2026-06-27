@@ -1,7 +1,6 @@
 'use server'
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { isAdmin } from './auth-helpers'
 import { pushToAC } from './ac-push'
 import { revalidatePath } from 'next/cache'
 
@@ -17,15 +16,14 @@ export async function banTeamForAbandonment(
     // Fetch tournament to verify creator/collaborator
     const { data: tournament, error: tourneyErr } = await supabase
       .from('tournaments')
-      .select('id, creator_id, collaborator_id, slug')
+      .select('id, name, creator_id, collaborator_id, slug')
       .eq('id', tournamentId)
       .single()
 
     if (tourneyErr || !tournament) return { error: 'Torneo no encontrado' }
 
-    const admin = await isAdmin()
     const { checkTournamentAccess } = await import('./tournaments')
-    const hasAccess = admin || await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id)
+    const hasAccess = await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id)
     if (!hasAccess) {
       return { error: 'Sin permisos para banear en este torneo' }
     }
@@ -43,6 +41,63 @@ export async function banTeamForAbandonment(
     }
 
     const adminSupabase = await createAdminClient()
+
+    // Fetch team name and captain details for notification email before they are deleted
+    const { data: teamData } = await adminSupabase
+      .from('teams')
+      .select('name')
+      .eq('id', teamId)
+      .single()
+
+    const { data: captainPart } = await adminSupabase
+      .from('participants')
+      .select('display_name, user_id')
+      .eq('team_id', teamId)
+      .eq('is_captain', true)
+      .maybeSingle()
+
+    let captainEmail = null
+    if (captainPart?.user_id) {
+      const { data: capProfile } = await adminSupabase
+        .from('profiles')
+        .select('email')
+        .eq('id', captainPart.user_id)
+        .maybeSingle()
+      captainEmail = capProfile?.email
+    }
+
+    // Send email notification if captain is found
+    if (captainEmail && teamData) {
+      try {
+        const { data: creatorProfile } = await adminSupabase
+          .from('profiles')
+          .select('username, email, whatsapp_link, discord_link, role')
+          .eq('id', tournament.creator_id)
+          .single()
+
+        if (creatorProfile) {
+          const { sendTeamRemovedEmail } = await import('@/lib/services/email')
+          const isKronixOfficial = creatorProfile.role === 'SUPER_ADMIN' || creatorProfile.role === 'ADMIN'
+          const isCollaboration = !isKronixOfficial && !!tournament.collaborator_id
+
+          await sendTeamRemovedEmail({
+            email: captainEmail,
+            captainName: captainPart?.display_name || 'Capitán',
+            teamName: teamData.name,
+            tournamentName: tournament.name,
+            reason: 'Abandono de torneo sin previo aviso (Baneo del creador aplicado)',
+            creatorName: creatorProfile.username || 'Organizador',
+            creatorEmail: creatorProfile.email || '',
+            whatsappLink: creatorProfile.whatsapp_link,
+            discordLink: creatorProfile.discord_link,
+            isKronixOfficial,
+            isCollaboration,
+          })
+        }
+      } catch (emailErr) {
+        console.error('Error al enviar correo de abandono:', emailErr)
+      }
+    }
 
     // Create bans
     const bans = teamParticipants.map((p: any) => ({

@@ -41,7 +41,39 @@ export async function checkTournamentAccess(creatorId: string, userId: string, c
     profile?.role === 'KRONIX_STAFF' ||
     profile?.role === 'FEDERATION'
   ) {
-    return true
+    // Si es admin del sistema, permitimos acceso total solo si el torneo es oficial de Kronix
+    // (el creador tiene un rol de staff/admin) o es una colaboración (el colaborador tiene rol de staff/admin).
+    const { data: creatorProfile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', creatorId)
+      .single()
+
+    if (
+      creatorProfile?.role === 'SUPER_ADMIN' ||
+      creatorProfile?.role === 'ADMIN' ||
+      creatorProfile?.role === 'KRONIX_STAFF'
+    ) {
+      return true
+    }
+
+    if (collaboratorId) {
+      const { data: collabProfile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', collaboratorId)
+        .single()
+
+      if (
+        collabProfile?.role === 'SUPER_ADMIN' ||
+        collabProfile?.role === 'ADMIN' ||
+        collabProfile?.role === 'KRONIX_STAFF'
+      ) {
+        return true
+      }
+    }
+
+    return false
   }
 
   const { data: staff } = await supabase
@@ -996,7 +1028,7 @@ export async function getTournament(
 
   if (tErr || !tournament) return { error: 'Torneo no encontrado' }
 
-  if (!admin && !(await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id))) {
+  if (!(await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id))) {
     return { error: 'Torneo no encontrado' }
   }
 
@@ -1028,22 +1060,13 @@ export async function deleteTournament(
   // Verify ownership before deleting
   const { data: tournament, error: fetchErr } = await supabase
     .from('tournaments')
-    .select('creator_id, name, status')
+    .select('creator_id, collaborator_id, name, status')
     .eq('id', id)
     .single()
 
   if (fetchErr || !tournament) return { error: 'Torneo no encontrado' }
 
-  // Check if user is an ADMIN to allow deletion of other users' tournaments
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  const isUserAdmin = profile?.role === 'ADMIN' || profile?.role === 'SUPER_ADMIN'
-
-  if (tournament.creator_id !== user.id && !isUserAdmin) {
+  if (!(await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id))) {
     return { error: 'Sin permisos para eliminar este torneo' }
   }
 
@@ -1259,5 +1282,70 @@ export async function addDynamicMatch(
   revalidatePath('/torneos')
   return { success: true }
 }
+
+export async function announceTournamentToAllUsersAction(
+  tournamentId: string
+): Promise<{ success: boolean } | { error: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  // 1. Fetch tournament
+  const { data: tournament, error: fetchErr } = await supabase
+    .from('tournaments')
+    .select('id, name, slug, creator_id, collaborator_id')
+    .eq('id', tournamentId)
+    .single()
+
+  if (fetchErr || !tournament) return { error: 'Torneo no encontrado' }
+
+  // 2. Check access using checkTournamentAccess
+  const hasAccess = await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id)
+  if (!hasAccess) {
+    return { error: 'Sin permisos para anunciar este torneo' }
+  }
+
+  // 3. Fetch organizer profile name
+  const adminSupabase = await createAdminClient()
+  const { data: creatorProfile } = await adminSupabase
+    .from('profiles')
+    .select('username')
+    .eq('id', tournament.creator_id)
+    .single()
+
+  const creatorName = creatorProfile?.username || 'Organizador'
+
+  // 4. Fetch all player profiles that have an email
+  const { data: profiles, error: profilesErr } = await adminSupabase
+    .from('profiles')
+    .select('email')
+    .not('email', 'is', null)
+
+  if (profilesErr) return { error: profilesErr.message }
+
+  const emails = profiles
+    ?.map((p: any) => p.email?.trim())
+    .filter((email: any) => email && email.includes('@')) || []
+
+  if (emails.length === 0) {
+    return { error: 'No hay usuarios con correo registrado en la plataforma.' }
+  }
+
+  // 5. Send emails
+  const { sendTournamentAnnouncementEmail } = await import('@/lib/services/email')
+  const emailRes = await sendTournamentAnnouncementEmail({
+    emails,
+    tournamentName: tournament.name,
+    creatorName,
+    slug: tournament.slug,
+  })
+
+  if (!emailRes.success) {
+    return { error: emailRes.error || 'Error al enviar los correos.' }
+  }
+
+  return { success: true }
+}
+
 
 

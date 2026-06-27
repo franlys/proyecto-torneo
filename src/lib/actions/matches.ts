@@ -52,13 +52,10 @@ export async function updateMatch(
     .eq('id', tournamentId)
     .single()
 
-  const { isAdmin } = await import('./auth-helpers')
-  const admin = await isAdmin()
-
   if (!tournament) return { error: 'Torneo no encontrado' }
 
   const { checkTournamentAccess } = await import('./tournaments')
-  const hasAccess = admin || await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id)
+  const hasAccess = await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id)
   if (!hasAccess) {
     return { error: 'Sin permisos' }
   }
@@ -128,13 +125,10 @@ export async function createMatch(
     .eq('id', tournamentId)
     .single()
 
-  const { isAdmin } = await import('./auth-helpers')
-  const admin = await isAdmin()
-
   if (!tournament) return { error: 'Torneo no encontrado' }
 
   const { checkTournamentAccess } = await import('./tournaments')
-  const hasAccess = admin || await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id)
+  const hasAccess = await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id)
   if (!hasAccess) {
     return { error: 'Sin permisos' }
   }

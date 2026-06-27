@@ -1,7 +1,6 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { isAdmin } from './auth-helpers'
 import { revalidatePath } from 'next/cache'
 
 export async function updateTheme(
@@ -20,8 +19,6 @@ export async function updateTheme(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
-  const admin = await isAdmin()
-
   // Auth verification
   const { data: tournament } = await supabase
     .from('tournaments')
@@ -32,7 +29,7 @@ export async function updateTheme(
   if (!tournament) return { error: 'Torneo no encontrado' }
 
   const { checkTournamentAccess } = await import('./tournaments')
-  const hasAccess = admin || await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id)
+  const hasAccess = await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id)
   if (!hasAccess) {
     return { error: 'Sin permisos' }
   }

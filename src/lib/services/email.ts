@@ -519,4 +519,76 @@ export async function sendTeamRemovedEmail({
   }
 }
 
+interface TournamentAnnouncementEmailParams {
+  emails: string[]
+  tournamentName: string
+  creatorName: string
+  slug: string
+}
+
+export async function sendTournamentAnnouncementEmail({
+  emails,
+  tournamentName,
+  creatorName,
+  slug,
+}: TournamentAnnouncementEmailParams) {
+  if (!resend) {
+    console.warn('RESEND_API_KEY no configurado. Saltando envío de anuncio.')
+    return { success: false, error: 'RESEND_API_KEY no configurado' }
+  }
+
+  try {
+    const portalUrl = `https://www.kronix.do/t/${slug}`
+    
+    // Enviar en lotes de 50 para evitar límites de destinatarios por envío
+    const batchSize = 50
+    for (let i = 0; i < emails.length; i += batchSize) {
+      const batch = emails.slice(i, i + batchSize)
+      const { error } = await resend.emails.send({
+        from: 'Kronix E-sports <no-reply@kronix.do>',
+        to: ['no-reply@kronix.do'],
+        bcc: batch,
+        subject: `📣 ¡Nuevo Torneo Anunciado: ${tournamentName}!`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0c0c12; color: #ffffff; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
+            <div style="text-align: center; margin-bottom: 24px;">
+              <img src="https://www.kronix.do/logo.png" alt="KRONIX Logo" style="width: 50px; height: auto; margin-bottom: 12px; display: inline-block;" />
+              <h1 style="font-size: 24px; font-weight: 900; letter-spacing: 0.2em; color: #00f5ff; margin: 0; text-transform: uppercase;">KRONIX</h1>
+            </div>
+            
+            <h2 style="color: #ffffff; font-size: 20px; margin-top: 0; text-align: center; font-weight: 800;">📣 ¡NUEVO TORNEO ANUNCIADO!</h2>
+            <p style="color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.6; text-align: center;">
+              El organizador <strong>${creatorName}</strong> ha anunciado el torneo <strong>${tournamentName}</strong> en la plataforma Kronix.
+            </p>
+            <p style="color: rgba(255,255,255,0.6); font-size: 14px; line-height: 1.6; text-align: center; margin-bottom: 28px;">
+              Las inscripciones ya están abiertas. Haz clic en el siguiente botón para ver todos los detalles, reglas y registrar tu equipo:
+            </p>
+            
+            <div style="text-align: center; margin: 32px 0;">
+              <a href="${portalUrl}" style="background: linear-gradient(90deg, #00f5ff 0%, #b026ff 100%); color: #ffffff; text-decoration: none; padding: 12px 36px; border-radius: 8px; font-size: 14px; font-weight: bold; display: inline-block; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 4px 15px rgba(0, 245, 255, 0.2);">
+                VER DETALLES E INSCRIBIRSE
+              </a>
+            </div>
+            
+            <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 24px 0;" />
+            <p style="color: rgba(255,255,255,0.4); font-size: 11px; text-align: center; line-height: 1.6;">
+              Recibes esta notificación porque tienes una cuenta registrada en Kronix E-sports. Si no deseas recibir estos correos, puedes desvincular tu cuenta o cambiar tu configuración en tu perfil.
+            </p>
+          </div>
+        `,
+      })
+
+      if (error) {
+        console.error('Error al enviar lote de correos de anuncio:', error)
+      }
+    }
+
+    return { success: true }
+  } catch (err: any) {
+    console.error('Error inesperado al enviar correos de anuncio:', err)
+    return { success: false, error: err?.message || String(err) }
+  }
+}
+
+
 
