@@ -81,6 +81,13 @@ export default async function ProfilePage({
     .limit(1)
   const isStaff = (staffData && staffData.length > 0) || false
 
+  // 7. Fetch user's raffle tickets
+  const { data: tickets } = await supabase
+    .from('tickets')
+    .select('*, raffle:raffles(title, prize_image, status, winner_name)')
+    .eq('buyer_id', user.id)
+    .order('created_at', { ascending: false })
+
   const defaultTab = searchParams?.tab === 'ajustes' ? 'profile' : 'inicio'
 
   return (
@@ -100,6 +107,7 @@ export default async function ProfilePage({
         gameAccounts={gameAccounts || []}
         isStaff={isStaff}
         defaultTab={defaultTab}
+        tickets={tickets || []}
       />
     </div>
   )

@@ -1,22 +1,30 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Ticket, Calendar, Clock, CheckCircle2, AlertTriangle, ArrowLeft, Trophy } from 'lucide-react'
+import { createClient } from '@/lib/supabase/server'
+import { getProfile } from '@/lib/actions/auth-helpers'
+import { Navbar } from '@/components/navigation/Navbar'
 import { getMyTickets } from '@/lib/actions/raffles'
 
 export const dynamic = 'force-dynamic'
 
 export default async function MyTicketsPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+  const profile = await getProfile()
+
   const res = await getMyTickets()
 
   if ('error' in res) {
-    if (res.error === 'No autenticado') {
-      redirect('/login')
-    }
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center p-4">
-        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-center max-w-md">
-          <p className="text-red-400 font-medium">Error al cargar tus boletos</p>
-          <p className="text-xs text-white/40 mt-1">{res.error}</p>
+      <div className="min-h-screen bg-[#0a0a0b] text-white pt-28">
+        <Navbar user={user} profile={profile} />
+        <div className="flex flex-col items-center justify-center p-4 min-h-[50vh]">
+          <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-center max-w-md">
+            <p className="text-red-400 font-medium">Error al cargar tus boletos</p>
+            <p className="text-xs text-white/40 mt-1">{res.error}</p>
+          </div>
         </div>
       </div>
     )
@@ -25,7 +33,16 @@ export default async function MyTicketsPage() {
   const tickets = res.data || []
 
   return (
-    <div className="p-4 sm:p-8 max-w-4xl mx-auto space-y-8">
+    <div className="min-h-screen bg-[#0a0a0b] text-white pt-28 pb-12">
+      <Navbar user={user} profile={profile} />
+      
+      {/* Decorative gradients */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-[10%] left-[-10%] w-[40%] h-[40%] bg-neon-cyan/5 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[10%] right-[-10%] w-[40%] h-[40%] bg-neon-purple/5 blur-[120px] rounded-full" />
+      </div>
+
+      <div className="p-4 sm:p-8 max-w-4xl mx-auto space-y-8 relative z-10">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/5 pb-6">
         <div className="space-y-1.5">
@@ -137,5 +154,6 @@ export default async function MyTicketsPage() {
         </div>
       )}
     </div>
+  </div>
   )
 }

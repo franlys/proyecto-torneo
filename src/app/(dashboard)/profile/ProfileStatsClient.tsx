@@ -18,6 +18,7 @@ interface ProfileStatsClientProps {
   gameAccounts?: any[]
   isStaff?: boolean
   defaultTab?: 'inicio' | 'profile' | 'history' | 'badges' | 'stats' | 'friends'
+  tickets?: any[]
 }
 
 const GAME_NAMES: Record<string, string> = {
@@ -76,6 +77,7 @@ export function ProfileStatsClient({
   pointsHistory,
   gameAccounts = [],
   isStaff = false,
+  tickets = [],
 }: ProfileStatsClientProps) {
   const [activeTab, setActiveTab] = useState<'inicio' | 'profile' | 'history' | 'badges' | 'stats' | 'friends'>('inicio')
   const [username, setUsername] = useState(profile?.username ?? '')
@@ -537,6 +539,81 @@ export function ProfileStatsClient({
                     </div>
                   )
                 })()}
+              </div>
+
+              {/* Sorteos Participando widget */}
+              <div className="bg-[#0d0d0f] border border-white/5 rounded-2xl p-6">
+                <h3 className="text-white font-orbitron font-bold text-sm uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <span>🎟️</span> Sorteos Participando
+                </h3>
+                
+                {tickets.length === 0 ? (
+                  <div className="text-center py-8 border border-dashed border-white/5 rounded-2xl bg-white/[0.005]">
+                    <p className="text-white/30 text-xs mb-3">No has adquirido boletos en ningún sorteo activo actualmente.</p>
+                    <a 
+                      href="/raffles"
+                      className="inline-block px-4 py-2 bg-neon-cyan/10 border border-neon-cyan/20 hover:bg-neon-cyan/20 text-neon-cyan text-[10px] font-black uppercase tracking-wider rounded-xl transition-all"
+                    >
+                      Explorar Sorteos
+                    </a>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {(() => {
+                      const rafflesMap: Record<string, { title: string; prize_image: string; count: number; status: string; id: string }> = {}
+                      tickets.forEach(t => {
+                        const r = t.raffle
+                        if (r) {
+                          if (!rafflesMap[t.raffle_id]) {
+                            rafflesMap[t.raffle_id] = {
+                              id: t.raffle_id,
+                              title: r.title,
+                              prize_image: r.prize_image,
+                              count: 0,
+                              status: r.status
+                            }
+                          }
+                          rafflesMap[t.raffle_id].count++
+                        }
+                      })
+                      const raffleParticipations = Object.values(rafflesMap)
+
+                      return raffleParticipations.map(rp => (
+                        <div key={rp.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl bg-white/[0.01] border border-white/5 hover:border-white/10 transition-all gap-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-black/40 border border-white/10 overflow-hidden shrink-0">
+                              {rp.prize_image ? (
+                                <img src={rp.prize_image} alt={rp.title} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-xs">🎟️</div>
+                              )}
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-bold text-white font-orbitron line-clamp-1">{rp.title}</h4>
+                              <p className="text-[10px] text-white/40 mt-0.5">
+                                Tienes <strong className="text-neon-cyan">{rp.count}</strong> boletos
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-col items-start sm:items-end gap-1">
+                            <span className={`px-2 py-0.5 rounded text-[8px] font-orbitron font-bold uppercase tracking-wider ${
+                              rp.status === 'finished' ? 'bg-white/10 text-white/50 border border-white/5' : 'bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30'
+                            }`}>
+                              {rp.status === 'finished' ? 'Finalizado' : 'Activo'}
+                            </span>
+                            <a 
+                              href={rp.status === 'finished' ? `/raffles` : `/raffles/${rp.id}`}
+                              className="px-3 py-1 bg-white/5 hover:bg-white/10 text-[9px] font-black uppercase tracking-wider text-white border border-white/10 rounded-lg transition-all"
+                            >
+                              Ver Sorteo
+                            </a>
+                          </div>
+                        </div>
+                      ))
+                    })()}
+                  </div>
+                )}
               </div>
 
               {/* Top Skills / Discipline Rankings widget */}
