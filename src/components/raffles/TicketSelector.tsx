@@ -93,6 +93,21 @@ export function TicketSelector({
             {currency} {(selectedCount * ticketPrice).toLocaleString('es-ES', { minimumFractionDigits: 2 })}
           </span>
         </div>
+
+        {/* Probability Gamification Indicator */}
+        <div className="w-full mt-4 p-4 rounded-xl bg-white/[0.01] border border-white/5 text-center flex flex-col items-center gap-1.5">
+          <span className="text-[9px] uppercase font-bold tracking-widest text-white/30">Nivel de Participación</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-extrabold uppercase px-3 py-1 rounded bg-neon-cyan/10 border border-neon-cyan/20 text-neon-cyan font-orbitron">
+              {selectedCount === 1 ? '🍀 Básico' : selectedCount < 5 ? '⚡ Bronce' : selectedCount < 10 ? '🔥 Épico' : '👑 Leyenda'}
+            </span>
+          </div>
+          <p className="text-[10px] text-white/40 leading-relaxed max-w-[260px] mx-auto mt-1">
+            {selectedCount === 1 
+              ? '¡Adquiere más boletos para subir de nivel y multiplicar tus posibilidades de ganar!' 
+              : `¡Excelente! Tienes ${selectedCount} participaciones únicas aseguradas en la ruleta.`}
+          </p>
+        </div>
       </div>
     </div>
   )
