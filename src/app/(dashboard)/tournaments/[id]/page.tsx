@@ -133,7 +133,30 @@ export default async function TournamentOverviewPage({
   const { id } = await params
   const result = await getTournament(id)
 
-  if ('error' in result) notFound()
+  if ('error' in result) {
+    if (result.error === 'access_denied') {
+      return (
+        <div className="p-8 max-w-md mx-auto flex flex-col items-center justify-center min-h-[50vh] text-center space-y-6">
+          <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-center text-red-500 mb-2">
+            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <h1 className="text-xl font-orbitron font-black text-white uppercase tracking-tight">Acceso Denegado</h1>
+          <p className="text-xs text-white/50 leading-relaxed max-w-xs">
+            {result.message}
+          </p>
+          <Link
+            href="/tournaments"
+            className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white transition-all uppercase tracking-wider font-orbitron"
+          >
+            Volver a Torneos
+          </Link>
+        </div>
+      )
+    }
+    notFound()
+  }
 
   const { scoringRule, ...tournament } = result.data
 

@@ -1011,7 +1011,7 @@ export async function getTournaments(): Promise<
 
 export async function getTournament(
   id: string
-): Promise<{ data: Tournament & { scoringRule?: ScoringRule } } | { error: string }> {
+): Promise<{ data: Tournament & { scoringRule?: ScoringRule } } | { error: string; message?: string }> {
   const supabase = await createClient()
   const {
     data: { user },
@@ -1029,7 +1029,16 @@ export async function getTournament(
   if (tErr || !tournament) return { error: 'Torneo no encontrado' }
 
   if (!(await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id))) {
-    return { error: 'Torneo no encontrado' }
+    const { data: creatorProfile } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', tournament.creator_id)
+      .single()
+    const ownerName = creatorProfile?.username || 'otro streamer'
+    return {
+      error: 'access_denied',
+      message: `No tienes acceso a este torneo porque pertenece a ${ownerName}`,
+    }
   }
 
   const { data: rule } = await supabase
