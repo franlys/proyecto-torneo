@@ -392,7 +392,13 @@ export function RankingsClient({ communityRankings, nationalRankings }: Rankings
                                   <CartesianGrid strokeDasharray="3 3" stroke="#ffffff03" />
                                   <XAxis dataKey="name" stroke="#ffffff20" style={{ fontSize: '9px' }} />
                                   <YAxis stroke="#ffffff20" style={{ fontSize: '9px' }} />
-                                  <Tooltip contentStyle={{ backgroundColor: '#0d0d0f', border: 'none' }} />
+                                  <Tooltip 
+                                    contentStyle={{ backgroundColor: '#0d0d0f', border: 'none' }} 
+                                    formatter={(value: any, name: any) => [
+                                      typeof value === 'number' ? Math.round(value * 100) / 100 : value,
+                                      String(name)
+                                    ]}
+                                  />
                                   <Line type="monotone" dataKey="puntos" stroke="#00F5FF" strokeWidth={2.5} dot={{ fill: '#00F5FF', r: 3 }} />
                                 </LineChart>
                               </ResponsiveContainer>
@@ -410,7 +416,13 @@ export function RankingsClient({ communityRankings, nationalRankings }: Rankings
                                   <CartesianGrid strokeDasharray="3 3" stroke="#ffffff03" />
                                   <XAxis dataKey="name" stroke="#ffffff20" style={{ fontSize: '9px' }} />
                                   <YAxis stroke="#ffffff20" style={{ fontSize: '9px' }} />
-                                  <Tooltip contentStyle={{ backgroundColor: '#0d0d0f', border: 'none' }} />
+                                  <Tooltip 
+                                    contentStyle={{ backgroundColor: '#0d0d0f', border: 'none' }} 
+                                    formatter={(value: any, name: any) => [
+                                      typeof value === 'number' ? Math.round(value * 100) / 100 : value,
+                                      String(name)
+                                    ]}
+                                  />
                                   <Bar dataKey="cantidad" fill="#a855f7" radius={[4, 4, 0, 0]}>
                                     {placementChartData.map((entry: any, index: number) => (
                                       <Cell

@@ -384,6 +384,10 @@ export function RankingList({ initialPlayers }: RankingListProps) {
                                   contentStyle={{ backgroundColor: '#0e0e13', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '12px' }}
                                   labelStyle={{ color: 'rgba(255,255,255,0.6)', fontWeight: 'bold', fontSize: 11 }}
                                   itemStyle={{ color: '#00f5ff', fontSize: 12 }}
+                                  formatter={(value: any, name: any) => [
+                                    typeof value === 'number' ? Math.round(value * 100) / 100 : value,
+                                    String(name)
+                                  ]}
                                 />
                                 <Line
                                   type="monotone"

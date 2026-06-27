@@ -1266,6 +1266,10 @@ export function ProfileStatsClient({
                       <Tooltip
                         contentStyle={{ backgroundColor: '#0d0d0f', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px' }}
                         labelStyle={{ color: 'rgba(255,255,255,0.4)', fontSize: '10px', textTransform: 'uppercase' }}
+                        formatter={(value: any, name: any) => [
+                          typeof value === 'number' ? Math.round(value * 100) / 100 : value,
+                          String(name)
+                        ]}
                       />
                       <Line type="monotone" dataKey="puntos" stroke="#00F5FF" strokeWidth={3} dot={{ fill: '#00F5FF', r: 4 }} />
                     </LineChart>
@@ -1292,6 +1296,10 @@ export function ProfileStatsClient({
                       <YAxis stroke="#ffffff30" style={{ fontSize: '10px' }} />
                       <Tooltip
                         contentStyle={{ backgroundColor: '#0d0d0f', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px' }}
+                        formatter={(value: any, name: any) => [
+                          typeof value === 'number' ? Math.round(value * 100) / 100 : value,
+                          String(name)
+                        ]}
                       />
                       <Bar dataKey="cantidad" fill="#a855f7" radius={[6, 6, 0, 0]}>
                         {placementChartData.map((entry, index) => (
