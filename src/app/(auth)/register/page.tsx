@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { signUp } from '@/lib/actions/auth'
 import { z } from 'zod'
 import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 
 const registerSchema = z
   .object({
@@ -34,6 +35,8 @@ function SubmitButton() {
 }
 
 export default function RegisterPage() {
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get('redirectTo')
   const [state, action] = useFormState(signUp, null)
   const [clientError, setClientError] = useState<string | null>(null)
 
@@ -79,7 +82,7 @@ export default function RegisterPage() {
           </div>
 
           <Link
-            href="/login"
+            href={redirectTo ? `/login?redirectTo=${encodeURIComponent(redirectTo)}` : '/login'}
             className="inline-block mt-4 text-neon-cyan text-sm hover:underline font-orbitron font-semibold uppercase tracking-wider"
           >
             Volver al login
@@ -176,7 +179,10 @@ export default function RegisterPage() {
 
         <p className="text-center text-white/40 text-sm mt-6">
           ¿Ya tienes cuenta?{' '}
-          <Link href="/login" className="text-neon-cyan hover:underline">
+          <Link
+            href={redirectTo ? `/login?redirectTo=${encodeURIComponent(redirectTo)}` : '/login'}
+            className="text-neon-cyan hover:underline"
+          >
             Inicia sesión
           </Link>
         </p>

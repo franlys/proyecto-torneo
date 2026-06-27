@@ -3,6 +3,7 @@ import { useFormState, useFormStatus } from 'react-dom'
 import Link from 'next/link'
 import { signIn, resendVerificationEmail } from '@/lib/actions/auth'
 import { useState, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -18,6 +19,8 @@ function SubmitButton() {
 }
 
 export default function LoginPage() {
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get('redirectTo')
   const [state, action] = useFormState(signIn, null)
   const [resendMsg, setResendMsg] = useState<string | null>(null)
   const [resending, setResending] = useState(false)
@@ -93,6 +96,7 @@ export default function LoginPage() {
           <h2 className="text-white font-semibold text-xl mb-6">Iniciar sesión</h2>
 
           <form action={action} className="space-y-4">
+            <input type="hidden" name="redirectTo" value={redirectTo || ''} />
             <div>
               <label htmlFor="email" className="block text-sm text-white/60 mb-1.5">
                 Email
@@ -139,7 +143,10 @@ export default function LoginPage() {
 
           <p className="text-center text-white/40 text-sm mt-6">
             ¿No tienes cuenta?{' '}
-            <Link href="/register" className="text-neon-cyan hover:underline">
+            <Link
+              href={redirectTo ? `/register?redirectTo=${encodeURIComponent(redirectTo)}` : '/register'}
+              className="text-neon-cyan hover:underline"
+            >
               Regístrate
             </Link>
           </p>

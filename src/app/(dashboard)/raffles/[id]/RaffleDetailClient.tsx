@@ -313,7 +313,7 @@ export function RaffleDetailClient({
               {/* Submit CTA */}
               {!isLoggedIn ? (
                 <Link
-                  href="/login"
+                  href={`/login?redirectTo=/raffles/${raffle.id}`}
                   className="flex items-center justify-center w-full py-3 rounded-xl text-xs font-bold text-white bg-white/5 hover:bg-white/10 border border-white/10 uppercase tracking-widest transition-all"
                 >
                   Inicia sesión para comprar

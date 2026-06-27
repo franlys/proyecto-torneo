@@ -1,11 +1,15 @@
 import Link from 'next/link'
 import { Trophy, Calendar, Ticket, ArrowRight } from 'lucide-react'
 import { getRaffles } from '@/lib/actions/raffles'
+import { getAllAds } from '@/lib/actions/ads'
+import { AdPlacement } from '@/components/federation/AdPlacement'
 
 export const dynamic = 'force-dynamic'
 
 export default async function RafflesCatalogPage() {
   const res = await getRaffles()
+  const adsRes = await getAllAds()
+  const ads = 'data' in adsRes && adsRes.data ? adsRes.data : []
   
   if ('error' in res) {
     return (
@@ -45,6 +49,9 @@ export default async function RafflesCatalogPage() {
           </Link>
         </div>
       </div>
+
+      {/* Advertising Banner slot */}
+      <AdPlacement banners={ads} slotName="raffles_header_banner" />
 
       {/* Active Raffles Grid */}
       <div className="space-y-6">

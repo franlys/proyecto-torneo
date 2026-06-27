@@ -17,6 +17,7 @@ const COMMON_SLOTS = [
   { value: 'home_hero_banner', label: 'Inicio - Banner Hero Principal (1200x200)' },
   { value: 'leaderboard_sidebar', label: 'Leaderboard - Barra Lateral (300x600)' },
   { value: 'bracket_footer', label: 'Bracket - Pie de Página' },
+  { value: 'raffles_header_banner', label: 'Sorteos - Banner Superior (1200x200)' },
 ]
 
 export function AdsClient({ initialAds }: AdsClientProps) {

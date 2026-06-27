@@ -313,7 +313,8 @@ export function AdminRafflesClient({ initialRaffles }: AdminRafflesClientProps) 
                     <label className="flex flex-col items-center justify-center border border-dashed border-white/10 hover:border-white/20 rounded-xl p-4 cursor-pointer bg-white/[0.01] hover:bg-white/[0.02] transition-all">
                       <Upload size={16} className="text-white/20 mb-1" />
                       <span className="text-[10px] text-white/40 font-semibold">Subir Archivo Local</span>
-                      <span className="text-[8px] text-white/20 mt-0.5">Imágenes o Videos (Max 50MB)</span>
+                      <span className="text-[8px] text-white/20 mt-0.5 text-center">Imágenes o Videos (Max 50MB)</span>
+                      <span className="text-[7px] text-neon-cyan/50 font-bold uppercase mt-0.5 text-center tracking-wider leading-relaxed">Recomendado: 16:9 (horizontal, ej. 1280x720) para evitar que se recorte o aumente</span>
                       <input
                         type="file"
                         accept="image/*,video/*"

@@ -44,7 +44,13 @@ export async function signIn(
     return { error: 'UNVERIFIED_EMAIL' }
   }
 
-  redirect('/tournaments')
+  const redirectTo = formData.get('redirectTo') as string | null
+
+  if (redirectTo && redirectTo.startsWith('/')) {
+    redirect(redirectTo)
+  } else {
+    redirect('/tournaments')
+  }
 }
 
 export async function signUp(
