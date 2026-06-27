@@ -88,7 +88,7 @@ export default async function ProfilePage({
     .eq('buyer_id', user.id)
     .order('created_at', { ascending: false })
 
-  const defaultTab = searchParams?.tab === 'ajustes' ? 'profile' : 'inicio'
+  const defaultTab = searchParams?.tab === 'ajustes' ? 'profile' : searchParams?.tab === 'sorteos' ? 'sorteos' : 'inicio'
 
   return (
     <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-6">

@@ -57,7 +57,7 @@ export default async function RafflesCatalogPage() {
         </p>
         <div className="flex items-center justify-center gap-4 pt-2">
           <Link
-            href="/raffles/my-tickets"
+            href="/profile?tab=sorteos"
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white transition-all"
           >
             <Ticket size={14} className="text-neon-cyan" /> Mis Boletos

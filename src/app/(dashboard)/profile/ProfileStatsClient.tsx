@@ -17,7 +17,7 @@ interface ProfileStatsClientProps {
   pointsHistory: any[]
   gameAccounts?: any[]
   isStaff?: boolean
-  defaultTab?: 'inicio' | 'profile' | 'history' | 'badges' | 'stats' | 'friends'
+  defaultTab?: 'inicio' | 'profile' | 'history' | 'badges' | 'stats' | 'friends' | 'sorteos'
   tickets?: any[]
 }
 
@@ -78,8 +78,9 @@ export function ProfileStatsClient({
   gameAccounts = [],
   isStaff = false,
   tickets = [],
+  defaultTab = 'inicio',
 }: ProfileStatsClientProps) {
-  const [activeTab, setActiveTab] = useState<'inicio' | 'profile' | 'history' | 'badges' | 'stats' | 'friends'>('inicio')
+  const [activeTab, setActiveTab] = useState<'inicio' | 'profile' | 'history' | 'badges' | 'stats' | 'friends' | 'sorteos'>(defaultTab)
   const [username, setUsername] = useState(profile?.username ?? '')
   const [streamUrl, setStreamUrl] = useState(profile?.stream_url ?? '')
   const [isSaving, setIsSaving] = useState(false)
@@ -470,10 +471,105 @@ export function ProfileStatsClient({
         >
           Desempeño
         </button>
+        <button
+          onClick={() => setActiveTab('sorteos')}
+          className={`flex-1 min-w-[110px] py-3 text-xs uppercase font-bold tracking-widest transition-colors border-b-2 ${
+            activeTab === 'sorteos'
+              ? 'text-neon-cyan border-neon-cyan font-black'
+              : 'text-white/40 border-transparent hover:text-white/60'
+          }`}
+        >
+          🎟️ Mis Boletos ({tickets.length})
+        </button>
       </div>
 
       {/* Tab Contents */}
       <div className="space-y-6">
+        {activeTab === 'sorteos' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center border-b border-white/5 pb-4">
+              <div>
+                <h3 className="text-white font-orbitron font-bold text-sm uppercase tracking-wider">Mis Boletos Adquiridos</h3>
+                <p className="text-xs text-white/40">Consulta el estado de verificación y resultados de tus sorteos.</p>
+              </div>
+              <a
+                href="/raffles"
+                className="px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-white/5 hover:bg-white/10 border border-white/10 uppercase tracking-wider transition-all"
+              >
+                Ver Sorteos Activos
+              </a>
+            </div>
+
+            {tickets.length === 0 ? (
+              <div className="p-12 text-center rounded-2xl bg-white/[0.005] border border-white/5 border-dashed space-y-4">
+                <span className="text-3xl block">🎟️</span>
+                <p className="text-white/30 text-xs">No has adquirido boletos en ningún sorteo actualmente.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {tickets.map((t: any) => {
+                  const isVerified = t.payment_status === 'verified'
+                  const isFinished = t.raffle?.status === 'finished'
+                  const isWinner = isFinished && t.raffle?.winner_name === t.buyer_name
+
+                  return (
+                    <div
+                      key={t.id}
+                      className="p-4 rounded-xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.02] transition-colors flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+                    >
+                      <div className="flex gap-3">
+                        <div className="w-12 h-12 rounded-lg bg-neutral-900 overflow-hidden shrink-0 border border-white/5">
+                          {t.raffle?.prize_image ? (
+                            <img src={t.raffle.prize_image} alt={t.raffle.title} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-xs">🎟️</div>
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-white font-orbitron line-clamp-1">
+                            {t.raffle?.title}
+                          </h4>
+                          <div className="flex items-center gap-3 text-[9px] text-white/30 font-semibold uppercase tracking-wider mt-1">
+                            <span>Boleto #{t.ticket_number}</span>
+                            <span>•</span>
+                            <span>{new Date(t.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex sm:flex-col items-end gap-2 shrink-0 w-full sm:w-auto justify-between sm:justify-center">
+                        {isVerified ? (
+                          <span className="px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-[9px] font-bold uppercase tracking-wider">
+                            ✓ Confirmado
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-[9px] font-bold uppercase tracking-wider">
+                            ⚡ En Verificación
+                          </span>
+                        )}
+
+                        {isFinished && (
+                          <div>
+                            {isWinner ? (
+                              <span className="px-2 py-0.5 rounded-full bg-gold/10 border border-gold/20 text-gold text-[9px] font-orbitron font-bold uppercase tracking-widest animate-pulse">
+                                🏆 Ganador
+                              </span>
+                            ) : (
+                              <span className="text-[9px] text-white/20 uppercase tracking-widest block font-orbitron">
+                                No premiado
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === 'inicio' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Main Dashboard Section */}

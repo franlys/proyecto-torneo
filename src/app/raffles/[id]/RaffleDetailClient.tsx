@@ -334,7 +334,7 @@ export function RaffleDetailClient({
               </div>
 
               <Link
-                href="/raffles/my-tickets"
+                href="/profile?tab=sorteos"
                 className="inline-flex items-center gap-1.5 w-full justify-center py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all uppercase tracking-wider"
               >
                 Ver mis boletos
