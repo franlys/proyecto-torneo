@@ -176,10 +176,6 @@ export function RaffleDetailClient({
                     <Calendar size={13} className="text-neon-purple" />
                     {new Date(raffle.draw_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
                   </span>
-                  <span className="flex items-center gap-1.5">
-                    <Ticket size={13} className="text-neon-cyan" />
-                    {raffle.total_tickets} Boletos
-                  </span>
                 </div>
               </div>
             </div>
@@ -215,14 +211,20 @@ export function RaffleDetailClient({
         <div className="space-y-6">
           {raffle.status === 'active' && !purchaseSuccess && (
             <form onSubmit={handlePurchase} className="space-y-6">
+              {/* Ticket selector notice */}
+              <div className="p-4 bg-neon-cyan/5 border border-neon-cyan/15 rounded-xl flex items-start gap-2.5">
+                <span className="text-neon-cyan text-xs">💡</span>
+                <p className="text-[10px] text-white/60 leading-relaxed">
+                  <strong>Importante:</strong> El sorteo se llevará a cabo una vez se vendan todos los boletos o cuando se alcance la cantidad mínima de boletos vendidos.
+                </p>
+              </div>
+
               {/* Ticket Selector Counter */}
               <TicketSelector
                 ticketPrice={raffle.ticket_price}
                 currency={raffle.currency}
                 selectedCount={ticketCount}
                 onChange={setTicketCount}
-                soldTicketsCount={soldTicketsCount}
-                totalTicketsCount={raffle.total_tickets}
                 maxTickets={100}
               />
 
@@ -231,13 +233,36 @@ export function RaffleDetailClient({
                 <h4 className="text-xs font-bold uppercase tracking-widest text-white/50 flex items-center gap-2">
                   <Landmark size={14} className="text-neon-purple" /> DATOS DE TRANSFERENCIA
                 </h4>
-                <div className="text-xs space-y-2 text-white/70">
-                  <p><strong className="text-white/40">Banco:</strong> {raffle.payment_bank_name}</p>
-                  <p><strong className="text-white/40">Titular:</strong> {raffle.payment_account_holder}</p>
-                  <p><strong className="text-white/40">No. Cuenta:</strong> <span className="font-mono text-white font-bold bg-white/5 px-1.5 py-0.5 rounded">{raffle.payment_bank_id}</span></p>
-                  {raffle.payment_details && (
-                    <p className="text-white/40 italic mt-2 border-t border-white/5 pt-2">{raffle.payment_details}</p>
-                  )}
+                <div className="space-y-3">
+                  {(() => {
+                    let paymentMethodsList = [{
+                      bankName: raffle.payment_bank_name,
+                      accountHolder: raffle.payment_account_holder,
+                      bankId: raffle.payment_bank_id,
+                      instructions: raffle.payment_details
+                    }]
+                    try {
+                      if (raffle.payment_details && raffle.payment_details.startsWith('[')) {
+                        paymentMethodsList = JSON.parse(raffle.payment_details)
+                      }
+                    } catch (e) {}
+
+                    return paymentMethodsList.map((pm, idx) => (
+                      <div key={idx} className="p-4 bg-white/[0.02] border border-white/5 rounded-xl text-xs space-y-2 text-white/70 relative">
+                        {paymentMethodsList.length > 1 && (
+                          <span className="text-[8px] font-orbitron font-bold text-neon-cyan uppercase block mb-1">
+                            Opción #{idx + 1}
+                          </span>
+                        )}
+                        <p><strong className="text-white/40">Banco:</strong> {pm.bankName}</p>
+                        <p><strong className="text-white/40">Titular:</strong> {pm.accountHolder}</p>
+                        <p><strong className="text-white/40">No. Cuenta:</strong> <span className="font-mono text-white font-bold bg-white/5 px-1.5 py-0.5 rounded">{pm.bankId}</span></p>
+                        {pm.instructions && !pm.instructions.startsWith('[') && (
+                          <p className="text-white/40 italic mt-2 border-t border-white/5 pt-2">{pm.instructions}</p>
+                        )}
+                      </div>
+                    ))
+                  })()}
                 </div>
               </div>
 

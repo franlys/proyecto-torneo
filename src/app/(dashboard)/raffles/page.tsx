@@ -106,10 +106,6 @@ export default async function RafflesCatalogPage() {
                           <Calendar size={12} className="text-neon-purple" />
                           {drawDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
                         </span>
-                        <span className="flex items-center gap-1">
-                          <Ticket size={12} className="text-neon-cyan" />
-                          Max {r.total_tickets}
-                        </span>
                       </div>
 
                       {/* CTA Button */}

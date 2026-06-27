@@ -3,9 +3,10 @@
 import React, { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Trophy, Calendar, Ticket, Check, X, ShieldAlert, Loader2, Play, Landmark, Image, Eye, Trash2 } from 'lucide-react'
+import { ArrowLeft, Trophy, Calendar, Ticket, Check, X, ShieldAlert, Loader2, Play, Landmark, Image, Eye, Trash2, PlusCircle, Upload } from 'lucide-react'
 import { LiveWheel } from '@/components/raffles/LiveWheel'
 import { verifyTicketAction, drawRaffleAction, updateRaffleAction, deleteRaffleAction } from '@/lib/actions/raffles'
+import { uploadEvidence } from '@/lib/actions/storage'
 
 interface RaffleAdminClientProps {
   raffle: any
@@ -24,10 +25,26 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
   const [drawDate, setDrawDate] = useState(new Date(raffle.draw_date).toISOString().slice(0, 16))
   const [ticketPrice, setTicketPrice] = useState(raffle.ticket_price)
   const [prizeImage, setPrizeImage] = useState(raffle.prize_image || '')
-  const [paymentBankName, setPaymentBankName] = useState(raffle.payment_bank_name)
-  const [paymentAccountHolder, setPaymentAccountHolder] = useState(raffle.payment_account_holder)
-  const [paymentBankId, setPaymentBankId] = useState(raffle.payment_bank_id)
-  const [paymentDetails, setPaymentDetails] = useState(raffle.payment_details || '')
+  
+  // Local prize image/video upload states
+  const [prizeFile, setPrizeFile] = useState<File | null>(null)
+  const [prizeFilePreview, setPrizeFilePreview] = useState<string | null>(null)
+  const [isUploadingFile, setIsUploadingFile] = useState(false)
+
+  // Multiple payment methods states
+  const [paymentMethods, setPaymentMethods] = useState<{ bankName: string; accountHolder: string; bankId: string; instructions: string }[]>(() => {
+    try {
+      if (raffle.payment_details && raffle.payment_details.startsWith('[')) {
+        return JSON.parse(raffle.payment_details)
+      }
+    } catch (e) {}
+    return [{
+      bankName: raffle.payment_bank_name || '',
+      accountHolder: raffle.payment_account_holder || '',
+      bankId: raffle.payment_bank_id || '',
+      instructions: raffle.payment_details || ''
+    }]
+  })
 
   // Live drawing states
   const [triggerSpin, setTriggerSpin] = useState(false)
@@ -48,32 +65,55 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
     buyer_email: string
     buyer_phone: string
     receipt_url: string
-    ticket_numbers: string[]
+    ticketIds: string[]
+    numbers: string[]
   }> = {}
 
   pendingTickets.forEach(t => {
-    const key = `${t.buyer_email}_${t.receipt_url}`
+    const key = `${t.receipt_url}_${t.buyer_email}`
     if (!groupedTransactions[key]) {
       groupedTransactions[key] = {
         buyer_name: t.buyer_name,
         buyer_email: t.buyer_email,
         buyer_phone: t.buyer_phone,
         receipt_url: t.receipt_url,
-        ticket_numbers: []
+        ticketIds: [],
+        numbers: []
       }
     }
-    groupedTransactions[key].ticket_numbers.push(t.ticket_number)
+    groupedTransactions[key].ticketIds.push(t.id)
+    groupedTransactions[key].numbers.push(t.ticket_number)
   })
 
-  const transactionsList = Object.values(groupedTransactions)
-
-  const handleVerify = (buyerEmail: string, receiptUrl: string, action: 'verify' | 'reject') => {
-    if (action === 'reject' && !confirm('¿Estás seguro de que quieres rechazar y borrar estos boletos?')) {
-      return
+  const handlePrizeFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setPrizeFile(file)
+      setPrizeFilePreview(URL.createObjectURL(file))
+      setError(null)
     }
+  }
 
+  const handleAddPaymentMethod = () => {
+    setPaymentMethods([...paymentMethods, { bankName: '', accountHolder: '', bankId: '', instructions: '' }])
+  }
+
+  const handleRemovePaymentMethod = (index: number) => {
+    if (paymentMethods.length > 1) {
+      setPaymentMethods(paymentMethods.filter((_, idx) => idx !== index))
+    }
+  }
+
+  const handlePaymentMethodChange = (index: number, field: string, value: string) => {
+    const updated = [...paymentMethods]
+    updated[index] = { ...updated[index], [field]: value }
+    setPaymentMethods(updated)
+  }
+
+  const handleVerify = (buyerEmail: string, receiptUrl: string, approve: boolean) => {
+    setError(null)
     startTransition(async () => {
-      const res = await verifyTicketAction(raffle.id, buyerEmail, receiptUrl, action)
+      const res = await verifyTicketAction(raffle.id, buyerEmail, receiptUrl, approve ? 'verify' : 'reject')
       if ('error' in res) {
         setError(res.error)
       } else {
@@ -82,34 +122,25 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
     })
   }
 
-  const handleUpdateSettings = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleDrawComplete = (winner: any) => {
+    if (!winner) return
     setError(null)
-
     startTransition(async () => {
-      const res = await updateRaffleAction(raffle.id, {
-        title,
-        description,
-        drawDate,
-        ticketPrice,
-        prizeImage,
-        paymentBankName,
-        paymentAccountHolder,
-        paymentBankId,
-        paymentDetails,
-      })
-
+      const res = await drawRaffleAction(raffle.id, winner.ticketNumber)
       if ('error' in res) {
         setError(res.error)
+        setTriggerSpin(false)
       } else {
-        alert('Ajustes del sorteo actualizados correctamente.')
+        setWinnerName(winner.name)
+        setWinningTicketNum(winner.ticketNumber)
+        setTriggerSpin(false)
         router.refresh()
       }
     })
   }
 
   const handleDelete = () => {
-    if (!confirm('¿Estás seguro de que deseas eliminar permanentemente este sorteo y todos sus boletos asociados? Esta acción no se puede deshacer.')) {
+    if (!confirm('¿Estás seguro de que deseas eliminar este sorteo permanentemente? Esta acción borrará todos los boletos asociados.')) {
       return
     }
 
@@ -118,162 +149,217 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
       if ('error' in res) {
         setError(res.error)
       } else {
+        alert('Sorteo eliminado correctamente.')
         router.push('/admin/raffles')
-      }
-    })
-  }
-
-  // Ruleta: Cuando termina el giro
-  const handleDrawComplete = (winnerTicket: any) => {
-    startTransition(async () => {
-      const res = await drawRaffleAction(raffle.id, winnerTicket.ticketNumber)
-      if ('error' in res) {
-        alert(res.error)
-      } else {
-        setWinnerName(winnerTicket.name)
-        setWinningTicketNum(winnerTicket.ticketNumber)
         router.refresh()
       }
     })
   }
 
-  // Mapear participantes verificados para la ruleta
+  const handleUpdateSettings = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+
+    // Validate payment methods
+    for (let i = 0; i < paymentMethods.length; i++) {
+      const pm = paymentMethods[i]
+      if (!pm.bankName || !pm.accountHolder || !pm.bankId) {
+        setError(`Por favor completa los datos obligatorios para la Forma de Pago #${i + 1}.`)
+        return
+      }
+    }
+
+    setIsUploadingFile(true)
+    let finalPrizeUrl = prizeImage
+
+    try {
+      if (prizeFile) {
+        const formData = new FormData()
+        formData.append('file', prizeFile)
+        
+        const fileExt = prizeFile.name.split('.').pop()
+        const filePath = `raffles/prizes/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+        formData.append('filePath', filePath)
+
+        const uploadRes = await uploadEvidence(formData)
+        if ('error' in uploadRes) {
+          setError(uploadRes.error)
+          setIsUploadingFile(false)
+          return
+        }
+        finalPrizeUrl = `https://postgres.otssvwinchttedisfqtr.supabase.co/storage/v1/object/public/evidences/${uploadRes.path}`
+      }
+
+      startTransition(async () => {
+        const primaryMethod = paymentMethods[0]
+        const serializedDetails = JSON.stringify(paymentMethods)
+
+        const res = await updateRaffleAction(raffle.id, {
+          title,
+          description,
+          drawDate,
+          ticketPrice,
+          prizeImage: finalPrizeUrl || undefined,
+          paymentBankName: primaryMethod.bankName,
+          paymentAccountHolder: primaryMethod.accountHolder,
+          paymentBankId: primaryMethod.bankId,
+          paymentDetails: serializedDetails,
+        })
+
+        setIsUploadingFile(false)
+
+        if ('error' in res) {
+          setError(res.error)
+        } else {
+          alert('Ajustes del sorteo actualizados correctamente.')
+          router.refresh()
+        }
+      })
+    } catch (err: any) {
+      setError(err.message || 'Error al procesar la subida del archivo.')
+      setIsUploadingFile(false)
+    }
+  }
+
+  // Prepara los participantes verificados para la ruleta
   const wheelParticipants = verifiedTickets.map(t => ({
-    id: t.ticket_number,
+    id: t.id,
     name: t.buyer_name,
-    ticketNumber: t.ticket_number
+    ticketNumber: t.ticket_number,
   }))
+
+  const isVideo = raffle.prize_image?.match(/\.(mp4|webm|mov|avi)($|\?)/i)
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/5 pb-6">
-        <div className="space-y-1.5">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="space-y-1">
           <Link
             href="/admin/raffles"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-white/50 hover:text-white uppercase tracking-wider transition-colors mb-1"
+            className="inline-flex items-center gap-1 text-xs font-bold text-white/50 hover:text-white uppercase tracking-wider transition-colors mb-2"
           >
-            <ArrowLeft size={12} /> Panel de Sorteos
+            <ArrowLeft size={12} /> Volver a sorteos
           </Link>
-          <h1 className="text-xl sm:text-2xl font-orbitron font-black text-white uppercase tracking-tight line-clamp-1">
+          <h1 className="text-xl sm:text-2xl font-orbitron font-black text-white uppercase tracking-tight">
             {raffle.title}
           </h1>
-          <div className="flex flex-wrap items-center gap-4 text-[10px] text-white/40 font-semibold uppercase tracking-wider font-orbitron">
-            <span>Ventas: <strong className="text-neon-cyan">{verifiedTickets.length} / {raffle.total_tickets}</strong></span>
-            <span>Pendientes: <strong className="text-yellow-400">{pendingTickets.length}</strong></span>
-            <span>Estado: <strong className={raffle.status === 'finished' ? 'text-white/60' : 'text-neon-cyan'}>{raffle.status}</strong></span>
-          </div>
+          <p className="text-xs text-white/40">Realiza verificaciones, edita ajustes o gira la ruleta en vivo.</p>
         </div>
-
-        {/* Action button if active */}
-        {raffle.status === 'active' && verifiedTickets.length > 0 && (
-          <button
-            onClick={() => {
-              setActiveTab('draw')
-              setTriggerSpin(true)
-            }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-neon-cyan to-neon-purple hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-neon-cyan/15 uppercase font-orbitron"
-          >
-            <Play size={14} /> Realizar Sorteo en Vivo
-          </button>
-        )}
       </div>
 
-      {/* Tabs Menu */}
-      <div className="flex gap-2 border-b border-white/5 pb-px overflow-x-auto select-none">
+      {/* Tabs */}
+      <div className="flex border-b border-white/5 overflow-x-auto scrollbar-hide">
         <button
           onClick={() => setActiveTab('pending')}
-          className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all shrink-0 ${
+          className={`flex-1 min-w-[120px] py-3.5 text-xs uppercase font-bold tracking-widest transition-colors border-b-2 ${
             activeTab === 'pending'
-              ? 'border-neon-cyan text-neon-cyan'
-              : 'border-transparent text-white/40 hover:text-white/80'
+              ? 'text-neon-cyan border-neon-cyan font-black'
+              : 'text-white/40 border-transparent hover:text-white/60'
           }`}
         >
-          🎟️ Boletos Pendientes ({transactionsList.length})
+          Transacciones Pendientes ({Object.keys(groupedTransactions).length})
         </button>
         <button
           onClick={() => setActiveTab('draw')}
-          className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all shrink-0 ${
+          className={`flex-1 min-w-[100px] py-3.5 text-xs uppercase font-bold tracking-widest transition-colors border-b-2 ${
             activeTab === 'draw'
-              ? 'border-neon-cyan text-neon-cyan'
-              : 'border-transparent text-white/40 hover:text-white/80'
+              ? 'text-neon-cyan border-neon-cyan font-black'
+              : 'text-white/40 border-transparent hover:text-white/60'
           }`}
         >
-          🎯 Sorteo en Vivo ({verifiedTickets.length})
+          Ruleta en Vivo
         </button>
         <button
           onClick={() => setActiveTab('settings')}
-          className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all shrink-0 ${
+          className={`flex-1 min-w-[100px] py-3.5 text-xs uppercase font-bold tracking-widest transition-colors border-b-2 ${
             activeTab === 'settings'
-              ? 'border-neon-cyan text-neon-cyan'
-              : 'border-transparent text-white/40 hover:text-white/80'
+              ? 'text-neon-cyan border-neon-cyan font-black'
+              : 'text-white/40 border-transparent hover:text-white/60'
           }`}
         >
-          ⚙️ Ajustes y Edición
+          Ajustes
         </button>
       </div>
 
-      {/* Tab Contents */}
+      {error && (
+        <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold rounded-xl text-center">
+          {error}
+        </div>
+      )}
+
+      {/* Contents */}
       <div className="space-y-6">
-        {/* Tab 1: Pending verifications */}
+        {/* Tab 1: Pending Transactions */}
         {activeTab === 'pending' && (
           <div className="space-y-4">
-            {transactionsList.length === 0 ? (
-              <div className="p-16 text-center rounded-2xl bg-white/[0.01] border border-white/5 space-y-4">
-                <Ticket size={48} className="mx-auto text-white/10" />
-                <div className="space-y-1">
-                  <h3 className="text-sm font-bold text-white/60">No hay boletos pendientes</h3>
-                  <p className="text-xs text-white/30">Todos los depósitos han sido verificados.</p>
+            {Object.keys(groupedTransactions).length === 0 ? (
+              <div className="p-16 text-center rounded-2xl bg-white/[0.01] border border-white/5 space-y-3">
+                <Check className="mx-auto text-green-400" size={36} />
+                <div>
+                  <h3 className="text-sm font-bold text-white/60">Todo al día</h3>
+                  <p className="text-xs text-white/30 mt-1">No hay comprobantes pendientes de verificación.</p>
                 </div>
               </div>
             ) : (
-              <div className="space-y-4">
-                {transactionsList.map((tx: any, idx) => {
-                  const numbers = tx.ticket_numbers.map((n: string) => `#${n}`).join(', ')
-                  return (
-                    <div
-                      key={idx}
-                      className="p-5 rounded-2xl border border-white/5 bg-white/[0.01] flex flex-col md:flex-row justify-between items-start md:items-center gap-6"
-                    >
-                      <div className="space-y-2 flex-1">
-                        <div className="space-y-0.5">
-                          <h4 className="text-sm font-semibold text-white">{tx.buyer_name}</h4>
-                          <p className="text-xs text-white/40">{tx.buyer_email} • {tx.buyer_phone}</p>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5 items-center">
-                          <span className="text-[10px] uppercase font-bold text-white/30 tracking-wider">Boletos:</span>
-                          <span className="text-xs font-bold text-neon-cyan font-orbitron">{numbers}</span>
-                        </div>
-                      </div>
-
-                      {/* Action buttons */}
-                      <div className="flex items-center gap-3 w-full md:w-auto shrink-0 justify-end">
-                        <button
+              <div className="grid grid-cols-1 gap-4">
+                {Object.values(groupedTransactions).map((tx, idx) => (
+                  <div
+                    key={idx}
+                    className="p-5 rounded-2xl border border-white/5 bg-white/[0.01] flex flex-col md:flex-row justify-between items-start md:items-center gap-5"
+                  >
+                    {/* User and receipt info */}
+                    <div className="flex gap-4 items-start">
+                      {tx.receipt_url ? (
+                        <div
                           onClick={() => setSelectedReceipt(tx.receipt_url)}
-                          className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white transition-all text-xs font-bold flex items-center gap-1.5"
+                          className="w-20 h-20 rounded-xl bg-neutral-900 overflow-hidden shrink-0 border border-white/10 hover:border-neon-cyan transition-all cursor-pointer relative group flex items-center justify-center"
                         >
-                          <Eye size={14} /> Ver Recibo
-                        </button>
+                          <img src={tx.receipt_url} alt="Comprobante" className="w-full h-full object-cover group-hover:opacity-80" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                            <Eye size={16} className="text-white" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-20 h-20 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
+                          <Image size={24} className="text-white/20" />
+                        </div>
+                      )}
+                      <div>
+                        <h4 className="text-sm font-orbitron font-bold text-white uppercase">{tx.buyer_name}</h4>
+                        <p className="text-xs text-white/40 mt-0.5">{tx.buyer_email}</p>
+                        <p className="text-[10px] text-white/30 uppercase mt-0.5">Celular: {tx.buyer_phone}</p>
                         
-                        <button
-                          onClick={() => handleVerify(tx.buyer_email, tx.receipt_url, 'reject')}
-                          disabled={isPending}
-                          className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all text-xs font-bold flex items-center gap-1"
-                        >
-                          <X size={14} /> Rechazar
-                        </button>
-
-                        <button
-                          onClick={() => handleVerify(tx.buyer_email, tx.receipt_url, 'verify')}
-                          disabled={isPending}
-                          className="p-2.5 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 hover:bg-green-500/20 transition-all text-xs font-bold flex items-center gap-1"
-                        >
-                          <Check size={14} /> Aprobar
-                        </button>
+                        {/* Selected numbers list */}
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {tx.numbers.map(n => (
+                            <span key={n} className="px-1.5 py-0.5 rounded bg-white/5 border border-white/5 text-white/50 text-[9px] font-mono">
+                              #{n}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  )
-                })}
+
+                    {/* Actions */}
+                    <div className="flex gap-2.5 w-full md:w-auto justify-end">
+                      <button
+                        onClick={() => handleVerify(tx.buyer_email, tx.receipt_url, false)}
+                        disabled={isPending}
+                        className="flex-1 md:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-600 hover:text-white transition-all uppercase tracking-wider"
+                      >
+                        Rechazar
+                      </button>
+                      <button
+                        onClick={() => handleVerify(tx.buyer_email, tx.receipt_url, true)}
+                        disabled={isPending}
+                        className="flex-1 md:flex-initial inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-neon-cyan to-neon-purple hover:opacity-90 transition-all uppercase tracking-wider"
+                      >
+                        Aprobar
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -281,21 +367,26 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
 
         {/* Tab 2: Live Wheel Drawing */}
         {activeTab === 'draw' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Roulette Area */}
-            <div className="md:col-span-2 bg-white/[0.01] border border-white/5 p-6 rounded-2xl flex flex-col items-center justify-center space-y-4">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">Animación del Sorteo en Vivo</span>
-              
-              {raffle.status === 'finished' ? (
-                <div className="p-8 bg-gradient-to-b from-gold/10 to-transparent border border-gold/20 rounded-3xl text-center space-y-4 max-w-md mx-auto shadow-[0_0_30px_rgba(212,175,55,0.05)]">
-                  <Trophy size={48} className="mx-auto text-gold animate-bounce" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Ruleta canvas container */}
+            <div className="lg:col-span-2 bg-white/[0.01] border border-white/5 p-6 rounded-2xl flex flex-col items-center justify-center gap-6 min-h-[450px]">
+              {winnerName ? (
+                <div className="text-center space-y-4 animate-in fade-in zoom-in duration-300">
+                  <Trophy size={60} className="mx-auto text-gold animate-bounce" />
                   <div className="space-y-1">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-gold/60 font-orbitron">¡Ganador Seleccionado!</span>
-                    <h2 className="text-2xl font-orbitron font-black text-white uppercase tracking-tight">{winnerName}</h2>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-gold/60 font-orbitron">
+                      ¡Tenemos un ganador!
+                    </span>
+                    <h2 className="text-3xl font-orbitron font-black text-white uppercase tracking-tight">
+                      {winnerName}
+                    </h2>
                   </div>
-                  <div className="inline-block px-6 py-2 rounded-xl bg-gold/10 border border-gold/20 text-gold font-orbitron text-lg font-black">
-                    Boleto Ganador: #{winningTicketNum}
+                  <div className="inline-block px-8 py-3 rounded-2xl bg-gold/10 border border-gold/20 text-gold font-orbitron text-xl font-black">
+                    Boleto #{winningTicketNum}
                   </div>
+                  <p className="text-xs text-white/40 max-w-sm mx-auto">
+                    El premio de este sorteo se asignó exitosamente. ¡Felicitaciones!
+                  </p>
                 </div>
               ) : (
                 <>
@@ -388,65 +479,132 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">URL de Imagen del Premio</label>
-                  <input
-                    type="url"
-                    value={prizeImage}
-                    onChange={(e) => setPrizeImage(e.target.value)}
-                    className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-neon-cyan text-xs text-white"
-                  />
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">Imagen o Video del Premio</label>
+                  {prizeFilePreview || prizeImage ? (
+                    <div className="relative rounded-xl overflow-hidden border border-white/10 aspect-video bg-neutral-900 flex items-center justify-center">
+                      {prizeFile ? (
+                        prizeFile.type.startsWith('video/') ? (
+                          <video src={prizeFilePreview!} className="w-full h-full object-cover" autoPlay loop muted playsInline />
+                        ) : (
+                          <img src={prizeFilePreview!} alt="Vista Previa" className="w-full h-full object-cover" />
+                        )
+                      ) : (
+                        isVideo ? (
+                          <video src={prizeImage} className="w-full h-full object-cover" autoPlay loop muted playsInline />
+                        ) : (
+                          <img src={prizeImage} alt="Premio" className="w-full h-full object-cover" />
+                        )
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPrizeFile(null)
+                          setPrizeFilePreview(null)
+                          setPrizeImage('')
+                        }}
+                        className="absolute top-2 right-2 p-1 bg-black/80 hover:bg-black text-white rounded-md text-[10px] font-bold"
+                      >
+                        Cambiar
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center border border-dashed border-white/10 hover:border-white/20 rounded-xl p-4 cursor-pointer bg-white/[0.01] hover:bg-white/[0.02] transition-all">
+                      <Upload size={16} className="text-white/20 mb-1" />
+                      <span className="text-[10px] text-white/40 font-semibold">Subir Archivo Local</span>
+                      <span className="text-[8px] text-white/20 mt-0.5">Imágenes o Videos (Max 50MB)</span>
+                      <input
+                        type="file"
+                        accept="image/*,video/*"
+                        onChange={handlePrizeFileChange}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
                 </div>
               </div>
 
-              {/* Bank Details section */}
-              <div className="p-4 bg-white/[0.01] border border-white/5 rounded-xl space-y-3">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-neon-purple flex items-center gap-1.5">
-                  <Landmark size={12} /> Datos de Cuenta de Banco
-                </span>
+              {/* Multiple Payment Methods section */}
+              <div className="space-y-3 pt-3 border-t border-white/5">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-neon-purple flex items-center gap-1.5">
+                    <Landmark size={12} /> Cuentas de Banco (Formas de Pago) *
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleAddPaymentMethod}
+                    className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-neon-cyan hover:underline"
+                  >
+                    <PlusCircle size={10} /> Agregar Otra
+                  </button>
+                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold uppercase tracking-wider text-white/30">Banco *</label>
-                    <input
-                      type="text"
-                      value={paymentBankName}
-                      onChange={(e) => setPaymentBankName(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-lg bg-white/5 border border-white/10 focus:outline-none focus:border-neon-purple text-xs text-white"
-                      required
-                    />
-                  </div>
+                <div className="space-y-3">
+                  {paymentMethods.map((pm, index) => (
+                    <div key={index} className="p-4 bg-white/[0.01] border border-white/5 rounded-xl space-y-3 relative">
+                      {paymentMethods.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePaymentMethod(index)}
+                          className="absolute top-2 right-2 text-white/30 hover:text-red-400 p-1"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                      
+                      <span className="text-[8px] font-orbitron font-bold text-white/40 uppercase block mb-1">
+                        Forma de Pago #{index + 1}
+                      </span>
 
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold uppercase tracking-wider text-white/30">Titular de Cuenta *</label>
-                    <input
-                      type="text"
-                      value={paymentAccountHolder}
-                      onChange={(e) => setPaymentAccountHolder(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-lg bg-white/5 border border-white/10 focus:outline-none focus:border-neon-purple text-xs text-white"
-                      required
-                    />
-                  </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold uppercase tracking-wider text-white/30">Banco *</label>
+                          <input
+                            type="text"
+                            value={pm.bankName}
+                            onChange={(e) => handlePaymentMethodChange(index, 'bankName', e.target.value)}
+                            placeholder="Ej. Banco Popular"
+                            className="w-full px-3.5 py-2 rounded-lg bg-white/5 border border-white/10 focus:outline-none focus:border-neon-purple text-xs text-white"
+                            required
+                          />
+                        </div>
 
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold uppercase tracking-wider text-white/30">No. Cuenta *</label>
-                    <input
-                      type="text"
-                      value={paymentBankId}
-                      onChange={(e) => setPaymentBankId(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-lg bg-white/5 border border-white/10 focus:outline-none focus:border-neon-purple text-xs text-white"
-                      required
-                    />
-                  </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold uppercase tracking-wider text-white/30">Titular de Cuenta *</label>
+                          <input
+                            type="text"
+                            value={pm.accountHolder}
+                            onChange={(e) => handlePaymentMethodChange(index, 'accountHolder', e.target.value)}
+                            placeholder="Nombre completo"
+                            className="w-full px-3.5 py-2 rounded-lg bg-white/5 border border-white/10 focus:outline-none focus:border-neon-purple text-xs text-white"
+                            required
+                          />
+                        </div>
 
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold uppercase tracking-wider text-white/30">Instrucciones Adicionales</label>
-                    <input
-                      type="text"
-                      value={paymentDetails}
-                      onChange={(e) => setPaymentDetails(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-lg bg-white/5 border border-white/10 focus:outline-none focus:border-neon-purple text-xs text-white"
-                    />
-                  </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold uppercase tracking-wider text-white/30">No. Cuenta *</label>
+                          <input
+                            type="text"
+                            value={pm.bankId}
+                            onChange={(e) => handlePaymentMethodChange(index, 'bankId', e.target.value)}
+                            placeholder="Ej. 792-348293-1"
+                            className="w-full px-3.5 py-2 rounded-lg bg-white/5 border border-white/10 focus:outline-none focus:border-neon-purple text-xs text-white"
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold uppercase tracking-wider text-white/30">Instrucciones Adicionales</label>
+                          <input
+                            type="text"
+                            value={pm.instructions}
+                            onChange={(e) => handlePaymentMethodChange(index, 'instructions', e.target.value)}
+                            placeholder="Ej. Colocar cédula en concepto"
+                            className="w-full px-3.5 py-2 rounded-lg bg-white/5 border border-white/10 focus:outline-none focus:border-neon-purple text-xs text-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -462,10 +620,10 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
                 
                 <button
                   type="submit"
-                  disabled={isPending}
+                  disabled={isPending || isUploadingFile}
                   className="inline-flex items-center justify-center gap-1.5 px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-neon-cyan to-neon-purple hover:opacity-90 transition-all disabled:opacity-40 uppercase tracking-wider"
                 >
-                  {isPending ? (
+                  {(isPending || isUploadingFile) ? (
                     <>
                       <Loader2 size={13} className="animate-spin" /> Guardando...
                     </>

@@ -9,8 +9,6 @@ interface TicketSelectorProps {
   selectedCount: number
   onChange: (count: number) => void
   maxTickets?: number
-  soldTicketsCount: number
-  totalTicketsCount: number
 }
 
 export function TicketSelector({
@@ -19,11 +17,7 @@ export function TicketSelector({
   selectedCount,
   onChange,
   maxTickets = 100,
-  soldTicketsCount,
-  totalTicketsCount,
 }: TicketSelectorProps) {
-  const percentSold = totalTicketsCount > 0 ? (soldTicketsCount / totalTicketsCount) * 100 : 0
-
   const increment = () => {
     if (selectedCount < maxTickets) {
       onChange(selectedCount + 1)
@@ -38,24 +32,6 @@ export function TicketSelector({
 
   return (
     <div className="space-y-6 w-full max-w-md mx-auto">
-      {/* Progress Bar of Sold Tickets */}
-      <div className="w-full">
-        <div className="flex justify-between items-center text-xs font-semibold uppercase tracking-wider mb-2">
-          <span className="text-white/40">Progreso de Venta</span>
-          <span className="text-neon-cyan font-bold font-orbitron">{percentSold.toFixed(1)}%</span>
-        </div>
-        <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-neon-cyan to-neon-purple shadow-[0_0_8px_rgba(0,245,255,0.4)]"
-            style={{ width: `${percentSold}%` }}
-          />
-        </div>
-        <div className="flex justify-between text-[11px] font-semibold mt-2 text-white/30 uppercase tracking-wider">
-          <span>{soldTicketsCount} Vendidos</span>
-          <span>{totalTicketsCount} Totales</span>
-        </div>
-      </div>
-
       {/* Ticket Counter Selection */}
       <div className="bg-white/[0.02] border border-white/5 p-6 rounded-2xl flex flex-col items-center justify-center gap-4 shadow-xl">
         <h4 className="text-xs font-bold uppercase tracking-widest text-white/50 flex items-center gap-2">
@@ -116,24 +92,6 @@ export function TicketSelector({
           <span className="text-3xl font-orbitron font-black text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan to-neon-purple block mt-1">
             {currency} {(selectedCount * ticketPrice).toLocaleString('es-ES', { minimumFractionDigits: 2 })}
           </span>
-        </div>
-
-        {/* Probability Gamification Indicator */}
-        <div className="w-full mt-2 p-4 rounded-xl bg-white/[0.01] border border-white/5 text-center flex flex-col items-center gap-1.5">
-          <span className="text-[9px] uppercase font-bold tracking-widest text-white/30">Tu Probabilidad de Ganar</span>
-          <div className="flex items-center gap-2">
-            <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan to-neon-purple font-orbitron">
-              {((selectedCount / totalTicketsCount) * 100).toFixed(2)}%
-            </span>
-            <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-neon-cyan/10 border border-neon-cyan/20 text-neon-cyan font-orbitron">
-              {selectedCount === 1 ? '🍀 Básico' : selectedCount < 5 ? '⚡ Bronce' : selectedCount < 10 ? '🔥 Épico' : '👑 Leyenda'}
-            </span>
-          </div>
-          <p className="text-[10px] text-white/40 leading-relaxed max-w-[260px] mx-auto">
-            {selectedCount === 1 
-              ? '¡Adquiere más boletos para multiplicar tus posibilidades de ganar!' 
-              : `¡Excelente! Tienes ${selectedCount} participaciones únicas aseguradas en la ruleta.`}
-          </p>
         </div>
       </div>
     </div>
