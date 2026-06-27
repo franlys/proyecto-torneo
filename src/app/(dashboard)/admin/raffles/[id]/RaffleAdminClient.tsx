@@ -3,9 +3,9 @@
 import React, { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Trophy, Calendar, Ticket, Check, X, ShieldAlert, Loader2, Play, Landmark, Image, Eye, Trash2, PlusCircle, Upload } from 'lucide-react'
+import { ArrowLeft, Trophy, Calendar, Ticket, Check, X, ShieldAlert, Loader2, Play, Landmark, Image, Eye, Trash2, PlusCircle, Upload, Mail } from 'lucide-react'
 import { LiveWheel } from '@/components/raffles/LiveWheel'
-import { verifyTicketAction, drawRaffleAction, updateRaffleAction, deleteRaffleAction } from '@/lib/actions/raffles'
+import { verifyTicketAction, drawRaffleAction, updateRaffleAction, deleteRaffleAction, announceRaffleToAllUsersAction } from '@/lib/actions/raffles'
 import { uploadEvidence } from '@/lib/actions/storage'
 
 interface RaffleAdminClientProps {
@@ -18,6 +18,29 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
   const [activeTab, setActiveTab] = useState<'pending' | 'draw' | 'settings'>('pending')
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [isAnnouncing, setIsAnnouncing] = useState(false)
+
+  const handleAnnounce = async () => {
+    if (!confirm('¿Estás seguro de que deseas anunciar este sorteo a todos los usuarios registrados por correo electrónico?')) {
+      return
+    }
+
+    setIsAnnouncing(true)
+    setError(null)
+    try {
+      const res = await announceRaffleToAllUsersAction(raffle.id)
+      if ('error' in res) {
+        setError(res.error)
+      } else {
+        alert('¡El sorteo ha sido anunciado exitosamente a todos los usuarios de la plataforma!')
+        router.refresh()
+      }
+    } catch (err: any) {
+      setError(err.message || 'Error al anunciar el sorteo')
+    } finally {
+      setIsAnnouncing(false)
+    }
+  }
   
   // Settings Form States
   const [title, setTitle] = useState(raffle.title)
@@ -247,6 +270,24 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
           </h1>
           <p className="text-xs text-white/40">Realiza verificaciones, edita ajustes o gira la ruleta en vivo.</p>
         </div>
+
+        {raffle.status !== 'finished' && (
+          <button
+            onClick={handleAnnounce}
+            disabled={isAnnouncing}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-neon-cyan to-neon-purple uppercase tracking-widest hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-40"
+          >
+            {isAnnouncing ? (
+              <>
+                <Loader2 size={14} className="animate-spin" /> Anunciando...
+              </>
+            ) : (
+              <>
+                <Mail size={14} /> Anunciar por Correo
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Tabs */}

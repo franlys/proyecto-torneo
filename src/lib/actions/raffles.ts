@@ -425,3 +425,69 @@ export async function getMyTickets() {
     return { error: err.message || 'Error desconocido' }
   }
 }
+
+export async function announceRaffleToAllUsersAction(
+  raffleId: string
+): Promise<{ success: boolean } | { error: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autenticado' }
+
+    const isSystemAdminUser = await isSystemAdmin(user.id)
+    if (!isSystemAdminUser) return { error: 'Sin permisos de administrador' }
+
+    const { data: raffle, error: fetchErr } = await supabase
+      .from('raffles')
+      .select('id, title, prize_name')
+      .eq('id', raffleId)
+      .single()
+
+    if (fetchErr || !raffle) return { error: 'Sorteo no encontrado' }
+
+    const adminSupabase = await createAdminClient()
+    const { data: profiles, error: profilesErr } = await adminSupabase
+      .from('profiles')
+      .select('email')
+      .not('email', 'is', null)
+
+    if (profilesErr) return { error: profilesErr.message }
+
+    const emails = profiles
+      ?.map((p: any) => p.email?.trim())
+      .filter((email: any) => email && email.includes('@')) || []
+
+    if (emails.length === 0) {
+      return { error: 'No hay usuarios con correo registrado en la plataforma.' }
+    }
+
+    const { sendRaffleAnnouncementEmail } = await import('@/lib/services/email')
+    const emailRes = await sendRaffleAnnouncementEmail({
+      emails,
+      raffleName: raffle.title,
+      raffleId: raffle.id,
+      prizeName: raffle.prize_name || raffle.title,
+    })
+
+    if (!emailRes.success) {
+      return { error: emailRes.error || 'Error al enviar los correos.' }
+    }
+
+    // Registrar en Supabase que ya se anuncio
+    try {
+      await supabase
+        .from('raffles')
+        .update({ announced_at: new Date().toISOString() } as any)
+        .eq('id', raffleId)
+    } catch (dbErr) {
+      console.warn('announced_at column not available, skipping DB update', dbErr)
+    }
+
+    revalidatePath('/raffles')
+    revalidatePath(`/admin/raffles/${raffleId}`)
+
+    return { success: true }
+  } catch (err: any) {
+    return { error: err.message || 'Error desconocido' }
+  }
+}

@@ -759,5 +759,76 @@ export async function sendRaffleWinnerEmail({
   }
 }
 
+interface RaffleAnnouncementEmailParams {
+  emails: string[]
+  raffleName: string
+  raffleId: string
+  prizeName: string
+}
+
+export async function sendRaffleAnnouncementEmail({
+  emails,
+  raffleName,
+  raffleId,
+  prizeName,
+}: RaffleAnnouncementEmailParams) {
+  if (!resend) {
+    console.warn('RESEND_API_KEY no configurado. Saltando envío de anuncio.')
+    return { success: false, error: 'RESEND_API_KEY no configurado' }
+  }
+
+  try {
+    const portalUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/raffles/${raffleId}`
+    
+    // Enviar en lotes de 50 para evitar límites de destinatarios por envío
+    const batchSize = 50
+    for (let i = 0; i < emails.length; i += batchSize) {
+      const batch = emails.slice(i, i + batchSize)
+      const { error } = await resend.emails.send({
+        from: 'Kronix Sorteos <no-reply@kronix.do>',
+        to: ['no-reply@kronix.do'],
+        bcc: batch,
+        subject: `🎟️ ¡Nuevo Sorteo Activo: ${raffleName}!`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0c0c12; color: #ffffff; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
+            <div style="text-align: center; margin-bottom: 24px;">
+              <img src="https://www.kronix.do/logo.png" alt="KRONIX Logo" style="width: 50px; height: auto; margin-bottom: 12px; display: inline-block;" />
+              <h1 style="font-size: 24px; font-weight: 900; letter-spacing: 0.2em; color: #00f5ff; margin: 0; text-transform: uppercase;">KRONIX</h1>
+            </div>
+            
+            <h2 style="color: #ffffff; font-size: 20px; margin-top: 0; text-align: center; font-weight: 800;">🎟️ ¡NUEVO SORTEO DISPONIBLE!</h2>
+            <p style="color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.6; text-align: center;">
+              Se ha publicado un nuevo sorteo oficial: <strong style="color: #00f5ff;">${raffleName}</strong>.
+            </p>
+            <p style="color: rgba(255,255,255,0.6); font-size: 14px; line-height: 1.6; text-align: center; margin-bottom: 28px;">
+              Premio: <strong>${prizeName}</strong>. Adquiere tus boletos, sube tu comprobante de pago de forma segura y participa en la ruleta en vivo.
+            </p>
+            
+            <div style="text-align: center; margin: 32px 0;">
+              <a href="${portalUrl}" style="background: linear-gradient(90deg, #00f5ff 0%, #b026ff 100%); color: #ffffff; text-decoration: none; padding: 12px 36px; border-radius: 8px; font-size: 14px; font-weight: bold; display: inline-block; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 4px 15px rgba(0, 245, 255, 0.2);">
+                COMPRAR BOLETOS AHORA
+              </a>
+            </div>
+            
+            <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 24px 0;" />
+            <p style="color: rgba(255,255,255,0.4); font-size: 11px; text-align: center; line-height: 1.6;">
+              Recibes esta notificación porque tienes una cuenta registrada en Kronix E-sports.
+            </p>
+          </div>
+        `,
+      })
+
+      if (error) {
+        console.error('Error al enviar lote de correos de anuncio de sorteo:', error)
+      }
+    }
+
+    return { success: true }
+  } catch (err: any) {
+    console.error('Error inesperado al enviar correos de anuncio de sorteo:', err)
+    return { success: false, error: err?.message || String(err) }
+  }
+}
+
 
 
