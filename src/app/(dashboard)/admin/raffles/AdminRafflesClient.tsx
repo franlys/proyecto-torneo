@@ -89,14 +89,14 @@ export function AdminRafflesClient({ initialRaffles }: AdminRafflesClientProps) 
         const fileExt = prizeFile.name.split('.').pop()
         const filePath = `raffles/prizes/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
         formData.append('filePath', filePath)
-
         const uploadRes = await uploadEvidence(formData)
         if ('error' in uploadRes) {
           setError(uploadRes.error)
           setIsUploadingFile(false)
           return
         }
-        finalPrizeUrl = `https://postgres.otssvwinchttedisfqtr.supabase.co/storage/v1/object/public/evidences/${uploadRes.path}`
+        const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://otssvwinchttedisfqtr.supabase.co').replace(/\/$/, '')
+        finalPrizeUrl = `${supabaseUrl}/storage/v1/object/public/evidences/${uploadRes.path}`
       }
 
       // 2. Submit raffle creation

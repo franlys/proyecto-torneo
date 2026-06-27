@@ -95,7 +95,8 @@ export function RaffleDetailClient({
         return
       }
 
-      const receiptUrl = `https://postgres.otssvwinchttedisfqtr.supabase.co/storage/v1/object/public/evidences/${uploadRes.path}`
+      const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://otssvwinchttedisfqtr.supabase.co').replace(/\/$/, '')
+      const receiptUrl = `${supabaseUrl}/storage/v1/object/public/evidences/${uploadRes.path}`
 
       // 2. Generar números de boletos
       const ticketNumbers = generateRandomNumbers(ticketCount)

@@ -187,7 +187,8 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
           setIsUploadingFile(false)
           return
         }
-        finalPrizeUrl = `https://postgres.otssvwinchttedisfqtr.supabase.co/storage/v1/object/public/evidences/${uploadRes.path}`
+        const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://otssvwinchttedisfqtr.supabase.co').replace(/\/$/, '')
+        finalPrizeUrl = `${supabaseUrl}/storage/v1/object/public/evidences/${uploadRes.path}`
       }
 
       startTransition(async () => {
