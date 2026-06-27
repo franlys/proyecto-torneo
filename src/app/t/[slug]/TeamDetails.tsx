@@ -136,10 +136,10 @@ export function TeamDetails({
 
       return {
         name: m.mapName || `Match ${m.matchNumber}`,
-        points: cumulativePoints,
-        kills: cumulativeKills,
-        roundPoints: roundPoints,
-        roundKills: kills,
+        points: Math.round(cumulativePoints * 100) / 100,
+        kills: Math.round(cumulativeKills * 100) / 100,
+        roundPoints: Math.round(roundPoints * 100) / 100,
+        roundKills: Math.round(kills * 100) / 100,
         playerKills: playerKillsInMatch
       }
     })
@@ -540,6 +540,11 @@ export function TeamDetails({
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#0A0A0B', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '10px' }}
                     itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                    formatter={(value: any, name: any) => {
+                      const rounded = typeof value === 'number' ? Math.round(value * 100) / 100 : value
+                      const label = String(name) === 'points' ? 'puntos' : String(name) === 'kills' ? 'kills' : String(name)
+                      return [rounded, label]
+                    }}
                   />
                   <Area type="monotone" dataKey="points" stroke={primaryColor} strokeWidth={3} fillOpacity={1} fill="url(#colorPoints)" animationDuration={1500} />
                   {!['clash_royale', 'street_fighter_6', 'super_smash_bros_ultimate', 'league_of_legends', 'valorant'].includes(discipline) && (
