@@ -20,6 +20,7 @@ export default async function AdminPage() {
       { count: pendingRequests },
       { data: recentUsers },
       { data: allTournaments },
+      { data: activeRafflesData },
     ] = await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('tournaments').select('*', { count: 'exact', head: true }),
@@ -34,7 +35,14 @@ export default async function AdminPage() {
         .select('id, name, status, creator_id, created_at')
         .order('created_at', { ascending: false })
         .limit(10),
+      supabase
+        .from('raffles')
+        .select('*')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false }),
     ])
+
+    const activeRaffles = activeRafflesData || []
 
     return (
       <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
@@ -43,9 +51,9 @@ export default async function AdminPage() {
           <h1 className="text-2xl font-bold text-white">Panel de Administración</h1>
           <p className="text-white/40 text-sm mt-1">Vista global de la plataforma Kronix</p>
         </div>
-
+ 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white/5 border border-white/10 rounded-xl p-5">
             <p className="text-white/40 text-xs uppercase tracking-widest">Usuarios registrados</p>
             <p className="text-3xl font-bold text-white mt-2">{totalUsers ?? 0}</p>
@@ -60,8 +68,12 @@ export default async function AdminPage() {
               {pendingRequests ?? 0}
             </p>
           </div>
+          <div className="bg-white/5 border border-white/10 rounded-xl p-5">
+            <p className="text-white/40 text-xs uppercase tracking-widest">Sorteos activos</p>
+            <p className="text-3xl font-bold text-neon-purple mt-2">{activeRaffles.length}</p>
+          </div>
         </div>
-
+ 
         {/* Quick Actions */}
         <div className="flex flex-wrap gap-3 items-center">
           {superAdmin && (
@@ -98,10 +110,16 @@ export default async function AdminPage() {
               Configurar Inicio (Home)
             </Link>
           )}
+          <Link
+            href="/admin/raffles"
+            className="px-4 py-2 bg-neon-purple/10 border border-neon-purple/20 text-neon-purple text-sm rounded-lg hover:bg-neon-purple/20 transition-colors"
+          >
+            🏆 Gestión de Sorteos
+          </Link>
           <SendRemindersButton />
         </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+ 
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent Users */}
           <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
             <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
@@ -139,7 +157,7 @@ export default async function AdminPage() {
               )}
             </div>
           </div>
-
+ 
           {/* Recent Tournaments */}
           <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
             <div className="px-5 py-4 border-b border-white/5">
@@ -167,6 +185,34 @@ export default async function AdminPage() {
               ))}
               {(allTournaments ?? []).length === 0 && (
                 <p className="px-5 py-6 text-white/30 text-sm text-center">Sin torneos</p>
+              )}
+            </div>
+          </div>
+
+          {/* Sorteos Activos */}
+          <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
+              <h2 className="text-white font-semibold text-sm">Sorteos activos</h2>
+              <Link href="/admin/raffles" className="text-neon-cyan text-xs hover:underline">Ver todos</Link>
+            </div>
+            <div className="divide-y divide-white/5">
+              {activeRaffles.map((r) => (
+                <div key={r.id} className="px-5 py-3 flex items-center justify-between">
+                  <div>
+                    <Link href={`/admin/raffles/${r.id}`} className="text-white text-sm hover:text-neon-cyan transition-colors line-clamp-1">
+                      {r.title}
+                    </Link>
+                    <p className="text-white/30 text-xs mt-0.5">
+                      Precio: {r.currency} {Number(r.ticket_price).toFixed(2)}
+                    </p>
+                  </div>
+                  <span className="text-xs px-2 py-0.5 rounded-full border border-neon-cyan/30 text-neon-cyan bg-neon-cyan/10 uppercase font-orbitron shrink-0">
+                    Activo
+                  </span>
+                </div>
+              ))}
+              {activeRaffles.length === 0 && (
+                <p className="px-5 py-6 text-white/30 text-sm text-center">Sin sorteos activos</p>
               )}
             </div>
           </div>
