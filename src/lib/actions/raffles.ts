@@ -1,0 +1,427 @@
+'use server'
+
+import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
+
+export async function isSystemAdmin(userId: string): Promise<boolean> {
+  const supabase = await createClient()
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .single()
+  return profile?.role === 'SUPER_ADMIN' || profile?.role === 'ADMIN'
+}
+
+export async function getRaffles() {
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('raffles')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (error) return { error: error.message }
+    return { data: data || [] }
+  } catch (err: any) {
+    return { error: err.message || 'Error desconocido' }
+  }
+}
+
+export async function getRaffle(id: string) {
+  try {
+    const supabase = await createClient()
+    const { data: raffle, error: rErr } = await supabase
+      .from('raffles')
+      .select('*')
+      .eq('id', id)
+      .single()
+    if (rErr || !raffle) return { error: 'Sorteo no encontrado' }
+    
+    // Obtener boletos ocupados de este sorteo
+    const { data: tickets, error: tErr } = await supabase
+      .from('tickets')
+      .select('ticket_number, payment_status, buyer_name, buyer_email, buyer_phone, receipt_url')
+      .eq('raffle_id', id)
+      
+    if (tErr) return { error: tErr.message }
+
+    return { 
+      data: raffle, 
+      tickets: tickets || [] 
+    }
+  } catch (err: any) {
+    return { error: err.message || 'Error desconocido' }
+  }
+}
+
+export async function createRaffleAction(data: {
+  title: string
+  description: string
+  drawDate: string
+  ticketPrice: number
+  currency?: string
+  totalTickets?: number
+  prizeImage?: string
+  paymentBankName: string
+  paymentAccountHolder: string
+  paymentBankId: string
+  paymentDetails?: string
+}) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autenticado' }
+    
+    if (!(await isSystemAdmin(user.id))) return { error: 'Sin permisos de administrador' }
+    
+    const adminSupabase = await createAdminClient()
+    const { data: newRaffle, error } = await adminSupabase
+      .from('raffles')
+      .insert({
+        title: data.title,
+        description: data.description,
+        draw_date: new Date(data.drawDate).toISOString(),
+        ticket_price: data.ticketPrice,
+        currency: data.currency || 'RD$',
+        total_tickets: data.totalTickets || 1000,
+        status: 'active',
+        prize_image: data.prizeImage || null,
+        payment_bank_name: data.paymentBankName,
+        payment_account_holder: data.paymentAccountHolder,
+        payment_bank_id: data.paymentBankId,
+        payment_details: data.paymentDetails || null
+      })
+      .select()
+      .single()
+       
+    if (error) return { error: error.message }
+     
+    revalidatePath('/raffles')
+    revalidatePath('/admin/raffles')
+    return { data: newRaffle }
+  } catch (err: any) {
+    return { error: err.message || 'Error al crear el sorteo' }
+  }
+}
+
+export async function updateRaffleAction(
+  id: string,
+  data: Partial<{
+    title: string
+    description: string
+    drawDate: string
+    ticketPrice: number
+    currency: string
+    totalTickets: number
+    prizeImage: string
+    paymentBankName: string
+    paymentAccountHolder: string
+    paymentBankId: string
+    paymentDetails: string
+  }>
+) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autenticado' }
+    
+    if (!(await isSystemAdmin(user.id))) return { error: 'Sin permisos de administrador' }
+    
+    const adminSupabase = await createAdminClient()
+    
+    const updatePayload: Record<string, any> = {}
+    if (data.title !== undefined) updatePayload.title = data.title
+    if (data.description !== undefined) updatePayload.description = data.description
+    if (data.drawDate !== undefined) updatePayload.draw_date = new Date(data.drawDate).toISOString()
+    if (data.ticketPrice !== undefined) updatePayload.ticket_price = data.ticketPrice
+    if (data.currency !== undefined) updatePayload.currency = data.currency
+    if (data.totalTickets !== undefined) updatePayload.total_tickets = data.totalTickets
+    if (data.prizeImage !== undefined) updatePayload.prize_image = data.prizeImage || null
+    if (data.paymentBankName !== undefined) updatePayload.payment_bank_name = data.paymentBankName
+    if (data.paymentAccountHolder !== undefined) updatePayload.payment_account_holder = data.paymentAccountHolder
+    if (data.paymentBankId !== undefined) updatePayload.payment_bank_id = data.paymentBankId
+    if (data.paymentDetails !== undefined) updatePayload.payment_details = data.paymentDetails || null
+
+    const { data: updatedRaffle, error } = await adminSupabase
+      .from('raffles')
+      .update(updatePayload)
+      .eq('id', id)
+      .select()
+      .single()
+       
+    if (error) return { error: error.message }
+     
+    revalidatePath(`/raffles/${id}`)
+    revalidatePath(`/admin/raffles/${id}`)
+    revalidatePath('/raffles')
+    return { data: updatedRaffle }
+  } catch (err: any) {
+    return { error: err.message || 'Error al actualizar el sorteo' }
+  }
+}
+
+export async function deleteRaffleAction(id: string) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autenticado' }
+    
+    if (!(await isSystemAdmin(user.id))) return { error: 'Sin permisos de administrador' }
+    
+    const adminSupabase = await createAdminClient()
+    const { error } = await adminSupabase
+      .from('raffles')
+      .delete()
+      .eq('id', id)
+       
+    if (error) return { error: error.message }
+     
+    revalidatePath('/raffles')
+    revalidatePath('/admin/raffles')
+    return { success: true }
+  } catch (err: any) {
+    return { error: err.message || 'Error al eliminar el sorteo' }
+  }
+}
+
+export async function buyTicketAction(
+  raffleId: string,
+  ticketNumbers: string[],
+  receiptUrl: string
+) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Debes iniciar sesión para comprar boletos.' }
+     
+    // Obtener detalles del comprador desde profiles
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username, email, phone')
+      .eq('id', user.id)
+      .single()
+       
+    const buyerName = profile?.username || user.user_metadata?.username || 'Usuario Kronix'
+    const buyerEmail = profile?.email || user.email || ''
+    const buyerPhone = profile?.phone || user.user_metadata?.phone || ''
+     
+    if (!buyerEmail) {
+      return { error: 'Tu cuenta de usuario debe tener un correo electrónico asociado.' }
+    }
+
+    // 1. Validar estado del sorteo
+    const { data: raffle } = await supabase
+      .from('raffles')
+      .select('status, title')
+      .eq('id', raffleId)
+      .single()
+       
+    if (!raffle || raffle.status !== 'active') {
+      return { error: 'El sorteo no está activo o ya finalizó.' }
+    }
+     
+    // 2. Validar disponibilidad de los números
+    const { data: existing } = await supabase
+      .from('tickets')
+      .select('ticket_number')
+      .eq('raffle_id', raffleId)
+      .in('ticket_number', ticketNumbers)
+       
+    if (existing && existing.length > 0) {
+      const numbers = existing.map(t => t.ticket_number).join(', ')
+      return { error: `Los siguientes boletos ya han sido reservados: ${numbers}` }
+    }
+     
+    // 3. Insertar boletos
+    const adminSupabase = await createAdminClient()
+    const ticketsToInsert = ticketNumbers.map(num => ({
+      raffle_id: raffleId,
+      user_id: user.id,
+      ticket_number: num,
+      buyer_name: buyerName,
+      buyer_email: buyerEmail,
+      buyer_phone: buyerPhone,
+      payment_status: 'pending_verification',
+      receipt_url: receiptUrl
+    }))
+     
+    const { error: insErr } = await adminSupabase
+      .from('tickets')
+      .insert(ticketsToInsert)
+       
+    if (insErr) return { error: insErr.message }
+     
+    // 4. Enviar correo de confirmación de reserva
+    try {
+      const { sendTicketPendingEmail } = await import('@/lib/services/email')
+      await sendTicketPendingEmail({
+        email: buyerEmail,
+        buyerName,
+        raffleName: raffle.title,
+        ticketNumbers,
+      })
+    } catch (mailErr) {
+      console.error('Error al enviar correo de reserva de boleto:', mailErr)
+    }
+     
+    revalidatePath(`/raffles/${raffleId}`)
+    revalidatePath('/raffles/my-tickets')
+    return { success: true }
+  } catch (err: any) {
+    return { error: err.message || 'Error al procesar la compra' }
+  }
+}
+
+export async function verifyTicketAction(
+  raffleId: string,
+  buyerEmail: string,
+  receiptUrl: string,
+  action: 'verify' | 'reject'
+) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autenticado' }
+    
+    if (!(await isSystemAdmin(user.id))) return { error: 'Sin permisos de administrador' }
+     
+    const adminSupabase = await createAdminClient()
+     
+    // Buscar boletos pendientes con este correo y recibo
+    const { data: pendingTickets } = await adminSupabase
+      .from('tickets')
+      .select('id, ticket_number, buyer_name')
+      .eq('raffle_id', raffleId)
+      .eq('buyer_email', buyerEmail)
+      .eq('receipt_url', receiptUrl)
+      .eq('payment_status', 'pending_verification')
+       
+    if (!pendingTickets || pendingTickets.length === 0) {
+      return { error: 'No se encontraron boletos pendientes de verificar.' }
+    }
+     
+    const ticketNumbers = pendingTickets.map(t => t.ticket_number)
+    const buyerName = pendingTickets[0].buyer_name
+     
+    if (action === 'verify') {
+      const { error } = await adminSupabase
+        .from('tickets')
+        .update({ payment_status: 'verified' })
+        .in('id', pendingTickets.map(t => t.id))
+         
+      if (error) return { error: error.message }
+       
+      // Enviar correo de confirmación definitiva
+      try {
+        const { data: raffle } = await adminSupabase.from('raffles').select('title').eq('id', raffleId).single()
+        const { sendTicketConfirmedEmail } = await import('@/lib/services/email')
+        await sendTicketConfirmedEmail({
+          email: buyerEmail,
+          buyerName,
+          raffleName: raffle?.title || 'Sorteo Kronix',
+          ticketNumbers,
+        })
+      } catch (mailErr) {
+        console.error('Error al enviar correo de confirmación de boleto:', mailErr)
+      }
+    } else {
+      // Eliminar boletos para liberar los números
+      const { error } = await adminSupabase
+        .from('tickets')
+        .delete()
+        .in('id', pendingTickets.map(t => t.id))
+         
+      if (error) return { error: error.message }
+    }
+     
+    revalidatePath(`/raffles/${raffleId}`)
+    revalidatePath(`/admin/raffles/${raffleId}`)
+    revalidatePath('/raffles/my-tickets')
+    return { success: true }
+  } catch (err: any) {
+    return { error: err.message || 'Error al verificar boletos' }
+  }
+}
+
+export async function drawRaffleAction(
+  raffleId: string,
+  winningTicketNumber: string
+) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autenticado' }
+    
+    if (!(await isSystemAdmin(user.id))) return { error: 'Sin permisos de administrador' }
+     
+    const adminSupabase = await createAdminClient()
+     
+    // 1. Obtener boleto ganador
+    const { data: winningTicket, error: tErr } = await adminSupabase
+      .from('tickets')
+      .select('id, buyer_name, buyer_email, buyer_phone')
+      .eq('raffle_id', raffleId)
+      .eq('ticket_number', winningTicketNumber)
+      .eq('payment_status', 'verified')
+      .single()
+       
+    if (tErr || !winningTicket) {
+      return { error: 'El boleto ganador no es válido o no está verificado.' }
+    }
+     
+    // 2. Finalizar sorteo
+    const { data: raffle, error: rErr } = await adminSupabase
+      .from('raffles')
+      .update({
+        status: 'finished',
+        winner_ticket_id: winningTicket.id,
+        winner_name: winningTicket.buyer_name,
+        finished_at: new Date().toISOString()
+      })
+      .eq('id', raffleId)
+      .select()
+      .single()
+       
+    if (rErr) return { error: rErr.message }
+     
+    // 3. Enviar correo al ganador
+    try {
+      const { sendRaffleWinnerEmail } = await import('@/lib/services/email')
+      await sendRaffleWinnerEmail({
+        email: winningTicket.buyer_email,
+        winnerName: winningTicket.buyer_name,
+        raffleName: raffle.title,
+        ticketNumber: winningTicketNumber,
+      })
+    } catch (mailErr) {
+      console.error('Error al enviar correo del ganador del sorteo:', mailErr)
+    }
+     
+    revalidatePath(`/raffles/${raffleId}`)
+    revalidatePath(`/admin/raffles/${raffleId}`)
+    revalidatePath('/raffles')
+    revalidatePath('/raffles/my-tickets')
+    return { success: true, winner: winningTicket.buyer_name }
+  } catch (err: any) {
+    return { error: err.message || 'Error al realizar el sorteo en vivo' }
+  }
+}
+
+export async function getMyTickets() {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autenticado' }
+
+    const { data, error } = await supabase
+      .from('tickets')
+      .select('*, raffle:raffles(title, prize_image, draw_date, status, winner_name)')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+
+    if (error) return { error: error.message }
+    return { data: data || [] }
+  } catch (err: any) {
+    return { error: err.message || 'Error desconocido' }
+  }
+}

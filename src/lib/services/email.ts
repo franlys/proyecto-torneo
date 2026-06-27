@@ -590,5 +590,174 @@ export async function sendTournamentAnnouncementEmail({
   }
 }
 
+interface TicketEmailParams {
+  email: string
+  buyerName: string
+  raffleName: string
+  ticketNumbers: string[]
+}
+
+export async function sendTicketPendingEmail({
+  email,
+  buyerName,
+  raffleName,
+  ticketNumbers,
+}: TicketEmailParams) {
+  if (!resend) return { success: false }
+  try {
+    const listStr = ticketNumbers.map(n => `#${n}`).join(', ')
+    const { data, error } = await resend.emails.send({
+      from: 'Kronix Sorteos <no-reply@kronix.do>',
+      to: [email],
+      subject: `Reserva de boletos en revisión: ${raffleName}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0c0c12; color: #ffffff; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <img src="https://www.kronix.do/logo.png" alt="KRONIX Logo" style="width: 50px; height: auto; margin-bottom: 12px; display: inline-block;" />
+            <h1 style="font-size: 24px; font-weight: 900; letter-spacing: 0.2em; color: #00f5ff; margin: 0; text-transform: uppercase;">KRONIX</h1>
+          </div>
+          
+          <h2 style="color: #ffffff; font-size: 18px; margin-top: 0; text-align: center;">🎟️ RESERVA RECIBIDA</h2>
+          <p style="color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.6;">
+            Hola <strong>${buyerName}</strong>,
+          </p>
+          <p style="color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.6;">
+            Hemos recibido tu comprobante de pago para el sorteo <strong>${raffleName}</strong>. 
+            Tus boletos seleccionados son: <strong style="color: #00f5ff; font-size: 16px;">${listStr}</strong>.
+          </p>
+          <div style="background-color: rgba(255, 255, 255, 0.02); border-left: 4px solid #b026ff; padding: 16px; border-radius: 4px; margin: 24px 0;">
+            <p style="color: #b026ff; font-size: 12px; font-weight: bold; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.05em;">ESTADO DE RESERVA:</p>
+            <p style="color: rgba(255,255,255,0.8); font-size: 13px; line-height: 1.6; margin: 0;">
+              En proceso de verificación. Nuestro equipo administrativo validará tu depósito en un plazo máximo de 24 horas y te notificará por este medio.
+            </p>
+          </div>
+          
+          <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 24px 0;" />
+          <p style="color: rgba(255,255,255,0.4); font-size: 11px; text-align: center;">
+            Este es un correo automático de Kronix E-sports.
+          </p>
+        </div>
+      `,
+    })
+    if (error) throw error
+    return { success: true, data }
+  } catch (err: any) {
+    console.error('Error al enviar correo de boletos pendientes:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+export async function sendTicketConfirmedEmail({
+  email,
+  buyerName,
+  raffleName,
+  ticketNumbers,
+}: TicketEmailParams) {
+  if (!resend) return { success: false }
+  try {
+    const listStr = ticketNumbers.map(n => `#${n}`).join(', ')
+    const myTicketsUrl = `https://www.kronix.do/raffles/my-tickets`
+    const { data, error } = await resend.emails.send({
+      from: 'Kronix Sorteos <no-reply@kronix.do>',
+      to: [email],
+      subject: `¡Confirmado! Boletos oficiales para ${raffleName}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0c0c12; color: #ffffff; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <img src="https://www.kronix.do/logo.png" alt="KRONIX Logo" style="width: 50px; height: auto; margin-bottom: 12px; display: inline-block;" />
+            <h1 style="font-size: 24px; font-weight: 900; letter-spacing: 0.2em; color: #00f5ff; margin: 0; text-transform: uppercase;">KRONIX</h1>
+          </div>
+          
+          <h2 style="color: #ffffff; font-size: 18px; margin-top: 0; text-align: center; color: #00f5ff;">✅ PAGO VERIFICADO</h2>
+          <p style="color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.6;">
+            ¡Excelente noticia <strong>${buyerName}</strong>!
+          </p>
+          <p style="color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.6;">
+            Hemos verificado tu transferencia. Tus números oficiales confirmados para el sorteo de <strong>${raffleName}</strong> son:
+          </p>
+          <div style="text-align: center; margin: 24px 0; background: rgba(0, 245, 255, 0.05); border: 1px solid rgba(0, 245, 255, 0.2); padding: 16px; border-radius: 12px;">
+            <span style="font-size: 22px; font-weight: bold; color: #00f5ff; letter-spacing: 0.1em;">${listStr}</span>
+          </div>
+          
+          <p style="color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.6; text-align: center;">
+            Puedes consultar todos tus boletos en tu cuenta en cualquier momento:
+          </p>
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${myTicketsUrl}" style="background: linear-gradient(90deg, #00f5ff 0%, #b026ff 100%); color: #ffffff; text-decoration: none; padding: 10px 28px; border-radius: 8px; font-size: 13px; font-weight: bold; display: inline-block; text-transform: uppercase; letter-spacing: 0.05em;">
+              VER MIS BOLETOS
+            </a>
+          </div>
+          
+          <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 24px 0;" />
+          <p style="color: rgba(255,255,255,0.4); font-size: 11px; text-align: center;">
+            Este es un correo oficial de la plataforma Kronix E-sports.
+          </p>
+        </div>
+      `,
+    })
+    if (error) throw error
+    return { success: true, data }
+  } catch (err: any) {
+    console.error('Error al enviar correo de confirmación de boletos:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+interface WinnerEmailParams {
+  email: string
+  winnerName: string
+  raffleName: string
+  ticketNumber: string
+}
+
+export async function sendRaffleWinnerEmail({
+  email,
+  winnerName,
+  raffleName,
+  ticketNumber,
+}: WinnerEmailParams) {
+  if (!resend) return { success: false }
+  try {
+    const { data, error } = await resend.emails.send({
+      from: 'Kronix Sorteos <no-reply@kronix.do>',
+      to: [email],
+      subject: `🏆 ¡FELICIDADES! Has ganado el sorteo de ${raffleName}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0c0c12; color: #ffffff; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <img src="https://www.kronix.do/logo.png" alt="KRONIX Logo" style="width: 50px; height: auto; margin-bottom: 12px; display: inline-block;" />
+            <h1 style="font-size: 24px; font-weight: 900; letter-spacing: 0.2em; color: #00f5ff; margin: 0; text-transform: uppercase;">KRONIX</h1>
+          </div>
+          
+          <h2 style="color: #ffffff; font-size: 22px; margin-top: 0; text-align: center; color: #ffd700; font-weight: 900;">🏆 ¡ERES EL GANADOR! 🏆</h2>
+          <p style="color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.6;">
+            ¡Hola <strong>${winnerName}</strong>!,
+          </p>
+          <p style="color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.6;">
+            ¡Felicidades! Tu número de boleto <strong style="color: #ffd700; font-size: 18px;">#${ticketNumber}</strong> ha sido el ganador en el sorteo en vivo de: <strong>${raffleName}</strong>.
+          </p>
+          
+          <div style="background-color: rgba(255, 215, 0, 0.05); border-left: 4px solid #ffd700; padding: 16px; border-radius: 4px; margin: 24px 0;">
+            <p style="color: #ffd700; font-size: 12px; font-weight: bold; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.05em;">PRÓXIMOS PASOS:</p>
+            <p style="color: rgba(255,255,255,0.8); font-size: 13px; line-height: 1.6; margin: 0;">
+              Ponte en contacto directo con soporte al cliente de Kronix o el organizador para coordinar la entrega física o transferencia de tu premio de forma segura.
+            </p>
+          </div>
+          
+          <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 24px 0;" />
+          <p style="color: rgba(255,255,255,0.4); font-size: 11px; text-align: center;">
+            Este es un correo oficial de la plataforma Kronix E-sports.
+          </p>
+        </div>
+      `,
+    })
+    if (error) throw error
+    return { success: true, data }
+  } catch (err: any) {
+    console.error('Error al enviar correo del ganador del sorteo:', err)
+    return { success: false, error: err.message }
+  }
+}
+
 
 

@@ -51,6 +51,7 @@ export function Navbar({ user, profile }: NavbarProps) {
           <Link href="/rankings" className="text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white transition-all">Rankings</Link>
           <Link href="/copas" className="text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white transition-all">Copas Oficiales</Link>
           <Link href="/hall-of-fame" className="text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white transition-all">Hall of Fame</Link>
+          <Link href="/raffles" className="text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white transition-all">🏆 Sorteos</Link>
         </div>
 
         {/* Right side: Profile/Access + Hamburger */}
@@ -137,6 +138,9 @@ export function Navbar({ user, profile }: NavbarProps) {
             </Link>
             <Link href="/hall-of-fame" onClick={toggleMenu} className="text-lg font-black uppercase tracking-widest text-white/60 hover:text-neon-cyan transition-colors">
               Hall of Fame
+            </Link>
+            <Link href="/raffles" onClick={toggleMenu} className="text-lg font-black uppercase tracking-widest text-white/60 hover:text-neon-cyan transition-colors">
+              🏆 Sorteos
             </Link>
             <Link href="#membresias" onClick={toggleMenu} className="text-lg font-black uppercase tracking-widest text-white/60 hover:text-neon-purple transition-colors">
               Solicitar Membresía
