@@ -400,7 +400,13 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
                       <div>
                         <h4 className="text-sm font-orbitron font-bold text-white uppercase">{tx.buyer_name}</h4>
                         <p className="text-xs text-white/40 mt-0.5">{tx.buyer_email}</p>
-                        <p className="text-[10px] text-white/30 uppercase mt-0.5">Celular: {tx.buyer_phone}</p>
+                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 mt-1 text-[10px]">
+                          <span className="text-white/40 uppercase">Celular: <strong className="text-white/70">{tx.buyer_phone}</strong></span>
+                          <span className="text-white/20">•</span>
+                          <span className="text-white/40 uppercase">Boletos: <strong className="text-neon-cyan font-bold">{tx.numbers.length}</strong></span>
+                          <span className="text-white/20">•</span>
+                          <span className="text-white/40 uppercase">Total a Pagar: <strong className="text-green-400 font-bold">${tx.numbers.length * ticketPrice}</strong></span>
+                        </div>
                         
                         {/* Selected numbers list */}
                         <div className="flex flex-wrap gap-1 mt-2">

@@ -515,52 +515,83 @@ export function ProfileStatsClient({
                   return (
                     <div
                       key={t.id}
-                      className="p-4 rounded-xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.02] transition-colors flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+                      className="relative overflow-hidden bg-dark-card border border-white/5 rounded-2xl flex flex-col md:flex-row justify-between items-stretch gap-0 group hover:border-white/10 transition-all shadow-lg"
                     >
-                      <div className="flex gap-3">
-                        <div className="w-12 h-12 rounded-lg bg-neutral-900 overflow-hidden shrink-0 border border-white/5">
+                      {/* Main Stub */}
+                      <div className="p-5 flex-1 flex gap-4 items-center min-w-0">
+                        <div className="w-14 h-14 rounded-xl bg-neutral-900 overflow-hidden shrink-0 border border-white/10 relative">
                           {t.raffle?.prize_image ? (
                             <img src={t.raffle.prize_image} alt={t.raffle.title} className="w-full h-full object-cover" />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-xs">🎟️</div>
+                            <div className="w-full h-full flex items-center justify-center text-lg">🎁</div>
                           )}
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <span className="text-[8px] font-orbitron font-black text-neon-cyan uppercase tracking-widest block">KRONIX BOLETO OFICIAL</span>
                           <h4 className="text-xs font-bold text-white font-orbitron line-clamp-1">
                             {t.raffle?.title}
                           </h4>
-                          <div className="flex items-center gap-3 text-[9px] text-white/30 font-semibold uppercase tracking-wider mt-1">
-                            <span>Boleto #{t.ticket_number}</span>
-                            <span>•</span>
-                            <span>{new Date(t.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span>
+                          <p className="text-[9px] text-white/40 font-mono">
+                            ADQUIRIDO: {new Date(t.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </p>
+                          {/* Simulated Barcode */}
+                          <div className="pt-2.5 flex items-center gap-1 opacity-30 group-hover:opacity-55 transition-opacity">
+                            <div className="h-3.5 w-[2px] bg-white"></div>
+                            <div className="h-3.5 w-[1px] bg-white"></div>
+                            <div className="h-3.5 w-[3px] bg-white"></div>
+                            <div className="h-3.5 w-[1px] bg-white"></div>
+                            <div className="h-3.5 w-[2px] bg-white"></div>
+                            <div className="h-3.5 w-[4px] bg-white"></div>
+                            <div className="h-3.5 w-[1px] bg-white"></div>
+                            <div className="h-3.5 w-[2px] bg-white"></div>
+                            <div className="h-3.5 w-[3px] bg-white"></div>
+                            <span className="text-[7px] font-mono text-white/80 tracking-widest pl-2">KRNX-{t.id.slice(0, 8).toUpperCase()}</span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex sm:flex-col items-end gap-2 shrink-0 w-full sm:w-auto justify-between sm:justify-center">
-                        {isVerified ? (
-                          <span className="px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-[9px] font-bold uppercase tracking-wider">
-                            ✓ Confirmado
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-[9px] font-bold uppercase tracking-wider">
-                            ⚡ En Verificación
-                          </span>
-                        )}
+                      {/* Ticket Divider */}
+                      <div className="hidden md:flex flex-col justify-between items-center relative py-2 shrink-0 w-4">
+                        {/* Top notch */}
+                        <div className="absolute -top-1.5 left-0.5 w-3 h-3 bg-dark-bg border-b border-white/5 rounded-full z-10"></div>
+                        {/* Dashed line */}
+                        <div className="w-[1px] h-full border-r border-dashed border-white/10"></div>
+                        {/* Bottom notch */}
+                        <div className="absolute -bottom-1.5 left-0.5 w-3 h-3 bg-dark-bg border-t border-white/5 rounded-full z-10"></div>
+                      </div>
 
-                        {isFinished && (
-                          <div>
-                            {isWinner ? (
-                              <span className="px-2 py-0.5 rounded-full bg-gold/10 border border-gold/20 text-gold text-[9px] font-orbitron font-bold uppercase tracking-widest animate-pulse">
-                                🏆 Ganador
-                              </span>
-                            ) : (
-                              <span className="text-[9px] text-white/20 uppercase tracking-widest block font-orbitron">
-                                No premiado
-                              </span>
-                            )}
-                          </div>
-                        )}
+                      {/* Receipt Stub */}
+                      <div className="p-5 bg-white/[0.01] md:w-44 shrink-0 flex flex-col justify-center items-center gap-2 text-center border-t md:border-t-0 md:border-l border-white/5 relative">
+                        <span className="text-[8px] font-orbitron font-bold text-white/30 uppercase tracking-wider block">NÚMERO DE BOLETO</span>
+                        <span className="text-lg font-orbitron font-black text-neon-cyan tracking-wider drop-shadow-[0_0_8px_rgba(6,182,212,0.3)]">
+                          #{t.ticket_number}
+                        </span>
+
+                        <div className="flex flex-col items-center gap-1.5 mt-0.5">
+                          {isVerified ? (
+                            <span className="px-2.5 py-0.5 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-[8px] font-bold uppercase tracking-wider">
+                              ✓ Confirmado
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-[8px] font-bold uppercase tracking-wider animate-pulse">
+                              ⚡ Verificando
+                            </span>
+                          )}
+
+                          {isFinished && (
+                            <div>
+                              {isWinner ? (
+                                <span className="px-2 py-0.5 rounded-full bg-gold/10 border border-gold/20 text-gold text-[8px] font-orbitron font-bold uppercase tracking-widest animate-bounce flex items-center gap-1">
+                                  🏆 Ganador
+                                </span>
+                              ) : (
+                                <span className="text-[8px] text-white/20 uppercase tracking-widest block font-orbitron">
+                                  No premiado
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )
