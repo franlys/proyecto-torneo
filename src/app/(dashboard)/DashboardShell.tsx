@@ -407,7 +407,7 @@ export default function DashboardShell({
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="lg:hidden fixed top-0 left-0 bottom-0 z-50 w-72 bg-dark-card border-r border-white/5 flex flex-col"
+              className="lg:hidden fixed top-0 left-0 bottom-0 z-50 w-72 bg-dark-card border-r border-white/5 flex flex-col overflow-y-auto"
             >
               <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between">
                 <Link href="/tournaments" onClick={() => setDrawerOpen(false)}>
