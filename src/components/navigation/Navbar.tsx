@@ -175,6 +175,15 @@ export function Navbar({ user, profile }: NavbarProps) {
                 <span>👤</span> Mi Perfil
               </Link>
               {/* Dashboard link (for creators/admins) */}
+              {(profile?.role === 'SUPER_ADMIN' || profile?.role === 'ADMIN') && (
+                <Link
+                  href="/admin"
+                  onClick={toggleMenu}
+                  className="w-full block text-center bg-gradient-to-r from-neon-cyan to-neon-purple text-white py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:opacity-90 transition-all mb-2"
+                >
+                  ⚙️ Panel Admin (Global)
+                </Link>
+              )}
               <Link
                 href="/tournaments"
                 onClick={toggleMenu}

@@ -455,7 +455,7 @@ export async function announceRaffleToAllUsersAction(
 
     const { data: raffle, error: fetchErr } = await supabase
       .from('raffles')
-      .select('id, title, prize_name')
+      .select('id, title')
       .eq('id', raffleId)
       .single()
 
@@ -482,7 +482,7 @@ export async function announceRaffleToAllUsersAction(
       emails,
       raffleName: raffle.title,
       raffleId: raffle.id,
-      prizeName: raffle.prize_name || raffle.title,
+      prizeName: raffle.title,
       type,
     })
 
