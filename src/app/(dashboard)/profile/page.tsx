@@ -85,7 +85,7 @@ export default async function ProfilePage({
   const { data: tickets } = await supabase
     .from('tickets')
     .select('*, raffle:raffles(title, prize_image, status, winner_name)')
-    .eq('buyer_id', user.id)
+    .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
   const defaultTab = searchParams?.tab === 'ajustes' ? 'profile' : searchParams?.tab === 'sorteos' ? 'sorteos' : 'inicio'
