@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { SendRemindersButton } from './SendRemindersButton'
 import { RankingManager } from './RankingManager'
 import { AdminErrorCard } from '@/components/ui/AdminErrorCard'
+import { PendingTicketsPanel } from './PendingTicketsPanel'
 
 export default async function AdminPage() {
   const admin = await isAdmin()
@@ -21,6 +22,7 @@ export default async function AdminPage() {
       { data: recentUsers },
       { data: allTournaments },
       { data: activeRafflesData },
+      { data: pendingTicketsData },
     ] = await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('tournaments').select('*', { count: 'exact', head: true }),
@@ -40,15 +42,52 @@ export default async function AdminPage() {
         .select('*')
         .eq('status', 'active')
         .order('created_at', { ascending: false }),
+      supabase
+        .from('tickets')
+        .select('id, ticket_number, buyer_name, buyer_email, buyer_phone, receipt_url, created_at, raffle_id, raffle:raffles(title)')
+        .eq('payment_status', 'pending_verification')
+        .order('created_at', { ascending: false }),
     ])
 
     const activeRaffles = activeRafflesData || []
+
+    // Group pending tickets by raffle_id + buyer_email + receipt_url
+    const groupsMap: Record<string, {
+      raffleId: string
+      raffleTitle: string
+      buyerName: string
+      buyerEmail: string
+      buyerPhone: string
+      receiptUrl: string
+      createdAt: string
+      ticketNumbers: string[]
+    }> = {}
+
+    for (const t of (pendingTicketsData || [])) {
+      const raffle = Array.isArray(t.raffle) ? t.raffle[0] : t.raffle
+      const key = `${t.raffle_id}-${t.buyer_email}-${t.receipt_url}`
+      if (!groupsMap[key]) {
+        groupsMap[key] = {
+          raffleId: t.raffle_id,
+          raffleTitle: raffle?.title || 'Sorteo',
+          buyerName: t.buyer_name,
+          buyerEmail: t.buyer_email,
+          buyerPhone: t.buyer_phone || '',
+          receiptUrl: t.receipt_url,
+          createdAt: t.created_at,
+          ticketNumbers: []
+        }
+      }
+      groupsMap[key].ticketNumbers.push(t.ticket_number)
+    }
+
+    const pendingGroups = Object.values(groupsMap)
 
     return (
       <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-white">Panel de Administración</h1>
+          <h1 className="text-2xl font-bold text-white font-orbitron">Panel de Administración</h1>
           <p className="text-white/40 text-sm mt-1">Vista global de la plataforma Kronix</p>
         </div>
  
@@ -118,6 +157,9 @@ export default async function AdminPage() {
           </Link>
           <SendRemindersButton />
         </div>
+
+        {/* Pending Ticket Validations */}
+        <PendingTicketsPanel groups={pendingGroups} />
  
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent Users */}

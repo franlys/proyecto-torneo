@@ -204,7 +204,9 @@ export function ProfileStatsClient({
   const roleLabel = (isStaff && (profile?.role === 'USER' || !profile?.role))
     ? { label: 'Colaborador Staff', color: 'text-orange-400 border-orange-500/30 bg-orange-500/10' }
     : ((({
+        SUPER_ADMIN: { label: 'Super Admin 👑', color: 'text-yellow-300 border-yellow-500/30 bg-yellow-500/10' },
         ADMIN: { label: 'Administrador', color: 'text-neon-cyan border-neon-cyan/30 bg-neon-cyan/10' },
+        KRONIX_STAFF: { label: 'Staff', color: 'text-orange-400 border-orange-500/30 bg-orange-500/10' },
         STREAMER: { label: 'Streamer', color: 'text-neon-purple border-neon-purple/30 bg-neon-purple/10' },
         USER: { label: 'Usuario', color: 'text-white/40 border-white/10 bg-white/5' },
       } as any)[profile?.role ?? 'USER']) || { label: 'Usuario', color: 'text-white/40 border-white/10 bg-white/5' })
