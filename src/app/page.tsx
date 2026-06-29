@@ -420,6 +420,11 @@ export default async function Home() {
         <MembershipSection user={user} profile={profile} />
       </div>
 
+      {/* Footer Ad Placement */}
+      <section className="max-w-7xl mx-auto px-6 sm:px-8 mb-12">
+        <AdPlacement banners={ads} slotName="home_footer_banner" hidePlaceholder />
+      </section>
+
       {/* Footer */}
       <footer className="py-12 px-8 border-t border-white/5 text-center flex flex-col items-center gap-2">
          <div className="text-white/20 text-[10px] font-black uppercase tracking-[0.3em]">
