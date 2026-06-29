@@ -93,8 +93,16 @@ export default async function ProfilePage({
   return (
     <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Mi Perfil</h1>
-        <p className="text-white/40 text-sm mt-1">Gestiona tu información personal y visualiza tu rendimiento</p>
+        <h1 className="text-2xl font-bold text-white font-orbitron">
+          {searchParams?.tab === 'ajustes' ? 'Ajustes de Cuenta' : searchParams?.tab === 'sorteos' ? 'Mis Sorteos' : `¡Hola, ${profile?.username || 'Gamer'}! 👋`}
+        </h1>
+        <p className="text-white/40 text-sm mt-1">
+          {searchParams?.tab === 'ajustes'
+            ? 'Gestiona tu información personal, contraseña y cuentas de juego.'
+            : searchParams?.tab === 'sorteos'
+            ? 'Consulta tus boletos virtuales y el estado de tus compras.'
+            : 'Tu panel central de control en Kronix. Consulta tus torneos, boletos y desempeño.'}
+        </p>
       </div>
 
       <ProfileStatsClient

@@ -49,6 +49,17 @@ export default function DashboardShell({
 
   const NavLinks = () => (
     <nav className="flex-1 px-3 py-4 space-y-1">
+      <Link
+        href="/profile"
+        onClick={() => setDrawerOpen(false)}
+        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+      >
+        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l9-9 9 9M5 10v10a1 1 0 001 1h3m10-11V11a1 1 0 00-1-1h-3m-6 0a1 1 0 00-1 1v4a1 1 0 001 1h3m0 0l-3-3m3 3l-3-3" />
+        </svg>
+        Mi Inicio
+      </Link>
+
       {(userRole !== 'USER' || isStaff) && (
         <>
           <Link
