@@ -764,6 +764,7 @@ interface RaffleAnnouncementEmailParams {
   raffleName: string
   raffleId: string
   prizeName: string
+  type?: 'new' | 'live'
 }
 
 export async function sendRaffleAnnouncementEmail({
@@ -771,6 +772,7 @@ export async function sendRaffleAnnouncementEmail({
   raffleName,
   raffleId,
   prizeName,
+  type = 'new',
 }: RaffleAnnouncementEmailParams) {
   if (!resend) {
     console.warn('RESEND_API_KEY no configurado. Saltando envío de anuncio.')
@@ -779,8 +781,24 @@ export async function sendRaffleAnnouncementEmail({
 
   try {
     const portalUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/raffles/${raffleId}`
+    const isLive = type === 'live'
+
+    const subject = isLive
+      ? `🚨 ¡EN VIVO AHORA! El Sorteo de ${raffleName} está comenzando`
+      : `🎟️ ¡Nuevo Sorteo Activo: ${raffleName}!`
+
+    const titleHtml = isLive
+      ? `🚨 ¡SORTEO EN VIVO EN MARCHA!`
+      : `🎟️ ¡NUEVO SORTEO DISPONIBLE!`
+
+    const bodyHtml = isLive
+      ? `Te notificamos que la ruleta en vivo para el sorteo oficial de <strong style="color: #00f5ff;">${raffleName}</strong> (Premio: <strong>${prizeName}</strong>) está comenzando **en este preciso momento**.<br/><br/>Si tienes boletos verificados en este sorteo, ¡entra de inmediato a la plataforma para presenciar el giro de la ruleta y ver si resultas ganador!`
+      : `Se ha publicado un nuevo sorteo oficial: <strong style="color: #00f5ff;">${raffleName}</strong>.<br/><br/>Premio: <strong>${prizeName}</strong>. Adquiere tus boletos, sube tu comprobante de pago de forma segura y participa en la ruleta en vivo.`
+
+    const buttonLabel = isLive
+      ? `VER LA RULETA EN VIVO`
+      : `COMPRAR BOLETOS AHORA`
     
-    // Enviar en lotes de 50 para evitar límites de destinatarios por envío
     const batchSize = 50
     for (let i = 0; i < emails.length; i += batchSize) {
       const batch = emails.slice(i, i + batchSize)
@@ -788,7 +806,7 @@ export async function sendRaffleAnnouncementEmail({
         from: 'Kronix Sorteos <no-reply@kronix.do>',
         to: ['no-reply@kronix.do'],
         bcc: batch,
-        subject: `🎟️ ¡Nuevo Sorteo Activo: ${raffleName}!`,
+        subject,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0c0c12; color: #ffffff; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
             <div style="text-align: center; margin-bottom: 24px;">
@@ -796,17 +814,14 @@ export async function sendRaffleAnnouncementEmail({
               <h1 style="font-size: 24px; font-weight: 900; letter-spacing: 0.2em; color: #00f5ff; margin: 0; text-transform: uppercase;">KRONIX</h1>
             </div>
             
-            <h2 style="color: #ffffff; font-size: 20px; margin-top: 0; text-align: center; font-weight: 800;">🎟️ ¡NUEVO SORTEO DISPONIBLE!</h2>
-            <p style="color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.6; text-align: center;">
-              Se ha publicado un nuevo sorteo oficial: <strong style="color: #00f5ff;">${raffleName}</strong>.
-            </p>
-            <p style="color: rgba(255,255,255,0.6); font-size: 14px; line-height: 1.6; text-align: center; margin-bottom: 28px;">
-              Premio: <strong>${prizeName}</strong>. Adquiere tus boletos, sube tu comprobante de pago de forma segura y participa en la ruleta en vivo.
+            <h2 style="color: #ffffff; font-size: 20px; margin-top: 0; text-align: center; font-weight: 800;">${titleHtml}</h2>
+            <p style="color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.6; text-align: center; margin-bottom: 28px;">
+              ${bodyHtml}
             </p>
             
             <div style="text-align: center; margin: 32px 0;">
               <a href="${portalUrl}" style="background: linear-gradient(90deg, #00f5ff 0%, #b026ff 100%); color: #ffffff; text-decoration: none; padding: 12px 36px; border-radius: 8px; font-size: 14px; font-weight: bold; display: inline-block; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 4px 15px rgba(0, 245, 255, 0.2);">
-                COMPRAR BOLETOS AHORA
+                ${buttonLabel}
               </a>
             </div>
             
@@ -817,7 +832,7 @@ export async function sendRaffleAnnouncementEmail({
           </div>
         `,
       })
-
+ 
       if (error) {
         console.error('Error al enviar lote de correos de anuncio de sorteo:', error)
       }

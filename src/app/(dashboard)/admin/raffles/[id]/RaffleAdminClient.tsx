@@ -19,6 +19,7 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [isAnnouncing, setIsAnnouncing] = useState(false)
+  const [isAnnouncingLive, setIsAnnouncingLive] = useState(false)
 
   const handleAnnounce = async () => {
     if (!confirm('¿Estás seguro de que deseas anunciar este sorteo a todos los usuarios registrados por correo electrónico?')) {
@@ -28,7 +29,7 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
     setIsAnnouncing(true)
     setError(null)
     try {
-      const res = await announceRaffleToAllUsersAction(raffle.id)
+      const res = await announceRaffleToAllUsersAction(raffle.id, 'new')
       if ('error' in res) {
         setError(res.error)
       } else {
@@ -39,6 +40,28 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
       setError(err.message || 'Error al anunciar el sorteo')
     } finally {
       setIsAnnouncing(false)
+    }
+  }
+
+  const handleAnnounceLive = async () => {
+    if (!confirm('¿Estás seguro de que deseas anunciar por correo a todos los usuarios que este sorteo está EN VIVO ahora mismo?')) {
+      return
+    }
+
+    setIsAnnouncingLive(true)
+    setError(null)
+    try {
+      const res = await announceRaffleToAllUsersAction(raffle.id, 'live')
+      if ('error' in res) {
+        setError(res.error)
+      } else {
+        alert('¡Se ha enviado el correo anunciando el inicio del sorteo en vivo a todos los usuarios!')
+        router.refresh()
+      }
+    } catch (err: any) {
+      setError(err.message || 'Error al anunciar el sorteo en vivo')
+    } finally {
+      setIsAnnouncingLive(false)
     }
   }
   
@@ -474,14 +497,32 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
                     triggerSpin={triggerSpin}
                   />
 
-                  {/* Draw button */}
+                  {/* Draw & Announce buttons */}
                   {!triggerSpin && verifiedTickets.length > 0 && (
-                    <button
-                      onClick={() => setTriggerSpin(true)}
-                      className="px-6 py-3 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-neon-cyan to-neon-purple uppercase tracking-widest hover:opacity-90 transition-all font-orbitron"
-                    >
-                      🎰 Iniciar Sorteo en Vivo
-                    </button>
+                    <div className="flex gap-4 flex-wrap justify-center items-center">
+                      <button
+                        onClick={handleAnnounceLive}
+                        disabled={isAnnouncingLive}
+                        className="flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-bold text-white bg-white/5 hover:bg-white/10 border border-white/10 uppercase tracking-widest transition-all font-orbitron disabled:opacity-40"
+                      >
+                        {isAnnouncingLive ? (
+                          <>
+                            <Loader2 size={14} className="animate-spin" /> Anunciando Vivo...
+                          </>
+                        ) : (
+                          <>
+                            <Mail size={14} className="text-neon-cyan" /> Anunciar Inicio En Vivo
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => setTriggerSpin(true)}
+                        className="px-6 py-3 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-neon-cyan to-neon-purple uppercase tracking-widest hover:opacity-90 transition-all font-orbitron"
+                      >
+                        🎰 Iniciar Sorteo en Vivo
+                      </button>
+                    </div>
                   )}
                 </>
               )}

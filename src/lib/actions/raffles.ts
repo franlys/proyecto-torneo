@@ -442,7 +442,8 @@ export async function getMyTickets() {
 }
 
 export async function announceRaffleToAllUsersAction(
-  raffleId: string
+  raffleId: string,
+  type: 'new' | 'live' = 'new'
 ): Promise<{ success: boolean } | { error: string }> {
   try {
     const supabase = await createClient()
@@ -482,6 +483,7 @@ export async function announceRaffleToAllUsersAction(
       raffleName: raffle.title,
       raffleId: raffle.id,
       prizeName: raffle.prize_name || raffle.title,
+      type,
     })
 
     if (!emailRes.success) {
