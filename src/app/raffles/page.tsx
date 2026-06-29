@@ -3,21 +3,33 @@ import { Trophy, Calendar, Ticket, ArrowRight } from 'lucide-react'
 import { getRaffles } from '@/lib/actions/raffles'
 import { getAllAds } from '@/lib/actions/ads'
 import { AdPlacement } from '@/components/federation/AdPlacement'
+import { createClient } from '@/lib/supabase/server'
+import { getProfile } from '@/lib/actions/auth-helpers'
+import { Navbar } from '@/components/navigation/Navbar'
+import { HomeTracker } from '@/components/analytics/HomeTracker'
 
 export const dynamic = 'force-dynamic'
 
 export default async function RafflesCatalogPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const profile = user ? await getProfile() : null
+
   const res = await getRaffles()
   const adsRes = await getAllAds()
   const ads = 'data' in adsRes && adsRes.data ? adsRes.data : []
   
   if ('error' in res) {
     return (
-      <div className="p-4 sm:p-8 text-center">
-        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl inline-block max-w-md">
-          <p className="text-red-400 font-medium">Error al cargar sorteos</p>
-          <p className="text-xs text-white/40 mt-1">{res.error}</p>
-        </div>
+      <div className="min-h-screen bg-[#0a0a0b] text-white selection:bg-neon-cyan/30 pb-20">
+        <HomeTracker path="/raffles" />
+        <Navbar user={user} profile={profile} />
+        <main className="max-w-6xl mx-auto px-6 sm:px-8 pt-32 text-center">
+          <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl inline-block max-w-md">
+            <p className="text-red-400 font-medium">Error al cargar sorteos</p>
+            <p className="text-xs text-white/40 mt-1">{res.error}</p>
+          </div>
+        </main>
       </div>
     )
   }
@@ -27,7 +39,11 @@ export default async function RafflesCatalogPage() {
   const finishedRaffles = raffles.filter(r => r.status === 'finished')
 
   return (
-    <div className="p-4 sm:p-8 max-w-6xl mx-auto space-y-12">
+    <div className="min-h-screen bg-[#0a0a0b] text-white selection:bg-neon-cyan/30 pb-20">
+      <HomeTracker path="/raffles" />
+      <Navbar user={user} profile={profile} />
+
+      <main className="max-w-6xl mx-auto px-6 sm:px-8 pt-32 space-y-12">
       {/* Hero Banner */}
       <div className="relative overflow-hidden rounded-3xl border border-white/5 bg-gradient-to-br from-neon-cyan/5 via-transparent to-neon-purple/5 p-6 sm:p-10 text-center space-y-4">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,245,255,0.05)_0%,transparent_70%)] pointer-events-none" />
@@ -191,6 +207,7 @@ export default async function RafflesCatalogPage() {
           </div>
         )}
       </div>
-    </div>
-  )
+    </main>
+  </div>
+)
 }
