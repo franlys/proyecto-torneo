@@ -219,7 +219,7 @@ export function AdminRafflesClient({ initialRaffles }: AdminRafflesClientProps) 
                     </div>
                   )}
                   <span className="absolute top-3 left-3 px-2 py-0.5 rounded bg-black/70 border border-white/10 text-white text-[9px] font-orbitron font-bold">
-                    {r.currency} {Number(r.ticket_price).toFixed(2)}
+                    {r.currency} {Number(r.ticket_price).toLocaleString('es-ES', { maximumFractionDigits: 0 })}
                   </span>
                   <span className={`absolute top-3 right-3 px-2 py-0.5 rounded text-[9px] font-orbitron font-bold uppercase ${
                     isFinished ? 'bg-white/10 text-white/60 border border-white/5' : 'bg-neon-cyan/20 border border-neon-cyan/30 text-neon-cyan'

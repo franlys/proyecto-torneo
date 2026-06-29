@@ -90,7 +90,7 @@ export function TicketSelector({
         <div className="text-center mt-3">
           <span className="text-[10px] uppercase font-bold tracking-widest text-white/30 block">Total a Pagar</span>
           <span className="text-3xl font-orbitron font-black text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan to-neon-purple block mt-1">
-            {currency} {(selectedCount * ticketPrice).toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+            {currency} {(selectedCount * ticketPrice).toLocaleString('es-ES', { maximumFractionDigits: 0 })}
           </span>
         </div>
 

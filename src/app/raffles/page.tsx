@@ -107,7 +107,7 @@ export default async function RafflesCatalogPage() {
                       </div>
                     )}
                     <span className="absolute top-3 left-3 px-2 py-0.5 rounded bg-black/70 border border-white/10 text-white text-[10px] font-orbitron font-bold uppercase">
-                      {r.currency} {Number(r.ticket_price).toFixed(2)}
+                      {r.currency} {Number(r.ticket_price).toLocaleString('es-ES', { maximumFractionDigits: 0 })}
                     </span>
                   </div>
 

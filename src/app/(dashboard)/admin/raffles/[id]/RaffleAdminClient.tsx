@@ -428,7 +428,7 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
                           <span className="text-white/20">•</span>
                           <span className="text-white/40 uppercase">Boletos: <strong className="text-neon-cyan font-bold">{tx.numbers.length}</strong></span>
                           <span className="text-white/20">•</span>
-                          <span className="text-white/40 uppercase">Total a Pagar: <strong className="text-green-400 font-bold">${tx.numbers.length * ticketPrice}</strong></span>
+                          <span className="text-white/40 uppercase">Total a Pagar: <strong className="text-green-400 font-bold">{raffle.currency} {(tx.numbers.length * ticketPrice).toLocaleString('es-ES', { maximumFractionDigits: 0 })}</strong></span>
                         </div>
                         
                         {/* Selected numbers list */}
