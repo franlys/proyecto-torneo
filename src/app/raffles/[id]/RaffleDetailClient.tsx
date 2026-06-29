@@ -33,7 +33,9 @@ export function RaffleDetailClient({
 
   const soldTicketsCount = tickets.filter(t => t.payment_status === 'verified').length
   const pendingTicketsCount = tickets.filter(t => t.payment_status === 'pending_verification').length
-  const progressPercent = Math.min(100, Math.round((soldTicketsCount / raffle.total_tickets) * 100))
+  const progressPercent = soldTicketsCount > 0
+    ? Math.max(1, Math.min(100, Math.round((soldTicketsCount / raffle.total_tickets) * 100)))
+    : 0
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
