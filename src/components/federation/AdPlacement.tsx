@@ -21,14 +21,26 @@ export function AdPlacement({ banners, slotName, tournamentId, hidePlaceholder }
 
   const [currentIndex, setCurrentIndex] = useState(0)
 
-  // Auto-play interval
+  const activeAd = matchingAds[currentIndex]
+
+  const isVideo = activeAd
+    ? !!(activeAd.imageUrl.toLowerCase().match(/\.(mp4|webm|ogg)$/) || activeAd.imageUrl.includes('/video/'))
+    : false
+
+  // Auto-play interval conditional on media type
   useEffect(() => {
     if (matchingAds.length <= 1) return
-    const interval = setInterval(() => {
+
+    // Si el banner actual es un video, no ponemos temporizador (esperamos al evento onEnded del video)
+    if (isVideo) return
+
+    // Si es una imagen, cambiamos de diapositiva cada 6 segundos
+    const timer = setTimeout(() => {
       setCurrentIndex((prev) => (prev + 1) % matchingAds.length)
-    }, 6000) // Cambiar slide cada 6 segundos
-    return () => clearInterval(interval)
-  }, [matchingAds])
+    }, 6000)
+
+    return () => clearTimeout(timer)
+  }, [currentIndex, matchingAds, isVideo])
 
   if (matchingAds.length === 0) {
     if (hidePlaceholder) return null
@@ -57,8 +69,6 @@ export function AdPlacement({ banners, slotName, tournamentId, hidePlaceholder }
     setCurrentIndex(index)
   }
 
-  const activeAd = matchingAds[currentIndex]
-
   const handleClick = () => {
     trackEvent({
       tournamentId,
@@ -70,8 +80,6 @@ export function AdPlacement({ banners, slotName, tournamentId, hidePlaceholder }
       }
     })
   }
-
-  const isVideo = activeAd.imageUrl.toLowerCase().match(/\.(mp4|webm|ogg)$/) || activeAd.imageUrl.includes('/video/')
 
   const content = (
     <div className="relative group w-full overflow-hidden rounded-3xl border border-white/5 bg-[#121219]/40 hover:border-neon-cyan/20 transition-all duration-300 min-h-[90px] max-h-[160px] flex items-center">
@@ -90,9 +98,11 @@ export function AdPlacement({ banners, slotName, tournamentId, hidePlaceholder }
               <video
                 src={activeAd.imageUrl}
                 autoPlay
-                loop
                 muted
                 playsInline
+                onEnded={() => {
+                  setCurrentIndex((prev) => (prev + 1) % matchingAds.length)
+                }}
                 className="w-full h-full object-cover opacity-70 group-hover:opacity-85 transition-opacity duration-500"
               />
             ) : (
