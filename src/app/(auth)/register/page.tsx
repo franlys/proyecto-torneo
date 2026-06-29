@@ -3,7 +3,7 @@ import { useFormState, useFormStatus } from 'react-dom'
 import Link from 'next/link'
 import { signUp } from '@/lib/actions/auth'
 import { z } from 'zod'
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 
 const registerSchema = z
@@ -34,7 +34,7 @@ function SubmitButton() {
   )
 }
 
-export default function RegisterPage() {
+function RegisterForm() {
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirectTo')
   const [state, action] = useFormState(signUp, null)
@@ -194,5 +194,13 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-10 text-white/40 font-semibold uppercase tracking-wider text-xs">Cargando formulario...</div>}>
+      <RegisterForm />
+    </Suspense>
   )
 }

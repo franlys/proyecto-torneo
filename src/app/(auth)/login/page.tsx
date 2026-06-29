@@ -2,7 +2,7 @@
 import { useFormState, useFormStatus } from 'react-dom'
 import Link from 'next/link'
 import { signIn, resendVerificationEmail } from '@/lib/actions/auth'
-import { useState, useRef } from 'react'
+import { useState, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 
 function SubmitButton() {
@@ -18,7 +18,7 @@ function SubmitButton() {
   )
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirectTo')
   const [state, action] = useFormState(signIn, null)
@@ -159,5 +159,13 @@ export default function LoginPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-10 text-white/40 font-semibold uppercase tracking-wider text-xs">Cargando formulario...</div>}>
+      <LoginForm />
+    </Suspense>
   )
 }
