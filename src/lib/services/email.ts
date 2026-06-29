@@ -830,5 +830,77 @@ export async function sendRaffleAnnouncementEmail({
   }
 }
 
+export async function sendAdminTicketNotificationEmail({
+  buyerName,
+  buyerEmail,
+  buyerPhone,
+  raffleName,
+  ticketNumbers,
+  receiptUrl,
+}: {
+  buyerName: string
+  buyerEmail: string
+  buyerPhone: string
+  raffleName: string
+  ticketNumbers: string[]
+  receiptUrl: string
+}) {
+  if (!resend) return { success: false }
+  try {
+    const { createAdminClient } = await import('@/lib/supabase/server')
+    const adminSupabase = await createAdminClient()
+    const { data: admins } = await adminSupabase
+      .from('profiles')
+      .select('email')
+      .in('role', ['SUPER_ADMIN', 'ADMIN'])
+
+    const adminEmails = (admins || []).map((a: any) => a.email).filter(Boolean)
+    if (adminEmails.length === 0) {
+      adminEmails.push('soporte@kronix.do')
+    }
+
+    const listStr = ticketNumbers.map(n => `#${n}`).join(', ')
+    
+    const { data, error } = await resend.emails.send({
+      from: 'Kronix Admin <no-reply@kronix.do>',
+      to: adminEmails,
+      subject: `🚨 NUEVA COMPRA DE BOLETOS: ${raffleName}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0c0c12; color: #ffffff; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <h1 style="font-size: 20px; font-weight: 900; color: #ff007f; margin: 0; text-transform: uppercase;">NOTIFICACIÓN ADMINISTRATIVA</h1>
+          </div>
+          
+          <h2 style="color: #ffffff; font-size: 16px; margin-top: 0; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px;">🚨 NUEVA RESERVA PENDIENTE DE VALIDACIÓN</h2>
+          
+          <div style="margin: 20px 0; font-size: 14px; line-height: 1.6;">
+            <p><strong>Sorteo:</strong> ${raffleName}</p>
+            <p><strong>Comprador:</strong> ${buyerName} (${buyerEmail})</p>
+            <p><strong>Celular:</strong> ${buyerPhone || 'No proporcionado'}</p>
+            <p><strong>Boletos reservados:</strong> <strong style="color: #00f5ff;">${listStr}</strong> (Cantidad: ${ticketNumbers.length})</p>
+          </div>
+
+          ${receiptUrl ? `
+            <div style="margin: 20px 0; text-align: center;">
+              <p style="font-size: 13px; color: rgba(255,255,255,0.5);">Haz clic en el enlace para ver el comprobante adjunto:</p>
+              <a href="${receiptUrl}" target="_blank" style="display: inline-block; padding: 10px 20px; background-color: #00f5ff; color: #000000; text-decoration: none; font-weight: bold; border-radius: 8px; font-size: 12px; text-transform: uppercase;">Ver Comprobante de Depósito</a>
+            </div>
+          ` : ''}
+          
+          <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 24px 0;" />
+          <p style="color: rgba(255,255,255,0.4); font-size: 11px; text-align: center;">
+            Para aprobar o rechazar esta transacción, ingresa al panel de administración del sorteo.
+          </p>
+        </div>
+      `,
+    })
+    if (error) throw error
+    return { success: true, data }
+  } catch (err: any) {
+    console.error('Error al enviar correo de notificacion admin:', err)
+    return { success: false, error: err.message }
+  }
+}
+
 
 

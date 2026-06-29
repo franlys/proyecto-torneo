@@ -263,6 +263,21 @@ export async function buyTicketAction(
     } catch (mailErr) {
       console.error('Error al enviar correo de reserva de boleto:', mailErr)
     }
+
+    // 5. Enviar correo de notificación al administrador
+    try {
+      const { sendAdminTicketNotificationEmail } = await import('@/lib/services/email')
+      await sendAdminTicketNotificationEmail({
+        buyerName,
+        buyerEmail,
+        buyerPhone,
+        raffleName: raffle.title,
+        ticketNumbers,
+        receiptUrl,
+      })
+    } catch (adminMailErr) {
+      console.error('Error al enviar correo de notificación al administrador:', adminMailErr)
+    }
      
     revalidatePath(`/raffles/${raffleId}`)
     revalidatePath('/raffles/my-tickets')
