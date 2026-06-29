@@ -88,6 +88,8 @@ export default async function RafflesCatalogPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {activeRaffles.map((r) => {
               const drawDate = new Date(r.draw_date)
+              const soldCount = r.tickets?.filter((t: any) => t.payment_status === 'verified').length || 0
+              const progress = Math.min(100, Math.round((soldCount / r.total_tickets) * 100))
               return (
                 <div
                   key={r.id}
@@ -123,12 +125,21 @@ export default async function RafflesCatalogPage() {
                     </div>
 
                     <div className="space-y-3">
-                      {/* Meta information */}
-                      <div className="flex items-center gap-4 text-[10px] text-white/30 font-semibold uppercase tracking-wider">
+                      {/* Meta information & Progress */}
+                      <div className="flex items-center justify-between text-[10px] text-white/30 font-semibold uppercase tracking-wider">
                         <span className="flex items-center gap-1">
                           <Calendar size={12} className="text-neon-purple" />
                           {drawDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
                         </span>
+                        <span className="text-neon-cyan font-orbitron text-[9px] font-bold">{progress}%</span>
+                      </div>
+
+                      {/* Progress Line */}
+                      <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden border border-white/5 relative">
+                        <div 
+                          className="absolute left-0 top-0 h-full bg-gradient-to-r from-neon-cyan to-neon-purple rounded-full transition-all duration-300"
+                          style={{ width: `${progress}%` }}
+                        />
                       </div>
 
                       {/* CTA Button */}

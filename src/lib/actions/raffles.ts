@@ -18,7 +18,7 @@ export async function getRaffles() {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('raffles')
-      .select('*')
+      .select('*, tickets(payment_status)')
       .order('created_at', { ascending: false })
     if (error) return { error: error.message }
     return { data: data || [] }

@@ -33,6 +33,7 @@ export function RaffleDetailClient({
 
   const soldTicketsCount = tickets.filter(t => t.payment_status === 'verified').length
   const pendingTicketsCount = tickets.filter(t => t.payment_status === 'pending_verification').length
+  const progressPercent = Math.min(100, Math.round((soldTicketsCount / raffle.total_tickets) * 100))
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -178,6 +179,20 @@ export function RaffleDetailClient({
                     <Calendar size={13} className="text-neon-purple" />
                     {new Date(raffle.draw_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
                   </span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="pt-4 border-t border-white/5 space-y-2">
+                  <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-white/40">
+                    <span>Progreso de Meta / Venta</span>
+                    <span className="text-neon-cyan font-orbitron">{progressPercent}%</span>
+                  </div>
+                  <div className="relative w-full h-2 rounded-full bg-white/5 overflow-hidden border border-white/5">
+                    <div 
+                      className="absolute left-0 top-0 h-full bg-gradient-to-r from-neon-cyan to-neon-purple rounded-full transition-all duration-300"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
