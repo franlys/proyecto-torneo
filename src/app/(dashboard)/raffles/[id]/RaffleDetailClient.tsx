@@ -248,6 +248,33 @@ export function RaffleDetailClient({
                       }
                     } catch (e) {}
 
+                    const isUrl = (str: string) => {
+                      if (!str) return false
+                      return str.trim().startsWith('http://') || str.trim().startsWith('https://')
+                    }
+
+                    const renderTextWithLinks = (text: string) => {
+                      if (!text) return null
+                      const urlRegex = /(https?:\/\/[^\s]+)/g
+                      const parts = text.split(urlRegex)
+                      return parts.map((part, index) => {
+                        if (part.match(urlRegex)) {
+                          return (
+                            <a
+                              key={index}
+                              href={part}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-neon-cyan hover:underline font-semibold inline-flex items-center gap-0.5"
+                            >
+                              {part} 🔗
+                            </a>
+                          )
+                        }
+                        return part
+                      })
+                    }
+
                     return paymentMethodsList.map((pm, idx) => (
                       <div key={idx} className="p-4 bg-white/[0.02] border border-white/5 rounded-xl text-xs space-y-2 text-white/70 relative">
                         {paymentMethodsList.length > 1 && (
@@ -257,9 +284,29 @@ export function RaffleDetailClient({
                         )}
                         <p><strong className="text-white/40">Banco:</strong> {pm.bankName}</p>
                         <p><strong className="text-white/40">Titular:</strong> {pm.accountHolder}</p>
-                        <p><strong className="text-white/40">No. Cuenta:</strong> <span className="font-mono text-white font-bold bg-white/5 px-1.5 py-0.5 rounded">{pm.bankId}</span></p>
+                        <p>
+                          <strong className="text-white/40">
+                            {isUrl(pm.bankId) ? 'Enlace de Pago' : 'No. Cuenta'}:
+                          </strong>{' '}
+                          {isUrl(pm.bankId) ? (
+                            <a
+                              href={pm.bankId.trim()}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-neon-cyan hover:text-neon-cyan/80 font-bold underline bg-neon-cyan/10 border border-neon-cyan/20 px-2 py-0.5 rounded inline-flex items-center gap-1 transition-colors"
+                            >
+                              Pagar en línea 🔗
+                            </a>
+                          ) : (
+                            <span className="font-mono text-white font-bold bg-white/5 px-1.5 py-0.5 rounded">
+                              {pm.bankId}
+                            </span>
+                          )}
+                        </p>
                         {pm.instructions && !pm.instructions.startsWith('[') && (
-                          <p className="text-white/40 italic mt-2 border-t border-white/5 pt-2">{pm.instructions}</p>
+                          <p className="text-white/40 italic mt-2 border-t border-white/5 pt-2">
+                            {renderTextWithLinks(pm.instructions)}
+                          </p>
                         )}
                       </div>
                     ))
