@@ -462,15 +462,14 @@ export async function announceRaffleToAllUsersAction(
     if (fetchErr || !raffle) return { error: 'Sorteo no encontrado' }
 
     const adminSupabase = await createAdminClient()
-    const { data: profiles, error: profilesErr } = await adminSupabase
-      .from('profiles')
-      .select('email')
-      .not('email', 'is', null)
+    const { data: authData, error: authErr } = await adminSupabase.auth.admin.listUsers({
+      perPage: 1000
+    })
 
-    if (profilesErr) return { error: profilesErr.message }
+    if (authErr) return { error: authErr.message }
 
-    const emails = profiles
-      ?.map((p: any) => p.email?.trim())
+    const emails = authData?.users
+      ?.map((u: any) => u.email?.trim())
       .filter((email: any) => email && email.includes('@')) || []
 
     if (emails.length === 0) {
