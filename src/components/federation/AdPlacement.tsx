@@ -82,9 +82,9 @@ export function AdPlacement({ banners, slotName, tournamentId, hidePlaceholder }
   }
 
   const content = (
-    <div className="relative group w-full overflow-hidden rounded-3xl border border-white/5 bg-[#121219]/40 hover:border-neon-cyan/20 transition-all duration-300 min-h-[90px] max-h-[160px] flex items-center">
+    <div className="relative group w-full overflow-hidden rounded-3xl border border-white/5 bg-[#121219]/40 hover:border-neon-cyan/20 transition-all duration-300 min-h-[150px] h-[180px] sm:h-[260px] md:h-[320px] lg:h-[400px] flex items-center">
       {/* Slide Container */}
-      <div className="relative w-full h-full min-h-[90px] max-h-[160px] overflow-hidden flex items-center">
+      <div className="relative w-full h-full overflow-hidden flex items-center">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeAd.id}
