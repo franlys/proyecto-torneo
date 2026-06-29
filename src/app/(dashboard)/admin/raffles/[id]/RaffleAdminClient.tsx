@@ -55,13 +55,14 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
   const [isUploadingFile, setIsUploadingFile] = useState(false)
 
   // Multiple payment methods states
-  const [paymentMethods, setPaymentMethods] = useState<{ bankName: string; accountHolder: string; bankId: string; instructions: string; type?: 'banco' | 'paypal' | 'otro' }[]>(() => {
+  const [paymentMethods, setPaymentMethods] = useState<{ bankName: string; accountHolder: string; bankId: string; instructions: string; type?: 'banco' | 'paypal' | 'otro'; qrUrl?: string }[]>(() => {
     try {
       if (raffle.payment_details && raffle.payment_details.startsWith('[')) {
         const parsed = JSON.parse(raffle.payment_details)
         return parsed.map((pm: any) => ({
           ...pm,
-          type: pm.type || (pm.bankName === 'PayPal' ? 'paypal' : 'banco')
+          type: pm.type || (pm.bankName === 'PayPal' ? 'paypal' : 'banco'),
+          qrUrl: pm.qrUrl
         }))
       }
     } catch (e) {}
@@ -70,9 +71,12 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
       accountHolder: raffle.payment_account_holder || '',
       bankId: raffle.payment_bank_id || '',
       instructions: raffle.payment_details || '',
-      type: raffle.payment_bank_name === 'PayPal' ? 'paypal' : 'banco'
+      type: raffle.payment_bank_name === 'PayPal' ? 'paypal' : 'banco',
+      qrUrl: undefined
     }]
   })
+  const [qrFiles, setQrFiles] = useState<Record<number, File>>({})
+  const [qrPreviews, setQrPreviews] = useState<Record<number, string>>({})
 
   // Live drawing states
   const [triggerSpin, setTriggerSpin] = useState(false)
@@ -219,9 +223,30 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
         finalPrizeUrl = `${supabaseUrl}/storage/v1/object/public/evidences/${uploadRes.path}`
       }
 
+      // Upload QR files for payment methods if selected
+      const updatedMethods = [...paymentMethods]
+      for (let i = 0; i < updatedMethods.length; i++) {
+        const file = qrFiles[i]
+        if (file && (updatedMethods[i].type === 'paypal' || updatedMethods[i].type === 'otro')) {
+          const formData = new FormData()
+          formData.append('file', file)
+          const fileExt = file.name.split('.').pop()
+          const filePath = `raffles/qrs/${Date.now()}_pm_${i}_${Math.random().toString(36).substring(7)}.${fileExt}`
+          formData.append('filePath', filePath)
+          const uploadRes = await uploadEvidence(formData)
+          if ('error' in uploadRes) {
+            setError(`Error al subir el QR de la Forma de Pago #${i + 1}: ${uploadRes.error}`)
+            setIsUploadingFile(false)
+            return
+          }
+          const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://otssvwinchttedisfqtr.supabase.co').replace(/\/$/, '')
+          updatedMethods[i].qrUrl = `${supabaseUrl}/storage/v1/object/public/evidences/${uploadRes.path}`
+        }
+      }
+
       startTransition(async () => {
-        const primaryMethod = paymentMethods[0]
-        const serializedDetails = JSON.stringify(paymentMethods)
+        const primaryMethod = updatedMethods[0]
+        const serializedDetails = JSON.stringify(updatedMethods)
 
         const res = await updateRaffleAction(raffle.id, {
           title,
@@ -718,6 +743,68 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
                             className="w-full px-3.5 py-2 rounded-lg bg-white/5 border border-white/10 focus:outline-none focus:border-neon-purple text-xs text-white"
                           />
                         </div>
+
+                        {(pm.type === 'paypal' || pm.type === 'otro') && (
+                          <div className="space-y-1 sm:col-span-2 mt-1">
+                            <label className="text-[9px] font-bold uppercase tracking-wider text-white/30">Código QR de Pago (Opcional)</label>
+                            <div className="flex flex-wrap items-center gap-3">
+                              {(qrPreviews[index] || pm.qrUrl) ? (
+                                <div className="flex items-center gap-3 bg-white/[0.02] border border-white/5 rounded-lg p-2 pr-4 shrink-0">
+                                  <img
+                                    src={qrPreviews[index] || pm.qrUrl}
+                                    alt="Código QR"
+                                    className="w-10 h-10 object-contain rounded bg-white border border-white/10"
+                                  />
+                                  <div>
+                                    <span className="text-[8px] font-bold text-white/40 uppercase block">QR Cargado</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const updatedPreviews = { ...qrPreviews }
+                                        delete updatedPreviews[index]
+                                        setQrPreviews(updatedPreviews)
+
+                                        const updatedFiles = { ...qrFiles }
+                                        delete updatedFiles[index]
+                                        setQrFiles(updatedFiles)
+
+                                        const updated = [...paymentMethods]
+                                        delete updated[index].qrUrl
+                                        setPaymentMethods(updated)
+                                      }}
+                                      className="text-[8px] font-black text-red-400 hover:underline uppercase tracking-wider block text-left"
+                                    >
+                                      Eliminar QR
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <label className="flex items-center gap-2 px-3 py-2 border border-dashed border-white/10 hover:border-white/20 rounded-lg cursor-pointer bg-white/[0.01] hover:bg-white/[0.02] transition-all">
+                                  <Upload size={12} className="text-white/20" />
+                                  <span className="text-[9px] text-white/40 font-semibold">Subir Imagen de QR</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0]
+                                      if (file) {
+                                        const updatedFiles = { ...qrFiles, [index]: file }
+                                        setQrFiles(updatedFiles)
+
+                                        const updatedPreviews = { ...qrPreviews, [index]: URL.createObjectURL(file) }
+                                        setQrPreviews(updatedPreviews)
+                                      }
+                                    }}
+                                    className="hidden"
+                                  />
+                                </label>
+                              )}
+                              <span className="text-[8px] text-white/20 leading-normal max-w-xs">
+                                Sube una imagen de tu código QR de PayPal o pago móvil para que los usuarios puedan escanearlo y transferir más rápido.
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

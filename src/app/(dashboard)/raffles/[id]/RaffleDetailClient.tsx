@@ -3,7 +3,7 @@
 import React, { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Trophy, Calendar, Ticket, ArrowLeft, Upload, Loader2, Sparkles, CheckCircle2, ShieldCheck, Landmark } from 'lucide-react'
+import { Trophy, Calendar, Ticket, ArrowLeft, Upload, Loader2, Sparkles, CheckCircle2, ShieldCheck, Landmark, X } from 'lucide-react'
 import { CountdownClock } from '@/components/raffles/CountdownClock'
 import { TicketSelector } from '@/components/raffles/TicketSelector'
 import { buyTicketAction } from '@/lib/actions/raffles'
@@ -29,6 +29,7 @@ export function RaffleDetailClient({
   const [assignedNumbers, setAssignedNumbers] = useState<string[]>([])
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [selectedQrUrl, setSelectedQrUrl] = useState<string | null>(null)
 
   const soldTicketsCount = tickets.filter(t => t.payment_status === 'verified').length
   const pendingTicketsCount = tickets.filter(t => t.payment_status === 'pending_verification').length
@@ -236,11 +237,18 @@ export function RaffleDetailClient({
                 </h4>
                 <div className="space-y-3">
                   {(() => {
-                    let paymentMethodsList = [{
-                      bankName: raffle.payment_bank_name,
-                      accountHolder: raffle.payment_account_holder,
-                      bankId: raffle.payment_bank_id,
-                      instructions: raffle.payment_details
+                    let paymentMethodsList: {
+                      bankName: string
+                      accountHolder: string
+                      bankId: string
+                      instructions: string
+                      type?: 'banco' | 'paypal' | 'otro'
+                      qrUrl?: string
+                    }[] = [{
+                      bankName: raffle.payment_bank_name || '',
+                      accountHolder: raffle.payment_account_holder || '',
+                      bankId: raffle.payment_bank_id || '',
+                      instructions: raffle.payment_details || ''
                     }]
                     try {
                       if (raffle.payment_details && raffle.payment_details.startsWith('[')) {
@@ -307,6 +315,17 @@ export function RaffleDetailClient({
                           <p className="text-white/40 italic mt-2 border-t border-white/5 pt-2">
                             {renderTextWithLinks(pm.instructions)}
                           </p>
+                        )}
+                        {pm.qrUrl && (
+                          <div className="mt-2 pt-2 border-t border-white/5">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedQrUrl(pm.qrUrl || null)}
+                              className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-[9px] font-bold text-white bg-white/5 hover:bg-white/10 border border-white/10 uppercase tracking-widest transition-all"
+                            >
+                              📱 Ver Código QR
+                            </button>
+                          </div>
                         )}
                       </div>
                     ))
@@ -425,8 +444,40 @@ export function RaffleDetailClient({
               </p>
             </div>
           )}
+          {/* finished raffle info */}
         </div>
       </div>
+
+      {/* QR Modal */}
+      {selectedQrUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="relative max-w-sm w-full bg-dark-card border border-white/10 rounded-3xl p-6 text-center space-y-4 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+            <button
+              type="button"
+              onClick={() => setSelectedQrUrl(null)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all"
+            >
+              <X size={16} />
+            </button>
+            <h3 className="font-orbitron font-black text-sm uppercase tracking-wider text-white">Escanea el Código QR</h3>
+            <p className="text-[10px] text-white/40">Usa la aplicación de tu banco, billetera o cámara para escanear y realizar el pago.</p>
+            <div className="bg-white p-3 rounded-2xl inline-block border border-white/10 mx-auto">
+              <img
+                src={selectedQrUrl}
+                alt="Código QR de Pago"
+                className="w-56 h-56 object-contain rounded-lg"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedQrUrl(null)}
+              className="w-full py-2.5 rounded-xl text-xs font-bold text-white bg-white/5 hover:bg-white/10 border border-white/10 uppercase tracking-widest transition-all"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
