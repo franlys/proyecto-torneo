@@ -55,17 +55,22 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
   const [isUploadingFile, setIsUploadingFile] = useState(false)
 
   // Multiple payment methods states
-  const [paymentMethods, setPaymentMethods] = useState<{ bankName: string; accountHolder: string; bankId: string; instructions: string }[]>(() => {
+  const [paymentMethods, setPaymentMethods] = useState<{ bankName: string; accountHolder: string; bankId: string; instructions: string; type?: 'banco' | 'paypal' | 'otro' }[]>(() => {
     try {
       if (raffle.payment_details && raffle.payment_details.startsWith('[')) {
-        return JSON.parse(raffle.payment_details)
+        const parsed = JSON.parse(raffle.payment_details)
+        return parsed.map((pm: any) => ({
+          ...pm,
+          type: pm.type || (pm.bankName === 'PayPal' ? 'paypal' : 'banco')
+        }))
       }
     } catch (e) {}
     return [{
       bankName: raffle.payment_bank_name || '',
       accountHolder: raffle.payment_account_holder || '',
       bankId: raffle.payment_bank_id || '',
-      instructions: raffle.payment_details || ''
+      instructions: raffle.payment_details || '',
+      type: raffle.payment_bank_name === 'PayPal' ? 'paypal' : 'banco'
     }]
   })
 
@@ -118,7 +123,7 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
   }
 
   const handleAddPaymentMethod = () => {
-    setPaymentMethods([...paymentMethods, { bankName: '', accountHolder: '', bankId: '', instructions: '' }])
+    setPaymentMethods([...paymentMethods, { bankName: '', accountHolder: '', bankId: '', instructions: '', type: 'banco' }])
   }
 
   const handleRemovePaymentMethod = (index: number) => {
@@ -598,21 +603,87 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
                         Forma de Pago #{index + 1}
                       </span>
 
+                      {/* Selector de Tipo */}
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = [...paymentMethods]
+                            updated[index] = {
+                              ...updated[index],
+                              type: 'banco',
+                              bankName: updated[index].bankName === 'PayPal' ? '' : updated[index].bankName
+                            }
+                            setPaymentMethods(updated)
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border ${
+                            (pm.type || 'banco') === 'banco'
+                              ? 'bg-neon-cyan/15 border-neon-cyan/40 text-neon-cyan'
+                              : 'bg-white/5 border-white/5 text-white/40 hover:text-white/60'
+                          }`}
+                        >
+                          🏦 Banco
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = [...paymentMethods]
+                            updated[index] = {
+                              ...updated[index],
+                              type: 'paypal',
+                              bankName: 'PayPal'
+                            }
+                            setPaymentMethods(updated)
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border ${
+                            pm.type === 'paypal'
+                              ? 'bg-neon-purple/15 border-neon-purple/40 text-neon-purple'
+                              : 'bg-white/5 border-white/5 text-white/40 hover:text-white/60'
+                          }`}
+                        >
+                          💳 PayPal
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = [...paymentMethods]
+                            updated[index] = {
+                              ...updated[index],
+                              type: 'otro',
+                              bankName: updated[index].bankName === 'PayPal' ? '' : updated[index].bankName
+                            }
+                            setPaymentMethods(updated)
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border ${
+                            pm.type === 'otro'
+                              ? 'bg-white/10 border-white/20 text-white'
+                              : 'bg-white/5 border-white/5 text-white/40 hover:text-white/60'
+                          }`}
+                        >
+                          🌐 Otro / Enlace
+                        </button>
+                      </div>
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
-                          <label className="text-[9px] font-bold uppercase tracking-wider text-white/30">Banco *</label>
+                          <label className="text-[9px] font-bold uppercase tracking-wider text-white/30">
+                            {pm.type === 'paypal' ? 'Plataforma *' : pm.type === 'otro' ? 'Plataforma / Servicio *' : 'Banco *'}
+                          </label>
                           <input
                             type="text"
                             value={pm.bankName}
                             onChange={(e) => handlePaymentMethodChange(index, 'bankName', e.target.value)}
-                            placeholder="Ej. Banco Popular"
-                            className="w-full px-3.5 py-2 rounded-lg bg-white/5 border border-white/10 focus:outline-none focus:border-neon-purple text-xs text-white"
+                            placeholder={pm.type === 'paypal' ? 'PayPal' : pm.type === 'otro' ? 'Ej. Binance Pay' : 'Ej. Banco Popular'}
+                            className="w-full px-3.5 py-2 rounded-lg bg-white/5 border border-white/10 focus:outline-none focus:border-neon-purple text-xs text-white disabled:opacity-50"
                             required
+                            disabled={pm.type === 'paypal'}
                           />
                         </div>
 
                         <div className="space-y-1">
-                          <label className="text-[9px] font-bold uppercase tracking-wider text-white/30">Titular de Cuenta *</label>
+                          <label className="text-[9px] font-bold uppercase tracking-wider text-white/30">
+                            {pm.type === 'paypal' ? 'Nombre del Titular *' : 'Titular de Cuenta *'}
+                          </label>
                           <input
                             type="text"
                             value={pm.accountHolder}
@@ -624,12 +695,14 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
                         </div>
 
                         <div className="space-y-1">
-                          <label className="text-[9px] font-bold uppercase tracking-wider text-white/30">No. Cuenta *</label>
+                          <label className="text-[9px] font-bold uppercase tracking-wider text-white/30">
+                            {pm.type === 'paypal' ? 'Enlace de Pago o Correo *' : pm.type === 'otro' ? 'Enlace o ID *' : 'No. Cuenta *'}
+                          </label>
                           <input
                             type="text"
                             value={pm.bankId}
                             onChange={(e) => handlePaymentMethodChange(index, 'bankId', e.target.value)}
-                            placeholder="Ej. 792-348293-1"
+                            placeholder={pm.type === 'paypal' ? 'Ej. https://paypal.me/tu_usuario' : pm.type === 'otro' ? 'Ej. https://... o ID' : 'Ej. 792-348293-1'}
                             className="w-full px-3.5 py-2 rounded-lg bg-white/5 border border-white/10 focus:outline-none focus:border-neon-purple text-xs text-white"
                             required
                           />
