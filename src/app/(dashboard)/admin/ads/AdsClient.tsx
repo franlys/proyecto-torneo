@@ -14,6 +14,7 @@ interface AdsClientProps {
 }
 
 const COMMON_SLOTS = [
+  { value: 'home_top_banner', label: 'Inicio - Banner Interno Superior (1200x200)' },
   { value: 'home_hero_banner', label: 'Inicio - Banner Hero Principal (1200x200)' },
   { value: 'leaderboard_sidebar', label: 'Leaderboard - Barra Lateral (300x600)' },
   { value: 'bracket_footer', label: 'Bracket - Pie de Página' },

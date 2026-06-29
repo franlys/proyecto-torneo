@@ -9,9 +9,10 @@ interface AdPlacementProps {
   banners: AdBanner[]
   slotName: string
   tournamentId?: string
+  hidePlaceholder?: boolean
 }
 
-export function AdPlacement({ banners, slotName, tournamentId }: AdPlacementProps) {
+export function AdPlacement({ banners, slotName, tournamentId, hidePlaceholder }: AdPlacementProps) {
   const activeAd = useMemo(() => {
     const matching = banners.filter(b => b.slotName === slotName && b.isActive)
     if (matching.length === 0) return null
@@ -20,6 +21,7 @@ export function AdPlacement({ banners, slotName, tournamentId }: AdPlacementProp
   }, [banners, slotName])
 
   if (!activeAd) {
+    if (hidePlaceholder) return null
     return (
       <div className="w-full bg-[#121219]/20 border border-dashed border-white/5 rounded-3xl p-6 text-center text-xs text-white/20 uppercase tracking-widest font-black">
         Espacio publicitario disponible para patrocinadores oficiales KRONIX

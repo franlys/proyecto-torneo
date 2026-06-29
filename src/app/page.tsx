@@ -187,7 +187,8 @@ export default async function Home() {
       )}
 
       {/* Publicidad Destacada (Sponsorship Slot) */}
-      <section className="max-w-7xl mx-auto px-6 sm:px-8 mb-20">
+      <section className="max-w-7xl mx-auto px-6 sm:px-8 mb-20 space-y-6">
+        <AdPlacement banners={ads} slotName="home_top_banner" hidePlaceholder />
         <AdPlacement banners={ads} slotName="home_hero_banner" />
       </section>
 
