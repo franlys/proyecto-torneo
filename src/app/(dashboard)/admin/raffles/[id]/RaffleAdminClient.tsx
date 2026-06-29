@@ -70,6 +70,7 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
   const [description, setDescription] = useState(raffle.description)
   const [drawDate, setDrawDate] = useState(new Date(raffle.draw_date).toISOString().slice(0, 16))
   const [ticketPrice, setTicketPrice] = useState(raffle.ticket_price)
+  const [totalTickets, setTotalTickets] = useState(raffle.total_tickets || 1000)
   const [prizeImage, setPrizeImage] = useState(raffle.prize_image || '')
   
   // Local prize image/video upload states
@@ -276,6 +277,7 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
           description,
           drawDate,
           ticketPrice,
+          totalTickets,
           prizeImage: finalPrizeUrl || undefined,
           paymentBankName: primaryMethod.bankName,
           paymentAccountHolder: primaryMethod.accountHolder,
@@ -592,6 +594,30 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
                     type="datetime-local"
                     value={drawDate}
                     onChange={(e) => setDrawDate(e.target.value)}
+                    className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-neon-cyan text-xs text-white"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">Precio del Boleto ({raffle.currency}) *</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={ticketPrice}
+                    onChange={(e) => setTicketPrice(Number(e.target.value) || 0)}
+                    className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-neon-cyan text-xs text-white"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">Total de Boletos (Meta) *</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={totalTickets}
+                    onChange={(e) => setTotalTickets(Number(e.target.value) || 0)}
                     className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-neon-cyan text-xs text-white"
                     required
                   />
