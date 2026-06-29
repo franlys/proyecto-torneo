@@ -24,9 +24,13 @@ export async function GET(request: Request) {
           .from('profiles')
           .select('*', { count: 'exact', head: true })
 
+        const metaUsername = data.user.user_metadata?.username || null
+        const userEmail = data.user.email || null
+
         await adminSupabase.from('profiles').insert({
           id: data.user.id,
-          username: null,
+          username: metaUsername,
+          email: userEmail,
           role: (count ?? 0) === 0 ? 'ADMIN' : 'USER',
         })
       }
