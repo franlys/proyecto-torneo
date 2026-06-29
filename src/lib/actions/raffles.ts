@@ -15,7 +15,7 @@ export async function isSystemAdmin(userId: string): Promise<boolean> {
 
 export async function getRaffles() {
   try {
-    const supabase = await createClient()
+    const supabase = await createAdminClient()
     const { data, error } = await supabase
       .from('raffles')
       .select('*, tickets(payment_status)')
@@ -29,26 +29,26 @@ export async function getRaffles() {
 
 export async function getRaffle(id: string) {
   try {
-    const supabase = await createClient()
-    const { data: raffle, error: rErr } = await supabase
-      .from('raffles')
-      .select('*')
-      .eq('id', id)
-      .single()
-    if (rErr || !raffle) return { error: 'Sorteo no encontrado' }
-    
-    // Obtener boletos ocupados de este sorteo
-    const { data: tickets, error: tErr } = await supabase
-      .from('tickets')
-      .select('ticket_number, payment_status, buyer_name, buyer_email, buyer_phone, receipt_url')
-      .eq('raffle_id', id)
-      
-    if (tErr) return { error: tErr.message }
-
-    return { 
-      data: raffle, 
-      tickets: tickets || [] 
-    }
+     const supabase = await createAdminClient()
+     const { data: raffle, error: rErr } = await supabase
+       .from('raffles')
+       .select('*')
+       .eq('id', id)
+       .single()
+     if (rErr || !raffle) return { error: 'Sorteo no encontrado' }
+     
+     // Obtener boletos ocupados de este sorteo (solo datos necesarios para el grid público)
+     const { data: tickets, error: tErr } = await supabase
+       .from('tickets')
+       .select('id, ticket_number, payment_status')
+       .eq('raffle_id', id)
+       
+     if (tErr) return { error: tErr.message }
+ 
+     return { 
+       data: raffle, 
+       tickets: tickets || [] 
+     }
   } catch (err: any) {
     return { error: err.message || 'Error desconocido' }
   }
