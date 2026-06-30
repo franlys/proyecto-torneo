@@ -540,3 +540,92 @@ export async function announceRaffleToAllUsersAction(
     return { error: err.message || 'Error desconocido' }
   }
 }
+
+export async function assignTicketsManuallyAction(
+  raffleId: string,
+  buyerName: string,
+  buyerEmail: string,
+  buyerPhone: string,
+  count: number
+) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autenticado' }
+
+    if (!(await isSystemAdmin(user.id))) return { error: 'Sin permisos de administrador' }
+
+    const adminSupabase = await createAdminClient()
+
+    // 1. Validar sorteo
+    const { data: raffle } = await adminSupabase
+      .from('raffles')
+      .select('status, title, total_tickets')
+      .eq('id', raffleId)
+      .single()
+
+    if (!raffle) return { error: 'Sorteo no encontrado.' }
+
+    // 2. Obtener boletos existentes para generar números libres
+    const { data: existingTickets } = await adminSupabase
+      .from('tickets')
+      .select('ticket_number')
+      .eq('raffle_id', raffleId)
+
+    const occupiedNumbers = new Set(existingTickets?.map(t => t.ticket_number) || [])
+    const ticketNumbers: string[] = []
+
+    while (ticketNumbers.length < count) {
+      const randomVal = Math.floor(Math.random() * raffle.total_tickets)
+      const formatted = randomVal.toString().padStart(4, '0')
+      if (!occupiedNumbers.has(formatted) && !ticketNumbers.includes(formatted)) {
+        ticketNumbers.push(formatted)
+      }
+      if (occupiedNumbers.size + ticketNumbers.length >= raffle.total_tickets) {
+        break
+      }
+    }
+
+    if (ticketNumbers.length < count) {
+      return { error: 'No quedan suficientes boletos disponibles en este sorteo para asignar la cantidad solicitada.' }
+    }
+
+    // 3. Insertar boletos como verified
+    const ticketsToInsert = ticketNumbers.map(num => ({
+      raffle_id: raffleId,
+      ticket_number: num,
+      buyer_name: buyerName,
+      buyer_email: buyerEmail,
+      buyer_phone: buyerPhone || '',
+      payment_status: 'verified',
+      receipt_url: 'manual_assignment'
+    }))
+
+    const { error: insErr } = await adminSupabase
+      .from('tickets')
+      .insert(ticketsToInsert)
+
+    if (insErr) return { error: insErr.message }
+
+    // 4. Enviar correo de confirmación de boletos asignados
+    try {
+      const { sendTicketConfirmedEmail } = await import('@/lib/services/email')
+      await sendTicketConfirmedEmail({
+        email: buyerEmail,
+        buyerName,
+        raffleName: raffle.title,
+        ticketNumbers,
+      })
+    } catch (mailErr) {
+      console.error('Error al enviar correo de confirmación:', mailErr)
+    }
+
+    revalidatePath(`/raffles/${raffleId}`)
+    revalidatePath(`/admin/raffles/${raffleId}`)
+    revalidatePath('/raffles/my-tickets')
+
+    return { success: true, ticketNumbers }
+  } catch (err: any) {
+    return { error: err.message || 'Error al asignar boletos' }
+  }
+}

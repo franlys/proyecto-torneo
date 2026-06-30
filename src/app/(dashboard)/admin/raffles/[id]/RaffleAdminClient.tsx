@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Trophy, Calendar, Ticket, Check, X, ShieldAlert, Loader2, Play, Landmark, Image, Eye, Trash2, PlusCircle, Upload, Mail } from 'lucide-react'
 import { LiveWheel } from '@/components/raffles/LiveWheel'
-import { verifyTicketAction, drawRaffleAction, updateRaffleAction, deleteRaffleAction, announceRaffleToAllUsersAction } from '@/lib/actions/raffles'
+import { verifyTicketAction, drawRaffleAction, updateRaffleAction, deleteRaffleAction, announceRaffleToAllUsersAction, assignTicketsManuallyAction } from '@/lib/actions/raffles'
 import { uploadEvidence } from '@/lib/actions/storage'
 
 interface RaffleAdminClientProps {
@@ -20,6 +20,43 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
   const [error, setError] = useState<string | null>(null)
   const [isAnnouncing, setIsAnnouncing] = useState(false)
   const [isAnnouncingLive, setIsAnnouncingLive] = useState(false)
+
+  // Manual Assignment States
+  const [manualName, setManualName] = useState('')
+  const [manualEmail, setManualEmail] = useState('')
+  const [manualPhone, setManualPhone] = useState('')
+  const [manualCount, setManualCount] = useState(1)
+  const [isAssigning, setIsAssigning] = useState(false)
+  const [manualError, setManualError] = useState<string | null>(null)
+
+  const handleManualAssign = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setManualError(null)
+    setIsAssigning(true)
+    try {
+      const res = await assignTicketsManuallyAction(
+        raffle.id,
+        manualName,
+        manualEmail,
+        manualPhone,
+        manualCount
+      )
+      if ('error' in res && res.error) {
+        setManualError(res.error)
+      } else {
+        alert(`¡Se han asignado ${manualCount} boletos con éxito a ${manualName}!`)
+        setManualName('')
+        setManualEmail('')
+        setManualPhone('')
+        setManualCount(1)
+        router.refresh()
+      }
+    } catch (err: any) {
+      setManualError(err.message || 'Error al asignar boletos')
+    } finally {
+      setIsAssigning(false)
+    }
+  }
 
   const handleAnnounce = async () => {
     if (!confirm('¿Estás seguro de que deseas anunciar este sorteo a todos los usuarios registrados por correo electrónico?')) {
@@ -530,29 +567,105 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
               )}
             </div>
 
-            {/* Verified participants list */}
-            <div className="bg-white/[0.01] border border-white/5 p-6 rounded-2xl space-y-4 max-h-[500px] overflow-y-auto">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-white/50 border-b border-white/5 pb-3">
-                Boletos Verificados ({verifiedTickets.length})
-              </h3>
-              
-              {verifiedTickets.length === 0 ? (
-                <div className="py-12 text-center text-xs text-white/30">
-                  No hay boletos verificados listos para participar.
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {verifiedTickets.map((t: any) => (
-                    <div
-                      key={t.id}
-                      className="flex justify-between items-center text-xs p-2 bg-white/5 border border-white/5 rounded-lg"
-                    >
-                      <span className="font-medium text-white/80 line-clamp-1">{t.buyer_name}</span>
-                      <span className="font-bold text-neon-cyan font-orbitron font-mono shrink-0">#{t.ticket_number}</span>
+            {/* Right Column: Participants List & Manual Assignment */}
+            <div className="space-y-6">
+              {/* Verified participants list */}
+              <div className="bg-white/[0.01] border border-white/5 p-6 rounded-2xl space-y-4 max-h-[300px] overflow-y-auto">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-white/50 border-b border-white/5 pb-3">
+                  Boletos Verificados ({verifiedTickets.length})
+                </h3>
+                
+                {verifiedTickets.length === 0 ? (
+                  <div className="py-12 text-center text-xs text-white/30">
+                    No hay boletos verificados listos para participar.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {verifiedTickets.map((t: any) => (
+                      <div
+                        key={t.id}
+                        className="flex justify-between items-center text-xs p-2 bg-white/5 border border-white/5 rounded-lg"
+                      >
+                        <span className="font-medium text-white/80 line-clamp-1">{t.buyer_name}</span>
+                        <span className="font-bold text-neon-cyan font-orbitron font-mono shrink-0">#{t.ticket_number}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Manual Ticket Assignment form */}
+              <div className="bg-white/[0.01] border border-white/5 p-6 rounded-2xl space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-white/50 border-b border-white/5 pb-3 flex items-center gap-1.5">
+                  <Ticket size={14} className="text-neon-cyan" /> Asignar Boletos
+                </h3>
+                
+                <form onSubmit={handleManualAssign} className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold uppercase text-white/40">Nombre *</label>
+                    <input
+                      type="text"
+                      placeholder="Nombre del comprador"
+                      value={manualName}
+                      onChange={(e) => setManualName(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-neon-cyan"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold uppercase text-white/40">Correo Electrónico *</label>
+                    <input
+                      type="email"
+                      placeholder="usuario@correo.com"
+                      value={manualEmail}
+                      onChange={(e) => setManualEmail(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-neon-cyan"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold uppercase text-white/40">Celular</label>
+                      <input
+                        type="text"
+                        placeholder="809-555-0100"
+                        value={manualPhone}
+                        onChange={(e) => setManualPhone(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-neon-cyan"
+                      />
                     </div>
-                  ))}
-                </div>
-              )}
+                    
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold uppercase text-white/40">Cantidad *</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={manualCount}
+                        onChange={(e) => setManualCount(Number(e.target.value) || 1)}
+                        className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-neon-cyan"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {manualError && (
+                    <p className="text-[10px] text-red-400 font-bold bg-red-500/5 p-2 rounded-lg border border-red-500/10">
+                      ⚠️ {manualError}
+                    </p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={isAssigning}
+                    className="w-full py-2 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-neon-cyan to-neon-purple hover:opacity-90 active:scale-95 transition-all disabled:opacity-40 uppercase tracking-widest font-orbitron mt-1"
+                  >
+                    {isAssigning ? 'Asignando...' : 'Asignar Boletos'}
+                  </button>
+                </form>
+              </div>
             </div>
           </div>
         )}
