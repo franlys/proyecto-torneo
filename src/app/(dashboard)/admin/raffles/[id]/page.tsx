@@ -1,5 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
-import { getRaffle, isSystemAdmin } from '@/lib/actions/raffles'
+import { getRaffleForAdmin, isSystemAdmin } from '@/lib/actions/raffles'
 import { createClient } from '@/lib/supabase/server'
 import { RaffleAdminClient } from './RaffleAdminClient'
 
@@ -21,7 +21,7 @@ export default async function AdminRaffleDetailPage({ params }: AdminRaffleDetai
   }
 
   const { id } = await params
-  const res = await getRaffle(id)
+  const res = await getRaffleForAdmin(id)
 
   if ('error' in res || !res.data) {
     notFound()

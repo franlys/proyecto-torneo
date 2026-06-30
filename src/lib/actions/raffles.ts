@@ -54,6 +54,39 @@ export async function getRaffle(id: string) {
   }
 }
 
+export async function getRaffleForAdmin(id: string) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autenticado' }
+
+    if (!(await isSystemAdmin(user.id))) return { error: 'Sin permisos de administrador' }
+
+    const adminSupabase = await createAdminClient()
+    const { data: raffle, error: rErr } = await adminSupabase
+      .from('raffles')
+      .select('*')
+      .eq('id', id)
+      .single()
+    if (rErr || !raffle) return { error: 'Sorteo no encontrado' }
+
+    // Obtener todos los campos de los boletos para el administrador (con datos del comprador y comprobantes)
+    const { data: tickets, error: tErr } = await adminSupabase
+      .from('tickets')
+      .select('id, ticket_number, payment_status, buyer_name, buyer_email, buyer_phone, receipt_url')
+      .eq('raffle_id', id)
+
+    if (tErr) return { error: tErr.message }
+
+    return { 
+      data: raffle, 
+      tickets: tickets || [] 
+    }
+  } catch (err: any) {
+    return { error: err.message || 'Error desconocido' }
+  }
+}
+
 export async function createRaffleAction(data: {
   title: string
   description: string
