@@ -590,14 +590,46 @@ export async function assignTicketsManuallyAction(
       return { error: 'No quedan suficientes boletos disponibles en este sorteo para asignar la cantidad solicitada.' }
     }
 
-    // Buscar el perfil del usuario para asociarle el user_id (así le aparecerán en "Mis Boletos")
-    const { data: targetProfile } = await adminSupabase
-      .from('profiles')
-      .select('id')
-      .eq('email', buyerEmail)
+    // Buscar el id del usuario de forma robusta para asociarle el user_id (así le aparecerán en "Mis Boletos")
+    let targetUserId = null
+
+    // 1. Intentar buscar en boletos ya existentes con este correo
+    const { data: existingUserTicket } = await adminSupabase
+      .from('tickets')
+      .select('user_id')
+      .eq('buyer_email', buyerEmail)
+      .not('user_id', 'is', null)
+      .limit(1)
       .maybeSingle()
 
-    const targetUserId = targetProfile?.id || null
+    if (existingUserTicket?.user_id) {
+      targetUserId = existingUserTicket.user_id
+    }
+
+    // 2. Si falla, intentar buscar en perfiles públicos
+    if (!targetUserId) {
+      const { data: targetProfile } = await adminSupabase
+        .from('profiles')
+        .select('id')
+        .eq('email', buyerEmail)
+        .maybeSingle()
+      if (targetProfile?.id) {
+        targetUserId = targetProfile.id
+      }
+    }
+
+    // 3. Si sigue fallando, buscar en el listado de usuarios de autenticación
+    if (!targetUserId) {
+      const { data: authData } = await adminSupabase.auth.admin.listUsers({
+        perPage: 1000
+      })
+      const match = authData?.users?.find(
+        (u: any) => u.email?.toLowerCase() === buyerEmail.toLowerCase()
+      )
+      if (match?.id) {
+        targetUserId = match.id
+      }
+    }
 
     // 3. Insertar boletos como verified
     const ticketsToInsert = ticketNumbers.map(num => ({
