@@ -590,9 +590,19 @@ export async function assignTicketsManuallyAction(
       return { error: 'No quedan suficientes boletos disponibles en este sorteo para asignar la cantidad solicitada.' }
     }
 
+    // Buscar el perfil del usuario para asociarle el user_id (así le aparecerán en "Mis Boletos")
+    const { data: targetProfile } = await adminSupabase
+      .from('profiles')
+      .select('id')
+      .eq('email', buyerEmail)
+      .maybeSingle()
+
+    const targetUserId = targetProfile?.id || null
+
     // 3. Insertar boletos como verified
     const ticketsToInsert = ticketNumbers.map(num => ({
       raffle_id: raffleId,
+      user_id: targetUserId,
       ticket_number: num,
       buyer_name: buyerName,
       buyer_email: buyerEmail,
