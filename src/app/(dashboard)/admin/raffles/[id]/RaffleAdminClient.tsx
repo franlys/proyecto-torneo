@@ -28,6 +28,7 @@ export function RaffleAdminClient({ raffle, tickets, profiles }: RaffleAdminClie
   const [manualPhone, setManualPhone] = useState('')
   const [manualCount, setManualCount] = useState(1)
   const [manualSellerId, setManualSellerId] = useState('')
+  const [manualIsBonus, setManualIsBonus] = useState(false)
   const [isAssigning, setIsAssigning] = useState(false)
   const [manualError, setManualError] = useState<string | null>(null)
 
@@ -43,7 +44,7 @@ export function RaffleAdminClient({ raffle, tickets, profiles }: RaffleAdminClie
         manualPhone,
         manualCount,
         manualSellerId || undefined,
-        false
+        manualIsBonus
       )
       if ('error' in res && res.error) {
         setManualError(res.error)
@@ -54,6 +55,7 @@ export function RaffleAdminClient({ raffle, tickets, profiles }: RaffleAdminClie
         setManualPhone('')
         setManualCount(1)
         setManualSellerId('')
+        setManualIsBonus(false)
         router.refresh()
       }
     } catch (err: any) {
@@ -716,6 +718,18 @@ export function RaffleAdminClient({ raffle, tickets, profiles }: RaffleAdminClie
                           {p.username || p.email || 'Usuario sin apodo'}
                         </option>
                       ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold uppercase text-white/40">Tipo de Boleto *</label>
+                    <select
+                      value={manualIsBonus ? 'bonus' : 'normal'}
+                      onChange={(e) => setManualIsBonus(e.target.value === 'bonus')}
+                      className="w-full px-3 py-2 rounded-xl bg-[#121219] border border-white/10 text-xs text-white focus:outline-none focus:border-neon-cyan"
+                    >
+                      <option value="normal" className="bg-[#121219] text-white">🎟️ Normal (Suma al progreso de meta)</option>
+                      <option value="bonus" className="bg-[#121219] text-white">🎁 Especial / Regalo (Exento de meta, prefijo E)</option>
                     </select>
                   </div>
 
