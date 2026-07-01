@@ -18,7 +18,7 @@ export async function getRaffles() {
     const supabase = await createAdminClient()
     const { data, error } = await supabase
       .from('raffles')
-      .select('*, tickets(payment_status)')
+      .select('*, tickets(payment_status, is_bonus)')
       .order('created_at', { ascending: false })
     if (error) return { error: error.message }
     return { data: data || [] }
@@ -40,7 +40,7 @@ export async function getRaffle(id: string) {
      // Obtener boletos ocupados de este sorteo (solo datos necesarios para el grid público)
      const { data: tickets, error: tErr } = await supabase
        .from('tickets')
-       .select('id, ticket_number, payment_status')
+       .select('id, ticket_number, payment_status, is_bonus')
        .eq('raffle_id', id)
        
      if (tErr) return { error: tErr.message }
@@ -546,7 +546,9 @@ export async function assignTicketsManuallyAction(
   buyerName: string,
   buyerEmail: string,
   buyerPhone: string,
-  count: number
+  count: number,
+  sellerId?: string,
+  isBonus?: boolean
 ) {
   try {
     const supabase = await createClient()
@@ -575,14 +577,26 @@ export async function assignTicketsManuallyAction(
     const occupiedNumbers = new Set(existingTickets?.map(t => t.ticket_number) || [])
     const ticketNumbers: string[] = []
 
-    while (ticketNumbers.length < count) {
-      const randomVal = Math.floor(Math.random() * raffle.total_tickets)
-      const formatted = randomVal.toString().padStart(4, '0')
-      if (!occupiedNumbers.has(formatted) && !ticketNumbers.includes(formatted)) {
-        ticketNumbers.push(formatted)
+    if (isBonus) {
+      // Generar números de regalo secuenciales con prefijo 'E' (Ej: E001, E002...)
+      let numSequence = 1
+      while (ticketNumbers.length < count) {
+        const formatted = `E${numSequence.toString().padStart(3, '0')}`
+        if (!occupiedNumbers.has(formatted) && !ticketNumbers.includes(formatted)) {
+          ticketNumbers.push(formatted)
+        }
+        numSequence++
       }
-      if (occupiedNumbers.size + ticketNumbers.length >= raffle.total_tickets) {
-        break
+    } else {
+      while (ticketNumbers.length < count) {
+        const randomVal = Math.floor(Math.random() * raffle.total_tickets)
+        const formatted = randomVal.toString().padStart(4, '0')
+        if (!occupiedNumbers.has(formatted) && !ticketNumbers.includes(formatted)) {
+          ticketNumbers.push(formatted)
+        }
+        if (occupiedNumbers.size + ticketNumbers.length >= raffle.total_tickets) {
+          break
+        }
       }
     }
 
@@ -681,7 +695,9 @@ export async function assignTicketsManuallyAction(
       buyer_email: finalEmail,
       buyer_phone: buyerPhone || '',
       payment_status: 'verified',
-      receipt_url: 'manual_assignment'
+      receipt_url: isBonus ? 'bonus_gift' : 'manual_assignment',
+      seller_id: sellerId || null,
+      is_bonus: !!isBonus
     }))
 
     const { error: insErr } = await adminSupabase
@@ -712,5 +728,78 @@ export async function assignTicketsManuallyAction(
     return { success: true, ticketNumbers }
   } catch (err: any) {
     return { error: err.message || 'Error al asignar boletos' }
+  }
+}
+
+export async function assignSellerBonusTicketsAction(
+  raffleId: string,
+  sellerId: string
+) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autenticado' }
+
+    if (!(await isSystemAdmin(user.id))) return { error: 'Sin permisos de administrador' }
+
+    const adminSupabase = await createAdminClient()
+
+    // 1. Obtener perfil del vendedor para tener su nombre y correo
+    const { data: sellerProfile } = await adminSupabase
+      .from('profiles')
+      .select('username, email')
+      .eq('id', sellerId)
+      .single()
+
+    if (!sellerProfile) return { error: 'Vendedor no encontrado.' }
+
+    // 2. Contar boletos vendidos por este vendedor (excluyendo regalos)
+    const { data: soldTickets, error: soldErr } = await adminSupabase
+      .from('tickets')
+      .select('id')
+      .eq('raffle_id', raffleId)
+      .eq('seller_id', sellerId)
+      .eq('payment_status', 'verified')
+      .eq('is_bonus', false)
+
+    if (soldErr) return { error: soldErr.message }
+    const soldCount = soldTickets?.length || 0
+
+    // 3. Calcular boletos de regalo correspondientes
+    const earnedBonusCount = Math.floor(soldCount / 10)
+
+    // 4. Contar boletos de regalo ya entregados a este vendedor
+    const { data: alreadyAssignedBonus, error: bonusErr } = await adminSupabase
+      .from('tickets')
+      .select('id')
+      .eq('raffle_id', raffleId)
+      .eq('seller_id', sellerId)
+      .eq('payment_status', 'verified')
+      .eq('is_bonus', true)
+
+    if (bonusErr) return { error: bonusErr.message }
+    const assignedCount = alreadyAssignedBonus?.length || 0
+
+    // 5. Calcular cuántos boletos faltan por entregar
+    const pendingToAssign = earnedBonusCount - assignedCount
+
+    if (pendingToAssign <= 0) {
+      return { error: 'Este vendedor no tiene boletos de regalo acumulados pendientes por entregar (1 regalo por cada 10 vendidos).' }
+    }
+
+    // 6. Ejecutar asignación manual de boletos usando la lógica existente
+    const res = await assignTicketsManuallyAction(
+      raffleId,
+      sellerProfile.username || 'Vendedor',
+      sellerProfile.email || '',
+      '',
+      pendingToAssign,
+      sellerId,
+      true
+    )
+
+    return res
+  } catch (err: any) {
+    return { error: err.message || 'Error al asignar boletos de regalo' }
   }
 }

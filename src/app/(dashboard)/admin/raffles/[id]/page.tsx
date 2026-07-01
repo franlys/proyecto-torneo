@@ -30,9 +30,14 @@ export default async function AdminRaffleDetailPage({ params }: AdminRaffleDetai
   const raffle = res.data
   const tickets = res.tickets
 
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, username, email')
+    .order('username', { ascending: true })
+
   return (
     <div className="p-6 lg:p-8 max-w-5xl mx-auto">
-      <RaffleAdminClient raffle={raffle} tickets={tickets} />
+      <RaffleAdminClient raffle={raffle} tickets={tickets} profiles={profiles || []} />
     </div>
   )
 }

@@ -31,7 +31,7 @@ export function RaffleDetailClient({
   const [error, setError] = useState<string | null>(null)
   const [selectedQrUrl, setSelectedQrUrl] = useState<string | null>(null)
 
-  const soldTicketsCount = tickets.filter(t => t.payment_status === 'verified').length
+  const soldTicketsCount = tickets.filter(t => t.payment_status === 'verified' && !t.is_bonus).length
   const pendingTicketsCount = tickets.filter(t => t.payment_status === 'pending_verification').length
   const progressPercent = soldTicketsCount > 0
     ? Math.max(1, Math.min(100, Math.round((soldTicketsCount / raffle.total_tickets) * 100)))

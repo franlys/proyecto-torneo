@@ -88,7 +88,7 @@ export default async function RafflesCatalogPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {activeRaffles.map((r) => {
               const drawDate = new Date(r.draw_date)
-              const soldCount = r.tickets?.filter((t: any) => t.payment_status === 'verified').length || 0
+              const soldCount = r.tickets?.filter((t: any) => t.payment_status === 'verified' && !t.is_bonus).length || 0
               const progress = soldCount > 0 
                 ? Math.max(1, Math.min(100, Math.round((soldCount / r.total_tickets) * 100)))
                 : 0

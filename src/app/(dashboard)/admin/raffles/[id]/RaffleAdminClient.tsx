@@ -5,17 +5,18 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Trophy, Calendar, Ticket, Check, X, ShieldAlert, Loader2, Play, Landmark, Image, Eye, Trash2, PlusCircle, Upload, Mail } from 'lucide-react'
 import { LiveWheel } from '@/components/raffles/LiveWheel'
-import { verifyTicketAction, drawRaffleAction, updateRaffleAction, deleteRaffleAction, announceRaffleToAllUsersAction, assignTicketsManuallyAction } from '@/lib/actions/raffles'
+import { verifyTicketAction, drawRaffleAction, updateRaffleAction, deleteRaffleAction, announceRaffleToAllUsersAction, assignTicketsManuallyAction, assignSellerBonusTicketsAction } from '@/lib/actions/raffles'
 import { uploadEvidence } from '@/lib/actions/storage'
 
 interface RaffleAdminClientProps {
   raffle: any
   tickets: any[]
+  profiles: any[]
 }
 
-export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
+export function RaffleAdminClient({ raffle, tickets, profiles }: RaffleAdminClientProps) {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'pending' | 'draw' | 'settings'>('pending')
+  const [activeTab, setActiveTab] = useState<'pending' | 'draw' | 'affiliates' | 'settings'>('pending')
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [isAnnouncing, setIsAnnouncing] = useState(false)
@@ -26,6 +27,7 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
   const [manualEmail, setManualEmail] = useState('')
   const [manualPhone, setManualPhone] = useState('')
   const [manualCount, setManualCount] = useState(1)
+  const [manualSellerId, setManualSellerId] = useState('')
   const [isAssigning, setIsAssigning] = useState(false)
   const [manualError, setManualError] = useState<string | null>(null)
 
@@ -39,7 +41,9 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
         manualName,
         manualEmail,
         manualPhone,
-        manualCount
+        manualCount,
+        manualSellerId || undefined,
+        false
       )
       if ('error' in res && res.error) {
         setManualError(res.error)
@@ -49,12 +53,32 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
         setManualEmail('')
         setManualPhone('')
         setManualCount(1)
+        setManualSellerId('')
         router.refresh()
       }
     } catch (err: any) {
       setManualError(err.message || 'Error al asignar boletos')
     } finally {
       setIsAssigning(false)
+    }
+  }
+
+  const [isDeliveringBonus, setIsDeliveringBonus] = useState<Record<string, boolean>>({})
+
+  const handleDeliverBonus = async (sellerId: string, sellerName: string) => {
+    setIsDeliveringBonus(prev => ({ ...prev, [sellerId]: true }))
+    try {
+      const res = await assignSellerBonusTicketsAction(raffle.id, sellerId)
+      if ('error' in res && res.error) {
+        alert(`Error al entregar boletos: ${res.error}`)
+      } else {
+        alert(`¡Boletos de regalo entregados con éxito a ${sellerName}!`)
+        router.refresh()
+      }
+    } catch (err: any) {
+      alert(`Error: ${err.message || 'Error desconocido'}`)
+    } finally {
+      setIsDeliveringBonus(prev => ({ ...prev, [sellerId]: false }))
     }
   }
 
@@ -176,6 +200,44 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
     }
     groupedTransactions[key].ticketIds.push(t.id)
     groupedTransactions[key].numbers.push(t.ticket_number)
+  })
+
+  // Calcular ventas por afiliado/negocio
+  const sellerStatsMap: Record<string, {
+    sellerName: string
+    soldCount: number
+    assignedBonusCount: number
+  }> = {}
+
+  tickets.forEach(t => {
+    if (t.seller_id) {
+      if (!sellerStatsMap[t.seller_id]) {
+        const sProfile = profiles.find(p => p.id === t.seller_id)
+        sellerStatsMap[t.seller_id] = {
+          sellerName: sProfile?.username || sProfile?.email || 'Vendedor sin apodo',
+          soldCount: 0,
+          assignedBonusCount: 0
+        }
+      }
+      if (t.payment_status === 'verified') {
+        if (t.is_bonus) {
+          sellerStatsMap[t.seller_id].assignedBonusCount++
+        } else {
+          sellerStatsMap[t.seller_id].soldCount++
+        }
+      }
+    }
+  })
+
+  const sellerStatsList = Object.entries(sellerStatsMap).map(([id, stats]) => {
+    const earnedBonusCount = Math.floor(stats.soldCount / 10)
+    const pendingBonusCount = Math.max(0, earnedBonusCount - stats.assignedBonusCount)
+    return {
+      sellerId: id,
+      ...stats,
+      earnedBonusCount,
+      pendingBonusCount
+    }
   })
 
   const handlePrizeFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -405,6 +467,16 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
           Ruleta en Vivo
         </button>
         <button
+          onClick={() => setActiveTab('affiliates')}
+          className={`flex-1 min-w-[120px] py-3.5 text-xs uppercase font-bold tracking-widest transition-colors border-b-2 ${
+            activeTab === 'affiliates'
+              ? 'text-neon-cyan border-neon-cyan font-black'
+              : 'text-white/40 border-transparent hover:text-white/60'
+          }`}
+        >
+          Ventas de Afiliados
+        </button>
+        <button
           onClick={() => setActiveTab('settings')}
           className={`flex-1 min-w-[100px] py-3.5 text-xs uppercase font-bold tracking-widest transition-colors border-b-2 ${
             activeTab === 'settings'
@@ -586,7 +658,14 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
                         key={t.id}
                         className="flex justify-between items-center text-xs p-2 bg-white/5 border border-white/5 rounded-lg"
                       >
-                        <span className="font-medium text-white/80 line-clamp-1">{t.buyer_name}</span>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="font-medium text-white/80 line-clamp-1">{t.buyer_name}</span>
+                          {t.is_bonus && (
+                            <span className="text-[8px] font-black uppercase text-neon-cyan bg-neon-cyan/10 border border-neon-cyan/20 px-1 py-0.5 rounded shrink-0 font-orbitron">
+                              REGALO
+                            </span>
+                          )}
+                        </div>
                         <span className="font-bold text-neon-cyan font-orbitron font-mono shrink-0">#{t.ticket_number}</span>
                       </div>
                     ))}
@@ -622,6 +701,22 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
                       onChange={(e) => setManualEmail(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-neon-cyan"
                     />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold uppercase text-white/40">Vendedor / Referidor (Opcional)</label>
+                    <select
+                      value={manualSellerId}
+                      onChange={(e) => setManualSellerId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-[#121219] border border-white/10 text-xs text-white focus:outline-none focus:border-neon-cyan"
+                    >
+                      <option value="">-- Ninguno (Venta Directa) --</option>
+                      {profiles.map((p) => (
+                        <option key={p.id} value={p.id} className="bg-[#121219] text-white">
+                          {p.username || p.email || 'Usuario sin apodo'}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -666,6 +761,77 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
                 </form>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Tab: Ventas de Afiliados */}
+        {activeTab === 'affiliates' && (
+          <div className="bg-white/[0.01] border border-white/5 rounded-2xl p-6 space-y-6">
+            <div>
+              <h3 className="text-sm font-orbitron font-bold text-white uppercase tracking-tight">
+                Ventas por Vendedor y Recompensas
+              </h3>
+              <p className="text-xs text-white/40 mt-1">
+                Visualiza el rendimiento de tus vendedores afiliados y entrégales sus boletos de regalo correspondientes (1 boleto gratis por cada 10 vendidos).
+              </p>
+            </div>
+
+            {sellerStatsList.length === 0 ? (
+              <div className="p-12 text-center text-xs text-white/30 border border-white/5 rounded-xl bg-white/[0.005]">
+                No hay ventas registradas por vendedores en este sorteo todavía.
+              </div>
+            ) : (
+              <div className="overflow-x-auto border border-white/5 rounded-xl">
+                <table className="w-full text-xs text-left">
+                  <thead>
+                    <tr className="border-b border-white/5 bg-white/[0.02]">
+                      <th className="px-4 py-3 uppercase tracking-wider text-white/40 font-medium">Vendedor</th>
+                      <th className="px-4 py-3 uppercase tracking-wider text-white/40 font-medium text-center">Boletos Vendidos</th>
+                      <th className="px-4 py-3 uppercase tracking-wider text-white/40 font-medium text-center">Regalos Totales</th>
+                      <th className="px-4 py-3 uppercase tracking-wider text-white/40 font-medium text-center">Regalos Entregados</th>
+                      <th className="px-4 py-3 uppercase tracking-wider text-white/40 font-medium text-center">Pendientes</th>
+                      <th className="px-4 py-3 uppercase tracking-wider text-white/40 font-medium text-right">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {sellerStatsList.map((seller) => (
+                      <tr key={seller.sellerId} className="hover:bg-white/[0.01] transition-colors">
+                        <td className="px-4 py-4 text-white font-medium">{seller.sellerName}</td>
+                        <td className="px-4 py-4 text-center font-bold text-white/80">{seller.soldCount}</td>
+                        <td className="px-4 py-4 text-center text-white/60">{seller.earnedBonusCount}</td>
+                        <td className="px-4 py-4 text-center text-white/40">{seller.assignedBonusCount}</td>
+                        <td className="px-4 py-4 text-center">
+                          {seller.pendingBonusCount > 0 ? (
+                            <span className="text-neon-cyan font-bold bg-neon-cyan/10 border border-neon-cyan/20 px-2 py-0.5 rounded-full">
+                              {seller.pendingBonusCount} por entregar
+                            </span>
+                          ) : (
+                            <span className="text-white/30">Al día</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          <button
+                            onClick={() => handleDeliverBonus(seller.sellerId, seller.sellerName)}
+                            disabled={seller.pendingBonusCount === 0 || isDeliveringBonus[seller.sellerId]}
+                            className="px-3.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-neon-cyan text-black hover:bg-neon-cyan/85 active:scale-95 disabled:opacity-40 disabled:pointer-events-none transition-all font-orbitron flex items-center gap-1.5 ml-auto"
+                          >
+                            {isDeliveringBonus[seller.sellerId] ? (
+                              <>
+                                <Loader2 size={10} className="animate-spin" /> Entregando...
+                              </>
+                            ) : (
+                              <>
+                                🎁 Entregar Regalo ({seller.pendingBonusCount})
+                              </>
+                            )}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
