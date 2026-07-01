@@ -614,14 +614,13 @@ export function RaffleAdminClient({ raffle, tickets }: RaffleAdminClientProps) {
                   </div>
                   
                   <div className="space-y-1">
-                    <label className="text-[9px] font-bold uppercase text-white/40">Correo Electrónico *</label>
+                    <label className="text-[9px] font-bold uppercase text-white/40">Correo Electrónico (Opcional)</label>
                     <input
                       type="email"
                       placeholder="usuario@correo.com"
                       value={manualEmail}
                       onChange={(e) => setManualEmail(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-neon-cyan"
-                      required
                     />
                   </div>
 

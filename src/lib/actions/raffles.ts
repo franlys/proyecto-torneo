@@ -590,6 +590,15 @@ export async function assignTicketsManuallyAction(
       return { error: 'No quedan suficientes boletos disponibles en este sorteo para asignar la cantidad solicitada.' }
     }
 
+    // Generar email placeholder si no se proporciona uno
+    let finalEmail = buyerEmail?.trim()
+    if (!finalEmail) {
+      const sanitizedName = buyerName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "")
+      const sanitizedPhone = (buyerPhone || '').replace(/\D/g, '')
+      const randSuffix = Math.random().toString(36).substring(2, 6)
+      finalEmail = `${sanitizedName}${sanitizedPhone ? `.${sanitizedPhone}` : ''}.${randSuffix}@manual.kronix.do`
+    }
+
     // Buscar el id del usuario de forma robusta para asociarle el user_id (así le aparecerán en "Mis Boletos")
     let targetUserId = null
 
@@ -597,7 +606,7 @@ export async function assignTicketsManuallyAction(
     const { data: existingUserTicket } = await adminSupabase
       .from('tickets')
       .select('user_id')
-      .eq('buyer_email', buyerEmail)
+      .eq('buyer_email', finalEmail)
       .not('user_id', 'is', null)
       .limit(1)
       .maybeSingle()
@@ -611,7 +620,7 @@ export async function assignTicketsManuallyAction(
       const { data: targetProfile } = await adminSupabase
         .from('profiles')
         .select('id')
-        .eq('email', buyerEmail)
+        .eq('email', finalEmail)
         .maybeSingle()
       if (targetProfile?.id) {
         targetUserId = targetProfile.id
@@ -624,20 +633,52 @@ export async function assignTicketsManuallyAction(
         perPage: 1000
       })
       const match = authData?.users?.find(
-        (u: any) => u.email?.toLowerCase() === buyerEmail.toLowerCase()
+        (u: any) => u.email?.toLowerCase() === finalEmail.toLowerCase()
       )
       if (match?.id) {
         targetUserId = match.id
       }
     }
 
-    // 3. Insertar boletos como verified
+    // 4. Si el usuario no existe en la plataforma, CREARLO automáticamente para que tenga cuenta y perfil
+    if (!targetUserId) {
+      const tempPassword = Math.random().toString(36).substring(2, 10) + 'Kx!'
+      const { data: authRes, error: createErr } = await adminSupabase.auth.admin.createUser({
+        email: finalEmail,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: {
+          username: buyerName,
+          phone: buyerPhone
+        }
+      })
+
+      if (createErr) {
+        return { error: `Error al registrar usuario nuevo: ${createErr.message}` }
+      }
+
+      if (authRes?.user) {
+        targetUserId = authRes.user.id
+
+        // Asegurar que el perfil público se actualice con el email e username (nickname) correctos
+        await adminSupabase
+          .from('profiles')
+          .update({ 
+            email: finalEmail, 
+            username: buyerName, 
+            role: 'USER' 
+          })
+          .eq('id', targetUserId)
+      }
+    }
+
+    // 5. Insertar boletos como verified
     const ticketsToInsert = ticketNumbers.map(num => ({
       raffle_id: raffleId,
       user_id: targetUserId,
       ticket_number: num,
       buyer_name: buyerName,
-      buyer_email: buyerEmail,
+      buyer_email: finalEmail,
       buyer_phone: buyerPhone || '',
       payment_status: 'verified',
       receipt_url: 'manual_assignment'
@@ -649,17 +690,19 @@ export async function assignTicketsManuallyAction(
 
     if (insErr) return { error: insErr.message }
 
-    // 4. Enviar correo de confirmación de boletos asignados
-    try {
-      const { sendTicketConfirmedEmail } = await import('@/lib/services/email')
-      await sendTicketConfirmedEmail({
-        email: buyerEmail,
-        buyerName,
-        raffleName: raffle.title,
-        ticketNumbers,
-      })
-    } catch (mailErr) {
-      console.error('Error al enviar correo de confirmación:', mailErr)
+    // 6. Enviar correo de confirmación de boletos asignados (solo a correos reales)
+    if (!finalEmail.endsWith('@manual.kronix.do')) {
+      try {
+        const { sendTicketConfirmedEmail } = await import('@/lib/services/email')
+        await sendTicketConfirmedEmail({
+          email: finalEmail,
+          buyerName,
+          raffleName: raffle.title,
+          ticketNumbers,
+        })
+      } catch (mailErr) {
+        console.error('Error al enviar correo de confirmación:', mailErr)
+      }
     }
 
     revalidatePath(`/raffles/${raffleId}`)
