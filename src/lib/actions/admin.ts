@@ -210,3 +210,21 @@ export async function deleteUserByAdmin(userId: string): Promise<{ success: bool
   return { success: true }
 }
 
+export async function changeUserPasswordAction(userId: string, newPassword: string) {
+  const admin = await isAdmin()
+  if (!admin) return { error: 'No autorizado' }
+
+  if (!newPassword || newPassword.length < 6) {
+    return { error: 'La contraseña debe tener al menos 6 caracteres.' }
+  }
+
+  const supabase = await createAdminClient()
+  const { error } = await supabase.auth.admin.updateUserById(userId, {
+    password: newPassword
+  })
+
+  if (error) return { error: error.message }
+
+  return { success: true }
+}
+

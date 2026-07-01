@@ -7,6 +7,7 @@ import { SubToggle } from './SubToggle'
 import { LicenseToggle } from './LicenseToggle'
 import { CreateUserForm } from './CreateUserForm'
 import { DeleteUserButton } from './DeleteUserButton'
+import { ChangePasswordButton } from './ChangePasswordButton'
 import { AdminErrorCard } from '@/components/ui/AdminErrorCard'
 import { createMissingProfile } from '@/lib/actions/admin'
 
@@ -134,6 +135,7 @@ export default async function AdminUsersPage() {
                         ) : (
                           <span className="text-white/20 text-xs mr-2">—</span>
                         )}
+                        <ChangePasswordButton userId={u.id} userEmail={u.email ?? '—'} />
                         <DeleteUserButton userId={u.id} userEmail={u.email ?? '—'} />
                       </td>
                     </tr>
