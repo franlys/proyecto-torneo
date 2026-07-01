@@ -83,8 +83,9 @@ export async function changeUserRole(formData: FormData) {
 }
 
 const createUserSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  password: z.string().optional(),
   username: z.string().min(3),
   role: z.enum(['SUPER_ADMIN', 'ADMIN', 'KRONIX_STAFF', 'FEDERATION', 'STREAMER', 'USER']),
 })
@@ -93,9 +94,14 @@ export async function createUserByAdmin(formData: FormData) {
   const admin = await isAdmin()
   if (!admin) return { error: 'No autorizado' }
 
+  const rawEmail = formData.get('email')
+  const rawPhone = formData.get('phone')
+  const rawPassword = formData.get('password')
+
   const parsed = createUserSchema.safeParse({
-    email: formData.get('email'),
-    password: formData.get('password'),
+    email: rawEmail ? String(rawEmail) : undefined,
+    phone: rawPhone ? String(rawPhone) : undefined,
+    password: rawPassword ? String(rawPassword) : undefined,
     username: formData.get('username'),
     role: formData.get('role'),
   })
@@ -103,14 +109,32 @@ export async function createUserByAdmin(formData: FormData) {
     return { error: 'Datos inválidos: ' + parsed.error.issues.map(i => i.message).join(', ') }
   }
 
+  const username = parsed.data.username
+  const phone = parsed.data.phone || ''
+  
+  // Generar correo electrónico placeholder si está vacío
+  let email = parsed.data.email?.trim()
+  if (!email) {
+    const sanitizedName = username.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "")
+    const sanitizedPhone = phone.replace(/\D/g, '')
+    const randSuffix = Math.random().toString(36).substring(2, 6)
+    email = `${sanitizedName}${sanitizedPhone ? `.${sanitizedPhone}` : ''}.${randSuffix}@manual.kronix.do`
+  }
+
+  // Generar contraseña aleatoria si está vacía
+  const password = parsed.data.password || (Math.random().toString(36).substring(2, 10) + 'Kx!')
+
   const supabase = await createAdminClient()
 
   // 1. Crear en auth.users
   const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-    email: parsed.data.email,
-    password: parsed.data.password,
+    email,
+    password,
     email_confirm: true,
-    user_metadata: { username: parsed.data.username }
+    user_metadata: { 
+      username,
+      phone
+    }
   })
 
   if (authError) return { error: authError.message }
@@ -121,7 +145,8 @@ export async function createUserByAdmin(formData: FormData) {
     .from('profiles')
     .upsert({
       id: authUser.user.id,
-      username: parsed.data.username,
+      username,
+      email,
       role: parsed.data.role,
       subscription_status: parsed.data.role === 'STREAMER' ? 'ACTIVE' : 'NONE',
       updated_at: new Date().toISOString(),

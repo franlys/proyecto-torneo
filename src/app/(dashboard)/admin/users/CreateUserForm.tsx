@@ -58,9 +58,17 @@ export function CreateUserForm() {
           </div>
 
           <div>
-            <label className="block text-[10px] uppercase font-black tracking-widest text-white/40 mb-1.5">Email</label>
+            <label className="block text-[10px] uppercase font-black tracking-widest text-white/40 mb-1.5">Celular (Opcional)</label>
             <input
-              required
+              name="phone"
+              placeholder="Ej: 809-555-0100"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white focus:border-neon-cyan outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[10px] uppercase font-black tracking-widest text-white/40 mb-1.5">Email (Opcional)</label>
+            <input
               type="email"
               name="email"
               placeholder="Ej: federacion@kronix.com"
@@ -69,21 +77,20 @@ export function CreateUserForm() {
           </div>
 
           <div>
-            <label className="block text-[10px] uppercase font-black tracking-widest text-white/40 mb-1.5">Contraseña (Mín. 6 caracteres)</label>
+            <label className="block text-[10px] uppercase font-black tracking-widest text-white/40 mb-1.5">Contraseña (Opcional - Mín. 6)</label>
             <input
-              required
               type="password"
               name="password"
-              placeholder="••••••••"
+              placeholder="Vacio para generar aleatoria"
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white focus:border-neon-cyan outline-none"
             />
           </div>
 
-          <div>
+          <div className="md:col-span-2">
             <label className="block text-[10px] uppercase font-black tracking-widest text-white/40 mb-1.5">Rol en la plataforma</label>
             <select
               name="role"
-              defaultValue="STREAMER"
+              defaultValue="USER"
               className="w-full bg-[#121219] border border-white/10 rounded-xl px-4 py-2 text-white focus:border-neon-cyan outline-none"
             >
               <option value="USER">USER — Jugador estándar</option>
