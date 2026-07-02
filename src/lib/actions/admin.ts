@@ -228,3 +228,22 @@ export async function changeUserPasswordAction(userId: string, newPassword: stri
   return { success: true }
 }
 
+export async function updatePaymentDetailsByAdminAction(userId: string, paymentDetails: string | null) {
+  const admin = await isAdmin()
+  if (!admin) return { error: 'No autorizado' }
+
+  const supabase = await createAdminClient()
+  const { error } = await supabase
+    .from('profiles')
+    .update({ 
+      payment_details: paymentDetails,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', userId)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/admin/users')
+  return { success: true }
+}
+
