@@ -10,16 +10,30 @@ import { DeleteUserButton } from './DeleteUserButton'
 import { ChangePasswordButton } from './ChangePasswordButton'
 import { AdminErrorCard } from '@/components/ui/AdminErrorCard'
 import { createMissingProfile } from '@/lib/actions/admin'
+export const dynamic = 'force-dynamic'
 
-export default async function AdminUsersPage() {
+interface PageProps {
+  searchParams?: {
+    query?: string
+    page?: string
+  }
+}
+
+export default async function AdminUsersPage({ searchParams }: PageProps) {
   const admin = await isAdmin()
   if (!admin) redirect('/tournaments')
+
+  const query = searchParams?.query || ''
+  const page = Number(searchParams?.page) || 1
+  const perPage = 25
 
   try {
     const supabase = await createAdminClient()
 
-    // Source of truth: auth.users (todos, tengan perfil o no)
-    const { data: authData, error: authError } = await supabase.auth.admin.listUsers()
+    // Source of truth: auth.users (hasta 1000 usuarios)
+    const { data: authData, error: authError } = await supabase.auth.admin.listUsers({
+      perPage: 1000
+    })
     if (authError) throw authError
     const authUsers = authData?.users ?? []
 
@@ -31,18 +45,62 @@ export default async function AdminUsersPage() {
 
     const profileMap = new Map(profiles?.map((p) => [p.id, p]) ?? [])
 
+    // Filtrar usuarios en memoria
+    let filteredUsers = authUsers
+    if (query) {
+      const lowerQuery = query.toLowerCase()
+      filteredUsers = authUsers.filter((u) => {
+        const profile = profileMap.get(u.id)
+        const emailMatch = u.email?.toLowerCase().includes(lowerQuery)
+        const usernameMatch = profile?.username?.toLowerCase().includes(lowerQuery)
+        return emailMatch || usernameMatch
+      })
+    }
+
+    // Paginación
+    const totalUsers = filteredUsers.length
+    const totalPages = Math.ceil(totalUsers / perPage)
+    const paginatedUsers = filteredUsers.slice((page - 1) * perPage, page * perPage)
+
     return (
       <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
-        <div className="flex items-center gap-4">
-          <Link href="/admin" className="text-white/40 hover:text-white transition-colors">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-white">Usuarios</h1>
-            <p className="text-white/40 text-sm">{authUsers.length} registrados</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Link href="/admin" className="text-white/40 hover:text-white transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-white">Usuarios</h1>
+              <p className="text-white/40 text-sm">{totalUsers} de {authUsers.length} registrados</p>
+            </div>
           </div>
+
+          {/* Buscador */}
+          <form method="GET" className="flex gap-2 max-w-md w-full">
+            <input
+              type="text"
+              name="query"
+              placeholder="Buscar por email o username..."
+              defaultValue={query}
+              className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-neon-cyan placeholder:text-white/20"
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-xl text-xs font-bold text-black bg-neon-cyan hover:bg-neon-cyan/85 transition-all font-orbitron"
+            >
+              Buscar
+            </button>
+            {query && (
+              <Link
+                href="/admin/users"
+                className="px-3 py-2 rounded-xl text-xs font-bold bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center font-orbitron"
+              >
+                Limpiar
+              </Link>
+            )}
+          </form>
         </div>
 
         <CreateUserForm />
@@ -63,7 +121,7 @@ export default async function AdminUsersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {authUsers.map((u) => {
+                {paginatedUsers.map((u) => {
                   const profile = profileMap.get(u.id)
                   return (
                     <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
@@ -145,6 +203,41 @@ export default async function AdminUsersPage() {
             </table>
           </div>
         </div>
+
+        {/* Controles de Paginación */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-4 pt-4">
+            {page > 1 ? (
+              <Link
+                href={`/admin/users?page=${page - 1}${query ? `&query=${encodeURIComponent(query)}` : ''}`}
+                className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white hover:bg-white/10 transition-all font-orbitron font-bold"
+              >
+                Anterior
+              </Link>
+            ) : (
+              <span className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/5 text-xs text-white/20 pointer-events-none font-orbitron font-bold">
+                Anterior
+              </span>
+            )}
+            
+            <span className="text-xs text-white/40 font-bold uppercase tracking-wider font-orbitron">
+              Página {page} de {totalPages}
+            </span>
+
+            {page < totalPages ? (
+              <Link
+                href={`/admin/users?page=${page + 1}${query ? `&query=${encodeURIComponent(query)}` : ''}`}
+                className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white hover:bg-white/10 transition-all font-orbitron font-bold"
+              >
+                Siguiente
+              </Link>
+            ) : (
+              <span className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/5 text-xs text-white/20 pointer-events-none font-orbitron font-bold">
+                Siguiente
+              </span>
+            )}
+          </div>
+        )}
       </div>
     )
   } catch (err: any) {
