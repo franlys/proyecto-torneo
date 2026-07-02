@@ -39,6 +39,7 @@ export function RaffleDetailClient({
 
   const [buyerName, setBuyerName] = useState('')
   const [buyerPhone, setBuyerPhone] = useState('')
+  const [buyerPhoneConfirm, setBuyerPhoneConfirm] = useState('')
   const [buyerEmail, setBuyerEmail] = useState('')
 
   const handleValidatePromo = async () => {
@@ -162,6 +163,11 @@ export function RaffleDetailClient({
           }
           if (!buyerPhone.trim()) {
             setError('Por favor introduce tu número de celular o WhatsApp.')
+            setIsUploading(false)
+            return
+          }
+          if (buyerPhone.trim() !== buyerPhoneConfirm.trim()) {
+            setError('Los números de teléfono ingresados no coinciden. Por favor, verifícalos.')
             setIsUploading(false)
             return
           }
@@ -487,6 +493,18 @@ export function RaffleDetailClient({
                         placeholder="Ej: 809-555-0100"
                         value={buyerPhone}
                         onChange={(e) => setBuyerPhone(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-neon-cyan"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">Confirmar WhatsApp / Celular *</label>
+                      <input
+                        type="tel"
+                        placeholder="Repite tu WhatsApp / Celular"
+                        value={buyerPhoneConfirm}
+                        onChange={(e) => setBuyerPhoneConfirm(e.target.value)}
                         className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-neon-cyan"
                         required
                       />
