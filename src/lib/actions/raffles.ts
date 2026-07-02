@@ -669,22 +669,7 @@ export async function assignTicketsManuallyAction(
       finalEmail = `${sanitizedName}${sanitizedPhone ? `.${sanitizedPhone}` : ''}.${randSuffix}@manual.kronix.do`
     }
 
-    // 3. Intentar buscar por email en boletos ya existentes
-    if (!targetUserId) {
-      const { data: existingUserTicket } = await adminSupabase
-        .from('tickets')
-        .select('user_id')
-        .eq('buyer_email', finalEmail)
-        .not('user_id', 'is', null)
-        .limit(1)
-        .maybeSingle()
-
-      if (existingUserTicket?.user_id) {
-        targetUserId = existingUserTicket.user_id
-      }
-    }
-
-    // 4. Si falla, intentar buscar por email en perfiles públicos
+    // 3. Intentar buscar por email en perfiles públicos
     if (!targetUserId) {
       const { data: targetProfile } = await adminSupabase
         .from('profiles')
@@ -696,7 +681,7 @@ export async function assignTicketsManuallyAction(
       }
     }
 
-    // 5. Si sigue fallando, buscar en el listado de usuarios de autenticación por email
+    // 4. Si sigue fallando, buscar en el listado de usuarios de autenticación por email
     if (!targetUserId) {
       const { data: authData } = await adminSupabase.auth.admin.listUsers({
         perPage: 1000
@@ -709,7 +694,7 @@ export async function assignTicketsManuallyAction(
       }
     }
 
-    // 4. Si el usuario no existe en la plataforma, CREARLO automáticamente para que tenga cuenta y perfil
+    // 5. Si el usuario no existe en la plataforma, CREARLO automáticamente
     if (!targetUserId) {
       const tempPassword = Math.random().toString(36).substring(2, 10) + 'Kx!'
       const { data: authRes, error: createErr } = await adminSupabase.auth.admin.createUser({
@@ -728,18 +713,20 @@ export async function assignTicketsManuallyAction(
 
       if (authRes?.user) {
         targetUserId = authRes.user.id
-
-        // Asegurar que el perfil público se actualice con el email e username (nickname) correctos
-        await adminSupabase
-          .from('profiles')
-          .upsert({ 
-            id: targetUserId,
-            email: finalEmail, 
-            username: buyerName, 
-            phone: buyerPhone || null,
-            role: 'USER' 
-          })
       }
+    }
+
+    // 6. Asegurar SIEMPRE que el perfil público exista y esté actualizado para evitar errores de clave foránea
+    if (targetUserId) {
+      await adminSupabase
+        .from('profiles')
+        .upsert({ 
+          id: targetUserId,
+          email: finalEmail, 
+          username: buyerName, 
+          phone: buyerPhone || null,
+          role: 'USER' 
+        })
     }
 
     // 5. Insertar boletos como verified
@@ -1048,35 +1035,21 @@ export async function buyTicketPublicAction(
       finalEmail = `${sanitizedName}${sanitizedPhone ? `.${sanitizedPhone}` : ''}.${randSuffix}@manual.kronix.do`
     }
 
-    // Buscar o crear usuario
+    // Buscar o crear usuario de forma robusta
     let targetUserId = null
 
-    // 1. Buscar por email en tickets
-    const { data: existingUserTicket } = await adminSupabase
-      .from('tickets')
-      .select('user_id')
-      .eq('buyer_email', finalEmail)
-      .not('user_id', 'is', null)
-      .limit(1)
+    // 1. Buscar por email en perfiles
+    const { data: targetProfile } = await adminSupabase
+      .from('profiles')
+      .select('id')
+      .eq('email', finalEmail)
       .maybeSingle()
 
-    if (existingUserTicket?.user_id) {
-      targetUserId = existingUserTicket.user_id
+    if (targetProfile?.id) {
+      targetUserId = targetProfile.id
     }
 
-    // 2. Buscar por email en perfiles
-    if (!targetUserId) {
-      const { data: targetProfile } = await adminSupabase
-        .from('profiles')
-        .select('id')
-        .eq('email', finalEmail)
-        .maybeSingle()
-      if (targetProfile?.id) {
-        targetUserId = targetProfile.id
-      }
-    }
-
-    // 3. Buscar por teléfono en perfiles
+    // 2. Buscar por teléfono en perfiles
     if (!targetUserId && buyerPhone) {
       const sanitizedPhoneSearch = buyerPhone.replace(/\D/g, '')
       const { data: targetProfilePhone } = await adminSupabase
@@ -1088,7 +1061,6 @@ export async function buyTicketPublicAction(
       if (targetProfilePhone?.id) {
         targetUserId = targetProfilePhone.id
       } else if (sanitizedPhoneSearch) {
-        // Intentar buscar también por los dígitos puros
         const { data: targetProfileSanitized } = await adminSupabase
           .from('profiles')
           .select('id')
@@ -1097,6 +1069,19 @@ export async function buyTicketPublicAction(
         if (targetProfileSanitized?.id) {
           targetUserId = targetProfileSanitized.id
         }
+      }
+    }
+
+    // 3. Buscar en listado de usuarios de autenticación por email (para evitar errores de duplicidad)
+    if (!targetUserId) {
+      const { data: authData } = await adminSupabase.auth.admin.listUsers({
+        perPage: 1000
+      })
+      const match = authData?.users?.find(
+        (u: any) => u.email?.toLowerCase() === finalEmail.toLowerCase()
+      )
+      if (match?.id) {
+        targetUserId = match.id
       }
     }
 
@@ -1119,16 +1104,20 @@ export async function buyTicketPublicAction(
 
       if (authRes?.user) {
         targetUserId = authRes.user.id
-        await adminSupabase
-          .from('profiles')
-          .upsert({ 
-            id: targetUserId,
-            email: finalEmail, 
-            username: buyerName, 
-            phone: buyerPhone || null,
-            role: 'USER' 
-          })
       }
+    }
+
+    // 5. Asegurar SIEMPRE que el perfil público exista y esté actualizado para evitar errores de clave foránea
+    if (targetUserId) {
+      await adminSupabase
+        .from('profiles')
+        .upsert({ 
+          id: targetUserId,
+          email: finalEmail, 
+          username: buyerName, 
+          phone: buyerPhone || null,
+          role: 'USER' 
+        })
     }
 
     // 5. Insertar boletos
