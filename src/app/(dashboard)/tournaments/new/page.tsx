@@ -32,7 +32,7 @@ export default async function NewTournamentPage() {
     redirect('/profile')
   }
 
-  const canCreate = profile?.role === 'ADMIN' || profile?.subscriptionStatus === 'ACTIVE'
+  const canCreate = profile?.role === 'ADMIN' || profile?.role === 'SUPER_ADMIN' || profile?.subscriptionStatus === 'ACTIVE'
 
   return (
     <div className="p-8 max-w-3xl mx-auto">
