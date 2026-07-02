@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Trophy, Calendar, Ticket, ArrowLeft, Upload, Loader2, Sparkles, CheckCircle2, ShieldCheck, Landmark, X } from 'lucide-react'
 import { CountdownClock } from '@/components/raffles/CountdownClock'
 import { TicketSelector } from '@/components/raffles/TicketSelector'
-import { buyTicketAction, validatePromoCodeAction } from '@/lib/actions/raffles'
+import { buyTicketAction, validatePromoCodeAction, buyTicketPublicAction } from '@/lib/actions/raffles'
 import { uploadEvidence } from '@/lib/actions/storage'
 
 interface RaffleDetailClientProps {
@@ -36,6 +36,10 @@ export function RaffleDetailClient({
   const [promoDiscountPercent, setPromoDiscountPercent] = useState(0)
   const [isValidatingPromo, setIsValidatingPromo] = useState(false)
   const [promoValidationError, setPromoValidationError] = useState<string | null>(null)
+
+  const [buyerName, setBuyerName] = useState('')
+  const [buyerPhone, setBuyerPhone] = useState('')
+  const [buyerEmail, setBuyerEmail] = useState('')
 
   const handleValidatePromo = async () => {
     if (!promoCodeInput.trim()) return
@@ -147,9 +151,32 @@ export function RaffleDetailClient({
 
       // 3. Ejecutar compra en Server Action
       startTransition(async () => {
-        const res = await buyTicketAction(raffle.id, ticketNumbers, receiptUrl, appliedPromoCode || undefined)
+        let res
+        if (isLoggedIn) {
+          res = await buyTicketAction(raffle.id, ticketNumbers, receiptUrl, appliedPromoCode || undefined)
+        } else {
+          if (!buyerName.trim()) {
+            setError('Por favor introduce tu nombre.')
+            setIsUploading(false)
+            return
+          }
+          if (!buyerPhone.trim()) {
+            setError('Por favor introduce tu número de celular o WhatsApp.')
+            setIsUploading(false)
+            return
+          }
+          res = await buyTicketPublicAction(
+            raffle.id,
+            buyerName.trim(),
+            buyerPhone.trim(),
+            buyerEmail.trim() || undefined,
+            ticketNumbers,
+            receiptUrl,
+            appliedPromoCode || undefined
+          )
+        }
         setIsUploading(false)
-        if ('error' in res) {
+        if (res && 'error' in res) {
           setError(res.error)
         } else {
           setAssignedNumbers(ticketNumbers)
@@ -434,9 +461,54 @@ export function RaffleDetailClient({
                 </div>
               </div>
 
+              {/* Datos de contacto (Solo si el usuario no ha iniciado sesión) */}
+              {!isLoggedIn && (
+                <div className="p-5 bg-white/[0.01] border border-white/5 rounded-2xl space-y-4">
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-white/50 flex items-center gap-2 font-orbitron">
+                    👤 TUS DATOS DE CONTACTO
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">Nombre Completo *</label>
+                      <input
+                        type="text"
+                        placeholder="Nombre y Apellido"
+                        value={buyerName}
+                        onChange={(e) => setBuyerName(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-neon-cyan"
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">WhatsApp / Celular *</label>
+                      <input
+                        type="tel"
+                        placeholder="Ej: 809-555-0100"
+                        value={buyerPhone}
+                        onChange={(e) => setBuyerPhone(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-neon-cyan"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">Correo Electrónico (Opcional)</label>
+                      <input
+                        type="email"
+                        placeholder="usuario@correo.com"
+                        value={buyerEmail}
+                        onChange={(e) => setBuyerEmail(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-neon-cyan"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Image Receipt Upload */}
               <div className="p-5 bg-white/[0.01] border border-white/5 rounded-2xl space-y-4">
-                <h4 className="text-xs font-bold uppercase tracking-widest text-white/50 flex items-center gap-2">
+                <h4 className="text-xs font-bold uppercase tracking-widest text-white/50 flex items-center gap-2 font-orbitron">
                   <Upload size={14} className="text-neon-cyan" /> COMPROBANTE DE DEPÓSITO
                 </h4>
                 
@@ -449,7 +521,7 @@ export function RaffleDetailClient({
                         setSelectedFile(null)
                         setFilePreview(null)
                       }}
-                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/80 hover:bg-black text-white hover:scale-105 transition-all text-xs font-bold"
+                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/80 hover:bg-black text-white hover:scale-105 transition-all text-xs font-bold font-orbitron"
                     >
                       Cambiar
                     </button>
@@ -457,7 +529,7 @@ export function RaffleDetailClient({
                 ) : (
                   <label className="flex flex-col items-center justify-center border border-dashed border-white/10 hover:border-white/20 rounded-xl p-6 cursor-pointer bg-white/[0.01] hover:bg-white/[0.02] transition-all group">
                     <Upload size={24} className="text-white/20 group-hover:text-white/40 transition-colors mb-2" />
-                    <span className="text-xs font-semibold text-white/40 group-hover:text-white/60 transition-colors">Subir Captura</span>
+                    <span className="text-xs font-semibold text-white/40 group-hover:text-white/60 transition-colors font-orbitron">Subir Captura</span>
                     <span className="text-[10px] text-white/20 mt-1">PNG, JPG o JPEG</span>
                     <input
                       type="file"
@@ -478,28 +550,19 @@ export function RaffleDetailClient({
               )}
 
               {/* Submit CTA */}
-              {!isLoggedIn ? (
-                <Link
-                  href={`/login?redirectTo=/raffles/${raffle.id}`}
-                  className="flex items-center justify-center w-full py-3 rounded-xl text-xs font-bold text-white bg-white/5 hover:bg-white/10 border border-white/10 uppercase tracking-widest transition-all"
-                >
-                  Inicia sesión para comprar
-                </Link>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={isUploading || isPending}
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-neon-cyan to-neon-purple uppercase tracking-widest hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-40"
-                >
-                  {(isUploading || isPending) ? (
-                    <>
-                      <Loader2 size={14} className="animate-spin" /> Procesando...
-                    </>
-                  ) : (
-                    'Confirmar Pago e Inscribirse'
-                  )}
-                </button>
-              )}
+              <button
+                type="submit"
+                disabled={isUploading || isPending}
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-neon-cyan to-neon-purple uppercase tracking-widest hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-40 font-orbitron"
+              >
+                {(isUploading || isPending) ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" /> Procesando...
+                  </>
+                ) : (
+                  'Confirmar Pago e Inscribirse'
+                )}
+              </button>
             </form>
           )}
 
@@ -527,7 +590,7 @@ export function RaffleDetailClient({
               </div>
 
               <Link
-                href="/profile?tab=sorteos"
+                href="/raffles/my-tickets"
                 className="inline-flex items-center gap-1.5 w-full justify-center py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all uppercase tracking-wider"
               >
                 Ver mis boletos

@@ -632,8 +632,36 @@ export async function assignTicketsManuallyAction(
       return { error: 'No quedan suficientes boletos disponibles en este sorteo para asignar la cantidad solicitada.' }
     }
 
-    // Generar email placeholder si no se proporciona uno
+    // Buscar el id del usuario de forma robusta para asociarle el user_id (así le aparecerán en "Mis Boletos")
+    let targetUserId = null
     let finalEmail = buyerEmail?.trim()
+
+    // 1. Si no hay email, buscar primero por número de celular en perfiles para reutilizar la cuenta
+    if (!finalEmail && buyerPhone) {
+      const sanitizedPhoneSearch = buyerPhone.replace(/\D/g, '')
+      const { data: targetProfilePhone } = await adminSupabase
+        .from('profiles')
+        .select('id, email')
+        .eq('phone', buyerPhone)
+        .maybeSingle()
+      
+      if (targetProfilePhone?.id) {
+        targetUserId = targetProfilePhone.id
+        finalEmail = targetProfilePhone.email || undefined
+      } else if (sanitizedPhoneSearch) {
+        const { data: targetProfileSanitized } = await adminSupabase
+          .from('profiles')
+          .select('id, email')
+          .eq('phone', sanitizedPhoneSearch)
+          .maybeSingle()
+        if (targetProfileSanitized?.id) {
+          targetUserId = targetProfileSanitized.id
+          finalEmail = targetProfileSanitized.email || undefined
+        }
+      }
+    }
+
+    // 2. Generar email placeholder si no se proporciona uno y no se encontró por teléfono
     if (!finalEmail) {
       const sanitizedName = buyerName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "")
       const sanitizedPhone = (buyerPhone || '').replace(/\D/g, '')
@@ -641,23 +669,22 @@ export async function assignTicketsManuallyAction(
       finalEmail = `${sanitizedName}${sanitizedPhone ? `.${sanitizedPhone}` : ''}.${randSuffix}@manual.kronix.do`
     }
 
-    // Buscar el id del usuario de forma robusta para asociarle el user_id (así le aparecerán en "Mis Boletos")
-    let targetUserId = null
+    // 3. Intentar buscar por email en boletos ya existentes
+    if (!targetUserId) {
+      const { data: existingUserTicket } = await adminSupabase
+        .from('tickets')
+        .select('user_id')
+        .eq('buyer_email', finalEmail)
+        .not('user_id', 'is', null)
+        .limit(1)
+        .maybeSingle()
 
-    // 1. Intentar buscar en boletos ya existentes con este correo
-    const { data: existingUserTicket } = await adminSupabase
-      .from('tickets')
-      .select('user_id')
-      .eq('buyer_email', finalEmail)
-      .not('user_id', 'is', null)
-      .limit(1)
-      .maybeSingle()
-
-    if (existingUserTicket?.user_id) {
-      targetUserId = existingUserTicket.user_id
+      if (existingUserTicket?.user_id) {
+        targetUserId = existingUserTicket.user_id
+      }
     }
 
-    // 2. Si falla, intentar buscar en perfiles públicos
+    // 4. Si falla, intentar buscar por email en perfiles públicos
     if (!targetUserId) {
       const { data: targetProfile } = await adminSupabase
         .from('profiles')
@@ -669,7 +696,7 @@ export async function assignTicketsManuallyAction(
       }
     }
 
-    // 3. Si sigue fallando, buscar en el listado de usuarios de autenticación
+    // 5. Si sigue fallando, buscar en el listado de usuarios de autenticación por email
     if (!targetUserId) {
       const { data: authData } = await adminSupabase.auth.admin.listUsers({
         perPage: 1000
@@ -949,5 +976,224 @@ export async function validatePromoCodeAction(code: string, raffleId: string) {
     }
   } catch (err: any) {
     return { error: err.message || 'Error al validar el código' }
+  }
+}
+
+export async function buyTicketPublicAction(
+  raffleId: string,
+  buyerName: string,
+  buyerPhone: string,
+  buyerEmail: string | undefined,
+  ticketNumbers: string[],
+  receiptUrl: string,
+  promoCode?: string
+) {
+  try {
+    const adminSupabase = await createAdminClient()
+
+    // 1. Validar estado del sorteo
+    const { data: raffle } = await adminSupabase
+      .from('raffles')
+      .select('status, title, ticket_price')
+      .eq('id', raffleId)
+      .single()
+       
+    if (!raffle || raffle.status !== 'active') {
+      return { error: 'El sorteo no está activo o ya finalizó.' }
+    }
+
+    // 2. Validar disponibilidad de los números
+    const { data: existing } = await adminSupabase
+      .from('tickets')
+      .select('ticket_number')
+      .eq('raffle_id', raffleId)
+      .in('ticket_number', ticketNumbers)
+       
+    if (existing && existing.length > 0) {
+      const numbers = existing.map(t => t.ticket_number).join(', ')
+      return { error: `Los siguientes boletos ya han sido reservados: ${numbers}` }
+    }
+
+    // Validar código promocional si se proporciona
+    let promoSellerId = null
+    let discountAmountPerTicket = 0
+    let validatedCode = null
+
+    if (promoCode) {
+      const cleanCode = promoCode.trim().toUpperCase()
+      const { data: pcDetails } = await adminSupabase
+        .from('raffle_promo_codes')
+        .select('*')
+        .eq('code', cleanCode)
+        .eq('raffle_id', raffleId)
+        .eq('is_active', true)
+        .maybeSingle()
+
+      if (pcDetails) {
+        promoSellerId = pcDetails.seller_id || null
+        validatedCode = pcDetails.code
+        if (pcDetails.discount_percent > 0 && raffle.ticket_price) {
+          discountAmountPerTicket = (raffle.ticket_price * pcDetails.discount_percent) / 100
+        }
+      }
+    }
+
+    // Generar email placeholder si no se proporciona uno
+    let finalEmail = buyerEmail?.trim()
+    if (!finalEmail) {
+      const sanitizedName = buyerName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "")
+      const sanitizedPhone = (buyerPhone || '').replace(/\D/g, '')
+      const randSuffix = Math.random().toString(36).substring(2, 6)
+      finalEmail = `${sanitizedName}${sanitizedPhone ? `.${sanitizedPhone}` : ''}.${randSuffix}@manual.kronix.do`
+    }
+
+    // Buscar o crear usuario
+    let targetUserId = null
+
+    // 1. Buscar por email en tickets
+    const { data: existingUserTicket } = await adminSupabase
+      .from('tickets')
+      .select('user_id')
+      .eq('buyer_email', finalEmail)
+      .not('user_id', 'is', null)
+      .limit(1)
+      .maybeSingle()
+
+    if (existingUserTicket?.user_id) {
+      targetUserId = existingUserTicket.user_id
+    }
+
+    // 2. Buscar por email en perfiles
+    if (!targetUserId) {
+      const { data: targetProfile } = await adminSupabase
+        .from('profiles')
+        .select('id')
+        .eq('email', finalEmail)
+        .maybeSingle()
+      if (targetProfile?.id) {
+        targetUserId = targetProfile.id
+      }
+    }
+
+    // 3. Buscar por teléfono en perfiles
+    if (!targetUserId && buyerPhone) {
+      const sanitizedPhoneSearch = buyerPhone.replace(/\D/g, '')
+      const { data: targetProfilePhone } = await adminSupabase
+        .from('profiles')
+        .select('id')
+        .eq('phone', buyerPhone)
+        .maybeSingle()
+      
+      if (targetProfilePhone?.id) {
+        targetUserId = targetProfilePhone.id
+      } else if (sanitizedPhoneSearch) {
+        // Intentar buscar también por los dígitos puros
+        const { data: targetProfileSanitized } = await adminSupabase
+          .from('profiles')
+          .select('id')
+          .eq('phone', sanitizedPhoneSearch)
+          .maybeSingle()
+        if (targetProfileSanitized?.id) {
+          targetUserId = targetProfileSanitized.id
+        }
+      }
+    }
+
+    // 4. Crear usuario si no existe
+    if (!targetUserId) {
+      const tempPassword = Math.random().toString(36).substring(2, 10) + 'Kx!'
+      const { data: authRes, error: createErr } = await adminSupabase.auth.admin.createUser({
+        email: finalEmail,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: {
+          username: buyerName,
+          phone: buyerPhone
+        }
+      })
+
+      if (createErr) {
+        return { error: `Error al registrar perfil: ${createErr.message}` }
+      }
+
+      if (authRes?.user) {
+        targetUserId = authRes.user.id
+        await adminSupabase
+          .from('profiles')
+          .update({ 
+            email: finalEmail, 
+            username: buyerName, 
+            phone: buyerPhone || null,
+            role: 'USER' 
+          })
+          .eq('id', targetUserId)
+      }
+    }
+
+    // 5. Insertar boletos
+    const ticketsToInsert = ticketNumbers.map(num => ({
+      raffle_id: raffleId,
+      user_id: targetUserId,
+      ticket_number: num,
+      buyer_name: buyerName,
+      buyer_email: finalEmail,
+      buyer_phone: buyerPhone || '',
+      payment_status: 'pending_verification',
+      receipt_url: receiptUrl,
+      seller_id: promoSellerId,
+      promo_code: validatedCode,
+      discount_amount: discountAmountPerTicket
+    }))
+
+    const { error: insErr } = await adminSupabase
+      .from('tickets')
+      .insert(ticketsToInsert)
+
+    if (insErr) return { error: insErr.message }
+
+    // 6. Enviar correos
+    try {
+      const { sendTicketPendingEmail } = await import('@/lib/services/email')
+      await sendTicketPendingEmail({
+        email: finalEmail,
+        buyerName,
+        raffleName: raffle.title,
+        ticketNumbers,
+      })
+    } catch (mailErr) {
+      console.error('Error al enviar correo:', mailErr)
+    }
+
+    revalidatePath(`/raffles/${raffleId}`)
+    revalidatePath(`/admin/raffles/${raffleId}`)
+    revalidatePath('/raffles/my-tickets')
+
+    return { success: true, ticketNumbers }
+  } catch (err: any) {
+    return { error: err.message || 'Error al procesar la inscripción' }
+  }
+}
+
+export async function findMyTicketsPublicAction(buyerName: string, buyerPhone: string) {
+  try {
+    const adminSupabase = await createAdminClient()
+    const cleanPhone = buyerPhone.replace(/\D/g, '')
+    const cleanName = buyerName.trim()
+
+    if (!cleanName) return { error: 'El nombre es obligatorio.' }
+    if (!cleanPhone) return { error: 'El teléfono es obligatorio.' }
+
+    // Buscar boletos que coincidan con el nombre y teléfono
+    const { data: tickets, error } = await adminSupabase
+      .from('tickets')
+      .select('*, raffles(title, draw_date, prize_image, status, currency, ticket_price)')
+      .or(`buyer_phone.eq.${buyerPhone},buyer_phone.eq.${cleanPhone},buyer_phone.ilike.%${cleanPhone}%`)
+      .ilike('buyer_name', `%${cleanName}%`)
+      .order('created_at', { ascending: false })
+
+    if (error) return { error: error.message }
+    return { data: tickets || [] }
+  } catch (err: any) {
+    return { error: err.message || 'Error al buscar boletos' }
   }
 }
