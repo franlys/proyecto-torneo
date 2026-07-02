@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { CreditCard, Loader2, X } from 'lucide-react'
-import { updatePaymentDetailsByAdminAction } from '@/lib/actions/admin'
+import { updatePaymentDetailsByAdminAction, uploadPaymentQRAction } from '@/lib/actions/admin'
 
 interface EditPaymentDetailsButtonProps {
   userId: string
@@ -18,6 +18,7 @@ export function EditPaymentDetailsButton({
   const [isOpen, setIsOpen] = useState(false)
   const [paymentDetails, setPaymentDetails] = useState(initialPaymentDetails || '')
   const [isPending, setIsPending] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
 
   const handleSave = async () => {
     setIsPending(true)
@@ -33,6 +34,34 @@ export function EditPaymentDetailsButton({
       alert(`Error inesperado: ${err.message || 'Error desconocido'}`)
     } finally {
       setIsPending(false)
+    }
+  }
+
+  const handleUploadFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await uploadPaymentQRAction(userId, fd)
+      if (res && 'error' in res && res.error) {
+        alert(`Error al subir imagen: ${res.error}`)
+      } else if (res && 'success' in res && res.url) {
+        // Append the uploaded image url to the end of payment details
+        setPaymentDetails(prev => {
+          const suffix = prev.trim() ? '\n\n' : ''
+          return prev + suffix + res.url
+        })
+        alert('¡Imagen de pago subida e insertada exitosamente!')
+      }
+    } catch (err: any) {
+      alert(`Error de red al subir archivo: ${err.message}`)
+    } finally {
+      setIsUploading(false)
+      // Reset input
+      e.target.value = ''
     }
   }
 
@@ -67,7 +96,7 @@ export function EditPaymentDetailsButton({
 
             <div className="space-y-1.5 text-left">
               <label className="text-[10px] text-white/40 uppercase tracking-widest font-medium">
-                Detalles de cobro / transferencia
+                Detalles de cobro / transferencia / links (ej: PayPal.me)
               </label>
               <textarea
                 value={paymentDetails}
@@ -76,6 +105,36 @@ export function EditPaymentDetailsButton({
                 rows={5}
                 className="w-full px-3 py-2 text-xs rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-green-400 placeholder:text-white/15 resize-none"
               />
+            </div>
+
+            {/* QR / Image Uploader */}
+            <div className="space-y-1.5 text-left">
+              <label className="text-[10px] text-white/40 uppercase tracking-widest font-medium block">
+                Subir QR o Imagen de Pago (PayPal / Banco)
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleUploadFile}
+                  disabled={isUploading || isPending}
+                  className="hidden"
+                  id={`qr-upload-${userId}`}
+                />
+                <label
+                  htmlFor={`qr-upload-${userId}`}
+                  className="px-3 py-2 border border-dashed border-white/10 hover:border-white/30 rounded-xl bg-white/5 text-white/60 hover:text-white text-xs font-semibold cursor-pointer transition-all flex-1 text-center"
+                >
+                  {isUploading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 size={12} className="animate-spin text-green-400" />
+                      Subiendo imagen...
+                    </span>
+                  ) : (
+                    <span>📁 Cargar código QR o Imagen de Pago</span>
+                  )}
+                </label>
+              </div>
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2">
@@ -89,7 +148,7 @@ export function EditPaymentDetailsButton({
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={isPending}
+                disabled={isPending || isUploading}
                 className="px-4 py-2 rounded-xl text-xs font-bold text-black bg-green-400 hover:bg-green-400/85 disabled:opacity-50 transition-all font-orbitron flex items-center gap-1.5"
               >
                 {isPending && <Loader2 size={12} className="animate-spin" />}

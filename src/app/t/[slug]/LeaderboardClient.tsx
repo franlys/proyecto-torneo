@@ -143,6 +143,59 @@ function PaymentEvidenceUpload({
   )
 }
 
+const renderPaymentDetailsWithRichContent = (text: string | null | undefined) => {
+  if (!text) return null
+
+  const urlRegex = /(https?:\/\/[^\s]+)/g
+  const lines = text.split('\n')
+
+  return (
+    <div className="space-y-1">
+      {lines.map((line, idx) => {
+        const parts = line.split(urlRegex)
+        return (
+          <div key={idx} className="leading-relaxed">
+            {parts.map((part, pIdx) => {
+              if (part.match(urlRegex)) {
+                const trimmedPart = part.trim()
+                const isImage = /\.(jpeg|jpg|gif|png|webp|svg)/i.test(trimmedPart) || trimmedPart.includes('/storage/v1/object/public/evidences/')
+                
+                if (isImage) {
+                  return (
+                    <div key={pIdx} className="my-2.5 flex flex-col items-center justify-center gap-1 bg-black/40 p-2 rounded-xl border border-white/5">
+                      <span className="text-[8px] text-white/40 uppercase tracking-widest font-bold font-orbitron">
+                        Código QR / Imagen de Pago
+                      </span>
+                      <img
+                        src={trimmedPart}
+                        alt="QR Pago"
+                        className="max-w-[180px] w-full h-auto rounded-lg border border-white/10 shadow-lg bg-white p-0.5"
+                      />
+                    </div>
+                  )
+                }
+
+                return (
+                  <a
+                    key={pIdx}
+                    href={trimmedPart}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-neon-cyan hover:underline font-bold inline-flex items-center gap-0.5"
+                  >
+                    {trimmedPart} 🔗
+                  </a>
+                )
+              }
+              return part
+            })}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export function LeaderboardClient({
   tournamentId,
   tournamentName,
@@ -1627,8 +1680,8 @@ export function LeaderboardClient({
                       )}
 
                       {((collaboratorProfile?.payment_details) || (creatorProfile?.payment_details)) ? (
-                        <div className="bg-black/30 p-3 rounded-lg border border-white/5 text-[11px] text-white/80 whitespace-pre-wrap leading-relaxed">
-                          {collaboratorProfile?.payment_details || creatorProfile?.payment_details}
+                        <div className="bg-black/30 p-3 rounded-lg border border-white/5 text-[11px] text-white/80 leading-relaxed">
+                          {renderPaymentDetailsWithRichContent(collaboratorProfile?.payment_details || creatorProfile?.payment_details)}
                         </div>
                       ) : (
                         <p className="text-[10px] text-white/30 italic font-medium">

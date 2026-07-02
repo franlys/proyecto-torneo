@@ -247,3 +247,33 @@ export async function updatePaymentDetailsByAdminAction(userId: string, paymentD
   return { success: true }
 }
 
+export async function uploadPaymentQRAction(userId: string, formData: FormData) {
+  const admin = await isAdmin()
+  if (!admin) return { error: 'No autorizado' }
+
+  const file = formData.get('file') as File
+  if (!file) return { error: 'No se subió ningún archivo' }
+
+  if (!file.type.startsWith('image/')) {
+    return { error: 'El archivo debe ser una imagen' }
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    return { error: 'El archivo supera el límite de 5 MB' }
+  }
+
+  const ext = file.name.split('.').pop() || 'png'
+  const filePath = `payment-qrs/${userId}-${Date.now()}.${ext}`
+  const buffer = Buffer.from(await file.arrayBuffer())
+
+  const supabase = await createAdminClient()
+  const { error: uploadError } = await supabase.storage
+    .from('evidences')
+    .upload(filePath, buffer, { upsert: true, contentType: file.type })
+
+  if (uploadError) return { error: uploadError.message }
+
+  const { data: { publicUrl } } = supabase.storage.from('evidences').getPublicUrl(filePath)
+  return { success: true, url: publicUrl }
+}
+
