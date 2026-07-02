@@ -231,13 +231,13 @@ export async function buyTicketAction(
     // Obtener detalles del comprador desde profiles
     const { data: profile } = await supabase
       .from('profiles')
-      .select('username, email, phone')
+      .select('username, email')
       .eq('id', user.id)
       .single()
        
     const buyerName = profile?.username || user.user_metadata?.username || 'Usuario Kronix'
     const buyerEmail = profile?.email || user.email || ''
-    const buyerPhone = profile?.phone || user.user_metadata?.phone || ''
+    const buyerPhone = user.user_metadata?.phone || ''
      
     if (!buyerEmail) {
       return { error: 'Tu cuenta de usuario debe tener un correo electrónico asociado.' }
@@ -636,28 +636,20 @@ export async function assignTicketsManuallyAction(
     let targetUserId = null
     let finalEmail = buyerEmail?.trim()
 
-    // 1. Si no hay email, buscar primero por número de celular en perfiles para reutilizar la cuenta
+    // 1. Si no hay email, buscar primero por número de celular en tickets anteriores para reutilizar la cuenta
     if (!finalEmail && buyerPhone) {
       const sanitizedPhoneSearch = buyerPhone.replace(/\D/g, '')
-      const { data: targetProfilePhone } = await adminSupabase
-        .from('profiles')
-        .select('id, email')
-        .eq('phone', buyerPhone)
+      const { data: ticketMatch } = await adminSupabase
+        .from('tickets')
+        .select('user_id, buyer_email')
+        .or(`buyer_phone.eq.${buyerPhone},buyer_phone.eq.${sanitizedPhoneSearch}`)
+        .not('user_id', 'is', null)
+        .limit(1)
         .maybeSingle()
       
-      if (targetProfilePhone?.id) {
-        targetUserId = targetProfilePhone.id
-        finalEmail = targetProfilePhone.email || undefined
-      } else if (sanitizedPhoneSearch) {
-        const { data: targetProfileSanitized } = await adminSupabase
-          .from('profiles')
-          .select('id, email')
-          .eq('phone', sanitizedPhoneSearch)
-          .maybeSingle()
-        if (targetProfileSanitized?.id) {
-          targetUserId = targetProfileSanitized.id
-          finalEmail = targetProfileSanitized.email || undefined
-        }
+      if (ticketMatch?.user_id) {
+        targetUserId = ticketMatch.user_id
+        finalEmail = ticketMatch.buyer_email || undefined
       }
     }
 
@@ -718,15 +710,28 @@ export async function assignTicketsManuallyAction(
 
     // 6. Asegurar SIEMPRE que el perfil público exista y esté actualizado para evitar errores de clave foránea
     if (targetUserId) {
-      await adminSupabase
+      const { data: currentProfile } = await adminSupabase
+        .from('profiles')
+        .select('username')
+        .eq('id', targetUserId)
+        .maybeSingle()
+
+      let finalUsername = currentProfile?.username
+      if (!finalUsername) {
+        finalUsername = await generateUniqueUsername(buyerName, adminSupabase)
+      }
+
+      const { error: upsertErr } = await adminSupabase
         .from('profiles')
         .upsert({ 
           id: targetUserId,
           email: finalEmail, 
-          username: buyerName, 
-          phone: buyerPhone || null,
+          username: finalUsername, 
           role: 'USER' 
         })
+      if (upsertErr) {
+        return { error: `Error al registrar perfil público: ${upsertErr.message}` }
+      }
     }
 
     // 5. Insertar boletos como verified
@@ -967,6 +972,42 @@ export async function validatePromoCodeAction(code: string, raffleId: string) {
   }
 }
 
+async function generateUniqueUsername(baseName: string, adminSupabase: any): Promise<string> {
+  let cleanName = baseName
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9_]/g, "")
+    .substring(0, 15)
+
+  if (!cleanName) {
+    cleanName = "user"
+  }
+
+  let username = cleanName
+  let isUnique = false
+  let attempts = 0
+
+  while (!isUnique && attempts < 10) {
+    const { data } = await adminSupabase
+      .from('profiles')
+      .select('id')
+      .eq('username', username)
+      .maybeSingle()
+
+    if (!data) {
+      isUnique = true
+    } else {
+      const randomSuffix = Math.floor(100 + Math.random() * 900)
+      username = `${cleanName}_${randomSuffix}`
+      attempts++
+    }
+  }
+
+  return username
+}
+
 export async function buyTicketPublicAction(
   raffleId: string,
   buyerName: string,
@@ -1049,26 +1090,19 @@ export async function buyTicketPublicAction(
       targetUserId = targetProfile.id
     }
 
-    // 2. Buscar por teléfono en perfiles
+    // 2. Buscar por teléfono en tickets anteriores
     if (!targetUserId && buyerPhone) {
       const sanitizedPhoneSearch = buyerPhone.replace(/\D/g, '')
-      const { data: targetProfilePhone } = await adminSupabase
-        .from('profiles')
-        .select('id')
-        .eq('phone', buyerPhone)
+      const { data: ticketMatch } = await adminSupabase
+        .from('tickets')
+        .select('user_id')
+        .or(`buyer_phone.eq.${buyerPhone},buyer_phone.eq.${sanitizedPhoneSearch}`)
+        .not('user_id', 'is', null)
+        .limit(1)
         .maybeSingle()
       
-      if (targetProfilePhone?.id) {
-        targetUserId = targetProfilePhone.id
-      } else if (sanitizedPhoneSearch) {
-        const { data: targetProfileSanitized } = await adminSupabase
-          .from('profiles')
-          .select('id')
-          .eq('phone', sanitizedPhoneSearch)
-          .maybeSingle()
-        if (targetProfileSanitized?.id) {
-          targetUserId = targetProfileSanitized.id
-        }
+      if (ticketMatch?.user_id) {
+        targetUserId = ticketMatch.user_id
       }
     }
 
@@ -1109,15 +1143,28 @@ export async function buyTicketPublicAction(
 
     // 5. Asegurar SIEMPRE que el perfil público exista y esté actualizado para evitar errores de clave foránea
     if (targetUserId) {
-      await adminSupabase
+      const { data: currentProfile } = await adminSupabase
+        .from('profiles')
+        .select('username')
+        .eq('id', targetUserId)
+        .maybeSingle()
+
+      let finalUsername = currentProfile?.username
+      if (!finalUsername) {
+        finalUsername = await generateUniqueUsername(buyerName, adminSupabase)
+      }
+
+      const { error: upsertErr } = await adminSupabase
         .from('profiles')
         .upsert({ 
           id: targetUserId,
           email: finalEmail, 
-          username: buyerName, 
-          phone: buyerPhone || null,
+          username: finalUsername, 
           role: 'USER' 
         })
+      if (upsertErr) {
+        return { error: `Error al registrar perfil público: ${upsertErr.message}` }
+      }
     }
 
     // 5. Insertar boletos
