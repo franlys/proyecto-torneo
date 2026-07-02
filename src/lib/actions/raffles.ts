@@ -220,7 +220,8 @@ export async function deleteRaffleAction(id: string) {
 export async function buyTicketAction(
   raffleId: string,
   ticketNumbers: string[],
-  receiptUrl: string
+  receiptUrl: string,
+  promoCode?: string
 ) {
   try {
     const supabase = await createClient()
@@ -245,12 +246,36 @@ export async function buyTicketAction(
     // 1. Validar estado del sorteo
     const { data: raffle } = await supabase
       .from('raffles')
-      .select('status, title')
+      .select('status, title, ticket_price')
       .eq('id', raffleId)
       .single()
        
     if (!raffle || raffle.status !== 'active') {
       return { error: 'El sorteo no está activo o ya finalizó.' }
+    }
+
+    // Validar código promocional si se proporciona
+    let promoSellerId = null
+    let discountAmountPerTicket = 0
+    let validatedCode = null
+
+    if (promoCode) {
+      const cleanCode = promoCode.trim().toUpperCase()
+      const { data: pcDetails } = await supabase
+        .from('raffle_promo_codes')
+        .select('*')
+        .eq('code', cleanCode)
+        .eq('raffle_id', raffleId)
+        .eq('is_active', true)
+        .maybeSingle()
+
+      if (pcDetails) {
+        promoSellerId = pcDetails.seller_id || null
+        validatedCode = pcDetails.code
+        if (pcDetails.discount_percent > 0 && raffle.ticket_price) {
+          discountAmountPerTicket = (raffle.ticket_price * pcDetails.discount_percent) / 100
+        }
+      }
     }
      
     // 2. Validar disponibilidad de los números
@@ -275,7 +300,10 @@ export async function buyTicketAction(
       buyer_email: buyerEmail,
       buyer_phone: buyerPhone,
       payment_status: 'pending_verification',
-      receipt_url: receiptUrl
+      receipt_url: receiptUrl,
+      seller_id: promoSellerId,
+      promo_code: validatedCode,
+      discount_amount: discountAmountPerTicket
     }))
      
     const { error: insErr } = await adminSupabase
@@ -801,5 +829,125 @@ export async function assignSellerBonusTicketsAction(
     return res
   } catch (err: any) {
     return { error: err.message || 'Error al asignar boletos de regalo' }
+  }
+}
+
+export async function getPromoCodesAction(raffleId: string) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autenticado' }
+
+    if (!(await isSystemAdmin(user.id))) return { error: 'Sin permisos de administrador' }
+
+    const adminSupabase = await createAdminClient()
+    const { data, error } = await adminSupabase
+      .from('raffle_promo_codes')
+      .select('*, profiles(username, email)')
+      .eq('raffle_id', raffleId)
+      .order('created_at', { ascending: false })
+
+    if (error) return { error: error.message }
+    return { data: data || [] }
+  } catch (err: any) {
+    return { error: err.message || 'Error al obtener códigos de promoción' }
+  }
+}
+
+export async function createPromoCodeAction(
+  raffleId: string,
+  code: string,
+  discountPercent: number,
+  sellerId?: string
+) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autenticado' }
+
+    if (!(await isSystemAdmin(user.id))) return { error: 'Sin permisos de administrador' }
+
+    const cleanCode = code.trim().toUpperCase()
+    if (!cleanCode) return { error: 'El código no puede estar vacío.' }
+
+    const adminSupabase = await createAdminClient()
+
+    // Verificar si el código ya existe
+    const { data: existing } = await adminSupabase
+      .from('raffle_promo_codes')
+      .select('id')
+      .eq('code', cleanCode)
+      .maybeSingle()
+
+    if (existing) {
+      return { error: 'Este código de promoción ya existe. Por favor utiliza uno diferente.' }
+    }
+
+    const { error } = await adminSupabase
+      .from('raffle_promo_codes')
+      .insert({
+        raffle_id: raffleId,
+        code: cleanCode,
+        discount_percent: discountPercent,
+        seller_id: sellerId || null
+      })
+
+    if (error) return { error: error.message }
+
+    revalidatePath(`/admin/raffles/${raffleId}`)
+    return { success: true }
+  } catch (err: any) {
+    return { error: err.message || 'Error al crear código de promoción' }
+  }
+}
+
+export async function deletePromoCodeAction(raffleId: string, promoCodeId: string) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autenticado' }
+
+    if (!(await isSystemAdmin(user.id))) return { error: 'Sin permisos de administrador' }
+
+    const adminSupabase = await createAdminClient()
+    const { error } = await adminSupabase
+      .from('raffle_promo_codes')
+      .delete()
+      .eq('id', promoCodeId)
+
+    if (error) return { error: error.message }
+
+    revalidatePath(`/admin/raffles/${raffleId}`)
+    return { success: true }
+  } catch (err: any) {
+    return { error: err.message || 'Error al eliminar código de promoción' }
+  }
+}
+
+export async function validatePromoCodeAction(code: string, raffleId: string) {
+  try {
+    const supabase = await createClient()
+    const cleanCode = code.trim().toUpperCase()
+    if (!cleanCode) return { error: 'Código vacío' }
+
+    const { data, error } = await supabase
+      .from('raffle_promo_codes')
+      .select('*')
+      .eq('code', cleanCode)
+      .eq('raffle_id', raffleId)
+      .eq('is_active', true)
+      .maybeSingle()
+
+    if (error) return { error: error.message }
+    if (!data) return { error: 'Código de descuento no válido o no aplica a este sorteo.' }
+
+    return { 
+      valid: true, 
+      discountPercent: data.discount_percent,
+      sellerId: data.seller_id,
+      code: data.code
+    }
+  } catch (err: any) {
+    return { error: err.message || 'Error al validar el código' }
   }
 }

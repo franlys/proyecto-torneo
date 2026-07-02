@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Trophy, Calendar, Ticket, ArrowLeft, Upload, Loader2, Sparkles, CheckCircle2, ShieldCheck, Landmark, X } from 'lucide-react'
 import { CountdownClock } from '@/components/raffles/CountdownClock'
 import { TicketSelector } from '@/components/raffles/TicketSelector'
-import { buyTicketAction } from '@/lib/actions/raffles'
+import { buyTicketAction, validatePromoCodeAction } from '@/lib/actions/raffles'
 import { uploadEvidence } from '@/lib/actions/storage'
 
 interface RaffleDetailClientProps {
@@ -30,6 +30,41 @@ export function RaffleDetailClient({
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [selectedQrUrl, setSelectedQrUrl] = useState<string | null>(null)
+
+  const [promoCodeInput, setPromoCodeInput] = useState('')
+  const [appliedPromoCode, setAppliedPromoCode] = useState<string | null>(null)
+  const [promoDiscountPercent, setPromoDiscountPercent] = useState(0)
+  const [isValidatingPromo, setIsValidatingPromo] = useState(false)
+  const [promoValidationError, setPromoValidationError] = useState<string | null>(null)
+
+  const handleValidatePromo = async () => {
+    if (!promoCodeInput.trim()) return
+    setIsValidatingPromo(true)
+    setPromoValidationError(null)
+    try {
+      const res = await validatePromoCodeAction(promoCodeInput, raffle.id)
+      if ('error' in res && res.error) {
+        setPromoValidationError(res.error)
+        setAppliedPromoCode(null)
+        setPromoDiscountPercent(0)
+      } else if ('valid' in res && res.valid) {
+        setAppliedPromoCode(res.code || promoCodeInput.trim().toUpperCase())
+        setPromoDiscountPercent(res.discountPercent || 0)
+        setPromoValidationError(null)
+      }
+    } catch (e: any) {
+      setPromoValidationError(e.message || 'Error al validar código')
+    } finally {
+      setIsValidatingPromo(false)
+    }
+  }
+
+  const handleRemovePromo = () => {
+    setAppliedPromoCode(null)
+    setPromoDiscountPercent(0)
+    setPromoCodeInput('')
+    setPromoValidationError(null)
+  }
 
   const soldTicketsCount = tickets.filter(t => t.payment_status === 'verified' && !t.is_bonus).length
   const pendingTicketsCount = tickets.filter(t => t.payment_status === 'pending_verification').length
@@ -112,7 +147,7 @@ export function RaffleDetailClient({
 
       // 3. Ejecutar compra en Server Action
       startTransition(async () => {
-        const res = await buyTicketAction(raffle.id, ticketNumbers, receiptUrl)
+        const res = await buyTicketAction(raffle.id, ticketNumbers, receiptUrl, appliedPromoCode || undefined)
         setIsUploading(false)
         if ('error' in res) {
           setError(res.error)
@@ -245,7 +280,56 @@ export function RaffleDetailClient({
                 selectedCount={ticketCount}
                 onChange={setTicketCount}
                 maxTickets={100}
+                discountPercent={promoDiscountPercent}
               />
+
+              {/* Código de Descuento / Streamer */}
+              <div className="p-5 bg-white/[0.01] border border-white/5 rounded-2xl space-y-3 max-w-md mx-auto">
+                <h4 className="text-xs font-bold uppercase tracking-widest text-white/50 flex items-center gap-2">
+                  🎟️ CÓDIGO DE DESCUENTO
+                </h4>
+                
+                {appliedPromoCode ? (
+                  <div className="flex items-center justify-between p-3 bg-neon-cyan/5 border border-neon-cyan/15 rounded-xl text-xs">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] text-white/40 uppercase font-bold font-orbitron block">Código Aplicado</span>
+                      <span className="font-mono font-bold text-neon-cyan uppercase">{appliedPromoCode} ({promoDiscountPercent}% de descuento)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemovePromo}
+                      className="px-2.5 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold font-orbitron uppercase text-[9px] transition-colors"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="INGRESA TU CÓDIGO"
+                        value={promoCodeInput}
+                        onChange={(e) => setPromoCodeInput(e.target.value)}
+                        className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-neon-cyan uppercase font-mono tracking-wider placeholder:text-white/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleValidatePromo}
+                        disabled={isValidatingPromo || !promoCodeInput.trim()}
+                        className="px-4 py-2 rounded-xl text-xs font-bold text-black bg-neon-cyan hover:bg-neon-cyan/85 disabled:opacity-40 disabled:pointer-events-none transition-all uppercase tracking-widest font-orbitron"
+                      >
+                        {isValidatingPromo ? '...' : 'Aplicar'}
+                      </button>
+                    </div>
+                    {promoValidationError && (
+                      <p className="text-[10px] text-red-400 font-bold pl-1">
+                        ⚠️ {promoValidationError}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* Bank Details */}
               <div className="p-5 bg-white/[0.01] border border-white/5 rounded-2xl space-y-4">

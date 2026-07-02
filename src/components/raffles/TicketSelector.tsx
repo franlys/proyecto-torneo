@@ -9,6 +9,7 @@ interface TicketSelectorProps {
   selectedCount: number
   onChange: (count: number) => void
   maxTickets?: number
+  discountPercent?: number
 }
 
 export function TicketSelector({
@@ -17,6 +18,7 @@ export function TicketSelector({
   selectedCount,
   onChange,
   maxTickets = 100,
+  discountPercent = 0,
 }: TicketSelectorProps) {
   const increment = () => {
     if (selectedCount < maxTickets) {
@@ -29,6 +31,11 @@ export function TicketSelector({
       onChange(selectedCount - 1)
     }
   }
+
+  const baseTotal = selectedCount * ticketPrice
+  const discountedTotal = discountPercent > 0
+    ? baseTotal * (1 - discountPercent / 100)
+    : baseTotal
 
   return (
     <div className="space-y-6 w-full max-w-md mx-auto">
@@ -89,9 +96,23 @@ export function TicketSelector({
 
         <div className="text-center mt-3">
           <span className="text-[10px] uppercase font-bold tracking-widest text-white/30 block">Total a Pagar</span>
-          <span className="text-3xl font-orbitron font-black text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan to-neon-purple block mt-1">
-            {currency} {(selectedCount * ticketPrice).toLocaleString('es-ES', { maximumFractionDigits: 0 })}
-          </span>
+          {discountPercent > 0 ? (
+            <div className="space-y-0.5">
+              <span className="text-xs text-white/40 line-through block font-orbitron">
+                {currency} {baseTotal.toLocaleString('es-ES', { maximumFractionDigits: 0 })}
+              </span>
+              <span className="text-3xl font-orbitron font-black text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan to-neon-purple block">
+                {currency} {discountedTotal.toLocaleString('es-ES', { maximumFractionDigits: 0 })}
+              </span>
+              <span className="text-[9px] font-bold text-neon-cyan bg-neon-cyan/10 border border-neon-cyan/25 px-2.5 py-0.5 rounded-full inline-block font-orbitron mt-1 animate-pulse">
+                ¡AHORRASTE {discountPercent}%!
+              </span>
+            </div>
+          ) : (
+            <span className="text-3xl font-orbitron font-black text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan to-neon-purple block mt-1">
+              {currency} {baseTotal.toLocaleString('es-ES', { maximumFractionDigits: 0 })}
+            </span>
+          )}
         </div>
 
         {/* Probability Gamification Indicator */}

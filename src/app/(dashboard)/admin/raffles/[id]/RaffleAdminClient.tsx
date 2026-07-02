@@ -1,11 +1,11 @@
 'use client'
 
-import React, { useState, useTransition } from 'react'
+import React, { useState, useTransition, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Trophy, Calendar, Ticket, Check, X, ShieldAlert, Loader2, Play, Landmark, Image, Eye, Trash2, PlusCircle, Upload, Mail } from 'lucide-react'
 import { LiveWheel } from '@/components/raffles/LiveWheel'
-import { verifyTicketAction, drawRaffleAction, updateRaffleAction, deleteRaffleAction, announceRaffleToAllUsersAction, assignTicketsManuallyAction, assignSellerBonusTicketsAction } from '@/lib/actions/raffles'
+import { verifyTicketAction, drawRaffleAction, updateRaffleAction, deleteRaffleAction, announceRaffleToAllUsersAction, assignTicketsManuallyAction, assignSellerBonusTicketsAction, getPromoCodesAction, createPromoCodeAction, deletePromoCodeAction } from '@/lib/actions/raffles'
 import { uploadEvidence } from '@/lib/actions/storage'
 
 interface RaffleAdminClientProps {
@@ -16,7 +16,7 @@ interface RaffleAdminClientProps {
 
 export function RaffleAdminClient({ raffle, tickets, profiles }: RaffleAdminClientProps) {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'pending' | 'draw' | 'affiliates' | 'settings'>('pending')
+  const [activeTab, setActiveTab] = useState<'pending' | 'draw' | 'affiliates' | 'promo_codes' | 'settings'>('pending')
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [isAnnouncing, setIsAnnouncing] = useState(false)
@@ -81,6 +81,74 @@ export function RaffleAdminClient({ raffle, tickets, profiles }: RaffleAdminClie
       alert(`Error: ${err.message || 'Error desconocido'}`)
     } finally {
       setIsDeliveringBonus(prev => ({ ...prev, [sellerId]: false }))
+    }
+  }
+
+  // Promo Codes State
+  const [promoCodes, setPromoCodes] = useState<any[]>([])
+  const [isLoadingPromoCodes, setIsLoadingPromoCodes] = useState(false)
+  const [newPromoCode, setNewPromoCode] = useState('')
+  const [newPromoDiscount, setNewPromoDiscount] = useState(10)
+  const [newPromoSellerId, setNewPromoSellerId] = useState('')
+  const [promoError, setPromoError] = useState<string | null>(null)
+
+  const loadPromoCodes = async () => {
+    setIsLoadingPromoCodes(true)
+    try {
+      const res = await getPromoCodesAction(raffle.id)
+      if ('error' in res && res.error) {
+        setPromoError(res.error)
+      } else if ('data' in res && res.data) {
+        setPromoCodes(res.data)
+      }
+    } catch (e: any) {
+      setPromoError(e.message || 'Error al cargar códigos de descuento')
+    } finally {
+      setIsLoadingPromoCodes(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === 'promo_codes') {
+      loadPromoCodes()
+    }
+  }, [activeTab])
+
+  const handleCreatePromoCode = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPromoError(null)
+    try {
+      const res = await createPromoCodeAction(
+        raffle.id,
+        newPromoCode,
+        newPromoDiscount,
+        newPromoSellerId || undefined
+      )
+      if ('error' in res && res.error) {
+        setPromoError(res.error)
+      } else {
+        alert('¡Código de descuento creado con éxito!')
+        setNewPromoCode('')
+        setNewPromoDiscount(10)
+        setNewPromoSellerId('')
+        loadPromoCodes()
+      }
+    } catch (err: any) {
+      setPromoError(err.message || 'Error al crear código')
+    }
+  }
+
+  const handleDeletePromoCode = async (id: string) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar este código de promoción?')) return
+    try {
+      const res = await deletePromoCodeAction(raffle.id, id)
+      if ('error' in res && res.error) {
+        alert(`Error al eliminar: ${res.error}`)
+      } else {
+        loadPromoCodes()
+      }
+    } catch (err: any) {
+      alert(`Error: ${err.message}`)
     }
   }
 
@@ -479,6 +547,16 @@ export function RaffleAdminClient({ raffle, tickets, profiles }: RaffleAdminClie
           Ventas de Afiliados
         </button>
         <button
+          onClick={() => setActiveTab('promo_codes')}
+          className={`flex-1 min-w-[140px] py-3.5 text-xs uppercase font-bold tracking-widest transition-colors border-b-2 ${
+            activeTab === 'promo_codes'
+              ? 'text-neon-cyan border-neon-cyan font-black'
+              : 'text-white/40 border-transparent hover:text-white/60'
+          }`}
+        >
+          Códigos de Descuento
+        </button>
+        <button
           onClick={() => setActiveTab('settings')}
           className={`flex-1 min-w-[100px] py-3.5 text-xs uppercase font-bold tracking-widest transition-colors border-b-2 ${
             activeTab === 'settings'
@@ -846,6 +924,133 @@ export function RaffleAdminClient({ raffle, tickets, profiles }: RaffleAdminClie
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Tab: Códigos de Descuento */}
+        {activeTab === 'promo_codes' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Left: Create Code */}
+            <div className="bg-white/[0.01] border border-white/5 rounded-2xl p-6 space-y-4 h-fit">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-widest text-white/60 border-b border-white/5 pb-3">
+                  Crear Nuevo Código
+                </h3>
+                <p className="text-[11px] text-white/40 mt-1">
+                  Genera códigos de descuento que los compradores pueden ingresar al comprar sus boletos.
+                </p>
+              </div>
+
+              <form onSubmit={handleCreatePromoCode} className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold uppercase text-white/40">Código *</label>
+                  <input
+                    type="text"
+                    placeholder="EJ: SUPERDESCUENTO"
+                    value={newPromoCode}
+                    onChange={(e) => setNewPromoCode(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-[#121219] border border-white/10 text-xs text-white focus:outline-none focus:border-neon-cyan uppercase font-mono"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold uppercase text-white/40">Porcentaje de Descuento (%) *</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={newPromoDiscount}
+                    onChange={(e) => setNewPromoDiscount(Number(e.target.value) || 0)}
+                    className="w-full px-3 py-2 rounded-xl bg-[#121219] border border-white/10 text-xs text-white focus:outline-none focus:border-neon-cyan"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold uppercase text-white/40">Vendedor / Streamer Asociado (Opcional)</label>
+                  <select
+                    value={newPromoSellerId}
+                    onChange={(e) => setNewPromoSellerId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-[#121219] border border-white/10 text-xs text-white focus:outline-none focus:border-neon-cyan"
+                  >
+                    <option value="">-- Ninguno --</option>
+                    {profiles.map((p) => (
+                      <option key={p.id} value={p.id} className="bg-[#121219] text-white">
+                        {p.username || p.email || 'Usuario sin apodo'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {promoError && (
+                  <p className="text-[10px] text-red-400 font-bold bg-red-500/5 p-2 rounded-lg border border-red-500/10">
+                    ⚠️ {promoError}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full py-2 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-neon-cyan to-neon-purple hover:opacity-90 active:scale-95 transition-all uppercase tracking-widest font-orbitron mt-1"
+                >
+                  Crear Código
+                </button>
+              </form>
+            </div>
+
+            {/* Right: Active Codes List */}
+            <div className="md:col-span-2 bg-white/[0.01] border border-white/5 rounded-2xl p-6 space-y-4">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-white/50 border-b border-white/5 pb-3">
+                Códigos de Descuento Configurados
+              </h3>
+
+              {isLoadingPromoCodes ? (
+                <div className="py-12 flex justify-center items-center text-xs text-white/40">
+                  <Loader2 size={16} className="animate-spin mr-2" /> Cargando códigos...
+                </div>
+              ) : promoCodes.length === 0 ? (
+                <div className="py-12 text-center text-xs text-white/30">
+                  No hay códigos de descuento creados para este sorteo.
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-white/5 rounded-xl">
+                  <table className="w-full text-xs text-left">
+                    <thead>
+                      <tr className="border-b border-white/5 bg-white/[0.02]">
+                        <th className="px-4 py-3 uppercase tracking-wider text-white/40 font-medium font-mono">Código</th>
+                        <th className="px-4 py-3 uppercase tracking-wider text-white/40 font-medium text-center">Descuento</th>
+                        <th className="px-4 py-3 uppercase tracking-wider text-white/40 font-medium">Asociado a Vendedor</th>
+                        <th className="px-4 py-3 uppercase tracking-wider text-white/40 font-medium text-right">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {promoCodes.map((pc) => (
+                        <tr key={pc.id} className="hover:bg-white/[0.01] transition-colors">
+                          <td className="px-4 py-3 font-mono font-bold text-white uppercase">{pc.code}</td>
+                          <td className="px-4 py-3 text-center text-neon-cyan font-bold">{pc.discount_percent}%</td>
+                          <td className="px-4 py-3 text-white/60">
+                            {pc.profiles ? (
+                              <span className="text-white font-medium">{pc.profiles.username || pc.profiles.email}</span>
+                            ) : (
+                              <span className="text-white/30">Ninguno</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              onClick={() => handleDeletePromoCode(pc.id)}
+                              className="p-1.5 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors"
+                              title="Eliminar código"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
