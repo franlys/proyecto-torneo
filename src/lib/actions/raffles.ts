@@ -732,12 +732,13 @@ export async function assignTicketsManuallyAction(
         // Asegurar que el perfil público se actualice con el email e username (nickname) correctos
         await adminSupabase
           .from('profiles')
-          .update({ 
+          .upsert({ 
+            id: targetUserId,
             email: finalEmail, 
             username: buyerName, 
+            phone: buyerPhone || null,
             role: 'USER' 
           })
-          .eq('id', targetUserId)
       }
     }
 
@@ -1120,13 +1121,13 @@ export async function buyTicketPublicAction(
         targetUserId = authRes.user.id
         await adminSupabase
           .from('profiles')
-          .update({ 
+          .upsert({ 
+            id: targetUserId,
             email: finalEmail, 
             username: buyerName, 
             phone: buyerPhone || null,
             role: 'USER' 
           })
-          .eq('id', targetUserId)
       }
     }
 
