@@ -110,11 +110,6 @@ export function RaffleDetailClient({
 
   const handlePurchase = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isLoggedIn) {
-      setError('Debes iniciar sesión para poder adquirir boletos.')
-      return
-    }
-
     if (!selectedFile) {
       setError('Por favor selecciona una captura o foto de tu comprobante de pago.')
       return
