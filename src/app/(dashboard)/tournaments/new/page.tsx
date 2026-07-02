@@ -1,9 +1,9 @@
 import { getProfile } from '@/lib/actions/auth-helpers'
 import Link from 'next/link'
-import dynamic from 'next/dynamic'
+import nextDynamic from 'next/dynamic'
 import { redirect } from 'next/navigation'
 
-const TournamentForm = dynamic(
+const TournamentForm = nextDynamic(
   () => import('@/components/dashboard/TournamentForm').then((mod) => mod.TournamentForm),
   {
     ssr: false,
@@ -25,6 +25,8 @@ const TournamentForm = dynamic(
     )
   }
 )
+
+export const dynamic = 'force-dynamic'
 
 export default async function NewTournamentPage() {
   const profile = await getProfile()

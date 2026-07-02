@@ -20,13 +20,17 @@ const adminSupabase = createClient(supabaseUrl, supabaseServiceKey, {
 })
 
 async function run() {
-  const { data, error } = await adminSupabase.from('profiles').select('*').limit(1)
+  const { data, error } = await adminSupabase
+    .from('profiles')
+    .select('*')
+    .eq('role', 'SUPER_ADMIN')
+    .maybeSingle()
+
   if (error) {
-    console.error('Error fetching profiles:', error)
+    console.error('Error fetching super admin profile:', error)
     return
   }
-  console.log('Fila de perfiles recuperada:', data[0])
-  console.log('Columnas disponibles:', Object.keys(data[0] || {}))
+  console.log('Perfil de Súper Admin:', data)
 }
 
 run()
