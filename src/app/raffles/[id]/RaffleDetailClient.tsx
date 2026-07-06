@@ -673,9 +673,9 @@ export function RaffleDetailClient({
                 setIsRefundModalOpen(true)
               }}
               type="button"
-              className="text-[10px] text-white/30 hover:text-white/60 hover:underline transition-colors block w-full text-center"
+              className="w-full py-2.5 rounded-xl text-xs font-bold text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all uppercase tracking-wider font-orbitron flex items-center justify-center gap-1.5"
             >
-              ¿Deseas solicitar la devolución de tus boletos? Haz clic aquí
+              🔄 Solicitar Devolución de Boletos
             </button>
           </div>
         </div>
