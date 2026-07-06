@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Trophy, Calendar, Ticket, Check, X, ShieldAlert, Loader2, Play, Landmark, Image, Eye, Trash2, PlusCircle, Upload, Mail } from 'lucide-react'
 import { LiveWheel } from '@/components/raffles/LiveWheel'
-import { verifyTicketAction, drawRaffleAction, updateRaffleAction, deleteRaffleAction, announceRaffleToAllUsersAction, assignTicketsManuallyAction, assignSellerBonusTicketsAction, getPromoCodesAction, createPromoCodeAction, deletePromoCodeAction } from '@/lib/actions/raffles'
+import { verifyTicketAction, drawRaffleAction, updateRaffleAction, deleteRaffleAction, announceRaffleToAllUsersAction, assignTicketsManuallyAction, assignSellerBonusTicketsAction, getPromoCodesAction, createPromoCodeAction, deletePromoCodeAction, getRaffleRefundRequestsAction, resolveRaffleRefundRequestAction } from '@/lib/actions/raffles'
 import { uploadEvidence } from '@/lib/actions/storage'
 
 interface RaffleAdminClientProps {
@@ -16,11 +16,61 @@ interface RaffleAdminClientProps {
 
 export function RaffleAdminClient({ raffle, tickets, profiles }: RaffleAdminClientProps) {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'pending' | 'draw' | 'affiliates' | 'promo_codes' | 'settings'>('pending')
+  const [activeTab, setActiveTab] = useState<'pending' | 'draw' | 'affiliates' | 'promo_codes' | 'settings' | 'refunds'>('pending')
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [isAnnouncing, setIsAnnouncing] = useState(false)
   const [isAnnouncingLive, setIsAnnouncingLive] = useState(false)
+
+  const [refundRequests, setRefundRequests] = useState<any[]>([])
+
+  useEffect(() => {
+    async function loadRefundRequests() {
+      const res = await getRaffleRefundRequestsAction(raffle.id)
+      if (res && 'data' in res) {
+        setRefundRequests(res.data || [])
+      }
+    }
+    loadRefundRequests()
+  }, [raffle.id, activeTab])
+
+  const handleResolveRefund = async (
+    requestId: string,
+    status: 'resolved' | 'rejected',
+    deleteTickets: boolean,
+    buyerPhone: string
+  ) => {
+    const confirmation = window.confirm(
+      status === 'resolved'
+        ? deleteTickets
+          ? '¿Estás seguro de que deseas aprobar esta devolución y ELIMINAR los boletos de la base de datos?'
+          : '¿Estás seguro de que deseas aprobar esta devolución (manteniendo los boletos en la base de datos)?'
+        : '¿Estás seguro de que deseas rechazar esta solicitud de devolución?'
+    )
+    if (!confirmation) return
+
+    setError(null)
+    startTransition(async () => {
+      const res = await resolveRaffleRefundRequestAction({
+        requestId,
+        status,
+        deleteTickets,
+        raffleId: raffle.id,
+        buyerPhone,
+      })
+
+      if (res && 'error' in res) {
+        setError(res.error)
+      } else {
+        setRefundRequests((prev) =>
+          prev.map((r) => (r.id === requestId ? { ...r, status } : r))
+        )
+        if (deleteTickets) {
+          router.refresh()
+        }
+      }
+    })
+  }
 
   // Manual Assignment States
   const [manualName, setManualName] = useState('')
@@ -565,6 +615,16 @@ export function RaffleAdminClient({ raffle, tickets, profiles }: RaffleAdminClie
           }`}
         >
           Ajustes
+        </button>
+        <button
+          onClick={() => setActiveTab('refunds')}
+          className={`flex-1 min-w-[120px] py-3.5 text-xs uppercase font-bold tracking-widest transition-colors border-b-2 ${
+            activeTab === 'refunds'
+              ? 'text-neon-cyan border-neon-cyan font-black'
+              : 'text-white/40 border-transparent hover:text-white/60'
+          }`}
+        >
+          Devoluciones ({refundRequests.length})
         </button>
       </div>
 
@@ -1406,6 +1466,133 @@ export function RaffleAdminClient({ raffle, tickets, profiles }: RaffleAdminClie
                 </button>
               </div>
             </form>
+          </div>
+        )}
+
+        {activeTab === 'refunds' && (
+          <div className="space-y-4">
+            {refundRequests.length === 0 ? (
+              <div className="p-16 text-center rounded-2xl bg-white/[0.01] border border-white/5 space-y-3">
+                <ShieldAlert className="mx-auto text-white/20" size={36} />
+                <div>
+                  <h3 className="text-sm font-bold text-white/60">Sin solicitudes</h3>
+                  <p className="text-xs text-white/30 mt-1">No hay solicitudes de devolución de boletos registradas para este sorteo.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {refundRequests.map((req) => {
+                  const cleanReqPhone = req.buyer_phone.replace(/\D/g, '')
+                  const buyerTickets = tickets.filter(t => {
+                    const cleanTicketPhone = (t.buyer_phone || '').replace(/\D/g, '')
+                    return cleanTicketPhone === cleanReqPhone || (t.buyer_phone && t.buyer_phone === req.buyer_phone)
+                  })
+                  
+                  const receiptUrl = buyerTickets.find(t => t.receipt_url)?.receipt_url
+
+                  return (
+                    <div key={req.id} className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl space-y-4 relative text-left">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/5 pb-4">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-bold text-white font-orbitron uppercase">{req.buyer_name}</h4>
+                            <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                              req.status === 'pending'
+                                ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                                : req.status === 'resolved'
+                                ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                                : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                            }`}>
+                              {req.status === 'pending' ? 'Pendiente' : req.status === 'resolved' ? 'Aprobada' : 'Rechazada'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-white/40 mt-1">
+                            Celular: <strong className="text-white/60">{req.buyer_phone}</strong> &bull; Solicitado el {new Date(req.created_at).toLocaleDateString('es')}
+                          </p>
+                        </div>
+                        
+                        {req.status === 'pending' && (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              onClick={() => handleResolveRefund(req.id, 'resolved', true, req.buyer_phone)}
+                              className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-black bg-green-400 hover:bg-green-400/85 uppercase tracking-wider transition-all"
+                            >
+                              ✓ Aprobar y Borrar Boletos
+                            </button>
+                            <button
+                              onClick={() => handleResolveRefund(req.id, 'resolved', false, req.buyer_phone)}
+                              className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-white bg-white/5 border border-white/10 hover:bg-white/10 uppercase tracking-wider transition-all"
+                            >
+                              ✓ Aprobar (Mantener Boletos)
+                            </button>
+                            <button
+                              onClick={() => handleResolveRefund(req.id, 'rejected', false, req.buyer_phone)}
+                              className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500 hover:text-white uppercase tracking-wider transition-all"
+                            >
+                              ✗ Rechazar
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Motivo */}
+                        <div className="space-y-1.5 md:col-span-2">
+                          <span className="text-[9px] font-orbitron font-bold text-white/30 uppercase tracking-wider">
+                            Motivo de la Devolución
+                          </span>
+                          <p className="text-xs text-white/70 leading-relaxed bg-white/[0.01] border border-white/5 p-3.5 rounded-xl whitespace-pre-wrap">
+                            {req.reason}
+                          </p>
+                        </div>
+
+                        {/* Boletos e Imagen */}
+                        <div className="space-y-3 bg-white/[0.01] border border-white/5 p-4 rounded-xl">
+                          <div>
+                            <span className="text-[9px] font-orbitron font-bold text-white/30 uppercase tracking-wider block">
+                              Boletos Comprados ({buyerTickets.length})
+                            </span>
+                            {buyerTickets.length > 0 ? (
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {buyerTickets.map((t) => (
+                                  <span key={t.id} className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/5 border border-white/5 text-white/60">
+                                    #{t.ticket_number}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-white/20 italic block mt-1">Ninguno encontrado con este celular</span>
+                            )}
+                          </div>
+
+                          {receiptUrl && (
+                            <div className="pt-2 border-t border-white/5 space-y-1.5">
+                              <span className="text-[9px] font-orbitron font-bold text-white/30 uppercase tracking-wider block">
+                                Comprobante de Transferencia
+                              </span>
+                              <div className="relative group overflow-hidden rounded-lg border border-white/10 max-w-[120px] aspect-[3/4] bg-black">
+                                <img
+                                  src={receiptUrl}
+                                  alt="Comprobante"
+                                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedReceipt(receiptUrl)}
+                                  className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-bold uppercase tracking-wider text-neon-cyan"
+                                >
+                                  Ampliar
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Trophy, Calendar, Ticket, ArrowLeft, Upload, Loader2, Sparkles, CheckCircle2, ShieldCheck, Landmark, X } from 'lucide-react'
 import { CountdownClock } from '@/components/raffles/CountdownClock'
 import { TicketSelector } from '@/components/raffles/TicketSelector'
-import { buyTicketAction, validatePromoCodeAction, buyTicketPublicAction } from '@/lib/actions/raffles'
+import { buyTicketAction, validatePromoCodeAction, buyTicketPublicAction, requestRaffleRefundAction } from '@/lib/actions/raffles'
 import { uploadEvidence } from '@/lib/actions/storage'
 
 interface RaffleDetailClientProps {
@@ -41,6 +41,47 @@ export function RaffleDetailClient({
   const [buyerPhone, setBuyerPhone] = useState('')
   const [buyerPhoneConfirm, setBuyerPhoneConfirm] = useState('')
   const [buyerEmail, setBuyerEmail] = useState('')
+
+  const [isRefundModalOpen, setIsRefundModalOpen] = useState(false)
+  const [refundName, setRefundName] = useState('')
+  const [refundPhone, setRefundPhone] = useState('')
+  const [refundReason, setRefundReason] = useState('')
+  const [isRefundPending, setIsRefundPending] = useState(false)
+  const [refundSuccess, setRefundSuccess] = useState(false)
+  const [refundError, setRefundError] = useState('')
+
+  const handleRefundSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!refundName.trim() || !refundPhone.trim() || !refundReason.trim()) {
+      setRefundError('Por favor completa todos los campos.')
+      return
+    }
+
+    setIsRefundPending(true)
+    setRefundError('')
+    setRefundSuccess(false)
+    try {
+      const res = await requestRaffleRefundAction({
+        raffleId: raffle.id,
+        buyerName: refundName.trim(),
+        buyerPhone: refundPhone.trim(),
+        reason: refundReason.trim(),
+      })
+
+      if (res && 'error' in res) {
+        setRefundError(res.error)
+      } else {
+        setRefundSuccess(true)
+        setRefundName('')
+        setRefundPhone('')
+        setRefundReason('')
+      }
+    } catch (err: any) {
+      setRefundError(err.message || 'Error al procesar la solicitud')
+    } finally {
+      setIsRefundPending(false)
+    }
+  }
 
   const handleValidatePromo = async () => {
     if (!promoCodeInput.trim()) return
@@ -622,6 +663,21 @@ export function RaffleDetailClient({
             </div>
           )}
           {/* finished raffle info */}
+
+          {/* Refund request button */}
+          <div className="mt-4 text-center border-t border-white/5 pt-4">
+            <button
+              onClick={() => {
+                setRefundSuccess(false)
+                setRefundError('')
+                setIsRefundModalOpen(true)
+              }}
+              type="button"
+              className="text-[10px] text-white/30 hover:text-white/60 hover:underline transition-colors block w-full text-center"
+            >
+              ¿Deseas solicitar la devolución de tus boletos? Haz clic aquí
+            </button>
+          </div>
         </div>
       </div>
 
@@ -652,6 +708,117 @@ export function RaffleDetailClient({
             >
               Entendido
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Refund Request Modal */}
+      {isRefundModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="relative max-w-md w-full bg-[#1a1a24] border border-white/10 rounded-3xl p-6 space-y-4 shadow-[0_0_50px_rgba(0,0,0,0.8)] text-left">
+            <button
+              type="button"
+              onClick={() => setIsRefundModalOpen(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all"
+            >
+              <X size={16} />
+            </button>
+            <h3 className="font-orbitron font-black text-base uppercase tracking-wider text-white">
+              Solicitud de Devolución
+            </h3>
+            <p className="text-[11px] text-white/40">
+              Ingresa tus datos de compra. El administrador revisará tus boletos y se pondrá en contacto para tramitar la devolución.
+            </p>
+
+            {refundSuccess ? (
+              <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-2xl text-center space-y-2">
+                <CheckCircle2 size={32} className="mx-auto text-green-400" />
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider">¡Solicitud Enviada!</h4>
+                <p className="text-[10px] text-white/55">
+                  El administrador validará tus boletos comprados y se comunicará contigo al teléfono provisto.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setIsRefundModalOpen(false)}
+                  className="mt-2 px-4 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold transition-all uppercase tracking-wider"
+                >
+                  Cerrar
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleRefundSubmit} className="space-y-3.5">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-white/40 uppercase tracking-widest font-medium">
+                    Nombre completo
+                  </label>
+                  <input
+                    type="text"
+                    value={refundName}
+                    onChange={(e) => setRefundName(e.target.value)}
+                    required
+                    placeholder="Ej: Juan Pérez"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-neon-cyan placeholder:text-white/20"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-white/40 uppercase tracking-widest font-medium">
+                    Número de Celular / Teléfono
+                  </label>
+                  <input
+                    type="tel"
+                    value={refundPhone}
+                    onChange={(e) => setRefundPhone(e.target.value)}
+                    required
+                    placeholder="Ej: 8091234567"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-neon-cyan placeholder:text-white/20"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-white/40 uppercase tracking-widest font-medium">
+                    Motivo de la devolución
+                  </label>
+                  <textarea
+                    value={refundReason}
+                    onChange={(e) => setRefundReason(e.target.value)}
+                    required
+                    rows={4}
+                    placeholder="Describe el por qué solicitas la devolución..."
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-neon-cyan placeholder:text-white/20 resize-none"
+                  />
+                </div>
+
+                {refundError && (
+                  <div className="p-2.5 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold rounded-xl text-center">
+                    {refundError}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsRefundModalOpen(false)}
+                    className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all uppercase tracking-wider font-orbitron"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isRefundPending}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-black bg-neon-cyan hover:bg-neon-cyan/85 disabled:opacity-50 transition-all uppercase tracking-wider font-orbitron"
+                  >
+                    {isRefundPending ? (
+                      <>
+                        <Loader2 size={12} className="animate-spin" /> Procesando
+                      </>
+                    ) : (
+                      'Enviar Solicitud'
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

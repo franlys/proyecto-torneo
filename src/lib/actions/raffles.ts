@@ -1234,3 +1234,88 @@ export async function findMyTicketsPublicAction(buyerName: string, buyerPhone: s
     return { error: err.message || 'Error al buscar boletos' }
   }
 }
+
+export async function requestRaffleRefundAction(input: {
+  raffleId: string
+  buyerName: string
+  buyerPhone: string
+  reason: string
+}) {
+  try {
+    const supabase = await createClient()
+    const { error } = await supabase
+      .from('raffle_refund_requests')
+      .insert({
+        raffle_id: input.raffleId,
+        buyer_name: input.buyerName,
+        buyer_phone: input.buyerPhone,
+        reason: input.reason,
+        status: 'pending'
+      })
+    if (error) return { error: error.message }
+    return { success: true }
+  } catch (err: any) {
+    return { error: err.message || 'Error al enviar la solicitud' }
+  }
+}
+
+export async function getRaffleRefundRequestsAction(raffleId: string) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user || !(await isSystemAdmin(user.id))) return { error: 'No autorizado' }
+
+    const adminSupabase = await createAdminClient()
+    const { data, error } = await adminSupabase
+      .from('raffle_refund_requests')
+      .select('*')
+      .eq('raffle_id', raffleId)
+      .order('created_at', { ascending: false })
+
+    if (error) return { error: error.message }
+    return { data: data || [] }
+  } catch (err: any) {
+    return { error: err.message || 'Error al obtener las solicitudes' }
+  }
+}
+
+export async function resolveRaffleRefundRequestAction(input: {
+  requestId: string
+  status: 'resolved' | 'rejected'
+  deleteTickets: boolean
+  raffleId: string
+  buyerPhone: string
+}) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user || !(await isSystemAdmin(user.id))) return { error: 'No autorizado' }
+
+    const adminSupabase = await createAdminClient()
+    
+    // Actualizar estado de la solicitud
+    const { error: updateError } = await adminSupabase
+      .from('raffle_refund_requests')
+      .update({ status: input.status, updated_at: new Date().toISOString() })
+      .eq('id', input.requestId)
+
+    if (updateError) return { error: updateError.message }
+
+    // Si es resuelta (aprobada) y se solicita borrar boletos, los eliminamos de la BD
+    if (input.status === 'resolved' && input.deleteTickets) {
+      const cleanPhone = input.buyerPhone.replace(/\D/g, '')
+      const { error: deleteError } = await adminSupabase
+        .from('tickets')
+        .delete()
+        .eq('raffle_id', input.raffleId)
+        .or(`buyer_phone.eq.${input.buyerPhone},buyer_phone.eq.${cleanPhone}`)
+
+      if (deleteError) return { error: deleteError.message }
+    }
+
+    revalidatePath(`/admin/raffles/${input.raffleId}`)
+    return { success: true }
+  } catch (err: any) {
+    return { error: err.message || 'Error al procesar la solicitud' }
+  }
+}
