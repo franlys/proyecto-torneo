@@ -304,6 +304,29 @@ export function RaffleDetailClient({
             </div>
           </div>
 
+          {/* Refund Info Banner / Button Card */}
+          <div className="p-5 bg-white/[0.01] border border-white/5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-left space-y-1">
+              <h4 className="text-xs font-orbitron font-bold text-white uppercase tracking-wider">
+                ¿Necesitas solicitar una devolución?
+              </h4>
+              <p className="text-[10px] text-white/40 leading-relaxed">
+                Si deseas cancelar tu participación y solicitar el reembolso de tus boletos, puedes enviar una solicitud y nos pondremos en contacto contigo.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setRefundSuccess(false)
+                setRefundError('')
+                setIsRefundModalOpen(true)
+              }}
+              type="button"
+              className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold text-white transition-all uppercase tracking-wider font-orbitron shrink-0"
+            >
+              🔄 Solicitar Devolución
+            </button>
+          </div>
+
           {/* Countdown Clock */}
           {raffle.status === 'active' && (
             <div className="p-6 bg-white/[0.01] border border-white/5 rounded-2xl flex flex-col items-center justify-center space-y-4">
@@ -663,21 +686,6 @@ export function RaffleDetailClient({
             </div>
           )}
           {/* finished raffle info */}
-
-          {/* Refund request button */}
-          <div className="mt-4 text-center border-t border-white/5 pt-4">
-            <button
-              onClick={() => {
-                setRefundSuccess(false)
-                setRefundError('')
-                setIsRefundModalOpen(true)
-              }}
-              type="button"
-              className="w-full py-2.5 rounded-xl text-xs font-bold text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all uppercase tracking-wider font-orbitron flex items-center justify-center gap-1.5"
-            >
-              🔄 Solicitar Devolución de Boletos
-            </button>
-          </div>
         </div>
       </div>
 
