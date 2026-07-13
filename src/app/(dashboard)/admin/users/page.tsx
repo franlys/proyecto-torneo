@@ -183,26 +183,28 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
                           <CreateProfileButton userId={u.id} />
                         )}
                       </td>
-                      <td className="px-5 py-3 flex items-center gap-2">
-                        {profile ? (
-                          <>
-                            {profile.role !== 'ADMIN' && profile.role !== 'SUPER_ADMIN' && (
-                              <SubToggle userId={u.id} status={profile.subscription_status} />
-                            )}
-                            <RoleSelect userId={u.id} currentRole={profile.role} />
-                          </>
-                        ) : (
-                          <span className="text-white/20 text-xs mr-2">—</span>
-                        )}
-                        {profile && (
-                          <EditPaymentDetailsButton 
-                            userId={u.id} 
-                            userEmail={u.email ?? '—'} 
-                            initialPaymentDetails={profile.payment_details} 
-                          />
-                        )}
-                        <ChangePasswordButton userId={u.id} userEmail={u.email ?? '—'} />
-                        <DeleteUserButton userId={u.id} userEmail={u.email ?? '—'} />
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-2 min-w-[220px]">
+                          {profile ? (
+                            <>
+                              {profile.role !== 'ADMIN' && profile.role !== 'SUPER_ADMIN' && (
+                                <SubToggle userId={u.id} status={profile.subscription_status} />
+                              )}
+                              <RoleSelect userId={u.id} currentRole={profile.role} />
+                            </>
+                          ) : (
+                            <span className="text-white/20 text-xs mr-2">—</span>
+                          )}
+                          {profile && (
+                            <EditPaymentDetailsButton 
+                              userId={u.id} 
+                              userEmail={u.email ?? '—'} 
+                              initialPaymentDetails={profile.payment_details} 
+                            />
+                          )}
+                          <ChangePasswordButton userId={u.id} userEmail={u.email ?? '—'} />
+                          <DeleteUserButton userId={u.id} userEmail={u.email ?? '—'} />
+                        </div>
                       </td>
                     </tr>
                   )

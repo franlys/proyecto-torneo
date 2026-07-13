@@ -202,9 +202,27 @@ export async function deleteUserByAdmin(userId: string): Promise<{ success: bool
   }
 
   const adminSupabase = await createAdminClient()
-  const { error } = await adminSupabase.auth.admin.deleteUser(userId)
 
-  if (error) return { error: error.message }
+  // 1. Desasociar revisiones de envíos para evitar error de llave foránea directa en auth.users
+  await adminSupabase
+    .from('submissions')
+    .update({ reviewed_by: null })
+    .eq('reviewed_by', userId)
+
+  // 2. Eliminar el perfil explícitamente para disparar ON DELETE CASCADE de la BD de forma controlada
+  const { error: profileError } = await adminSupabase
+    .from('profiles')
+    .delete()
+    .eq('id', userId)
+
+  if (profileError) {
+    return { error: `Error al eliminar perfil: ${profileError.message}` }
+  }
+
+  // 3. Eliminar la cuenta del sistema de autenticación
+  const { error: authError } = await adminSupabase.auth.admin.deleteUser(userId)
+
+  if (authError) return { error: `Error al eliminar cuenta: ${authError.message}` }
 
   revalidatePath('/admin/users')
   return { success: true }
