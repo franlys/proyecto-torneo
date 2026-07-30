@@ -40,6 +40,7 @@ export function RaffleDetailClient({
     isLoggedIn && userBalance >= (raffle.ticket_price * ticketCount) ? 'kcoins' : 'paypal_direct'
   )
   const [sdkLoaded, setSdkLoaded] = useState(typeof window !== 'undefined' && !!(window as any).paypal)
+  const [paypalRendered, setPaypalRendered] = useState(false)
 
   const [promoCodeInput, setPromoCodeInput] = useState('')
   const [appliedPromoCode, setAppliedPromoCode] = useState<string | null>(null)
@@ -65,10 +66,11 @@ export function RaffleDetailClient({
 
     const container = document.getElementById('raffle-paypal-button-container')
     if (container) container.innerHTML = ''
+    setPaypalRendered(false)
 
     ;(window as any).paypal.Buttons({
       style: {
-        layout: 'horizontal',
+        layout: 'vertical',
         color: 'gold',
         shape: 'pill',
         label: 'pay',
@@ -159,7 +161,9 @@ export function RaffleDetailClient({
         console.error('PayPal button error:', err)
         alert('Hubo un error con la pasarela de PayPal')
       }
-    }).render('#raffle-paypal-button-container')
+    }).render('#raffle-paypal-button-container').then(() => {
+      setPaypalRendered(true)
+    })
   }, [paymentMethod, sdkLoaded, ticketCount, appliedPromoCode, buyerName, buyerPhone, buyerPhoneConfirm, buyerEmail])
 
   const handleRefundSubmit = async (e: React.FormEvent) => {
@@ -659,11 +663,22 @@ export function RaffleDetailClient({
                         </div>
                       ) : (
                         <div className="w-full">
-                          <div id="raffle-paypal-button-container" className="w-full rounded-xl overflow-hidden"></div>
-                          <p className="text-center text-[9px] text-white/25 mt-2 flex items-center justify-center gap-1">
-                            <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
-                            Procesado de forma segura por PayPal
-                          </p>
+                          {!paypalRendered && (
+                            <div className="w-full space-y-2">
+                              <div className="h-[45px] rounded-full bg-white/[0.04] animate-pulse" />
+                              <div className="h-[45px] rounded-full bg-white/[0.03] animate-pulse" />
+                            </div>
+                          )}
+                          <div
+                            id="raffle-paypal-button-container"
+                            className={`w-full transition-opacity duration-300 ${paypalRendered ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}
+                          />
+                          {paypalRendered && (
+                            <p className="text-center text-[9px] text-white/25 mt-2 flex items-center justify-center gap-1">
+                              <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
+                              Procesado de forma segura por PayPal
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>

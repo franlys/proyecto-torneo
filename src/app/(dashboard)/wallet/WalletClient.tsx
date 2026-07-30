@@ -17,6 +17,7 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
   const [showPayment, setShowPayment] = useState(false)
   const [sdkLoaded, setSdkLoaded] = useState(typeof window !== 'undefined' && !!(window as any).paypal)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [paypalRendered, setPaypalRendered] = useState(false)
 
   // Thank You modal states
   const [showThankYouModal, setShowThankYouModal] = useState(false)
@@ -77,10 +78,11 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
 
     const container = document.getElementById('paypal-button-container')
     if (container) container.innerHTML = ''
+    setPaypalRendered(false)
 
     ;(window as any).paypal.Buttons({
       style: {
-        layout: 'horizontal',
+        layout: 'vertical',
         color: 'gold',
         shape: 'pill',
         label: 'pay',
@@ -136,7 +138,9 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
         console.error('PayPal button error:', err)
         alert('Hubo un error con la pasarela de PayPal')
       }
-    }).render('#paypal-button-container')
+    }).render('#paypal-button-container').then(() => {
+      setPaypalRendered(true)
+    })
   }, [showPayment, sdkLoaded, amount])
 
   return (
@@ -267,11 +271,22 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
                   </div>
                 ) : (
                   <div className="w-full">
-                    <div id="paypal-button-container" className="w-full rounded-xl overflow-hidden"></div>
-                    <p className="text-center text-[9px] text-white/25 mt-2 flex items-center justify-center gap-1">
-                      <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
-                      Procesado de forma segura por PayPal
-                    </p>
+                    {!paypalRendered && (
+                      <div className="w-full space-y-2">
+                        <div className="h-[45px] rounded-full bg-white/[0.04] animate-pulse" />
+                        <div className="h-[45px] rounded-full bg-white/[0.03] animate-pulse" />
+                      </div>
+                    )}
+                    <div
+                      id="paypal-button-container"
+                      className={`w-full transition-opacity duration-300 ${paypalRendered ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}
+                    />
+                    {paypalRendered && (
+                      <p className="text-center text-[9px] text-white/25 mt-2 flex items-center justify-center gap-1">
+                        <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
+                        Procesado de forma segura por PayPal
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
