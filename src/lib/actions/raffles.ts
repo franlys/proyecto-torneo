@@ -2,6 +2,7 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { sendRefundRequestedEmail, sendRefundProcessedEmail } from '@/lib/email'
 
 export async function isSystemAdmin(userId: string): Promise<boolean> {
   const supabase = await createClient()
@@ -1348,10 +1349,6 @@ export async function requestRaffleRefundAction(input: {
           requiresManualReview = true
           break
         }
-      }
-    }
-
-    import { sendRefundRequestedEmail, sendRefundProcessedEmail } from '@/lib/email'
     const buyerEmailForNotification = user?.email || (ticketsToProcess.length > 0 ? ticketsToProcess[0].buyer_email : null)
 
     if (allAutomatedAndRecent && !requiresManualReview && ticketsToProcess && ticketsToProcess.length > 0) {
