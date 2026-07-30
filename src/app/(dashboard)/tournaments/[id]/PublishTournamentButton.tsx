@@ -23,10 +23,10 @@ export function PublishTournamentButton({ id }: { id: string }) {
     <button
       onClick={handlePublish}
       disabled={isPending}
-      className="px-5 py-2.5 rounded-xl bg-neon-purple text-white text-sm font-bold
-        hover:opacity-90 transition-opacity disabled:opacity-40"
+      className="px-5 py-2.5 rounded-xl bg-neon-cyan text-black text-sm font-black uppercase tracking-wider
+        hover:bg-[#00D1DB] transition-all disabled:opacity-40"
     >
-      {isPending ? 'Publicando...' : '📣 Anunciar torneo'}
+      {isPending ? 'Publicando...' : '📣 Publicar torneo'}
     </button>
   )
 }

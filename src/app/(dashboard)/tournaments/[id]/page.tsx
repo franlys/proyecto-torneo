@@ -403,12 +403,12 @@ export default async function TournamentOverviewPage({
       )}
 
       {/* Publish button (draft → pending) */}
-      {tournament.status === 'draft' && tournament.arenaBettingEnabled && (
+      {tournament.status === 'draft' && (
         <div className="bg-dark-card border border-neon-purple/10 rounded-2xl p-6 mb-8">
-          <h2 className="text-sm font-semibold text-white mb-1">Anunciar torneo</h2>
+          <h2 className="text-sm font-semibold text-white mb-1">Publicar Torneo</h2>
           <p className="text-xs text-white/30 mb-4">
-            Publica el torneo para que Apuestas Kronix abra las apuestas de campeón y MVP antes de que arranque.
-            Podrás seguir editando participantes hasta activarlo.
+            Publica el torneo para que aparezca en la lista pública de torneos y se abran las inscripciones oficiales.
+            Podrás seguir editando participantes hasta que decidas activarlo.
           </p>
           <PublishTournamentButton id={id} />
         </div>

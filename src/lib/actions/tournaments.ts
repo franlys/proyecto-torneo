@@ -444,12 +444,8 @@ export async function publishTournament(
 
   if (!(await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id))) return { error: 'Sin permisos' }
 
-  if (!tournament.arena_betting_enabled) {
-    return { error: 'La acción de anunciar torneos es exclusiva para torneos con el módulo de apuestas Apuestas Kronix habilitado.' }
-  }
-
   if (tournament.status !== 'draft') {
-    return { error: 'Solo se puede anunciar un torneo en estado Borrador' }
+    return { error: 'Solo se puede publicar un torneo en estado Borrador' }
   }
 
   const { error } = await supabase
