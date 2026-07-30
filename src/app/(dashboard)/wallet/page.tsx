@@ -31,6 +31,7 @@ export default async function WalletPage() {
     .from('deposits')
     .select('*')
     .eq('user_id', user.id)
+    .eq('status', 'completed')
     .order('created_at', { ascending: false })
 
   // 3. Fetch coin transactions history
