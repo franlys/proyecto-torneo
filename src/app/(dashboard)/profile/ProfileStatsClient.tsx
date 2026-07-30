@@ -386,16 +386,23 @@ export function ProfileStatsClient({
             </div>
           </label>
           <div className="flex-1 min-w-0">
-            <p className="text-white text-lg font-bold font-orbitron truncate">
-              {profile?.username || 'Usuario Sin Nickname'}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-white text-lg font-bold font-orbitron truncate">
+                {profile?.username || 'Usuario Sin Nickname'}
+              </p>
+              {(profile?.subscription_status === 'ACTIVE' || profile?.subscriptionStatus === 'ACTIVE') && (
+                <div title="Usuario VIP" className="flex items-center justify-center w-6 h-6 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M2.5 19h19v2h-19zm18.57-11.45c-.24-.46-.74-.72-1.25-.66L15.5 7.53 12.63 2.1c-.24-.45-.7-.71-1.2-.67s-.92.35-1.11.81L7.75 7.37 3.53 6.78c-.52-.08-1.02.16-1.27.61-.26.46-.2.1.06.52l4.16 7.63c.2.37.59.61 1.01.61h9.04c.42 0 .8-.24 1-.61l4.16-7.63c.27-.42.33-.96.08-1.42z"/></svg>
+                </div>
+              )}
+            </div>
             <p className="text-white/40 text-xs mt-0.5">{user.email}</p>
             <div className="flex items-center gap-2 mt-2.5 flex-wrap">
               <span className={`text-[10px] uppercase font-bold tracking-widest px-3 py-1 rounded-full border ${roleLabel.color}`}>
                 {roleLabel.label}
               </span>
-              <span className={`text-[10px] uppercase font-bold tracking-widest px-3 py-1 rounded-full border ${subLabel.color}`}>
-                Membresía: {subLabel.label}
+              <span className={`text-[10px] uppercase font-bold tracking-widest px-3 py-1 rounded-full border ${(profile?.subscription_status === 'ACTIVE' || profile?.subscriptionStatus === 'ACTIVE') ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10' : subLabel.color}`}>
+                Membresía: {(profile?.subscription_status === 'ACTIVE' || profile?.subscriptionStatus === 'ACTIVE') ? 'VIP Activa' : subLabel.label}
               </span>
             </div>
           </div>
