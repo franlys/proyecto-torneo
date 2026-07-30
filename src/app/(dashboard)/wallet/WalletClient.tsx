@@ -132,7 +132,7 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
     <div className="space-y-8 max-w-5xl mx-auto">
       {/* Script for PayPal SDK */}
       <Script
-        src={`https://www.paypal.com/sdk/js?client-id=${process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}&currency=USD&disable-funding=credit,card`}
+        src={`https://www.paypal.com/sdk/js?client-id=${process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}&currency=USD`}
         onLoad={() => setSdkLoaded(true)}
         onError={() => console.error('Failed to load PayPal SDK')}
       />
@@ -228,7 +228,14 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
                       ⚠️ Error: La integración de PayPal no está configurada (Falta NEXT_PUBLIC_PAYPAL_CLIENT_ID en Vercel).
                     </div>
                   ) : (
-                    <div className="w-full max-w-sm mx-auto p-1 bg-white/[0.01] border border-white/5 rounded-2xl overflow-hidden">
+                    <div className="w-full max-w-sm mx-auto">
+                      <style dangerouslySetInnerHTML={{__html: `
+                        #paypal-button-container, #paypal-button-container *,
+                        .paypal-buttons, .paypal-buttons * {
+                          background-color: transparent !important;
+                          background: transparent !important;
+                        }
+                      `}} />
                       <div id="paypal-button-container" className="w-full"></div>
                     </div>
                   )}

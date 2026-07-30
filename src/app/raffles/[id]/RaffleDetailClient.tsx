@@ -637,7 +637,14 @@ export function RaffleDetailClient({
                           <p className="text-[10px] text-white/60">Acreditando tu pago de PayPal, por favor espera...</p>
                         </div>
                       ) : (
-                        <div className="w-full max-w-sm mx-auto p-1 bg-white/[0.01] border border-white/5 rounded-2xl overflow-hidden">
+                        <div className="w-full max-w-sm mx-auto">
+                          <style dangerouslySetInnerHTML={{__html: `
+                            #raffle-paypal-button-container, #raffle-paypal-button-container *,
+                            .paypal-buttons, .paypal-buttons * {
+                              background-color: transparent !important;
+                              background: transparent !important;
+                            }
+                          `}} />
                           <div id="raffle-paypal-button-container" className="w-full"></div>
                         </div>
                       )}
@@ -1104,7 +1111,7 @@ export function RaffleDetailClient({
         </div>
       )}
       <Script
-        src={`https://www.paypal.com/sdk/js?client-id=${process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}&currency=USD&disable-funding=credit,card`}
+        src={`https://www.paypal.com/sdk/js?client-id=${process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}&currency=USD`}
         onLoad={() => setSdkLoaded(true)}
         onError={() => console.error('Failed to load PayPal SDK in Raffles')}
       />
