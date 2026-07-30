@@ -14,7 +14,7 @@ interface WalletClientProps {
 export function WalletClient({ initialBalance, transactions, deposits }: WalletClientProps) {
   const [amount, setAmount] = useState<number>(10)
   const [showPayment, setShowPayment] = useState(false)
-  const [sdkLoaded, setSdkLoaded] = useState(false)
+  const [sdkLoaded, setSdkLoaded] = useState(typeof window !== 'undefined' && !!(window as any).paypal)
   const [isProcessing, setIsProcessing] = useState(false)
 
   const [exchangeRate, setExchangeRate] = useState<number>(58.25)
@@ -75,9 +75,10 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
     ;(window as any).paypal.Buttons({
       style: {
         layout: 'vertical',
-        color: 'blue',
-        shape: 'rect',
-        label: 'pay'
+        color: 'gold',
+        shape: 'pill',
+        label: 'pay',
+        height: 45
       },
       createOrder: async () => {
         try {
@@ -227,7 +228,9 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
                       ⚠️ Error: La integración de PayPal no está configurada (Falta NEXT_PUBLIC_PAYPAL_CLIENT_ID en Vercel).
                     </div>
                   ) : (
-                    <div id="paypal-button-container" className="w-full"></div>
+                    <div className="w-full max-w-sm mx-auto p-1 bg-white/[0.01] border border-white/5 rounded-2xl overflow-hidden">
+                      <div id="paypal-button-container" className="w-full"></div>
+                    </div>
                   )}
                 </div>
               )}

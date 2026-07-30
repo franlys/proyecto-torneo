@@ -39,7 +39,7 @@ export function RaffleDetailClient({
   const [paymentMethod, setPaymentMethod] = useState<'kcoins' | 'paypal_direct' | 'transfer'>(
     isLoggedIn && userBalance >= (raffle.ticket_price * ticketCount) ? 'kcoins' : 'paypal_direct'
   )
-  const [sdkLoaded, setSdkLoaded] = useState(false)
+  const [sdkLoaded, setSdkLoaded] = useState(typeof window !== 'undefined' && !!(window as any).paypal)
 
   const [promoCodeInput, setPromoCodeInput] = useState('')
   const [appliedPromoCode, setAppliedPromoCode] = useState<string | null>(null)
@@ -70,8 +70,9 @@ export function RaffleDetailClient({
       style: {
         layout: 'vertical',
         color: 'gold',
-        shape: 'rect',
-        label: 'pay'
+        shape: 'pill',
+        label: 'pay',
+        height: 45
       },
       createOrder: async () => {
         try {
@@ -636,7 +637,9 @@ export function RaffleDetailClient({
                           <p className="text-[10px] text-white/60">Acreditando tu pago de PayPal, por favor espera...</p>
                         </div>
                       ) : (
-                        <div id="raffle-paypal-button-container" className="w-full"></div>
+                        <div className="w-full max-w-sm mx-auto p-1 bg-white/[0.01] border border-white/5 rounded-2xl overflow-hidden">
+                          <div id="raffle-paypal-button-container" className="w-full"></div>
+                        </div>
                       )}
                     </div>
                   </div>
