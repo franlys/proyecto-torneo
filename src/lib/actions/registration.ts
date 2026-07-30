@@ -114,6 +114,13 @@ export async function registerTournament(
       }
     }
 
+    // 1.7. Validar contraseña para torneos privados
+    if (tournament.is_private && tournament.registration_password) {
+      if (!formData.password || formData.password.trim() !== tournament.registration_password.trim()) {
+        return { error: 'La contraseña de inscripción es incorrecta. Verifica con el organizador.' }
+      }
+    }
+
     // 1.8. Validar si el que se registra o algún compañero es staff/creador/colaborador
     const forbiddenIds = new Set<string>()
     if (tournament.creator_id) forbiddenIds.add(tournament.creator_id)
@@ -217,10 +224,51 @@ export async function registerTournament(
     }
 
     const hasEntryFee = tournament.entry_fee && Number(tournament.entry_fee) > 0
+    const entryFeeAmount = Number(tournament.entry_fee || 0)
     let initialStatus = 'confirmed'
+    let amountPaidValue = 0
 
     if (hasEntryFee) {
-      initialStatus = 'approved_to_pay'
+      // Verificar saldo de K-Coins del capitán
+      const { data: captainProfile, error: balErr } = await adminSupabase
+        .from('profiles')
+        .select('balance')
+        .eq('id', user.id)
+        .single()
+
+      if (balErr || !captainProfile) {
+        return { error: 'No se pudo verificar tu saldo de K-Coins.' }
+      }
+
+      const currentBalance = parseFloat(captainProfile.balance || '0')
+      if (currentBalance < entryFeeAmount) {
+        return {
+          error: `Saldo insuficiente de K-Coins. El costo de inscripción es ${entryFeeAmount} K-Coins y tu saldo es ${currentBalance.toFixed(2)} K-Coins. Recarga en tu billetera.`
+        }
+      }
+
+      // Descontar K-Coins del capitán
+      const newBalance = parseFloat((currentBalance - entryFeeAmount).toFixed(2))
+      const { error: deductErr } = await adminSupabase
+        .from('profiles')
+        .update({ balance: newBalance })
+        .eq('id', user.id)
+
+      if (deductErr) {
+        return { error: 'Error al procesar el pago de K-Coins. Intenta de nuevo.' }
+      }
+
+      // Registrar transacción
+      await adminSupabase.from('coin_transactions').insert({
+        user_id: user.id,
+        amount: -entryFeeAmount,
+        type: 'tournament_entry',
+        description: `Inscripción al torneo: ${tournament.name}`,
+        reference_id: tournamentId,
+      })
+
+      initialStatus = 'confirmed'
+      amountPaidValue = entryFeeAmount
     }
 
     // 6. Insertar Equipo
@@ -231,7 +279,7 @@ export async function registerTournament(
         name: finalTeamName,
         stream_url: formData.streamUrl || null,
         registration_status: initialStatus,
-        amount_paid: 0
+        amount_paid: amountPaidValue
       })
       .select()
       .single()

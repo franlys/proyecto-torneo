@@ -452,7 +452,8 @@ export function LeaderboardClient({
       const res = await registerTournament(tournamentId, {
         teamName: mode === 'individual' ? regParticipants[0] : regTeamName,
         streamUrl: regStreamUrl || undefined,
-        participants: members
+        participants: members,
+        password: regPassword || undefined,
       })
 
       if (res && 'error' in res) {
@@ -1680,75 +1681,19 @@ export function LeaderboardClient({
                     {maxTeams ? `Cupos: ${totalTeamsRegistered} / ${maxTeams} Equipos` : `Inscritos: ${totalTeamsRegistered} Equipos`}
                   </p>
 
-                  {entryFee > 0 && (!isUserRegistered || userTeam?.registration_status === 'approved_to_pay') && (
-                    <div className="mt-4 p-4 rounded-xl bg-neon-cyan/5 border border-neon-cyan/20 space-y-3 text-left">
-                      <div className="flex items-center gap-2 text-neon-cyan">
-                        <span className="text-sm">💰</span>
-                        <span className="text-[10px] font-black uppercase tracking-widest">Información de Pago e Inscripción</span>
+                  {entryFee > 0 && !isUserRegistered && (
+                    <div className="mt-4 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 space-y-2 text-left">
+                      <div className="flex items-center gap-2 text-yellow-400">
+                        <span className="text-sm">🪙</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">Costo de Inscripción</span>
                       </div>
-                      
-                      {collaboratorProfile ? (
-                        <p className="text-[11px] text-white/50 leading-relaxed">
-                          Este torneo es colaborativo. El costo de inscripción es de <strong className="text-white">${entryFee} USD</strong>.
-                          Para completar tu participación, sigue las instrucciones de pago provistas por <strong>{collaboratorProfile.username}</strong>:
-                        </p>
-                      ) : (
-                        <p className="text-[11px] text-white/50 leading-relaxed">
-                          El costo de inscripción es de <strong className="text-white">${entryFee} USD</strong>. 
-                          Para completar tu participación, sigue las instrucciones de pago provistas por el organizador:
-                        </p>
-                      )}
-
-                      {((collaboratorProfile?.payment_details) || (creatorProfile?.payment_details)) ? (
-                        <div className="bg-black/30 p-3 rounded-lg border border-white/5 text-[11px] text-white/80 leading-relaxed">
-                          {renderPaymentDetailsWithRichContent(collaboratorProfile?.payment_details || creatorProfile?.payment_details)}
-                        </div>
-                      ) : (
-                        <p className="text-[10px] text-white/30 italic font-medium">
-                          Instrucciones de pago pendientes por definir por el organizador.
-                        </p>
-                      )}
-
-                      {/* Contact Links */}
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        {((collaboratorProfile?.whatsapp_link) || (creatorProfile?.whatsapp_link)) && (
-                          <a
-                            href={collaboratorProfile?.whatsapp_link || creatorProfile?.whatsapp_link || '#'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 text-[10px] font-bold uppercase tracking-wider transition-all"
-                          >
-                            <span>💬</span> Contactar WhatsApp
-                          </a>
-                        )}
-                        {((collaboratorProfile?.discord_link) || (creatorProfile?.discord_link)) && (
-                          <a
-                            href={collaboratorProfile?.discord_link || creatorProfile?.discord_link || '#'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 text-[10px] font-bold uppercase tracking-wider transition-all"
-                          >
-                            <span>🎮</span> Servidor Discord
-                          </a>
-                        )}
-                      </div>
-
-                      {isUserRegistered && userTeam?.registration_status === 'approved_to_pay' && (
-                        <div className="mt-4 p-4 rounded-xl bg-black/40 border border-white/10 text-left">
-                          <PaymentEvidenceUpload 
-                            teamId={userTeam.id} 
-                            isKronixOfficial={isKronixOfficial}
-                            isCollaboration={isCollaboration}
-                            onUploadSuccess={(path) => {
-                              toast.success('¡Comprobante subido! Esperando validación.')
-                              setUserTeam((prev: any) => ({
-                                ...prev,
-                                registration_status: 'pending_payment_validation',
-                                payment_evidence_url: path
-                              }))
-                            }}
-                          />
-                        </div>
+                      <p className="text-[12px] text-white/70 leading-relaxed">
+                        Esta inscripción tiene un costo de{' '}
+                        <strong className="text-yellow-300 text-sm font-black">{entryFee.toLocaleString('es-ES')} K-Coins</strong>.
+                        Se descontarán automáticamente de tu billetera al inscribirte.
+                      </p>
+                      {!isLoggedIn && (
+                        <p className="text-[10px] text-white/40 italic">Inicia sesión para verificar tu saldo.</p>
                       )}
                     </div>
                   )}
@@ -2939,6 +2884,42 @@ export function LeaderboardClient({
                       </div>
                     )
                   })()}
+
+                  {/* Password for private tournaments */}
+                  {isPrivate && (
+                    <div className="rounded-xl border border-neon-purple/30 bg-neon-purple/5 p-4 space-y-2">
+                      <div className="flex items-center gap-2 text-neon-purple">
+                        <span>🔒</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">Torneo Privado</span>
+                      </div>
+                      <label className="block text-[10px] text-white/60 uppercase tracking-widest font-bold mb-1 ml-1">
+                        Contraseña de Inscripción <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        required
+                        type="password"
+                        value={regPassword}
+                        onChange={e => setRegPassword(e.target.value)}
+                        placeholder="Contraseña proporcionada por el organizador"
+                        className="w-full bg-black/40 border border-neon-purple/30 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-neon-purple/60 focus:ring-1 focus:ring-neon-purple/30 transition-all"
+                      />
+                    </div>
+                  )}
+
+                  {/* Entry fee K-Coins notice inside the form */}
+                  {entryFee > 0 && (
+                    <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-3 flex items-center gap-3">
+                      <span className="text-xl">🪙</span>
+                      <div>
+                        <p className="text-xs font-black text-yellow-300 uppercase tracking-wider">
+                          Costo: {entryFee.toLocaleString('es-ES')} K-Coins
+                        </p>
+                        <p className="text-[10px] text-white/40 mt-0.5">
+                          Se descontarán de tu billetera al confirmar.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex gap-3 pt-4 border-t border-white/5">
                     <button
