@@ -965,12 +965,12 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Entry Fee & Prizes */}
               <div className="space-y-4">
-                <div>
+                 <div>
                   <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
-                    Costo de inscripción (por equipo)
+                    Costo de inscripción (K-Coins)
                   </label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40">$</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40">🪙</span>
                     <input
                       type="number"
                       {...register('entryFee', { valueAsNumber: true })}
@@ -979,22 +979,25 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-white/40 mb-1.5">1er Puesto</label>
-                    <input type="number" {...register('prize1st', { valueAsNumber: true })} className={inputClass} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-white/40 mb-1.5">2do Puesto</label>
-                    <input type="number" {...register('prize2nd', { valueAsNumber: true })} className={inputClass} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-white/40 mb-1.5">3er Puesto</label>
-                    <input type="number" {...register('prize3rd', { valueAsNumber: true })} className={inputClass} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-white/40 mb-1.5">MVP (Top Fragger)</label>
-                    <input type="number" {...register('prizeMvp', { valueAsNumber: true })} className={inputClass} />
+                <div>
+                  <p className="text-xs font-medium text-white/50 uppercase tracking-wider mb-2">Premios (K-Coins)</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-white/40 mb-1.5">1er Puesto</label>
+                      <input type="number" {...register('prize1st', { valueAsNumber: true })} className={inputClass} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-white/40 mb-1.5">2do Puesto</label>
+                      <input type="number" {...register('prize2nd', { valueAsNumber: true })} className={inputClass} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-white/40 mb-1.5">3er Puesto</label>
+                      <input type="number" {...register('prize3rd', { valueAsNumber: true })} className={inputClass} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-white/40 mb-1.5">MVP (Top Fragger)</label>
+                      <input type="number" {...register('prizeMvp', { valueAsNumber: true })} className={inputClass} />
+                    </div>
                   </div>
                 </div>
               </div>

@@ -40,8 +40,11 @@ export async function middleware(request: NextRequest) {
 
     const { data: { user } } = await supabase.auth.getUser()
 
+    const protectedRoutes = ['/tournaments', '/profile', '/wallet', '/notifications', '/subscription', '/admin']
+    const isProtected = protectedRoutes.some(route => request.nextUrl.pathname.startsWith(route))
+
     // Protect dashboard routes
-    if (!user && request.nextUrl.pathname.startsWith('/tournaments')) {
+    if (!user && isProtected) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'
       url.searchParams.set('redirect', request.nextUrl.pathname)
@@ -52,7 +55,9 @@ export async function middleware(request: NextRequest) {
   } catch (error) {
     console.error('Middleware error:', error)
     // Fallback: redirect to login if we can't determine auth status for protected routes
-    if (request.nextUrl.pathname.startsWith('/tournaments')) {
+    const protectedRoutes = ['/tournaments', '/profile', '/wallet', '/notifications', '/subscription', '/admin']
+    const isProtected = protectedRoutes.some(route => request.nextUrl.pathname.startsWith(route))
+    if (isProtected) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'
       url.searchParams.set('redirect', request.nextUrl.pathname)
@@ -63,5 +68,12 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/tournaments/:path*'],
+  matcher: [
+    '/tournaments/:path*',
+    '/profile/:path*',
+    '/wallet/:path*',
+    '/notifications/:path*',
+    '/subscription/:path*',
+    '/admin/:path*'
+  ],
 }

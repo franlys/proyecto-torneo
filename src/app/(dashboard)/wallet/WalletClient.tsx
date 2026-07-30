@@ -563,7 +563,9 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
                         : tx.type === 'raffle_ticket' ? 'Compra de Rifa'
                         : tx.type === 'bet_placed' ? 'Apuesta Realizada'
                         : tx.type === 'bet_won' ? 'Apuesta Ganada'
-                        : 'Apuesta Reembolsada'}
+                        : tx.type === 'tournament_entry' ? 'Inscripción a Torneo'
+                        : tx.type === 'bet_refund' ? 'Apuesta Reembolsada'
+                        : 'Movimiento'}
                     </span>
                     <span className="block text-[9px] text-white/30 mt-0.5">{new Date(tx.created_at).toLocaleString('es')}</span>
                   </div>

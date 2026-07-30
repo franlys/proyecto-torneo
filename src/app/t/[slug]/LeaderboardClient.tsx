@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo, useCallback, Fragment } from 'reac
 import { motion, AnimatePresence } from 'framer-motion'
 import { Orbitron } from 'next/font/google'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { TeamStanding, Participant, Match, Submission, ScoringRule } from '@/types'
 import { MatchRecap } from './MatchRecap'
@@ -338,6 +339,8 @@ export function LeaderboardClient({
   const [regGameUsername, setRegGameUsername] = useState('')
   // Nickname modal: show if user has no username
   const [showNicknameModal, setShowNicknameModal] = useState(false)
+  const isSubmittingReg = React.useRef(false)
+  const router = useRouter()
 
   const handleOpenRegistration = async () => {
     const size = { individual: 1, duos: 2, trios: 3, cuartetos: 4, quintas: 5 }[mode] || 1
@@ -417,23 +420,28 @@ export function LeaderboardClient({
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isSubmittingReg.current) return
+    isSubmittingReg.current = true
     setRegLoading(true)
     try {
       const emptyNameIndex = regParticipants.findIndex(name => name.trim() === '')
       if (emptyNameIndex !== -1) {
         toast.error(`Por favor, completa el nombre del Integrante ${emptyNameIndex + 1}`)
         setRegLoading(false)
+        isSubmittingReg.current = false
         return
       }
 
       if (!regGameId.trim()) {
         toast.error('El ID de tu cuenta en el juego es obligatorio.')
         setRegLoading(false)
+        isSubmittingReg.current = false
         return
       }
       if (!regGameUsername.trim()) {
         toast.error('Tu nombre en el juego es obligatorio.')
         setRegLoading(false)
+        isSubmittingReg.current = false
         return
       }
 
@@ -462,12 +470,13 @@ export function LeaderboardClient({
         toast.success('¡Inscripción completada con éxito!')
         setIsUserRegistered(true)
         setIsRegistering(false)
-        window.location.reload()
+        router.refresh()
       }
     } catch (err: any) {
       toast.error('Ocurrió un error al enviar la inscripción.')
     } finally {
       setRegLoading(false)
+      isSubmittingReg.current = false
     }
   }
   const [isMounted, setIsMounted] = useState(false)

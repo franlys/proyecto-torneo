@@ -8,6 +8,7 @@ import { updateTeammateGameCredentials, GAME_LABELS } from '@/lib/actions/game-a
 import { AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import { getMyNotificationsAction } from '@/lib/actions/notifications'
+import { usePathname } from 'next/navigation'
 
 const ROLE_BADGE: Record<string, { label: string; color: string }> = {
   SUPER_ADMIN: { label: '⭐ Super Admin', color: 'text-yellow-300' },
@@ -35,6 +36,7 @@ export default function DashboardShell({
   missingGameAccountInfo?: { participantId: string; tournamentName: string; discipline: string; slug: string } | null
   balance?: number
 }) {
+  const pathname = usePathname()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const isAdminUser = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'KRONIX_STAFF'
 
@@ -50,7 +52,7 @@ export default function DashboardShell({
   // Close drawer on route change
   useEffect(() => {
     setDrawerOpen(false)
-  }, [])
+  }, [pathname])
 
   useEffect(() => {
     async function loadNotifCount() {

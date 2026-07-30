@@ -102,6 +102,14 @@ function refineTournament<T extends z.ZodTypeAny>(schema: T) {
         message: 'Kill Race requiere un límite de tiempo',
       })
     }
+
+    if (data.isPrivate && (!data.registrationPassword || data.registrationPassword.trim() === '')) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['registrationPassword'],
+        message: 'La contraseña es obligatoria para torneos privados.',
+      })
+    }
   })
 }
 

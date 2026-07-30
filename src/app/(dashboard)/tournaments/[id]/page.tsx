@@ -1,3 +1,4 @@
+import React from 'react'
 import { getTournament, activateTournament } from '@/lib/actions/tournaments'
 import { exportTournamentDataCsv } from '@/lib/actions/export'
 import { DeleteTournamentButton } from './DeleteTournamentButton'
