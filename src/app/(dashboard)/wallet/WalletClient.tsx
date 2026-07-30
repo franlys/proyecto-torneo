@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react'
 import Script from 'next/script'
-import { Landmark, ArrowUpRight, ArrowDownLeft, History, Loader2 } from 'lucide-react'
+import { Landmark, ArrowUpRight, ArrowDownLeft, History, Loader2, CheckCircle, X } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { requestWithdrawalAction } from '@/lib/actions/withdrawals'
 
 interface WalletClientProps {
@@ -16,6 +17,11 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
   const [showPayment, setShowPayment] = useState(false)
   const [sdkLoaded, setSdkLoaded] = useState(typeof window !== 'undefined' && !!(window as any).paypal)
   const [isProcessing, setIsProcessing] = useState(false)
+
+  // Thank You modal states
+  const [showThankYouModal, setShowThankYouModal] = useState(false)
+  const [purchasedCoins, setPurchasedCoins] = useState(0)
+  const [transactionId, setTransactionId] = useState('')
 
   const [exchangeRate, setExchangeRate] = useState<number>(58.25)
   const [loadingRate, setLoadingRate] = useState<boolean>(true)
@@ -74,11 +80,12 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
 
     ;(window as any).paypal.Buttons({
       style: {
-        layout: 'vertical',
+        layout: 'horizontal',
         color: 'gold',
         shape: 'pill',
         label: 'pay',
-        height: 45
+        height: 45,
+        tagline: false
       },
       createOrder: async () => {
         try {
@@ -110,6 +117,10 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
           const capture = await res.json()
           if (capture.error) {
             alert(`Error al capturar el pago: ${capture.error}`)
+          } else if (capture.success) {
+            setPurchasedCoins(capture.coinsAdded)
+            setTransactionId(capture.depositId || '')
+            setShowThankYouModal(true)
           } else {
             alert('¡Recarga acreditada con éxito!')
             window.location.reload()
@@ -132,7 +143,7 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
     <div className="space-y-8 max-w-5xl mx-auto">
       {/* Script for PayPal SDK */}
       <Script
-        src={`https://www.paypal.com/sdk/js?client-id=${process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}&currency=USD`}
+        src={`https://www.paypal.com/sdk/js?client-id=${process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}&currency=USD&enable-funding=card&disable-funding=paylater,venmo`}
         onLoad={() => setSdkLoaded(true)}
         onError={() => console.error('Failed to load PayPal SDK')}
       />
@@ -201,46 +212,69 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center bg-white/5 p-4 rounded-xl border border-white/5">
-                <div>
-                  <span className="text-[10px] text-white/40 uppercase block">Resumen de Pago (Tasa: 1 USD = {exchangeRate.toFixed(2)} K-Coins)</span>
-                  <span className="text-sm font-bold text-white">${amount.toFixed(2)} USD &rarr; 🪙 {(amount * exchangeRate).toFixed(2)} K-Coins</span>
-                </div>
-                <button
-                  onClick={() => setShowPayment(false)}
-                  className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-white/60 font-bold uppercase transition-colors"
-                >
-                  Cambiar
-                </button>
-              </div>
+            <div className="rounded-2xl overflow-hidden border border-white/8 bg-gradient-to-b from-[#0f1117] to-[#0a0c10] shadow-[0_0_30px_rgba(0,0,0,0.5)]">
+              {/* PayPal header stripe */}
+              <div className="bg-gradient-to-r from-[#003087] via-[#009cde] to-[#012169] h-1" />
 
-              {isProcessing ? (
-                <div className="p-8 text-center bg-white/[0.01] border border-dashed border-white/10 rounded-xl space-y-3">
-                  <Loader2 className="w-8 h-8 animate-spin text-neon-cyan mx-auto" />
-                  <p className="text-xs text-white/60">Procesando y acreditando tu pago en PayPal, por favor espera...</p>
+              <div className="p-5 space-y-4">
+                {/* Title + secure badge */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-[#009cde]" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M20.067 8.478c.492.315.844.825.966 1.41.372 1.86-.878 3.667-2.783 4.09-.208.045-.42.066-.634.066H16.3l-.515 2.65a.5.5 0 0 1-.49.406h-1.73a.5.5 0 0 1-.49-.594l1.7-8.714h3.37c.702 0 1.365.24 1.922.686ZM5.555 6.374l-.994 5.11-.61 3.124H3.8a.5.5 0 0 0-.49.594l.247 1.27H1.61a.5.5 0 0 1-.49-.406L-.016 9.59a.5.5 0 0 1 .49-.594H2.89l.617-3.17a.5.5 0 0 1 .49-.406h1.558c.23 0 .43.158.49.406Z"/>
+                    </svg>
+                    <span className="text-xs font-bold text-white/80 uppercase tracking-widest font-orbitron">Pago Seguro</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-[9px] text-green-400/80 font-semibold">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                    </svg>
+                    SSL Seguro
+                  </div>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="text-xs text-white/40 mb-2">Selecciona un método de pago seguro a través de PayPal:</div>
-                  {!process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ? (
-                    <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold rounded-xl text-center">
-                      ⚠️ Error: La integración de PayPal no está configurada (Falta NEXT_PUBLIC_PAYPAL_CLIENT_ID en Vercel).
-                    </div>
-                  ) : (
-                    <div className="w-full max-w-sm mx-auto">
-                      <style dangerouslySetInnerHTML={{__html: `
-                        #paypal-button-container, #paypal-button-container *,
-                        .paypal-buttons, .paypal-buttons * {
-                          background-color: transparent !important;
-                          background: transparent !important;
-                        }
-                      `}} />
-                      <div id="paypal-button-container" className="w-full"></div>
-                    </div>
-                  )}
+
+                {/* Amount breakdown */}
+                <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-white/40">Monto a Recargar:</span>
+                    <span className="font-bold text-white">${amount.toFixed(2)} USD</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs border-t border-white/[0.04] pt-2">
+                    <span className="text-white/40">K-Coins a recibir (×{exchangeRate.toFixed(2)}):</span>
+                    <span className="font-orbitron font-black text-yellow-400">🪙 {(amount * exchangeRate).toFixed(2)}</span>
+                  </div>
                 </div>
-              )}
+
+                {/* Change amount link */}
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setShowPayment(false)}
+                    className="text-[10px] font-bold text-white/30 hover:text-neon-cyan transition-colors uppercase tracking-widest"
+                  >
+                    ← Cambiar monto
+                  </button>
+                </div>
+
+                {/* Buttons area */}
+                {isProcessing ? (
+                  <div className="p-5 text-center space-y-2">
+                    <Loader2 className="w-6 h-6 animate-spin text-[#009cde] mx-auto" />
+                    <p className="text-[10px] text-white/50">Acreditando tu K-Coins, por favor espera...</p>
+                  </div>
+                ) : !process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ? (
+                  <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold rounded-xl text-center">
+                    ⚠️ Falta NEXT_PUBLIC_PAYPAL_CLIENT_ID en Vercel.
+                  </div>
+                ) : (
+                  <div className="w-full">
+                    <div id="paypal-button-container" className="w-full rounded-xl overflow-hidden"></div>
+                    <p className="text-center text-[9px] text-white/25 mt-2 flex items-center justify-center gap-1">
+                      <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
+                      Procesado de forma segura por PayPal
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -387,6 +421,85 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
           </div>
         </div>
       </div>
+
+      {/* Thank You Modal */}
+      <AnimatePresence>
+        {showThankYouModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-md flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="w-full max-w-md bg-[#0d0d0f] border border-white/10 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,180,216,0.15)] text-center relative"
+            >
+              <div className="h-1.5 bg-gradient-to-r from-green-500 via-neon-cyan to-neon-purple" />
+              
+              {/* Close Button */}
+              <button
+                onClick={() => {
+                  setShowThankYouModal(false)
+                  window.location.reload()
+                }}
+                className="absolute top-4 right-4 p-2 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-all"
+              >
+                <X size={16} />
+              </button>
+
+              <div className="p-8 space-y-6">
+                {/* Success Icon */}
+                <div className="w-16 h-16 bg-green-500/10 border border-green-500/20 rounded-full flex items-center justify-center mx-auto text-green-400">
+                  <CheckCircle size={36} className="animate-bounce" />
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-xl font-orbitron font-black text-white uppercase tracking-tight">¡Gracias por tu compra!</h3>
+                  <p className="text-xs text-white/50 leading-relaxed max-w-sm mx-auto">
+                    Tu pago ha sido procesado de forma automática y los K-Coins han sido acreditados a tu cuenta.
+                  </p>
+                </div>
+
+                {/* Details Card */}
+                <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl text-left space-y-3">
+                  <span className="text-[9px] uppercase font-bold tracking-widest text-white/30 block mb-1">Detalles de la Transacción</span>
+                  
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-white/45">Monto Acreditado:</span>
+                    <span className="font-orbitron font-bold text-yellow-400">🪙 {purchasedCoins.toFixed(2)} K-Coins</span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs border-t border-white/[0.03] pt-2">
+                    <span className="text-white/45">Método de Pago:</span>
+                    <span className="text-white/80 font-medium">PayPal / Tarjeta de Crédito</span>
+                  </div>
+
+                  {transactionId && (
+                    <div className="flex justify-between items-center text-xs border-t border-white/[0.03] pt-2">
+                      <span className="text-white/45">ID de Depósito:</span>
+                      <code className="text-[10px] font-mono text-neon-cyan select-all">{transactionId.slice(0, 18)}...</code>
+                    </div>
+                  )}
+                </div>
+
+                {/* Action button */}
+                <button
+                  onClick={() => {
+                    setShowThankYouModal(false)
+                    window.location.reload()
+                  }}
+                  className="w-full py-3 bg-neon-cyan text-black hover:bg-neon-cyan/90 transition-all rounded-2xl text-xs font-black uppercase tracking-widest font-orbitron shadow-[0_0_15px_rgba(0,180,216,0.2)] active:scale-[0.98]"
+                >
+                  Volver al Comercio
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

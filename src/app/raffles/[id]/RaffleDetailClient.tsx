@@ -68,11 +68,12 @@ export function RaffleDetailClient({
 
     ;(window as any).paypal.Buttons({
       style: {
-        layout: 'vertical',
+        layout: 'horizontal',
         color: 'gold',
         shape: 'pill',
         label: 'pay',
-        height: 45
+        height: 45,
+        tagline: false
       },
       createOrder: async () => {
         try {
@@ -606,46 +607,63 @@ export function RaffleDetailClient({
 
               {/* PayPal Direct Payment Details */}
               {paymentMethod === 'paypal_direct' && (
-                <div className="p-5 bg-white/[0.01] border border-blue-500/10 rounded-2xl space-y-4">
-                  <h4 className="text-xs font-bold uppercase tracking-widest text-blue-500/60 flex items-center gap-2 font-orbitron">
-                    💳 PAGO SEGURO CON PAYPAL
-                  </h4>
-                  <div className="space-y-3 text-xs">
-                    <div className="flex justify-between items-center py-1">
-                      <span className="text-white/40">Total en Pesos:</span>
-                      <span className="font-mono text-white font-bold">RD$ {totalCost.toFixed(2)} DOP</span>
+                <div className="rounded-2xl overflow-hidden border border-white/8 bg-gradient-to-b from-[#0f1117] to-[#0a0c10] shadow-[0_0_30px_rgba(0,0,0,0.5)]">
+                  {/* Header stripe */}
+                  <div className="bg-gradient-to-r from-[#003087] via-[#009cde] to-[#012169] h-1" />
+
+                  <div className="p-5 space-y-4">
+                    {/* Title + secure badge */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <svg className="w-4 h-4 text-[#009cde]" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M20.067 8.478c.492.315.844.825.966 1.41.372 1.86-.878 3.667-2.783 4.09-.208.045-.42.066-.634.066H16.3l-.515 2.65a.5.5 0 0 1-.49.406h-1.73a.5.5 0 0 1-.49-.594l1.7-8.714h3.37c.702 0 1.365.24 1.922.686ZM5.555 6.374l-.994 5.11-.61 3.124H3.8a.5.5 0 0 0-.49.594l.247 1.27H1.61a.5.5 0 0 1-.49-.406L-.016 9.59a.5.5 0 0 1 .49-.594H2.89l.617-3.17a.5.5 0 0 1 .49-.406h1.558c.23 0 .43.158.49.406Z"/>
+                        </svg>
+                        <span className="text-xs font-bold text-white/80 uppercase tracking-widest font-orbitron">Pago Seguro</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-[9px] text-green-400/80 font-semibold">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                        </svg>
+                        SSL Seguro
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center py-1 border-t border-white/5 pt-2">
-                      <span className="text-white/40">Equivalente a pagar (Tasa: {usdToDopRate.toFixed(2)}):</span>
-                      <span className="font-mono text-blue-400 font-bold">$ {(totalCost / usdToDopRate).toFixed(2)} USD</span>
+
+                    {/* Amount breakdown */}
+                    <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 space-y-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-white/40">Total ({ticketCount} boleto{ticketCount > 1 ? 's' : ''}):</span>
+                        <span className="font-bold text-white">RD$ {totalCost.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs border-t border-white/[0.04] pt-2">
+                        <span className="text-white/40">A cobrar en USD:</span>
+                        <span className="font-orbitron font-black text-[#009cde]">${(totalCost / usdToDopRate).toFixed(2)} USD</span>
+                      </div>
                     </div>
 
                     {!isLoggedIn && (
-                      <div className="pt-2 border-t border-white/5 text-[10px] text-white/40">
-                        * Introduce tus datos de contacto abajo antes de proceder al botón de PayPal.
-                      </div>
+                      <p className="text-[10px] text-yellow-400/70 bg-yellow-500/5 border border-yellow-500/10 rounded-lg px-3 py-2">
+                        ⚠️ Completa tus datos de contacto abajo antes de proceder al pago.
+                      </p>
                     )}
 
-                    <div className="pt-4 border-t border-white/5">
+                    {/* PayPal Buttons Area */}
+                    <div>
                       {!process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ? (
-                        <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold rounded-xl text-center font-bold">
-                          ⚠️ Error: La integración de PayPal no está configurada (Falta NEXT_PUBLIC_PAYPAL_CLIENT_ID en Vercel).
+                        <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold rounded-xl text-center">
+                          ⚠️ Falta NEXT_PUBLIC_PAYPAL_CLIENT_ID en Vercel.
                         </div>
                       ) : isUploading ? (
-                        <div className="p-4 text-center bg-white/[0.01] border border-dashed border-white/10 rounded-xl space-y-2">
-                          <Loader2 className="w-6 h-6 animate-spin text-blue-400 mx-auto" />
-                          <p className="text-[10px] text-white/60">Acreditando tu pago de PayPal, por favor espera...</p>
+                        <div className="p-5 text-center space-y-2">
+                          <Loader2 className="w-6 h-6 animate-spin text-[#009cde] mx-auto" />
+                          <p className="text-[10px] text-white/50">Acreditando tu pago, por favor espera...</p>
                         </div>
                       ) : (
-                        <div className="w-full max-w-sm mx-auto">
-                          <style dangerouslySetInnerHTML={{__html: `
-                            #raffle-paypal-button-container, #raffle-paypal-button-container *,
-                            .paypal-buttons, .paypal-buttons * {
-                              background-color: transparent !important;
-                              background: transparent !important;
-                            }
-                          `}} />
-                          <div id="raffle-paypal-button-container" className="w-full"></div>
+                        <div className="w-full">
+                          <div id="raffle-paypal-button-container" className="w-full rounded-xl overflow-hidden"></div>
+                          <p className="text-center text-[9px] text-white/25 mt-2 flex items-center justify-center gap-1">
+                            <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
+                            Procesado de forma segura por PayPal
+                          </p>
                         </div>
                       )}
                     </div>
@@ -1111,7 +1129,7 @@ export function RaffleDetailClient({
         </div>
       )}
       <Script
-        src={`https://www.paypal.com/sdk/js?client-id=${process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}&currency=USD`}
+        src={`https://www.paypal.com/sdk/js?client-id=${process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}&currency=USD&enable-funding=card&disable-funding=paylater,venmo`}
         onLoad={() => setSdkLoaded(true)}
         onError={() => console.error('Failed to load PayPal SDK in Raffles')}
       />
