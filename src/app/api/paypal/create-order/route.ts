@@ -19,23 +19,7 @@ export async function POST(req: Request) {
     // 1. Create order in PayPal
     const order = await createPayPalOrder(parsedAmount, 'USD')
 
-    // 2. Insert pending deposit in database
-    const adminSupabase = await createAdminClient()
-    const { error: depositError } = await adminSupabase
-      .from('deposits')
-      .insert({
-        user_id: user.id,
-        amount: parsedAmount,
-        currency: 'USD',
-        gateway: 'paypal',
-        gateway_tx_id: order.id,
-        status: 'pending'
-      })
 
-    if (depositError) {
-      console.error('Error inserting pending deposit:', depositError.message)
-      return NextResponse.json({ error: 'Error al registrar el depósito en base de datos' }, { status: 500 })
-    }
 
     return NextResponse.json({ id: order.id })
   } catch (err: any) {

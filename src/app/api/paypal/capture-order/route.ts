@@ -18,50 +18,51 @@ export async function POST(req: Request) {
 
     const adminSupabase = await createAdminClient()
 
-    // Find the pending deposit record first
-    const { data: deposit, error: findError } = await adminSupabase
+    // 1. Check if this transaction has already been registered
+    const { data: existingDeposit } = await adminSupabase
       .from('deposits')
-      .select('*')
+      .select('id')
       .eq('gateway_tx_id', orderID)
       .maybeSingle()
 
-    if (findError || !deposit) {
-      return NextResponse.json({ error: 'Depósito no registrado en el sistema' }, { status: 404 })
+    if (existingDeposit) {
+      return NextResponse.json({ error: 'Este pago de PayPal ya fue procesado e ingresado previamente.' }, { status: 400 })
     }
 
-    if (deposit.status === 'completed') {
-      return NextResponse.json({ success: true, message: 'El depósito ya fue completado previamente' })
-    }
-
-    // 1. Capture order in PayPal
+    // 2. Capture order in PayPal
     const captureData = await capturePayPalPayment(orderID)
 
     if (captureData.status !== 'COMPLETED') {
-      // Mark deposit as failed in db
-      await adminSupabase
-        .from('deposits')
-        .update({ status: 'failed' })
-        .eq('gateway_tx_id', orderID)
-
       return NextResponse.json({ error: `La orden de PayPal no fue completada. Estado: ${captureData.status}` }, { status: 400 })
     }
 
-    // 2. Perform wallet recharge inside transaction
-    const depositAmount = parseFloat(deposit.amount) // Amount in USD
+    // 3. Extract captured amount from captureData
+    const captureAmountVal = captureData.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.value
+    const depositAmount = parseFloat(captureAmountVal || '0')
+    if (isNaN(depositAmount) || depositAmount <= 0) {
+      return NextResponse.json({ error: 'El monto capturado de PayPal no es válido.' }, { status: 400 })
+    }
+
     const rate = await getUsdToDopRate()
     const dopAmount = parseFloat((depositAmount * rate).toFixed(2)) // Converted amount in DOP (K-Coins)
 
-    // Update deposit status
-    const { error: updateDepositErr } = await adminSupabase
+    // 4. Insert COMPLETED deposit directly in database
+    const { data: deposit, error: insertDepositErr } = await adminSupabase
       .from('deposits')
-      .update({
+      .insert({
+        user_id: user.id,
+        amount: depositAmount,
+        currency: 'USD',
+        gateway: 'paypal',
+        gateway_tx_id: orderID,
         status: 'completed',
         completed_at: new Date().toISOString()
       })
-      .eq('gateway_tx_id', orderID)
+      .select()
+      .single()
 
-    if (updateDepositErr) {
-      throw new Error(`Error updating deposit: ${updateDepositErr.message}`)
+    if (insertDepositErr || !deposit) {
+      throw new Error(`Error inserting completed deposit: ${insertDepositErr?.message || 'Unknown error'}`)
     }
 
     // Fetch user's current profile balance
@@ -100,7 +101,6 @@ export async function POST(req: Request) {
 
     if (txError) {
       console.error('Error inserting coin transaction:', txError.message)
-      // We don't rollback since balance was updated, but we log the audit error
     }
 
     return NextResponse.json({ success: true, balance: newBalance, dopAmount, rate })
