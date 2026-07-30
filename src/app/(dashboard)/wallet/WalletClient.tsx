@@ -508,15 +508,37 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
                     <span className="text-xs font-bold text-white/70">${parseFloat(dep.amount).toFixed(2)} USD</span>
                     <span className="block text-[9px] text-white/30 mt-0.5">{new Date(dep.created_at).toLocaleString('es')}</span>
                   </div>
-                  <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase border ${
-                    dep.status === 'completed'
-                      ? 'border-green-500/20 text-green-400 bg-green-500/5'
-                      : dep.status === 'pending'
-                      ? 'border-yellow-500/20 text-yellow-400 bg-yellow-500/5'
-                      : 'border-red-500/20 text-red-400 bg-red-500/5'
-                  }`}>
-                    {dep.status === 'completed' ? 'Completado' : dep.status === 'pending' ? 'Pendiente' : 'Fallido'}
-                  </span>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase border ${
+                      dep.status === 'completed'
+                        ? 'border-green-500/20 text-green-400 bg-green-500/5'
+                        : dep.status === 'pending'
+                        ? 'border-yellow-500/20 text-yellow-400 bg-yellow-500/5'
+                        : dep.status === 'refunded'
+                        ? 'border-purple-500/20 text-purple-400 bg-purple-500/5'
+                        : 'border-red-500/20 text-red-400 bg-red-500/5'
+                    }`}>
+                      {dep.status === 'completed' ? 'Completado' : dep.status === 'pending' ? 'Pendiente' : dep.status === 'refunded' ? 'Reembolsado' : 'Fallido'}
+                    </span>
+                    {dep.status === 'completed' && (
+                      <button
+                        onClick={async () => {
+                          const reason = prompt('Motivo del reembolso:');
+                          if (!reason) return;
+                          const { requestWalletRefundAction } = await import('@/lib/actions/wallet');
+                          const res = await requestWalletRefundAction(dep.id, reason);
+                          if (res?.error) alert(res.error);
+                          else {
+                            alert(res?.message);
+                            window.location.reload();
+                          }
+                        }}
+                        className="text-[9px] text-white/40 hover:text-white underline"
+                      >
+                        Reembolsar
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))
             )}

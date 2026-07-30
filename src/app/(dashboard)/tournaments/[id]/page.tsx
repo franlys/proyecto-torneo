@@ -335,7 +335,7 @@ export default async function TournamentOverviewPage({
           <QuickAction
             href={`/tournaments/${id}/codes`}
             label="Códigos de Streamer"
-            desc="Genera y gestiona códigos para ArenaCrypto"
+            desc="Genera y gestiona códigos para Apuestas Kronix"
             icon={
               <svg className="w-4 h-4 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -407,7 +407,7 @@ export default async function TournamentOverviewPage({
         <div className="bg-dark-card border border-neon-purple/10 rounded-2xl p-6 mb-8">
           <h2 className="text-sm font-semibold text-white mb-1">Anunciar torneo</h2>
           <p className="text-xs text-white/30 mb-4">
-            Publica el torneo para que ArenaCrypto abra las apuestas de campeón y MVP antes de que arranque.
+            Publica el torneo para que Apuestas Kronix abra las apuestas de campeón y MVP antes de que arranque.
             Podrás seguir editando participantes hasta activarlo.
           </p>
           <PublishTournamentButton id={id} />

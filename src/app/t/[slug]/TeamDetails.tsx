@@ -15,6 +15,7 @@ import {
 } from 'recharts'
 import { motion, AnimatePresence, animate } from 'framer-motion'
 import { Match, Submission, ScoringRule, Participant } from '@/types'
+import { contributeToTeamFeeAction } from '@/lib/actions/team-payments'
 
 function AnimatedNumber({ value, decimals = 0 }: { value: number; decimals?: number }) {
   const [display, setDisplay] = useState(0)
@@ -41,6 +42,9 @@ interface TeamDetailsProps {
   totalPoints?: number
   rank?: number
   tournamentMode?: string
+  entryFee?: number
+  amountPaid?: number
+  registrationStatus?: string
 }
 
 export function TeamDetails({
@@ -55,9 +59,42 @@ export function TeamDetails({
   totalPoints = 0,
   rank = 1,
   tournamentMode = 'individual',
+  entryFee = 0,
+  amountPaid = 0,
+  registrationStatus = 'confirmed',
 }: TeamDetailsProps) {
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
   const [isMounted, setIsMounted] = useState(false)
+
+  // Payment states
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [paymentAmount, setPaymentAmount] = useState('')
+  const [paymentLoading, setPaymentLoading] = useState(false)
+  const [paymentError, setPaymentError] = useState('')
+  const [paymentSuccess, setPaymentSuccess] = useState('')
+
+  const handleContribute = async () => {
+    setPaymentError('')
+    setPaymentSuccess('')
+    if (!paymentAmount || isNaN(Number(paymentAmount)) || Number(paymentAmount) <= 0) {
+      setPaymentError('Ingresa un monto válido mayor a 0.')
+      return
+    }
+
+    setPaymentLoading(true)
+    const res = await contributeToTeamFeeAction(teamId, paymentAmount)
+    if ('error' in res) {
+      setPaymentError(res.error)
+    } else {
+      setPaymentSuccess('¡Aporte realizado con éxito!')
+      setTimeout(() => {
+        setShowPaymentModal(false)
+        setPaymentSuccess('')
+        setPaymentAmount('')
+      }, 2000)
+    }
+    setPaymentLoading(false)
+  }
 
   useEffect(() => {
     setIsMounted(true)
@@ -203,6 +240,54 @@ export function TeamDetails({
 
   return (
     <div className="p-4 sm:p-8 bg-white/[0.01] border-t border-white/5 space-y-8">
+      {/* Payment Progress */}
+      {registrationStatus === 'approved_to_pay' && entryFee > 0 && (
+        <div className="bg-black/40 border border-white/10 rounded-xl p-6 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-neon-cyan/5 to-transparent pointer-events-none" />
+          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex-1 w-full">
+              <h3 className="text-xl font-orbitron font-bold text-white mb-2 flex items-center gap-2">
+                <span>💰 Cuota de Inscripción</span>
+                {amountPaid >= entryFee && <span className="text-green-400 text-sm bg-green-400/10 px-2 py-1 rounded">Completada</span>}
+              </h3>
+              <p className="text-sm text-gray-400 mb-4">
+                El equipo debe completar el pago de inscripción para asegurar su cupo en el torneo. ¡Cualquiera puede aportar!
+              </p>
+              <div className="relative h-4 bg-white/5 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min(100, (amountPaid / entryFee) * 100)}%` }}
+                  transition={{ duration: 1, ease: 'easeOut' }}
+                  className="absolute inset-y-0 left-0 bg-neon-cyan"
+                  style={{
+                    boxShadow: '0 0 10px rgba(0,245,255,0.5)'
+                  }}
+                />
+              </div>
+              <div className="flex justify-between mt-2 text-xs font-mono">
+                <span className="text-neon-cyan font-bold">{amountPaid} K-Coins</span>
+                <span className="text-gray-500">{entryFee} K-Coins</span>
+              </div>
+            </div>
+            
+            <div className="shrink-0 w-full md:w-auto">
+              {amountPaid < entryFee ? (
+                <button
+                  onClick={() => setShowPaymentModal(true)}
+                  className="w-full md:w-auto px-6 py-3 bg-neon-cyan text-black font-bold text-sm uppercase tracking-wider rounded-xl transition-all hover:bg-neon-cyan/90 hover:shadow-[0_0_20px_rgba(0,245,255,0.4)] active:scale-95"
+                >
+                  Aportar K-Coins
+                </button>
+              ) : (
+                <div className="px-6 py-3 bg-white/5 text-gray-400 font-bold text-sm uppercase tracking-wider rounded-xl text-center">
+                  Pago Completo
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Analytics Grid */}
       <AnimatePresence mode="wait">
       {selectedPlayerId && selectedPlayer ? (
@@ -632,6 +717,81 @@ export function TeamDetails({
         </div>
       </div>
       )}
+      </AnimatePresence>
+
+      {/* Payment Modal */}
+      <AnimatePresence>
+        {showPaymentModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-[#0f1115] border border-white/10 rounded-2xl p-6 w-full max-w-md relative overflow-hidden"
+            >
+              <div className="absolute top-0 inset-x-0 h-1 bg-neon-cyan/50" />
+              
+              <h3 className="text-2xl font-orbitron font-black text-white mb-2">Aportar K-Coins</h3>
+              <p className="text-sm text-gray-400 mb-6">
+                Ingresa la cantidad de K-Coins que deseas aportar a la inscripción de este equipo. Se descontará de tu billetera.
+              </p>
+
+              {paymentError && (
+                <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-bold">
+                  {paymentError}
+                </div>
+              )}
+
+              {paymentSuccess && (
+                <div className="mb-4 p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-sm font-bold flex items-center gap-2">
+                  <span className="text-xl">✓</span> {paymentSuccess}
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Monto a Aportar (K-Coins)</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neon-cyan font-orbitron font-bold">K</span>
+                    <input
+                      type="number"
+                      value={paymentAmount}
+                      onChange={(e) => setPaymentAmount(e.target.value)}
+                      placeholder={`Faltan ${entryFee - amountPaid} K-Coins`}
+                      className="w-full bg-black/50 border border-white/10 rounded-xl px-10 py-3 text-white font-mono focus:border-neon-cyan focus:outline-none focus:ring-1 focus:ring-neon-cyan/50"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 mt-6">
+                  <button
+                    onClick={() => setShowPaymentModal(false)}
+                    disabled={paymentLoading || !!paymentSuccess}
+                    className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleContribute}
+                    disabled={paymentLoading || !!paymentSuccess}
+                    className="flex-1 px-4 py-3 bg-neon-cyan hover:bg-neon-cyan/90 disabled:opacity-50 text-black font-bold text-xs uppercase tracking-wider rounded-xl transition-all flex justify-center items-center h-12"
+                  >
+                    {paymentLoading ? (
+                      <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                    ) : (
+                      'Pagar Ahora'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   )

@@ -1740,3 +1740,146 @@ export async function buyTicketWithKCoinsAction(
   }
 }
 
+export async function requestAnonymousRefundAction(input: {
+  transactionId: string
+  email: string
+  reason: string
+  quantity?: number
+}) {
+  try {
+    const adminSupabase = await createAdminClient()
+
+    const receiptPattern = `paypal_direct:${input.transactionId}`
+    const { data: tickets } = await adminSupabase
+      .from('tickets')
+      .select('*, raffles(name, ticket_price)')
+      .eq('buyer_email', input.email)
+      .eq('receipt_url', receiptPattern)
+
+    if (!tickets || tickets.length === 0) {
+      return { error: 'No se encontraron boletos con ese correo y ID de transacción.' }
+    }
+
+    const raffleId = tickets[0].raffle_id
+    const raffleName = tickets[0].raffles?.name || 'Sorteo Kronix'
+    const ticketPrice = parseFloat(tickets[0].raffles?.ticket_price || '0')
+    const buyerName = tickets[0].buyer_name || input.email
+    const buyerPhone = tickets[0].buyer_phone || '0000000000'
+
+    const { data: existingRequests } = await adminSupabase
+      .from('raffle_refund_requests')
+      .select('id')
+      .eq('raffle_id', raffleId)
+      .eq('buyer_phone', buyerPhone)
+      .ilike('reason', `%[PAYPAL_REF:${input.transactionId}]%`)
+      .eq('status', 'pending')
+
+    if (existingRequests && existingRequests.length > 0) {
+      return { error: 'Ya tienes una solicitud de devolución pendiente para esta transacción.' }
+    }
+
+    const targetQuantity = input.quantity && input.quantity > 0 ? input.quantity : tickets.length
+    if (targetQuantity > tickets.length) {
+      return { error: `Solo tienes ${tickets.length} boletos disponibles de esta transacción. No puedes devolver ${targetQuantity}.` }
+    }
+
+    const ticketsToProcess = tickets.slice(0, targetQuantity)
+
+    let allAutomatedAndRecent = true
+    let requiresManualReview = false
+    const now = new Date().getTime()
+    const FORTY_EIGHT_HOURS = 48 * 60 * 60 * 1000
+    
+    const paypalCaptures = new Map<string, number>()
+    const ticketsToDelete: string[] = []
+
+    for (const t of ticketsToProcess) {
+      const ticketTime = new Date(t.created_at).getTime()
+      const isRecent = (now - ticketTime) <= FORTY_EIGHT_HOURS
+
+      if (!isRecent) {
+        allAutomatedAndRecent = false
+        requiresManualReview = true
+        break
+      }
+
+      ticketsToDelete.push(t.id)
+      const captureId = input.transactionId
+      const discount = t.discount_amount || 0
+      const amount = Math.max(0, ticketPrice - discount)
+      paypalCaptures.set(captureId, (paypalCaptures.get(captureId) || 0) + amount)
+    }
+
+    if (allAutomatedAndRecent && !requiresManualReview && ticketsToProcess.length > 0) {
+      let refundFailed = false
+      let failReason = ''
+
+      if (paypalCaptures.size > 0) {
+        try {
+          const { refundPayPalPayment } = await import('@/lib/paypal')
+          for (const [captureId, amount] of Array.from(paypalCaptures.entries())) {
+            await refundPayPalPayment(captureId, amount)
+          }
+        } catch (err: any) {
+          console.error("PayPal auto-refund error:", err)
+          refundFailed = true
+          failReason = 'Fallo en pasarela de pago.'
+        }
+      }
+
+      if (!refundFailed) {
+        await adminSupabase.from('tickets').delete().in('id', ticketsToDelete)
+        
+        const { sendRefundRequestedEmail, sendRefundProcessedEmail } = await import('@/lib/email')
+        await sendRefundRequestedEmail(input.email, {
+          raffleName: raffleName,
+          ticketsCount: ticketsToDelete.length,
+          reason: input.reason
+        })
+        await sendRefundProcessedEmail(input.email, {
+          raffleName: raffleName,
+          ticketsCount: ticketsToDelete.length,
+          status: 'aprobada'
+        })
+
+        revalidatePath(`/raffles/${raffleId}`)
+        return { success: true, autoRefunded: true, message: 'Reembolso procesado automáticamente por PayPal. Recibirás un correo de confirmación.' }
+      } else {
+        input.reason = `(FALLO AUTO-REFUND: ${failReason}) ` + input.reason
+      }
+    }
+
+    let finalReason = `[ANÓNIMO] [PAYPAL_REF:${input.transactionId}]\n${input.reason}`
+    if (input.quantity && input.quantity > 0) {
+      finalReason += `\n[CANTIDAD:${input.quantity}]`
+    }
+
+    const { error } = await adminSupabase
+      .from('raffle_refund_requests')
+      .insert({
+        raffle_id: raffleId,
+        buyer_name: buyerName,
+        buyer_phone: buyerPhone,
+        reason: finalReason,
+        status: 'pending'
+      })
+
+    if (error) {
+      console.error('Manual refund error:', error)
+      return { error: 'Error al enviar la solicitud manual.' }
+    }
+
+    const { sendRefundRequestedEmail } = await import('@/lib/email')
+    await sendRefundRequestedEmail(input.email, {
+      raffleName: raffleName,
+      ticketsCount: targetQuantity,
+      reason: input.reason
+    })
+
+    return { success: true, message: 'Solicitud enviada para revisión manual. Se te notificará por correo.' }
+
+  } catch (e: any) {
+    console.error('Anonymous refund error', e)
+    return { error: 'Ocurrió un error interno.' }
+  }
+}

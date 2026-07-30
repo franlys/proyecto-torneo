@@ -23,25 +23,18 @@ export function ArenaPromoBanner({ tournamentSlug }: ArenaPromoBannerProps) {
           </div>
           <div>
             <h3 className={`${orbitron.className} text-white text-lg font-black uppercase tracking-wider`}>
-              Apuesta en <span className="text-neon-cyan neon-text-cyan">ArenaCrypto</span>
+              Apuestas <span className="text-neon-cyan neon-text-cyan">Kronix</span>
             </h3>
             <p className="text-white/40 text-xs uppercase tracking-widest font-bold">
-              Usa el código de tu streamer para apostar <span className="text-neon-cyan">GRATIS</span> o hazte Premium
+              Usa el código de tu streamer o K-Coins para apostar en <span className="text-neon-cyan">este torneo</span>
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-4 w-full md:w-auto">
-          <Link
-            href={`https://arena-crypto.vercel.app/?ref=kronix&tournament=${tournamentSlug}`}
-            target="_blank"
-            className={`flex-1 md:flex-none px-8 py-3 rounded-xl bg-neon-cyan text-black font-black text-xs uppercase tracking-widest hover:shadow-[0_0_25px_rgba(0,245,255,0.4)] hover:scale-[1.02] transition-all active:scale-[0.98] ${orbitron.className}`}
-          >
-            Ir a Apostar Ahora
-          </Link>
           <div className="hidden lg:flex flex-col items-end">
             <span className="text-[10px] text-white/20 uppercase font-black">Acceso Exclusivo</span>
-            <span className="text-xs text-neon-purple font-bold">Streamer Codes OK</span>
+            <span className="text-xs text-neon-purple font-bold">Multiplicador x1.5</span>
           </div>
         </div>
       </div>

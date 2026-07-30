@@ -1064,7 +1064,7 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
           </div>
 
           <div className="pt-6 border-t border-white/5">
-            <SectionHeader title="ArenaCrypto Integration" subtitle="Habilita las apuestas de la comunidad" />
+            <SectionHeader title="Apuestas Kronix Integration" subtitle="Habilita las apuestas de la comunidad" />
             
             {currentUserProfile && ['ADMIN', 'SUPER_ADMIN'].includes(currentUserProfile.role) ? (
               <button
@@ -1082,7 +1082,7 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
                   </div>
                   <div className="text-left">
                     <p className="text-sm font-bold text-white uppercase tracking-tight">Habilitar Apuestas Públicas</p>
-                    <p className="text-xs text-white/40">Los fans podrán apostar por sus equipos favoritos en ArenaCrypto.</p>
+                    <p className="text-xs text-white/40">Los fans podrán apostar por sus equipos favoritos en Apuestas Kronix.</p>
                   </div>
                 </div>
                 <div className={`w-12 h-6 rounded-full relative transition-colors ${watch('arenaBettingEnabled') ? 'bg-neon-cyan' : 'bg-white/20'}`}>
@@ -1097,14 +1097,14 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold text-white uppercase tracking-tight">Módulo de Apuestas (ArenaCrypto)</p>
+                      <p className="text-sm font-bold text-white uppercase tracking-tight">Módulo de Apuestas (Apuestas Kronix)</p>
                       <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple border border-neon-purple/30 animate-pulse">
                         ADD-ON PREMIUM
                       </span>
                     </div>
                     <p className="text-xs text-white/50 mt-1 leading-relaxed max-w-xl">
                       Permite que tus espectadores apuesten puntos o cripto en vivo durante el torneo. 
-                      Esta función requiere el add-on de ArenaCrypto activo en tu plan de Streamer.
+                      Esta función requiere el add-on de Apuestas Kronix activo en tu plan de Streamer.
                     </p>
                   </div>
                 </div>

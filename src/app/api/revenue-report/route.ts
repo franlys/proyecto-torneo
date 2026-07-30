@@ -1,5 +1,5 @@
 // POST /api/revenue-report
-// Recibe el webhook de ArenaCrypto cuando un torneo termina.
+// Recibe el webhook de Apuestas Kronix cuando un torneo termina.
 // Guarda el reporte de comisión en revenue_reports.
 //
 // Seguridad: valida x-ac-secret contra AC_WEBHOOK_SECRET en las env vars de Kronix.
@@ -13,7 +13,7 @@ const supabase = createClient(
 );
 
 export async function POST(req: NextRequest) {
-  // Verify the request comes from ArenaCrypto
+  // Verify the request comes from Apuestas Kronix
   const secret = req.headers.get("x-ac-secret");
   if (!secret || secret !== process.env.AC_WEBHOOK_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

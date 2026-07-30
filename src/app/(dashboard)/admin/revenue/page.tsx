@@ -133,12 +133,12 @@ export default async function AdminRevenuePage() {
           </div>
         </div>
 
-        {/* Saldo en ArenaCrypto */}
+        {/* Saldo en Apuestas Kronix */}
         {acData && (
           <div className="bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/30 rounded-2xl p-6">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
-                <p className="text-xs uppercase tracking-widest text-emerald-400/70 font-semibold">Tu saldo en ArenaCrypto</p>
+                <p className="text-xs uppercase tracking-widest text-emerald-400/70 font-semibold">Tu saldo en Apuestas Kronix</p>
                 <p className="text-5xl font-bold text-emerald-400 mt-1">
                   ${ptBalance.toFixed(2)} <span className="text-lg text-white/40">USDT</span>
                 </p>
@@ -245,10 +245,10 @@ export default async function AdminRevenuePage() {
           )}
         </div>
 
-        {/* Bridge ArenaCrypto — datos reales */}
+        {/* Bridge Apuestas Kronix — datos reales */}
         <div>
           <h2 className="text-xs uppercase tracking-widest text-purple-400/70 font-semibold mb-3">
-            Bridge de Apuestas — ArenaCrypto
+            Bridge de Apuestas — Apuestas Kronix
           </h2>
 
           {acSummary ? (
@@ -333,7 +333,7 @@ export default async function AdminRevenuePage() {
 
               {acRecords.length === 0 && (
                 <p className="text-white/30 text-sm text-center py-6">
-                  Sin apuestas registradas aún en ArenaCrypto.
+                  Sin apuestas registradas aún en Apuestas Kronix.
                 </p>
               )}
             </>
@@ -344,7 +344,7 @@ export default async function AdminRevenuePage() {
                   <span className="text-purple-400 text-lg">⚡</span>
                 </div>
                 <div>
-                  <h3 className="text-white font-semibold">Sin conexión con ArenaCrypto</h3>
+                  <h3 className="text-white font-semibold">Sin conexión con Apuestas Kronix</h3>
                   <p className="text-white/40 text-sm mt-1">
                     Verifica que <code className="text-purple-300 bg-purple-400/10 px-1 rounded">AC_WEBHOOK_URL</code> y{' '}
                     <code className="text-purple-300 bg-purple-400/10 px-1 rounded">AC_WEBHOOK_SECRET</code> estén configurados en el .env.

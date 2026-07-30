@@ -143,6 +143,11 @@ export function RaffleDetailClient({
               setIsUploading(false)
               return
             }
+            if (!buyerEmail.trim()) {
+              alert('Por favor introduce tu correo electrónico.')
+              setIsUploading(false)
+              return
+            }
           } else if (profile) {
             finalBuyerName = profile.username || (userEmail ? userEmail.split('@')[0] : 'Registrado')
             finalBuyerPhone = '0000000000'
@@ -384,6 +389,11 @@ export function RaffleDetailClient({
           }
           if (buyerPhone.trim() !== buyerPhoneConfirm.trim()) {
             setError('Los números de teléfono ingresados no coinciden. Por favor, verifícalos.')
+            setIsUploading(false)
+            return
+          }
+          if (!buyerEmail.trim() && !isLoggedIn) {
+            setError('Por favor introduce tu correo electrónico.')
             setIsUploading(false)
             return
           }
@@ -1021,13 +1031,14 @@ export function RaffleDetailClient({
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">Correo Electrónico (Opcional)</label>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">Correo Electrónico *</label>
                       <input
                         type="email"
                         placeholder="usuario@correo.com"
                         value={buyerEmail}
                         onChange={(e) => setBuyerEmail(e.target.value)}
                         className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-neon-cyan"
+                        required
                       />
                     </div>
                   </div>

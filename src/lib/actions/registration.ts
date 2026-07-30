@@ -220,42 +220,7 @@ export async function registerTournament(
     let initialStatus = 'confirmed'
 
     if (hasEntryFee) {
-      // 1. Fetch user profile balance
-      const { data: profile } = await adminSupabase
-        .from('profiles')
-        .select('balance')
-        .eq('id', user.id)
-        .single()
-
-      const balance = parseFloat(profile?.balance || '0.00')
-      const fee = Number(tournament.entry_fee)
-
-      if (balance < fee) {
-        return { error: `El torneo requiere una cuota de inscripción de ${fee.toFixed(2)} K-Coins. Tu saldo es de ${balance.toFixed(2)} K-Coins. Ve a tu billetera para recargar.` }
-      }
-
-      // 2. Deduct entry fee
-      const newBalance = parseFloat((balance - fee).toFixed(2))
-      const { error: balErr } = await adminSupabase
-        .from('profiles')
-        .update({ balance: newBalance })
-        .eq('id', user.id)
-
-      if (balErr) {
-        return { error: 'Error al descontar la cuota de inscripción de tu billetera.' }
-      }
-
-      // 3. Log coin transaction
-      try {
-        await adminSupabase.from('coin_transactions').insert({
-          user_id: user.id,
-          amount: -fee,
-          type: 'bet_placed',
-          reference_id: tournamentId
-        })
-      } catch (txErr) {
-        console.error('Error logging inscription transaction:', txErr)
-      }
+      initialStatus = 'approved_to_pay'
     }
 
     // 6. Insertar Equipo
@@ -265,24 +230,16 @@ export async function registerTournament(
         tournament_id: tournamentId,
         name: finalTeamName,
         stream_url: formData.streamUrl || null,
-        registration_status: initialStatus
+        registration_status: initialStatus,
+        amount_paid: 0
       })
       .select()
       .single()
 
     if (teamErr || !team) {
-      // Revert fee on registration failure
-      if (hasEntryFee) {
-        const { data: profile } = await adminSupabase.from('profiles').select('balance').eq('id', user.id).single()
-        const balance = parseFloat(profile?.balance || '0.00')
-        const fee = Number(tournament.entry_fee)
-        await adminSupabase.from('profiles').update({ balance: balance + fee }).eq('id', user.id)
-      }
       return { error: teamErr?.message || 'Error al registrar el equipo.' }
     }
-
-
-    // Sincronizar equipo a ArenaCrypto
+    // Sincronizar equipo a Apuestas Kronix
     pushToAC('teams', 'upsert', {
       id: team.id,
       tournamentId: team.tournament_id,

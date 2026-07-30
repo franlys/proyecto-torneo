@@ -1056,7 +1056,7 @@ export function LeaderboardClient({
         .eq('tournament_id', tournamentId),
       supabase
         .from('teams')
-        .select('id, name, avatar_url, stream_url, participants(id, team_id, user_id, display_name, avatar_url, stream_url, is_captain, total_kills, kd_ratio, avg_kills, classification_rank, br_avg_placement, color)')
+        .select('id, name, avatar_url, stream_url, amount_paid, registration_status, participants(id, team_id, user_id, display_name, avatar_url, stream_url, is_captain, total_kills, kd_ratio, avg_kills, classification_rank, br_avg_placement, color)')
         .eq('tournament_id', tournamentId)
         .order('created_at', { ascending: true }),
       supabase
@@ -1112,6 +1112,8 @@ export function LeaderboardClient({
       ...t,
       avatarUrl: t.avatar_url,
       streamUrl: t.stream_url,
+      registrationStatus: t.registration_status,
+      amountPaid: Number(t.amount_paid) || 0,
       participants: (t.participants || []).map((p: any) => ({
         id: p.id,
         teamId: p.team_id,
@@ -2277,22 +2279,28 @@ export function LeaderboardClient({
               >
                 {standings
                   .filter(s => s.teamId === expandedTeamId)
-                  .map(s => (
-                    <TeamDetails
-                      key={s.teamId}
-                      teamId={s.teamId}
-                      teamName={s.teamName}
-                      matches={currentMatches}
-                      submissions={currentSubmissions}
-                      scoringRule={scoringRule!}
-                      participants={participantsWithCalculatedKills}
-                      primaryColor={primaryColor}
-                      discipline={discipline}
-                      totalPoints={s.totalPoints}
-                      rank={s.rank}
-                      tournamentMode={mode}
-                    />
-                  ))}
+                  .map(s => {
+                    const team = currentTeams.find(t => t.id === s.teamId)
+                    return (
+                      <TeamDetails
+                        key={s.teamId}
+                        teamId={s.teamId}
+                        teamName={s.teamName}
+                        matches={currentMatches}
+                        submissions={currentSubmissions}
+                        scoringRule={scoringRule!}
+                        participants={participantsWithCalculatedKills}
+                        primaryColor={primaryColor}
+                        discipline={discipline}
+                        totalPoints={s.totalPoints}
+                        rank={s.rank}
+                        tournamentMode={mode}
+                        entryFee={entryFee}
+                        amountPaid={team?.amountPaid || 0}
+                        registrationStatus={team?.registrationStatus || 'confirmed'}
+                      />
+                    )
+                  })}
               </motion.div>
             )}
           </AnimatePresence>

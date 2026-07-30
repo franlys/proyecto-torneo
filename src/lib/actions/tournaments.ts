@@ -146,7 +146,7 @@ export async function createTournament(
 
   if (!isSuperAdminOrAdmin) {
     if (arenaBettingEnabled) {
-      return { error: 'La integración de apuestas requiere el add-on ArenaCrypto. Por favor, actualiza tu plan o contacta a Kronix.' }
+      return { error: 'La integración de apuestas requiere el add-on Apuestas Kronix. Por favor, actualiza tu plan o contacta a Kronix.' }
     }
     collaboratorId = null
     organizerSplit = 0
@@ -385,7 +385,7 @@ export async function updateTournament(
   // Arena Betting
   if (input.arenaBettingEnabled !== undefined) {
     if (input.arenaBettingEnabled && !isSuperAdminOrAdmin) {
-      return { error: 'La integración de apuestas requiere el add-on ArenaCrypto. Por favor, actualiza tu plan o contacta a Kronix.' }
+      return { error: 'La integración de apuestas requiere el add-on Apuestas Kronix. Por favor, actualiza tu plan o contacta a Kronix.' }
     }
     updatePayload.arena_betting_enabled = input.arenaBettingEnabled
   }
@@ -445,7 +445,7 @@ export async function publishTournament(
   if (!(await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id))) return { error: 'Sin permisos' }
 
   if (!tournament.arena_betting_enabled) {
-    return { error: 'La acción de anunciar torneos es exclusiva para torneos con el módulo de apuestas ArenaCrypto habilitado.' }
+    return { error: 'La acción de anunciar torneos es exclusiva para torneos con el módulo de apuestas Apuestas Kronix habilitado.' }
   }
 
   if (tournament.status !== 'draft') {
@@ -1385,7 +1385,7 @@ export async function addDynamicMatch(
     }
   }
 
-  // 4. Mirror updates to ArenaCrypto
+  // 4. Mirror updates to Apuestas Kronix
   const { data: updatedTourney } = await supabase.from('tournaments').select('*').eq('id', tournamentId).single()
   if (updatedTourney) {
     pushToAC(

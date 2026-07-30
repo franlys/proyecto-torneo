@@ -991,7 +991,7 @@ export function ProfileStatsClient({
                   <div className="space-y-4">
                     <div className="p-4 bg-neon-purple/5 border border-neon-purple/20 rounded-xl">
                       <p className="text-neon-purple text-sm font-bold">Plan Streamer Pro — $15 / mes</p>
-                      <p className="text-white/40 text-xs mt-1">Torneos ilimitados · Leaderboard en vivo · Bridge ArenaCrypto · Streamer codes</p>
+                      <p className="text-white/40 text-xs mt-1">Torneos ilimitados · Leaderboard en vivo · Bridge Apuestas Kronix · Streamer codes</p>
                     </div>
                     <div className="text-white/40 text-xs space-y-1">
                       <p className="font-semibold text-white/60">Cómo activar:</p>

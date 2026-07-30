@@ -131,7 +131,7 @@ export async function banTeamForAbandonment(
 
     if (deleteErr) return { error: deleteErr.message }
 
-    // Push delete notification to ArenaCrypto
+    // Push delete notification to Apuestas Kronix
     pushToAC('teams', 'delete', { id: teamId })
 
     // Trigger recalculation of standings (since a team was removed, standings should be rebuilt)

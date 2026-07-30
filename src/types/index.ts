@@ -93,6 +93,7 @@ export interface Team {
   vipScore: number;
   registrationStatus?: 'pending_approval' | 'approved_to_pay' | 'pending_payment_validation' | 'confirmed';
   paymentEvidenceUrl?: string | null;
+  amountPaid?: number;
 }
 
 export interface Participant {

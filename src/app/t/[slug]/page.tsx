@@ -64,9 +64,9 @@ export default async function PublicLeaderboardPage({
   // Fetch only confirmed teams with their participants (for the positions and Participants tab)
   const { data: allTeams } = await supabase
     .from('teams')
-    .select('id, name, avatar_url, stream_url, registration_status, participants(id, team_id, user_id, display_name, is_captain, stream_url, total_kills, kd_ratio, avg_kills, classification_rank, br_avg_placement, color)')
+    .select('id, name, avatar_url, stream_url, registration_status, amount_paid, participants(id, team_id, user_id, display_name, is_captain, stream_url, total_kills, kd_ratio, avg_kills, classification_rank, br_avg_placement, color)')
     .eq('tournament_id', tournament.id)
-    .eq('registration_status', 'confirmed')
+    .in('registration_status', ['confirmed', 'approved_to_pay'])
     .order('created_at', { ascending: true })
 
 
@@ -123,6 +123,8 @@ export default async function PublicLeaderboardPage({
     name: t.name,
     avatarUrl: t.avatar_url,
     streamUrl: t.stream_url,
+    registrationStatus: t.registration_status,
+    amountPaid: Number(t.amount_paid) || 0,
     participants: (t.participants || []).map((p: any) => ({
       id: p.id,
       displayName: p.display_name,

@@ -57,7 +57,7 @@ export default async function TournamentCodesPage({
       <div className="bg-neon-cyan/5 border border-neon-cyan/20 rounded-xl p-4 text-sm text-white/50 space-y-1">
         <p className="text-neon-cyan font-semibold text-xs uppercase tracking-widest">¿Para qué sirven?</p>
         <p>
-          Cada código identifica a un streamer en ArenaCrypto. Cuando sus viewers
+          Cada código identifica a un streamer en Apuestas Kronix. Cuando sus viewers
           usan su código para apostar, las ganancias generadas cuentan como ingresos de Kronix.
         </p>
       </div>

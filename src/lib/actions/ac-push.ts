@@ -1,6 +1,6 @@
 'use server'
 
-// pushToAC — fires a webhook to ArenaCrypto after PT mutations.
+// pushToAC — fires a webhook to Apuestas Kronix after PT mutations.
 // AC stores a local mirror so its pages don't need cross-DB queries.
 // Fire-and-forget: never blocks the PT response.
 
