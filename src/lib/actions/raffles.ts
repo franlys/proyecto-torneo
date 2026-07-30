@@ -1252,7 +1252,7 @@ export async function requestRaffleRefundAction(input: {
     // 1. Fetch raffle to get ticket price
     const { data: raffle } = await adminSupabase
       .from('raffles')
-      .select('ticket_price')
+      .select('ticket_price, name')
       .eq('id', input.raffleId)
       .single()
 
@@ -1349,6 +1349,8 @@ export async function requestRaffleRefundAction(input: {
           requiresManualReview = true
           break
         }
+      }
+    }
     const buyerEmailForNotification = user?.email || (ticketsToProcess.length > 0 ? ticketsToProcess[0].buyer_email : null)
 
     if (allAutomatedAndRecent && !requiresManualReview && ticketsToProcess && ticketsToProcess.length > 0) {
