@@ -103,6 +103,12 @@ export async function POST(req: Request) {
       console.error('Error inserting coin transaction:', txError.message)
     }
 
+    if (user.email) {
+      import('@/lib/email').then(({ sendWalletRechargeEmail }) => {
+        sendWalletRechargeEmail(user.email!, dopAmount)
+      }).catch(e => console.error("Error sending recharge email:", e))
+    }
+
     return NextResponse.json({ success: true, balance: newBalance, dopAmount, rate })
   } catch (err: any) {
     console.error('PayPal capture-order API error:', err)

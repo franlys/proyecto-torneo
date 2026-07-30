@@ -1351,7 +1351,10 @@ export async function requestRaffleRefundAction(input: {
       }
     }
 
-    if (allAutomatedAndRecent && !requiresManualReview && tickets && tickets.length > 0) {
+    import { sendRefundRequestedEmail, sendRefundProcessedEmail } from '@/lib/email'
+    const buyerEmailForNotification = user?.email || (ticketsToProcess.length > 0 ? ticketsToProcess[0].buyer_email : null)
+
+    if (allAutomatedAndRecent && !requiresManualReview && ticketsToProcess && ticketsToProcess.length > 0) {
       // Automated refund possible!
       let refundFailed = false
       let failReason = ''
@@ -1361,7 +1364,7 @@ export async function requestRaffleRefundAction(input: {
         try {
           const { refundPayPalPayment } = await import('@/lib/paypal')
           for (const [captureId, amount] of Array.from(paypalCaptures.entries())) {
-            await refundPayPalPayment(captureId)
+            await refundPayPalPayment(captureId, amount)
           }
         } catch (err: any) {
           console.error("PayPal auto-refund error:", err)
@@ -1398,6 +1401,20 @@ export async function requestRaffleRefundAction(input: {
       if (!refundFailed) {
         // Delete tickets
         await adminSupabase.from('tickets').delete().in('id', ticketsToDelete)
+        
+        if (buyerEmailForNotification) {
+          await sendRefundRequestedEmail(buyerEmailForNotification, {
+            raffleName: raffle?.name || 'Sorteo Kronix',
+            ticketsCount: ticketsToDelete.length,
+            reason: input.reason
+          })
+          await sendRefundProcessedEmail(buyerEmailForNotification, {
+            raffleName: raffle?.name || 'Sorteo Kronix',
+            ticketsCount: ticketsToDelete.length,
+            status: 'aprobada'
+          })
+        }
+
         revalidatePath(`/raffles/${input.raffleId}`)
         return { success: true, autoRefunded: true, message: 'Reembolso procesado automáticamente. Los cupos han sido liberados y el dinero fue devuelto a tu método de pago.' }
       } else {
@@ -1423,7 +1440,16 @@ export async function requestRaffleRefundAction(input: {
       })
 
     if (error) return { error: error.message }
-    return { success: true, autoRefunded: false, message: 'Solicitud enviada para revisión manual.' }
+    
+    if (buyerEmailForNotification) {
+      await sendRefundRequestedEmail(buyerEmailForNotification, {
+        raffleName: raffle?.name || 'Sorteo Kronix',
+        ticketsCount: ticketsToProcess.length,
+        reason: input.reason
+      })
+    }
+
+    return { success: true, message: 'Su solicitud ha sido enviada a revisión manual porque requiere inspección por parte de un administrador.' }
   } catch (err: any) {
     return { error: err.message || 'Error al enviar la solicitud' }
   }
@@ -1465,12 +1491,39 @@ export async function resolveRaffleRefundRequestAction(input: {
     const adminSupabase = await createAdminClient()
     
     // Actualizar estado de la solicitud
-    const { error: updateError } = await adminSupabase
+    const { error: updateError, data: updatedRequest } = await adminSupabase
       .from('raffle_refund_requests')
       .update({ status: input.status, updated_at: new Date().toISOString() })
       .eq('id', input.requestId)
+      .select()
+      .single()
 
     if (updateError) return { error: updateError.message }
+
+    // Intentar buscar el email del comprador para notificarle
+    let buyerEmailForNotification = null;
+    let ticketsCount = input.ticketIds?.length || 0;
+
+    if (input.ticketIds && input.ticketIds.length > 0) {
+      const { data: ticketsInfo } = await adminSupabase
+        .from('tickets')
+        .select('buyer_email')
+        .in('id', input.ticketIds)
+        .limit(1)
+        .single()
+      if (ticketsInfo?.buyer_email) buyerEmailForNotification = ticketsInfo.buyer_email;
+    } else {
+      // Si no hay ticketIds (rechazo sin borrar o fallback), tratamos de buscar por telefono/user_id
+      const cleanPhone = input.buyerPhone.replace(/\D/g, '')
+      const { data: ticketsInfo } = await adminSupabase
+        .from('tickets')
+        .select('buyer_email')
+        .eq('raffle_id', input.raffleId)
+        .or(`buyer_phone.eq.${input.buyerPhone},buyer_phone.eq.${cleanPhone}`)
+        .limit(1)
+        .single()
+      if (ticketsInfo?.buyer_email) buyerEmailForNotification = ticketsInfo.buyer_email;
+    }
 
     // Si es resuelta (aprobada) y se solicita borrar boletos, los eliminamos de la BD
     if (input.status === 'resolved' && input.deleteTickets) {
@@ -1491,6 +1544,17 @@ export async function resolveRaffleRefundRequestAction(input: {
 
         if (deleteError) return { error: deleteError.message }
       }
+    }
+
+    if (buyerEmailForNotification) {
+      const { data: raffle } = await adminSupabase.from('raffles').select('name').eq('id', input.raffleId).single()
+      import('@/lib/email').then(({ sendRefundProcessedEmail }) => {
+        sendRefundProcessedEmail(buyerEmailForNotification!, {
+          raffleName: raffle?.name || 'Sorteo Kronix',
+          ticketsCount: ticketsCount || 1, // Fallback to 1 if unknown
+          status: input.status === 'resolved' ? 'aprobada' : 'rechazada'
+        })
+      }).catch(e => console.error("Error loading email module", e))
     }
 
     revalidatePath(`/admin/raffles/${input.raffleId}`)
