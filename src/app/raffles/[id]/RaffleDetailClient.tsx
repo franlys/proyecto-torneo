@@ -59,8 +59,8 @@ export function RaffleDetailClient({
   const [buyerEmail, setBuyerEmail] = useState('')
 
   const [isRefundModalOpen, setIsRefundModalOpen] = useState(false)
-  const [refundName, setRefundName] = useState('')
-  const [refundPhone, setRefundPhone] = useState('')
+  const [refundName, setRefundName] = useState(isLoggedIn ? (profile?.username || (userEmail ? userEmail.split('@')[0] : '')) : '')
+  const [refundPhone, setRefundPhone] = useState(isLoggedIn ? (profile?.phone || '0000000000') : '')
   const [refundReason, setRefundReason] = useState('')
   const [isRefundPending, setIsRefundPending] = useState(false)
   const [refundSuccess, setRefundSuccess] = useState(false)
@@ -1212,33 +1212,44 @@ export function RaffleDetailClient({
               </div>
             ) : (
               <form onSubmit={handleRefundSubmit} className="space-y-3.5">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] text-white/40 uppercase tracking-widest font-medium">
-                    Nombre completo
-                  </label>
-                  <input
-                    type="text"
-                    value={refundName}
-                    onChange={(e) => setRefundName(e.target.value)}
-                    required
-                    placeholder="Ej: Juan Pérez"
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-neon-cyan placeholder:text-white/20"
-                  />
-                </div>
+                {!isLoggedIn ? (
+                  <>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] text-white/40 uppercase tracking-widest font-medium">
+                        Nombre completo
+                      </label>
+                      <input
+                        type="text"
+                        value={refundName}
+                        onChange={(e) => setRefundName(e.target.value)}
+                        required
+                        placeholder="Ej: Juan Pérez"
+                        className="w-full px-3 py-2 text-xs rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-neon-cyan placeholder:text-white/20"
+                      />
+                    </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] text-white/40 uppercase tracking-widest font-medium">
-                    Número de Celular / Teléfono
-                  </label>
-                  <input
-                    type="tel"
-                    value={refundPhone}
-                    onChange={(e) => setRefundPhone(e.target.value)}
-                    required
-                    placeholder="Ej: 8091234567"
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-neon-cyan placeholder:text-white/20"
-                  />
-                </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] text-white/40 uppercase tracking-widest font-medium">
+                        Número de Celular / Teléfono
+                      </label>
+                      <input
+                        type="tel"
+                        value={refundPhone}
+                        onChange={(e) => setRefundPhone(e.target.value)}
+                        required
+                        placeholder="Ej: 8091234567"
+                        className="w-full px-3 py-2 text-xs rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-neon-cyan placeholder:text-white/20"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className="p-3 bg-neon-cyan/5 border border-neon-cyan/15 rounded-xl flex items-center gap-2">
+                    <CheckCircle2 size={16} className="text-neon-cyan" />
+                    <p className="text-[10px] text-white/70">
+                      Hemos detectado tu sesión de usuario de forma segura.
+                    </p>
+                  </div>
+                )}
 
                 <div className="space-y-1.5">
                   <label className="text-[10px] text-white/40 uppercase tracking-widest font-medium">

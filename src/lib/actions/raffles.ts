@@ -1258,11 +1258,18 @@ export async function requestRaffleRefundAction(input: {
 
     // 2. Query tickets for this user
     const cleanPhone = input.buyerPhone.replace(/\D/g, '')
-    const { data: tickets } = await adminSupabase
+    let query = adminSupabase
       .from('tickets')
       .select('*')
       .eq('raffle_id', input.raffleId)
-      .or(`buyer_phone.eq.${input.buyerPhone},buyer_phone.eq.${cleanPhone}`)
+
+    if (user) {
+      query = query.or(`user_id.eq.${user.id},buyer_phone.eq.${input.buyerPhone},buyer_phone.eq.${cleanPhone}`)
+    } else {
+      query = query.or(`buyer_phone.eq.${input.buyerPhone},buyer_phone.eq.${cleanPhone}`)
+    }
+
+    const { data: tickets } = await query
 
     let allAutomatedAndRecent = true
     let requiresManualReview = false
