@@ -285,79 +285,115 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
           {/* ── PayPal Modal Overlay ── */}
           {showPaypalModal && (
             <div
-              className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-              style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(0,0,0,0.85)' }}
+              className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6"
+              style={{ backdropFilter: 'blur(12px)', backgroundColor: 'rgba(0,0,0,0.88)' }}
               onClick={(e) => { if (e.target === e.currentTarget) setShowPaypalModal(false) }}
             >
-              <div className="relative w-full max-w-sm bg-gradient-to-b from-[#0f1117] to-[#0a0c10] rounded-3xl border border-white/10 shadow-[0_0_60px_rgba(0,156,222,0.2)] overflow-hidden flex flex-col max-h-[90vh]">
-                <div className="bg-gradient-to-r from-[#003087] via-[#009cde] to-[#012169] h-1 flex-shrink-0" />
-                <div className="overflow-y-auto flex-1 p-6 space-y-5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-[#009cde]" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M20.067 8.478c.492.315.844.825.966 1.41.372 1.86-.878 3.667-2.783 4.09-.208.045-.42.066-.634.066H16.3l-.515 2.65a.5.5 0 0 1-.49.406h-1.73a.5.5 0 0 1-.49-.594l1.7-8.714h3.37c.702 0 1.365.24 1.922.686ZM5.555 6.374l-.994 5.11-.61 3.124H3.8a.5.5 0 0 0-.49.594l.247 1.27H1.61a.5.5 0 0 1-.49-.406L-.016 9.59a.5.5 0 0 1 .49-.594H2.89l.617-3.17a.5.5 0 0 1 .49-.406h1.558c.23 0 .43.158.49.406Z"/>
-                      </svg>
-                      <span className="text-sm font-bold text-white font-orbitron uppercase tracking-widest">Pago Seguro</span>
-                    </div>
-                    <button
-                      onClick={() => setShowPaypalModal(false)}
-                      className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-all"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                  </div>
+              <div className="relative w-full max-w-sm sm:max-w-2xl bg-gradient-to-br from-[#0d0f15] to-[#080a0e] rounded-3xl border border-white/10 shadow-[0_0_80px_rgba(0,156,222,0.15)] overflow-hidden flex flex-col max-h-[92vh]">
+                <div className="bg-gradient-to-r from-[#003087] via-[#009cde] to-[#012169] h-[3px] flex-shrink-0" />
 
-                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl px-4 py-4 space-y-2">
-                    <p className="text-[10px] text-white/30 uppercase tracking-widest font-semibold">Resumen del pedido</p>
-                    <div className="flex justify-between items-center text-xs mt-1">
-                      <span className="text-white/50">Recarga de K-Coins</span>
-                      <span className="font-bold text-white">${amount.toFixed(2)} USD</span>
-                    </div>
-                    <div className="flex justify-between items-center border-t border-white/[0.05] pt-2">
-                      <span className="text-[10px] text-white/30">Recibirás:</span>
-                      <span className="font-orbitron font-black text-yellow-400 text-lg">🪙 {(amount * exchangeRate).toFixed(0)} <span className="text-xs font-normal text-white/40">K-Coins</span></span>
+                {/* Header bar */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] flex-shrink-0">
+                  <div className="flex items-center gap-3">
+                    <svg className="w-5 h-5 text-[#009cde]" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M20.067 8.478c.492.315.844.825.966 1.41.372 1.86-.878 3.667-2.783 4.09-.208.045-.42.066-.634.066H16.3l-.515 2.65a.5.5 0 0 1-.49.406h-1.73a.5.5 0 0 1-.49-.594l1.7-8.714h3.37c.702 0 1.365.24 1.922.686ZM5.555 6.374l-.994 5.11-.61 3.124H3.8a.5.5 0 0 0-.49.594l.247 1.27H1.61a.5.5 0 0 1-.49-.406L-.016 9.59a.5.5 0 0 1 .49-.594H2.89l.617-3.17a.5.5 0 0 1 .49-.406h1.558c.23 0 .43.158.49.406Z"/>
+                    </svg>
+                    <div>
+                      <p className="text-sm font-bold text-white font-orbitron uppercase tracking-widest leading-none">Pago Seguro</p>
+                      <p className="text-[10px] text-white/30 mt-0.5">Powered by PayPal</p>
                     </div>
                   </div>
+                  <button
+                    onClick={() => setShowPaypalModal(false)}
+                    className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-all"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
 
-                  {isProcessing ? (
-                    <div className="py-8 text-center space-y-3">
-                      <Loader2 className="w-8 h-8 animate-spin text-[#009cde] mx-auto" />
-                      <p className="text-xs text-white/50">Acreditando tus K-Coins, por favor espera...</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <p className="text-[10px] text-white/30 text-center uppercase tracking-widest">Elige tu método de pago</p>
-                      {/* CSS to neutralize PayPal's white iframe background */}
-                      <style dangerouslySetInnerHTML={{__html: `
-                        #paypal-button-container .paypal-buttons-context-iframe {
-                          border-radius: 12px;
-                          overflow: hidden;
-                        }
-                        #paypal-button-container iframe {
-                          border-radius: 12px;
-                        }
-                        .wallet-paypal-wrapper {
-                          background: #111318 !important;
-                          border-radius: 12px;
-                          overflow: hidden;
-                        }
-                      `}} />
-                      {!paypalRendered && (
-                        <div className="space-y-2">
-                          <div className="h-[48px] rounded-xl bg-[#FFC439]/20 animate-pulse" />
-                          <div className="h-[48px] rounded-xl bg-white/[0.04] animate-pulse" />
+                {/* Body — single col mobile, two col desktop */}
+                <div className="overflow-y-auto flex-1 flex flex-col sm:flex-row">
+
+                  {/* LEFT PANEL — K-Coins Summary */}
+                  <div className="sm:w-64 sm:flex-shrink-0 p-6 sm:border-r border-b sm:border-b-0 border-white/[0.06] space-y-5 bg-white/[0.01]">
+                    <div>
+                      <p className="text-[10px] text-white/25 uppercase tracking-widest font-semibold mb-3">Resumen del pedido</p>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center gap-2">
+                          <span className="text-xs text-white/50">Recarga de K-Coins</span>
+                          <span className="text-xs font-bold text-white whitespace-nowrap">${amount.toFixed(2)} USD</span>
                         </div>
-                      )}
-                      <div
-                        id="paypal-button-container"
-                        className={`wallet-paypal-wrapper w-full transition-opacity duration-300 ${paypalRendered ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}
-                      />
+                      </div>
                     </div>
-                  )}
 
-                  <div className="flex items-center justify-center gap-2 pt-1">
-                    <svg className="w-3 h-3 text-green-400/60" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
-                    <span className="text-[9px] text-white/25">Cifrado SSL · Procesado por PayPal</span>
+                    <div className="border-t border-white/[0.06] pt-4">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[10px] text-white/30 uppercase tracking-widest">Recibirás</span>
+                      </div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="font-orbitron font-black text-yellow-400 text-2xl">{(amount * exchangeRate).toFixed(0)}</span>
+                        <span className="text-xs text-white/30">K-Coins</span>
+                      </div>
+                      <p className="text-[9px] text-white/20 mt-1">1 USD = {exchangeRate.toFixed(2)} K-Coins</p>
+                    </div>
+
+                    {/* Trust badges */}
+                    <div className="border-t border-white/[0.06] pt-4 space-y-2">
+                      {[
+                        { icon: '🔒', text: 'Cifrado SSL 256-bit' },
+                        { icon: '🛡️', text: 'Protección al comprador' },
+                        { icon: '✅', text: 'Pago verificado PayPal' },
+                      ].map(({ icon, text }) => (
+                        <div key={text} className="flex items-center gap-2">
+                          <span className="text-xs">{icon}</span>
+                          <span className="text-[10px] text-white/30">{text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* RIGHT PANEL — Payment */}
+                  <div className="flex-1 p-6 space-y-5 flex flex-col justify-center">
+                    <p className="text-[10px] text-white/30 uppercase tracking-widest text-center">Elige tu método de pago</p>
+
+                    {isProcessing ? (
+                      <div className="py-10 text-center space-y-3">
+                        <Loader2 className="w-8 h-8 animate-spin text-[#009cde] mx-auto" />
+                        <p className="text-xs text-white/50">Acreditando tus K-Coins, por favor espera...</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <style dangerouslySetInnerHTML={{__html: `
+                          #paypal-button-container .paypal-buttons-context-iframe {
+                            border-radius: 12px;
+                            overflow: hidden;
+                          }
+                          #paypal-button-container iframe {
+                            border-radius: 12px;
+                          }
+                          .wallet-paypal-wrapper {
+                            background: #0d0f15 !important;
+                            border-radius: 12px;
+                            overflow: hidden;
+                          }
+                        `}} />
+                        {!paypalRendered && (
+                          <div className="space-y-3">
+                            <div className="h-[48px] rounded-xl bg-[#FFC439]/20 animate-pulse" />
+                            <div className="h-[48px] rounded-xl bg-white/[0.04] animate-pulse" />
+                          </div>
+                        )}
+                        <div
+                          id="paypal-button-container"
+                          className={`wallet-paypal-wrapper w-full transition-opacity duration-300 ${paypalRendered ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-center gap-2 pt-2">
+                      <svg className="w-3 h-3 text-green-400/50" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
+                      <span className="text-[9px] text-white/20">Procesado de forma segura por PayPal</span>
+                    </div>
                   </div>
                 </div>
               </div>
