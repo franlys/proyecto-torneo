@@ -29,6 +29,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: `La orden de PayPal no fue completada. Estado: ${captureData.status}` }, { status: 400 })
     }
 
+    const paypalCaptureId = captureData?.purchase_units?.[0]?.payments?.captures?.[0]?.id || ''
+    const receiptUrlValue = paypalCaptureId ? `paypal_direct:${paypalCaptureId}` : 'paypal_direct'
+
     // 2. Fetch raffle details
     const { data: raffle } = await adminSupabase
       .from('raffles')
@@ -167,7 +170,7 @@ export async function POST(req: Request) {
       buyer_email: finalEmail,
       buyer_phone: buyerPhone || '',
       payment_status: 'verified',
-      receipt_url: 'paypal_direct',
+      receipt_url: receiptUrlValue,
       seller_id: promoSellerId,
       promo_code: validatedCode,
       discount_amount: discountAmountPerTicket

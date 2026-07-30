@@ -118,3 +118,32 @@ export async function sendPayPalPayout(email: string, amount: number) {
 
   return await res.json()
 }
+
+export async function refundPayPalPayment(captureId: string, amount?: number, currency: string = 'USD') {
+  const token = await getPayPalAccessToken()
+  const apiUrl = process.env.PAYPAL_API_URL || 'https://api-m.sandbox.paypal.com'
+
+  const payload: any = {}
+  if (amount) {
+    payload.amount = {
+      value: amount.toFixed(2),
+      currency_code: currency
+    }
+  }
+
+  const res = await fetch(`${apiUrl}/v2/payments/captures/${captureId}/refund`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`PayPal refund failed: ${text}`)
+  }
+
+  return await res.json()
+}

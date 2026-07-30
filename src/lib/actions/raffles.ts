@@ -1243,6 +1243,128 @@ export async function requestRaffleRefundAction(input: {
 }) {
   try {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    const adminSupabase = await createAdminClient()
+
+    // 1. Fetch raffle to get ticket price
+    const { data: raffle } = await adminSupabase
+      .from('raffles')
+      .select('ticket_price')
+      .eq('id', input.raffleId)
+      .single()
+
+    const ticketPrice = parseFloat(raffle?.ticket_price || '0')
+
+    // 2. Query tickets for this user
+    const cleanPhone = input.buyerPhone.replace(/\D/g, '')
+    const { data: tickets } = await adminSupabase
+      .from('tickets')
+      .select('*')
+      .eq('raffle_id', input.raffleId)
+      .or(`buyer_phone.eq.${input.buyerPhone},buyer_phone.eq.${cleanPhone}`)
+
+    let allAutomatedAndRecent = true
+    let requiresManualReview = false
+    const now = new Date().getTime()
+    const FORTY_EIGHT_HOURS = 48 * 60 * 60 * 1000
+    
+    let kcoinsAmount = 0
+    const paypalCaptures = new Map<string, number>() // captureId -> total amount to refund
+    const ticketsToDelete: string[] = []
+
+    if (tickets && tickets.length > 0) {
+      for (const t of tickets) {
+        const ticketTime = new Date(t.created_at).getTime()
+        const isRecent = (now - ticketTime) <= FORTY_EIGHT_HOURS
+        const isKcoins = t.receipt_url === 'kcoin_payment'
+        const isPayPal = t.receipt_url?.startsWith('paypal_direct:')
+
+        if (!isRecent || (!isKcoins && !isPayPal)) {
+          allAutomatedAndRecent = false
+          requiresManualReview = true
+          break
+        }
+
+        ticketsToDelete.push(t.id)
+
+        if (isKcoins) {
+          const discount = t.discount_amount || 0
+          kcoinsAmount += Math.max(0, ticketPrice - discount)
+        } else if (isPayPal) {
+          const captureId = t.receipt_url.split(':')[1]
+          if (captureId) {
+            const discount = t.discount_amount || 0
+            const amount = Math.max(0, ticketPrice - discount)
+            paypalCaptures.set(captureId, (paypalCaptures.get(captureId) || 0) + amount)
+          } else {
+            allAutomatedAndRecent = false
+            requiresManualReview = true
+            break
+          }
+        }
+      }
+    } else {
+      // No tickets found, maybe just create a manual ticket to let admin figure it out
+      requiresManualReview = true
+    }
+
+    if (allAutomatedAndRecent && !requiresManualReview && tickets && tickets.length > 0) {
+      // Automated refund possible!
+      let refundFailed = false
+      let failReason = ''
+
+      // 1. Process PayPal Refunds
+      if (paypalCaptures.size > 0) {
+        try {
+          const { refundPayPalPayment } = await import('@/lib/paypal')
+          for (const [captureId, amount] of Array.from(paypalCaptures.entries())) {
+            await refundPayPalPayment(captureId)
+          }
+        } catch (err: any) {
+          console.error("PayPal auto-refund error:", err)
+          refundFailed = true
+          failReason = 'Fallo en pasarela de pago.'
+        }
+      }
+
+      // 2. Process K-Coins Refund
+      if (kcoinsAmount > 0 && user && !refundFailed) {
+        try {
+          const { data: profile } = await adminSupabase.from('profiles').select('balance').eq('id', user.id).single()
+          if (profile) {
+            const newBalance = parseFloat(profile.balance || '0') + kcoinsAmount
+            await adminSupabase.from('profiles').update({ balance: newBalance }).eq('id', user.id)
+            
+            // Log transaction
+            await adminSupabase.from('coin_transactions').insert({
+              user_id: user.id,
+              amount: kcoinsAmount,
+              type: 'refund',
+              reference_id: input.raffleId
+            })
+          } else {
+            refundFailed = true
+            failReason = 'Perfil no encontrado.'
+          }
+        } catch (err: any) {
+          refundFailed = true
+          failReason = 'Error reembolsando K-Coins.'
+        }
+      }
+
+      if (!refundFailed) {
+        // Delete tickets
+        await adminSupabase.from('tickets').delete().in('id', ticketsToDelete)
+        revalidatePath(`/raffles/${input.raffleId}`)
+        return { success: true, autoRefunded: true, message: 'Reembolso procesado automáticamente. Los cupos han sido liberados y el dinero fue devuelto a tu método de pago.' }
+      } else {
+        // If it failed, fallback to manual request but append the error reason
+        input.reason = `(FALLO AUTO-REFUND: ${failReason}) ` + input.reason
+      }
+    }
+
+    // Fallback: Create manual refund request
     const { error } = await supabase
       .from('raffle_refund_requests')
       .insert({
@@ -1252,8 +1374,9 @@ export async function requestRaffleRefundAction(input: {
         reason: input.reason,
         status: 'pending'
       })
+
     if (error) return { error: error.message }
-    return { success: true }
+    return { success: true, autoRefunded: false, message: 'Solicitud enviada para revisión manual.' }
   } catch (err: any) {
     return { error: err.message || 'Error al enviar la solicitud' }
   }

@@ -65,6 +65,7 @@ export function RaffleDetailClient({
   const [isRefundPending, setIsRefundPending] = useState(false)
   const [refundSuccess, setRefundSuccess] = useState(false)
   const [refundError, setRefundError] = useState('')
+  const [refundMessage, setRefundMessage] = useState('')
 
   useEffect(() => {
     if (showPaypalModal || isRefundModalOpen) {
@@ -215,6 +216,7 @@ export function RaffleDetailClient({
         setRefundError(res.error)
       } else {
         setRefundSuccess(true)
+        setRefundMessage(res.message || 'Solicitud enviada para revisión manual.')
         setRefundName('')
         setRefundPhone('')
         setRefundReason('')
@@ -1196,9 +1198,9 @@ export function RaffleDetailClient({
             {refundSuccess ? (
               <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-2xl text-center space-y-2">
                 <CheckCircle2 size={32} className="mx-auto text-green-400" />
-                <h4 className="text-xs font-bold text-white uppercase tracking-wider">¡Solicitud Enviada!</h4>
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider">¡Éxito!</h4>
                 <p className="text-[10px] text-white/55">
-                  El administrador validará tus boletos comprados y se comunicará contigo al teléfono provisto.
+                  {refundMessage}
                 </p>
                 <button
                   type="button"
