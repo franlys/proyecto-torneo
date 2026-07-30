@@ -1,7 +1,7 @@
 import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY || 'fake-key-for-dev');
-const FROM_EMAIL = 'Soporte Kronix <onboarding@resend.dev>'; // Usar el default de Resend para testing
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Soporte Kronix <onboarding@resend.dev>';
 
 export async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }) {
   if (!process.env.RESEND_API_KEY) {
