@@ -676,7 +676,7 @@ export function RaffleAdminClient({ raffle, tickets, profiles }: RaffleAdminClie
                               <span className="text-xl">🪙</span>
                               <span className="text-[8px] mt-1 text-white/50 font-bold uppercase tracking-widest">K-Coins</span>
                             </>
-                          ) : tx.receipt_url.startsWith('paypal_direct:') ? (
+                          ) : tx.receipt_url.startsWith('paypal_direct') ? (
                             <>
                               <svg className="w-6 h-6 text-[#009cde]" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M20.067 8.478c.492.315.844.825.966 1.41.372 1.86-.878 3.667-2.783 4.09-.208.045-.42.066-.634.066H16.3l-.515 2.65a.5.5 0 0 1-.49.406h-1.73a.5.5 0 0 1-.49-.594l1.7-8.714h3.37c.702 0 1.365.24 1.922.686ZM5.555 6.374l-.994 5.11-.61 3.124H3.8a.5.5 0 0 0-.49.594l.247 1.27H1.61a.5.5 0 0 1-.49-.406L-.016 9.59a.5.5 0 0 1 .49-.594H2.89l.617-3.17a.5.5 0 0 1 .49-.406h1.558c.23 0 .43.158.49.406Z"/>
@@ -1620,14 +1620,16 @@ export function RaffleAdminClient({ raffle, tickets, profiles }: RaffleAdminClie
                                     <span className="text-xl">🪙</span>
                                     <span className="text-xs font-bold text-white/60">Pago con K-Coins</span>
                                   </>
-                                ) : receiptUrl.startsWith('paypal_direct:') ? (
+                                ) : receiptUrl.startsWith('paypal_direct') ? (
                                   <>
                                     <svg className="w-5 h-5 text-[#009cde]" viewBox="0 0 24 24" fill="currentColor">
                                       <path d="M20.067 8.478c.492.315.844.825.966 1.41.372 1.86-.878 3.667-2.783 4.09-.208.045-.42.066-.634.066H16.3l-.515 2.65a.5.5 0 0 1-.49.406h-1.73a.5.5 0 0 1-.49-.594l1.7-8.714h3.37c.702 0 1.365.24 1.922.686ZM5.555 6.374l-.994 5.11-.61 3.124H3.8a.5.5 0 0 0-.49.594l.247 1.27H1.61a.5.5 0 0 1-.49-.406L-.016 9.59a.5.5 0 0 1 .49-.594H2.89l.617-3.17a.5.5 0 0 1 .49-.406h1.558c.23 0 .43.158.49.406Z"/>
                                     </svg>
                                     <div className="flex flex-col">
                                       <span className="text-xs font-bold text-white/60">Pago vía PayPal</span>
-                                      <span className="text-[9px] text-white/30 truncate max-w-[150px]">ID: {receiptUrl.split(':')[1]}</span>
+                                      {receiptUrl.includes(':') && (
+                                        <span className="text-[9px] text-white/30 truncate max-w-[150px]">ID: {receiptUrl.split(':')[1]}</span>
+                                      )}
                                     </div>
                                   </>
                                 ) : (
@@ -1668,13 +1670,15 @@ export function RaffleAdminClient({ raffle, tickets, profiles }: RaffleAdminClie
                       <h2 className="text-xl font-bold text-white font-orbitron uppercase tracking-widest mt-4">Pago Realizado con K-Coins</h2>
                       <p className="text-sm text-white/40">Este comprobante es generado automáticamente por la plataforma.</p>
                     </>
-                  ) : selectedReceipt.startsWith('paypal_direct:') ? (
+                  ) : selectedReceipt.startsWith('paypal_direct') ? (
                     <>
                       <svg className="w-20 h-20 text-[#009cde] mx-auto" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M20.067 8.478c.492.315.844.825.966 1.41.372 1.86-.878 3.667-2.783 4.09-.208.045-.42.066-.634.066H16.3l-.515 2.65a.5.5 0 0 1-.49.406h-1.73a.5.5 0 0 1-.49-.594l1.7-8.714h3.37c.702 0 1.365.24 1.922.686ZM5.555 6.374l-.994 5.11-.61 3.124H3.8a.5.5 0 0 0-.49.594l.247 1.27H1.61a.5.5 0 0 1-.49-.406L-.016 9.59a.5.5 0 0 1 .49-.594H2.89l.617-3.17a.5.5 0 0 1 .49-.406h1.558c.23 0 .43.158.49.406Z"/>
                       </svg>
                       <h2 className="text-xl font-bold text-white font-orbitron uppercase tracking-widest mt-4">Pago Vía PayPal Acreditado</h2>
-                      <p className="text-sm text-white/40 font-bold bg-white/5 inline-block px-4 py-2 rounded-lg border border-white/10 mt-2">ID: {selectedReceipt.split(':')[1]}</p>
+                      {selectedReceipt.includes(':') && (
+                        <p className="text-sm text-white/40 font-bold bg-white/5 inline-block px-4 py-2 rounded-lg border border-white/10 mt-2">ID: {selectedReceipt.split(':')[1]}</p>
+                      )}
                     </>
                   ) : (
                     <span className="text-white font-bold">{selectedReceipt}</span>
