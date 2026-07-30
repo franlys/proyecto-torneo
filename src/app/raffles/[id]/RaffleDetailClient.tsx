@@ -16,6 +16,7 @@ interface RaffleDetailClientProps {
   isLoggedIn: boolean
   userBalance?: number
   usdToDopRate?: number
+  profile?: any
 }
 
 export function RaffleDetailClient({
@@ -24,6 +25,7 @@ export function RaffleDetailClient({
   isLoggedIn,
   userBalance = 0,
   usdToDopRate = 58.25,
+  profile
 }: RaffleDetailClientProps) {
   const router = useRouter()
   const [ticketCount, setTicketCount] = useState(1)
@@ -150,9 +152,9 @@ export function RaffleDetailClient({
             body: JSON.stringify({
               orderID: data.orderID,
               raffleId: raffle.id,
-              buyerName: isLoggedIn ? 'Registrado' : buyerName.trim(),
-              buyerPhone: isLoggedIn ? 'Registrado' : buyerPhone.trim(),
-              buyerEmail: isLoggedIn ? undefined : buyerEmail.trim() || undefined,
+              buyerName: isLoggedIn && profile ? (profile.username || profile.email?.split('@')[0]) : buyerName.trim(),
+              buyerPhone: isLoggedIn && profile ? (profile.phone || '0000000000') : buyerPhone.trim(),
+              buyerEmail: isLoggedIn && profile ? profile.email : buyerEmail.trim() || undefined,
               ticketNumbers,
               promoCode: appliedPromoCode || undefined
             })

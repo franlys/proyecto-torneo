@@ -4,11 +4,17 @@ import React, { useState, useTransition } from 'react'
 import { Search, Loader2, Calendar } from 'lucide-react'
 import { findMyTicketsPublicAction } from '@/lib/actions/raffles'
 
-export function MyTicketsClient() {
+export function MyTicketsClient({ 
+  isLoggedIn = false, 
+  initialTickets = [] 
+}: { 
+  isLoggedIn?: boolean
+  initialTickets?: any[] 
+}) {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
-  const [tickets, setTickets] = useState<any[]>([])
-  const [searched, setSearched] = useState(false)
+  const [tickets, setTickets] = useState<any[]>(initialTickets)
+  const [searched, setSearched] = useState(isLoggedIn)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -49,56 +55,58 @@ export function MyTicketsClient() {
         </p>
       </div>
 
-      {/* Search Box */}
-      <div className="max-w-md mx-auto p-6 bg-white/[0.01] border border-white/5 rounded-2xl shadow-xl space-y-4">
-        <form onSubmit={handleSearch} className="space-y-4">
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">Nombre Completo *</label>
-            <input
-              type="text"
-              placeholder="Nombre y Apellido como te registraste"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-neon-cyan"
-              required
-            />
-          </div>
+      {/* Search Box (Only for guests) */}
+      {!isLoggedIn && (
+        <div className="max-w-md mx-auto p-6 bg-white/[0.01] border border-white/5 rounded-2xl shadow-xl space-y-4">
+          <form onSubmit={handleSearch} className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">Nombre Completo *</label>
+              <input
+                type="text"
+                placeholder="Nombre y Apellido como te registraste"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-neon-cyan"
+                required
+              />
+            </div>
 
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">Celular / WhatsApp *</label>
-            <input
-              type="tel"
-              placeholder="Ej: 809-555-0100"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-neon-cyan"
-              required
-            />
-          </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">Celular / WhatsApp *</label>
+              <input
+                type="tel"
+                placeholder="Ej: 809-555-0100"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-neon-cyan"
+                required
+              />
+            </div>
 
-          {error && (
-            <p className="text-xs text-red-400 font-bold bg-red-500/5 p-2 rounded-lg border border-red-500/10 text-center">
-              ⚠️ {error}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={isPending}
-            className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-neon-cyan to-neon-purple hover:opacity-90 active:scale-95 transition-all disabled:opacity-40 uppercase tracking-widest font-orbitron flex items-center justify-center gap-2"
-          >
-            {isPending ? (
-              <>
-                <Loader2 size={14} className="animate-spin" /> Buscando...
-              </>
-            ) : (
-              <>
-                <Search size={14} /> Buscar Boletos
-              </>
+            {error && (
+              <p className="text-xs text-red-400 font-bold bg-red-500/5 p-2 rounded-lg border border-red-500/10 text-center">
+                ⚠️ {error}
+              </p>
             )}
-          </button>
-        </form>
-      </div>
+
+            <button
+              type="submit"
+              disabled={isPending}
+              className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-neon-cyan to-neon-purple hover:opacity-90 active:scale-95 transition-all disabled:opacity-40 uppercase tracking-widest font-orbitron flex items-center justify-center gap-2"
+            >
+              {isPending ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" /> Buscando...
+                </>
+              ) : (
+                <>
+                  <Search size={14} /> Buscar Boletos
+                </>
+              )}
+            </button>
+          </form>
+        </div>
+      )}
 
       {/* Results List */}
       {searched && (
@@ -109,7 +117,9 @@ export function MyTicketsClient() {
 
           {tickets.length === 0 ? (
             <div className="p-12 text-center text-xs text-white/30 border border-white/5 rounded-2xl bg-white/[0.005]">
-              No se encontraron boletos asociados a estos datos de contacto. Verifica que hayas escrito el nombre y celular exactamente igual que al realizar la compra.
+              {isLoggedIn 
+                ? 'Aún no tienes boletos de sorteos asociados a tu cuenta.' 
+                : 'No se encontraron boletos asociados a estos datos de contacto. Verifica que hayas escrito el nombre y celular exactamente igual que al realizar la compra.'}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

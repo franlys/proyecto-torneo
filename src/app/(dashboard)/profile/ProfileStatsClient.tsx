@@ -218,12 +218,16 @@ export function ProfileStatsClient({
         USER: { label: 'Usuario', color: 'text-white/40 border-white/10 bg-white/5' },
       } as any)[profile?.role ?? 'USER']) || { label: 'Usuario', color: 'text-white/40 border-white/10 bg-white/5' })
 
-  const subLabel = (({
+  let subLabel = (({
     ACTIVE: { label: 'Activa', color: 'text-green-400 border-green-500/30 bg-green-500/10' },
     PENDING: { label: 'Pendiente', color: 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10' },
     NONE: { label: 'Free', color: 'text-white/30 border-white/10 bg-white/5' },
     EXPIRED: { label: 'Expirada', color: 'text-red-400 border-red-500/30 bg-red-500/10' },
   } as any)[profile?.subscriptionStatus ?? 'NONE']) || { label: 'Free', color: 'text-white/30 border-white/10 bg-white/5' }
+
+  if (profile?.role === 'SUPER_ADMIN') {
+    subLabel = { label: 'Infinita ♾️', color: 'text-neon-cyan border-neon-cyan/30 bg-neon-cyan/10' }
+  }
 
   // 1. Chart Data: Ranking Evolution (Cumulative Points)
   const rankingChartData = useMemo(() => {
