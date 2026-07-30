@@ -655,6 +655,11 @@ export async function finishTournament(
         type: 'deposit',
         reference_id: id
       })
+      await adminSupabase.from('notifications').insert({
+        user_id: organizerId,
+        title: 'Beneficios del Torneo 🪙',
+        message: `Has recibido ${organizerPayout.toFixed(2)} K-Coins en comisiones por la finalización del torneo "${tournament.name}".`
+      })
     }
 
     if (streamerPayout > 0 && tournament.collaborator_id && tournament.creator_id) {
@@ -666,6 +671,11 @@ export async function finishTournament(
         amount: streamerPayout,
         type: 'deposit',
         reference_id: id
+      })
+      await adminSupabase.from('notifications').insert({
+        user_id: tournament.creator_id,
+        title: 'Beneficios del Torneo 🪙',
+        message: `Has recibido ${streamerPayout.toFixed(2)} K-Coins en comisiones por la finalización del torneo "${tournament.name}".`
       })
     }
 
@@ -692,6 +702,10 @@ export async function finishTournament(
           if (participants && participants.length > 0) {
             const splitPrize = parseFloat((prizePool / participants.length).toFixed(2))
             
+            // Obtener el nombre del equipo para el mensaje
+            const { data: teamInfo } = await adminSupabase.from('teams').select('name').eq('id', standing.team_id).single()
+            const teamName = teamInfo?.name || 'tu equipo'
+
             for (const part of participants) {
               const userId = part.user_id
               if (userId) {
@@ -703,6 +717,11 @@ export async function finishTournament(
                   amount: splitPrize,
                   type: 'bet_won',
                   reference_id: id
+                })
+                await adminSupabase.from('notifications').insert({
+                  user_id: userId,
+                  title: '¡Premio de Podio! 🏆',
+                  message: `¡Felicidades! Has ganado ${splitPrize.toFixed(2)} K-Coins por obtener el lugar #${rank} con tu equipo "${teamName}" en el torneo "${tournament.name}".`
                 })
               }
             }
@@ -729,6 +748,11 @@ export async function finishTournament(
           amount: Number(t.prize_mvp),
           type: 'bet_won',
           reference_id: id
+        })
+        await adminSupabase.from('notifications').insert({
+          user_id: mvpUserId,
+          title: '¡Elegido MVP! ⭐',
+          message: `¡Felicidades! Has sido galardonado como el MVP del torneo "${tournament.name}" y recibiste ${Number(t.prize_mvp).toFixed(2)} K-Coins.`
         })
       }
     }

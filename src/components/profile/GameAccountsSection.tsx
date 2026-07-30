@@ -10,6 +10,8 @@ interface GameAccount {
   game: string
   game_id: string
   game_username: string
+  verified?: boolean
+  verification_meta?: any
 }
 
 interface GameAccountsSectionProps {
@@ -93,9 +95,28 @@ export function GameAccountsSection({ initialAccounts }: GameAccountsSectionProp
                   <div className="min-w-0">
                     <p className="text-xs font-black text-white uppercase tracking-wide truncate">{meta.label}</p>
                     {linked ? (
-                      <div className="mt-0.5">
-                        <p className="text-[11px] text-neon-cyan/80 font-mono truncate">{linked.game_id}</p>
+                      <div className="mt-0.5 space-y-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-[11px] text-neon-cyan/80 font-mono truncate">{linked.game_id}</p>
+                          {linked.verified ? (
+                            <span className="inline-flex items-center text-[9px] bg-green-500/10 text-green-400 border border-green-500/20 px-1.5 py-0.5 rounded-full font-bold">
+                              ✓ Verificado
+                            </span>
+                          ) : (
+                            <span className="text-[9px] text-white/30">(No Verificada)</span>
+                          )}
+                        </div>
                         <p className="text-[11px] text-white/50 truncate">{linked.game_username}</p>
+                        {linked.verified && linked.verification_meta && (
+                          <div className="text-[10px] text-white/40 font-semibold space-y-0.5 mt-1 border-t border-white/[0.03] pt-1">
+                            {linked.game === 'clash_royale' && linked.verification_meta.trophies && (
+                              <p>🏆 Copas: {linked.verification_meta.trophies} | 👑 Nivel: {linked.verification_meta.expLevel}</p>
+                            )}
+                            {linked.game === 'league_of_legends' && linked.verification_meta.level && (
+                              <p>🏆 Nivel: {linked.verification_meta.level}</p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <p className="text-[11px] text-white/30 mt-0.5">No vinculada</p>

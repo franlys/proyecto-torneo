@@ -344,6 +344,21 @@ export async function registerTournament(
           isCaptain: participant.is_captain,
         })
 
+        // Insert in-app notification
+        if (targetUserId) {
+          try {
+            await adminSupabase.from('notifications').insert({
+              user_id: targetUserId,
+              title: isCaptain ? 'Inscripción Confirmada ⚔️' : 'Inscrito en Torneo ⚔️',
+              message: isCaptain 
+                ? `Te has inscrito con éxito en el torneo "${tournament.name}" con tu equipo "${team.name}".`
+                : `Tu capitán te ha inscrito en el equipo "${team.name}" para el torneo "${tournament.name}".`
+            })
+          } catch (notifErr) {
+            console.error('Error inserting in-app notification:', notifErr)
+          }
+        }
+
         // Si es un compañero y NO tiene su cuenta de juego vinculada/completada, notificarle por correo
         if (!isCaptain && targetUserId && (!teammateGameId || !teammateGameUsername)) {
           const { data: teammateProfile } = await adminSupabase

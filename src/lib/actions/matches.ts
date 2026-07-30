@@ -74,6 +74,36 @@ export async function updateMatch(
       .update({ is_active: false })
       .eq('tournament_id', tournamentId)
       .neq('id', matchId)
+
+    // Notify all participants in this tournament that the match is active
+    try {
+      const { data: tourney } = await supabase
+        .from('tournaments')
+        .select('name')
+        .eq('id', tournamentId)
+        .single()
+
+      if (tourney) {
+        const { data: players } = await supabase
+          .from('participants')
+          .select('user_id')
+          .eq('tournament_id', tournamentId)
+          .not('user_id', 'is', null)
+
+        if (players && players.length > 0) {
+          // Keep unique user IDs
+          const uniqueUserIds = Array.from(new Set(players.map((p: any) => p.user_id)))
+          const notificationsToInsert = uniqueUserIds.map((uId) => ({
+            user_id: uId,
+            title: '¡Partida Lista! ⚔️',
+            message: `La partida del torneo "${tourney.name}" ya está activa. ¡Entra a jugar!`
+          }))
+          await supabase.from('notifications').insert(notificationsToInsert)
+        }
+      }
+    } catch (notifErr) {
+      console.error('Error sending Match Active notifications:', notifErr)
+    }
   }
 
   const { error } = await supabase

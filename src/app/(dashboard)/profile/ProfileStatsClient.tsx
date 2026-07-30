@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts'
 import { updateProfile, uploadProfileAvatar } from '@/lib/actions/profile'
+import { updateDiscordUsername } from '@/lib/actions/game-accounts'
 import { getFriendsList, searchUsersForFriends, sendFriendRequest, removeFriend } from '@/lib/actions/friends'
 import { toast } from 'sonner'
 import { SubscriptionUpload } from './SubscriptionUpload'
@@ -83,6 +84,7 @@ export function ProfileStatsClient({
   const [activeTab, setActiveTab] = useState<'inicio' | 'profile' | 'history' | 'badges' | 'stats' | 'friends' | 'sorteos'>(defaultTab)
   const [username, setUsername] = useState(profile?.username ?? '')
   const [streamUrl, setStreamUrl] = useState(profile?.stream_url ?? '')
+  const [discordUsername, setDiscordUsername] = useState(profile?.discord_username ?? '')
   const [isSaving, setIsSaving] = useState(false)
 
   // Friends states
@@ -164,7 +166,12 @@ export function ProfileStatsClient({
       if (res && 'error' in res) {
         toast.error(res.error)
       } else {
-        toast.success('Perfil actualizado correctamente')
+        const discordRes = await updateDiscordUsername(discordUsername)
+        if ('error' in discordRes) {
+          toast.error(discordRes.error)
+        } else {
+          toast.success('Perfil y Discord actualizados correctamente')
+        }
       }
     } catch (err: any) {
       toast.error('Error al actualizar perfil: ' + err.message)
@@ -914,6 +921,24 @@ export function ProfileStatsClient({
                   />
                   <p className="text-[10px] text-white/40 mt-1">
                     Ingresa tu canal de Twitch, Kick, YouTube o Facebook Gaming para precargarlo en tus inscripciones.
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="discord_username" className="block text-xs text-white/50 uppercase tracking-widest font-bold mb-1.5">
+                    Cuenta de Discord
+                  </label>
+                  <input
+                    id="discord_username"
+                    name="discord_username"
+                    type="text"
+                    value={discordUsername}
+                    onChange={(e) => setDiscordUsername(e.target.value)}
+                    placeholder="Ej: nombre_usuario#0000 o nombre_usuario"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30 transition-colors"
+                  />
+                  <p className="text-[10px] text-white/40 mt-1">
+                    Vincula tu usuario de Discord para coordinar partidas y verificar tu identidad social.
                   </p>
                 </div>
 

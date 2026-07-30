@@ -216,3 +216,18 @@ export async function syncClashRoyaleTournamentData(
 
   return { success: true, count: standingRows.length }
 }
+
+export async function fetchClashRoyalePlayer(tag: string): Promise<any> {
+  const apiKey = (process.env.CLASH_ROYALE_API_KEY || '').replace(/\s+/g, '')
+  if (!apiKey) {
+    throw new Error('CLASH_ROYALE_API_KEY no configurado en el servidor.')
+  }
+
+  const trimmedTag = tag.trim().replace(/\s+/g, '')
+  const formattedTag = trimmedTag.startsWith('#') ? trimmedTag : `#${trimmedTag}`
+  const encodedTag = encodeURIComponent(formattedTag)
+  const url = `https://api.clashroyale.com/v1/players/${encodedTag}`
+
+  const proxyUrl = process.env.CLASH_ROYALE_PROXY
+  return fetchWithProxy(url, apiKey, proxyUrl)
+}
