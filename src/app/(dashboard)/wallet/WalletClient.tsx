@@ -132,7 +132,7 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
     <div className="space-y-8 max-w-5xl mx-auto">
       {/* Script for PayPal SDK */}
       <Script
-        src={`https://www.paypal.com/sdk/js?client-id=${process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}&currency=USD`}
+        src={`https://www.paypal.com/sdk/js?client-id=${process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}&currency=USD&disable-funding=credit,card`}
         onLoad={() => setSdkLoaded(true)}
         onError={() => console.error('Failed to load PayPal SDK')}
       />
