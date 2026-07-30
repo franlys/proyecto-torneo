@@ -8,6 +8,7 @@ import type { CreateTournamentInput, UpdateTournamentInput } from '@/lib/validat
 import { isActiveStreamer, isAdmin, getProfile } from './auth-helpers'
 import { pushToAC } from './ac-push'
 import { mapTournamentRow } from '@/lib/utils'
+import { getUsdToDopRate } from '@/lib/services/exchange-rate'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -638,40 +639,46 @@ export async function finishTournament(
     )
 
     const adminSupabase = await createAdminClient()
+    const rate = await getUsdToDopRate()
+
+    const organizerPayoutInKCoins = parseFloat((organizerPayout * rate).toFixed(2))
+    const streamerPayoutInKCoins = parseFloat((streamerPayout * rate).toFixed(2))
 
     // 1. Distribuir a Streamer / Organizador
     const organizerId = tournament.collaborator_id || tournament.creator_id
     if (organizerPayout > 0 && organizerId) {
       const { data: orgProfile } = await adminSupabase.from('profiles').select('balance').eq('id', organizerId).single()
-      const newBal = parseFloat((Number(orgProfile?.balance || 0) + organizerPayout).toFixed(2))
+      const newBal = parseFloat((Number(orgProfile?.balance || 0) + organizerPayoutInKCoins).toFixed(2))
       await adminSupabase.from('profiles').update({ balance: newBal }).eq('id', organizerId)
       await adminSupabase.from('coin_transactions').insert({
         user_id: organizerId,
-        amount: organizerPayout,
+        amount: organizerPayoutInKCoins,
         type: 'deposit',
+        description: `Comisión de Torneo: ${tournament.name} ($${organizerPayout.toFixed(2)} USD)`,
         reference_id: id
       })
       await adminSupabase.from('notifications').insert({
         user_id: organizerId,
         title: 'Beneficios del Torneo 🪙',
-        message: `Has recibido ${organizerPayout.toFixed(2)} K-Coins en comisiones por la finalización del torneo "${tournament.name}".`
+        message: `Has recibido ${organizerPayoutInKCoins.toLocaleString('es-ES')} K-Coins (equivalente a $${organizerPayout.toFixed(2)} USD) en comisiones por la finalización del torneo "${tournament.name}".`
       })
     }
 
     if (streamerPayout > 0 && tournament.collaborator_id && tournament.creator_id) {
       const { data: strProfile } = await adminSupabase.from('profiles').select('balance').eq('id', tournament.creator_id).single()
-      const newBal = parseFloat((Number(strProfile?.balance || 0) + streamerPayout).toFixed(2))
+      const newBal = parseFloat((Number(strProfile?.balance || 0) + streamerPayoutInKCoins).toFixed(2))
       await adminSupabase.from('profiles').update({ balance: newBal }).eq('id', tournament.creator_id)
       await adminSupabase.from('coin_transactions').insert({
         user_id: tournament.creator_id,
-        amount: streamerPayout,
+        amount: streamerPayoutInKCoins,
         type: 'deposit',
+        description: `Comisión de Torneo (Socio): ${tournament.name} ($${streamerPayout.toFixed(2)} USD)`,
         reference_id: id
       })
       await adminSupabase.from('notifications').insert({
         user_id: tournament.creator_id,
         title: 'Beneficios del Torneo 🪙',
-        message: `Has recibido ${streamerPayout.toFixed(2)} K-Coins en comisiones por la finalización del torneo "${tournament.name}".`
+        message: `Has recibido ${streamerPayoutInKCoins.toLocaleString('es-ES')} K-Coins (equivalente a $${streamerPayout.toFixed(2)} USD) en comisiones por la finalización del torneo "${tournament.name}".`
       })
     }
 
@@ -688,6 +695,7 @@ export async function finishTournament(
         const prizePool = rank === 1 ? Number(t.prize_1st) : rank === 2 ? Number(t.prize_2nd) : Number(t.prize_3rd)
         
         if (prizePool > 0) {
+          const prizePoolInKCoins = prizePool * rate
           // Obtener los participantes del equipo con cuenta de usuario
           const { data: participants } = await adminSupabase
             .from('participants')
@@ -696,7 +704,8 @@ export async function finishTournament(
             .not('user_id', 'is', null)
 
           if (participants && participants.length > 0) {
-            const splitPrize = parseFloat((prizePool / participants.length).toFixed(2))
+            const splitPrizeUsd = parseFloat((prizePool / participants.length).toFixed(2))
+            const splitPrizeKCoins = parseFloat((prizePoolInKCoins / participants.length).toFixed(2))
             
             // Obtener el nombre del equipo para el mensaje
             const { data: teamInfo } = await adminSupabase.from('teams').select('name').eq('id', standing.team_id).single()
@@ -706,18 +715,19 @@ export async function finishTournament(
               const userId = part.user_id
               if (userId) {
                 const { data: pProfile } = await adminSupabase.from('profiles').select('balance').eq('id', userId).single()
-                const newBal = parseFloat((Number(pProfile?.balance || 0) + splitPrize).toFixed(2))
+                const newBal = parseFloat((Number(pProfile?.balance || 0) + splitPrizeKCoins).toFixed(2))
                 await adminSupabase.from('profiles').update({ balance: newBal }).eq('id', userId)
                 await adminSupabase.from('coin_transactions').insert({
                   user_id: userId,
-                  amount: splitPrize,
+                  amount: splitPrizeKCoins,
                   type: 'bet_won',
+                  description: `Premio #${rank} Torneo: ${tournament.name} ($${splitPrizeUsd.toFixed(2)} USD)`,
                   reference_id: id
                 })
                 await adminSupabase.from('notifications').insert({
                   user_id: userId,
                   title: '¡Premio de Podio! 🏆',
-                  message: `¡Felicidades! Has ganado ${splitPrize.toFixed(2)} K-Coins por obtener el lugar #${rank} con tu equipo "${teamName}" en el torneo "${tournament.name}".`
+                  message: `¡Felicidades! Has ganado ${splitPrizeKCoins.toLocaleString('es-ES')} K-Coins (equivalente a $${splitPrizeUsd.toFixed(2)} USD) por obtener el lugar #${rank} con tu equipo "${teamName}" en el torneo "${tournament.name}".`
                 })
               }
             }
@@ -736,19 +746,22 @@ export async function finishTournament(
 
       const mvpUserId = mvpPart?.user_id
       if (mvpUserId) {
+        const mvpPrizeUsd = Number(t.prize_mvp)
+        const mvpPrizeKCoins = parseFloat((mvpPrizeUsd * rate).toFixed(2))
         const { data: mvpProfile } = await adminSupabase.from('profiles').select('balance').eq('id', mvpUserId).single()
-        const newBal = parseFloat((Number(mvpProfile?.balance || 0) + Number(t.prize_mvp)).toFixed(2))
+        const newBal = parseFloat((Number(mvpProfile?.balance || 0) + mvpPrizeKCoins).toFixed(2))
         await adminSupabase.from('profiles').update({ balance: newBal }).eq('id', mvpUserId)
         await adminSupabase.from('coin_transactions').insert({
           user_id: mvpUserId,
-          amount: Number(t.prize_mvp),
+          amount: mvpPrizeKCoins,
           type: 'bet_won',
+          description: `Premio MVP Torneo: ${tournament.name} ($${mvpPrizeUsd.toFixed(2)} USD)`,
           reference_id: id
         })
         await adminSupabase.from('notifications').insert({
           user_id: mvpUserId,
           title: '¡Elegido MVP! ⭐',
-          message: `¡Felicidades! Has sido galardonado como el MVP del torneo "${tournament.name}" y recibiste ${Number(t.prize_mvp).toFixed(2)} K-Coins.`
+          message: `¡Felicidades! Has sido galardonado como el MVP del torneo "${tournament.name}" y recibiste ${mvpPrizeKCoins.toLocaleString('es-ES')} K-Coins (equivalente a $${mvpPrizeUsd.toFixed(2)} USD).`
         })
       }
     }

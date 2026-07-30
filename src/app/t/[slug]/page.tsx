@@ -8,6 +8,7 @@ import { LeaderboardClient } from './LeaderboardClient'
 import { recalculateStandings } from '@/lib/actions/submissions'
 import { ArenaPromoBanner } from '@/components/promo/ArenaPromoBanner'
 import { getAdBanners } from '@/lib/actions/federation'
+import { getUsdToDopRate } from '@/lib/services/exchange-rate'
 
 export default async function PublicLeaderboardPage({
   params,
@@ -257,6 +258,8 @@ export default async function PublicLeaderboardPage({
     userBets = bets || []
   }
 
+  const exchangeRate = await getUsdToDopRate()
+
   return (
     <main className="min-h-screen bg-transparent text-white font-inter">
       {tournament.arena_betting_enabled && (
@@ -310,6 +313,7 @@ export default async function PublicLeaderboardPage({
         maxPointsLimit={tournament.max_points_limit ? Number(tournament.max_points_limit) : undefined}
         discordUrl={tournament.discord_url}
         arenaBettingEnabled={!!tournament.arena_betting_enabled}
+        exchangeRate={exchangeRate}
       />
     </main>
   )

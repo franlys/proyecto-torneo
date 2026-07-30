@@ -246,6 +246,7 @@ export function LeaderboardClient({
   userBets = [],
   isLoggedIn = false,
   arenaBettingEnabled = false,
+  exchangeRate = 58.25,
 }: {
   tournamentId: string
   tournamentName: string
@@ -306,6 +307,7 @@ export function LeaderboardClient({
   userBets?: any[]
   isLoggedIn?: boolean
   arenaBettingEnabled?: boolean
+  exchangeRate?: number
 }) {
   // Stable supabase client — created once, not on every render.
   // If this were inside the component body without useMemo, every render would produce
@@ -1677,9 +1679,9 @@ export function LeaderboardClient({
                       <div className="flex items-center gap-1.5 sm:col-span-2 text-gold font-bold mt-1">
                         <span>💰</span>
                         <span>
-                          <strong>Premio total:</strong> ${totalPrize.toLocaleString('es-ES')} USD 
-                          <span className="text-[9px] text-white/40 font-normal ml-2">
-                            (1º: ${prize1st} | 2º: ${prize2nd} | 3º: ${prize3rd} {prizeMvp > 0 && `| MVP: $${prizeMvp}`})
+                          <strong>Premio total:</strong> ${totalPrize.toLocaleString('es-ES')} USD <span className="text-[11px] text-yellow-300">(~{(totalPrize * exchangeRate).toLocaleString('es-ES', { maximumFractionDigits: 0 })} K-Coins)</span>
+                          <span className="text-[9px] text-white/40 font-normal block mt-0.5">
+                            (1º: ${prize1st} USD / ~{Math.round(prize1st * exchangeRate)} K-Coins | 2º: ${prize2nd} USD / ~{Math.round(prize2nd * exchangeRate)} K-Coins | 3º: ${prize3rd} USD / ~{Math.round(prize3rd * exchangeRate)} K-Coins {prizeMvp > 0 && `| MVP: $${prizeMvp} USD / ~${Math.round(prizeMvp * exchangeRate)} K-Coins`})
                           </span>
                         </span>
                       </div>
@@ -1698,8 +1700,9 @@ export function LeaderboardClient({
                       </div>
                       <p className="text-[12px] text-white/70 leading-relaxed">
                         Esta inscripción tiene un costo de{' '}
-                        <strong className="text-yellow-300 text-sm font-black">{entryFee.toLocaleString('es-ES')} K-Coins</strong>.
-                        Se descontarán automáticamente de tu billetera al inscribirte.
+                        <strong className="text-white">${entryFee} USD</strong>{' '}
+                        <span className="text-yellow-300 font-bold">(~{(entryFee * exchangeRate).toLocaleString('es-ES', { maximumFractionDigits: 2 })} K-Coins)</span>.
+                        Se descontará automáticamente el equivalente en K-Coins de tu billetera al inscribirte.
                       </p>
                       {!isLoggedIn && (
                         <p className="text-[10px] text-white/40 italic">Inicia sesión para verificar tu saldo.</p>
@@ -2921,10 +2924,10 @@ export function LeaderboardClient({
                       <span className="text-xl">🪙</span>
                       <div>
                         <p className="text-xs font-black text-yellow-300 uppercase tracking-wider">
-                          Costo: {entryFee.toLocaleString('es-ES')} K-Coins
+                          Costo: ${entryFee} USD (~{(entryFee * exchangeRate).toLocaleString('es-ES', { maximumFractionDigits: 2 })} K-Coins)
                         </p>
                         <p className="text-[10px] text-white/40 mt-0.5">
-                          Se descontarán de tu billetera al confirmar.
+                          Se descontará el equivalente en K-Coins de tu billetera al confirmar.
                         </p>
                       </div>
                     </div>

@@ -2,6 +2,7 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { pushToAC } from './ac-push'
+import { getUsdToDopRate } from '@/lib/services/exchange-rate'
 
 export async function registerTournament(
   tournamentId: string,
@@ -224,11 +225,14 @@ export async function registerTournament(
     }
 
     const hasEntryFee = tournament.entry_fee && Number(tournament.entry_fee) > 0
-    const entryFeeAmount = Number(tournament.entry_fee || 0)
+    const entryFeeUsd = Number(tournament.entry_fee || 0)
     let initialStatus = 'confirmed'
     let amountPaidValue = 0
 
     if (hasEntryFee) {
+      const rate = await getUsdToDopRate()
+      const entryFeeInKCoins = parseFloat((entryFeeUsd * rate).toFixed(2))
+
       // Verificar saldo de K-Coins del capitán
       const { data: captainProfile, error: balErr } = await adminSupabase
         .from('profiles')
@@ -241,14 +245,14 @@ export async function registerTournament(
       }
 
       const currentBalance = parseFloat(captainProfile.balance || '0')
-      if (currentBalance < entryFeeAmount) {
+      if (currentBalance < entryFeeInKCoins) {
         return {
-          error: `Saldo insuficiente de K-Coins. El costo de inscripción es ${entryFeeAmount} K-Coins y tu saldo es ${currentBalance.toFixed(2)} K-Coins. Recarga en tu billetera.`
+          error: `Saldo insuficiente de K-Coins. El costo es de $${entryFeeUsd} USD (~${entryFeeInKCoins.toLocaleString('es-ES')} K-Coins) y tu saldo es ${currentBalance.toFixed(2)} K-Coins. Recarga en tu billetera.`
         }
       }
 
       // Descontar K-Coins del capitán
-      const newBalance = parseFloat((currentBalance - entryFeeAmount).toFixed(2))
+      const newBalance = parseFloat((currentBalance - entryFeeInKCoins).toFixed(2))
       const { error: deductErr } = await adminSupabase
         .from('profiles')
         .update({ balance: newBalance })
@@ -261,14 +265,14 @@ export async function registerTournament(
       // Registrar transacción
       await adminSupabase.from('coin_transactions').insert({
         user_id: user.id,
-        amount: -entryFeeAmount,
+        amount: -entryFeeInKCoins,
         type: 'tournament_entry',
-        description: `Inscripción al torneo: ${tournament.name}`,
+        description: `Inscripción al torneo: ${tournament.name} ($${entryFeeUsd} USD)`,
         reference_id: tournamentId,
       })
 
       initialStatus = 'confirmed'
-      amountPaidValue = entryFeeAmount
+      amountPaidValue = entryFeeInKCoins
     }
 
     // 6. Insertar Equipo
