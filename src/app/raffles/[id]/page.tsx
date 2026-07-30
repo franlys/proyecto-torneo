@@ -42,6 +42,7 @@ export default async function RaffleDetailPage({ params }: RaffleDetailPageProps
           userBalance={userBalance}
           usdToDopRate={usdToDopRate}
           profile={profile}
+          userEmail={user?.email}
         />
       </main>
     </div>

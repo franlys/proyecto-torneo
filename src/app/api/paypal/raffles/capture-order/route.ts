@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { capturePayPalPayment } from '@/lib/paypal'
 import { revalidatePath } from 'next/cache'
@@ -143,14 +143,19 @@ export async function POST(req: Request) {
         finalUsername = await generateUniqueUsername(buyerName, adminSupabase)
       }
 
+      const upsertData: any = {
+        id: targetUserId,
+        email: finalEmail,
+        username: finalUsername,
+      }
+      
+      if (!currentProfile) {
+        upsertData.role = 'USER'
+      }
+
       await adminSupabase
         .from('profiles')
-        .upsert({ 
-          id: targetUserId,
-          email: finalEmail, 
-          username: finalUsername, 
-          role: 'USER' 
-        })
+        .upsert(upsertData)
     }
 
     // 6. Insert verified tickets

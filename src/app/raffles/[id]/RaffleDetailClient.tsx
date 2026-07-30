@@ -17,6 +17,7 @@ interface RaffleDetailClientProps {
   userBalance?: number
   usdToDopRate?: number
   profile?: any
+  userEmail?: string
 }
 
 export function RaffleDetailClient({
@@ -25,7 +26,8 @@ export function RaffleDetailClient({
   isLoggedIn,
   userBalance = 0,
   usdToDopRate = 58.25,
-  profile
+  profile,
+  userEmail
 }: RaffleDetailClientProps) {
   const router = useRouter()
   const [ticketCount, setTicketCount] = useState(1)
@@ -120,6 +122,10 @@ export function RaffleDetailClient({
         setIsUploading(true)
         setError(null)
         try {
+          let finalBuyerName = buyerName.trim()
+          let finalBuyerPhone = buyerPhone.trim()
+          let finalBuyerEmail = buyerEmail.trim() || undefined
+
           if (!isLoggedIn) {
             if (!buyerName.trim()) {
               alert('Por favor introduce tu nombre antes de pagar.')
@@ -136,6 +142,10 @@ export function RaffleDetailClient({
               setIsUploading(false)
               return
             }
+          } else if (profile) {
+            finalBuyerName = profile.username || (userEmail ? userEmail.split('@')[0] : 'Registrado')
+            finalBuyerPhone = '0000000000'
+            finalBuyerEmail = userEmail
           }
 
           // Generate numbers first to check availability
@@ -152,9 +162,9 @@ export function RaffleDetailClient({
             body: JSON.stringify({
               orderID: data.orderID,
               raffleId: raffle.id,
-              buyerName: isLoggedIn && profile ? (profile.username || profile.email?.split('@')[0]) : buyerName.trim(),
-              buyerPhone: isLoggedIn && profile ? (profile.phone || '0000000000') : buyerPhone.trim(),
-              buyerEmail: isLoggedIn && profile ? profile.email : buyerEmail.trim() || undefined,
+              buyerName: finalBuyerName,
+              buyerPhone: finalBuyerPhone,
+              buyerEmail: finalBuyerEmail,
               ticketNumbers,
               promoCode: appliedPromoCode || undefined
             })
@@ -371,11 +381,19 @@ export function RaffleDetailClient({
             setIsUploading(false)
             return
           }
+          let finalBuyerName = buyerName.trim()
+          let finalBuyerPhone = buyerPhone.trim()
+          let finalBuyerEmail = buyerEmail.trim() || undefined
+          if (isLoggedIn && profile) {
+            finalBuyerName = profile.username || (userEmail ? userEmail.split('@')[0] : 'Registrado')
+            finalBuyerPhone = '0000000000'
+            finalBuyerEmail = userEmail
+          }
           res = await buyTicketPublicAction(
             raffle.id,
-            buyerName.trim(),
-            buyerPhone.trim(),
-            buyerEmail.trim() || undefined,
+            finalBuyerName,
+            finalBuyerPhone,
+            finalBuyerEmail,
             ticketNumbers,
             receiptUrl,
             appliedPromoCode || undefined
