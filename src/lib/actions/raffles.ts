@@ -1415,6 +1415,7 @@ export async function resolveRaffleRefundRequestAction(input: {
   deleteTickets: boolean
   raffleId: string
   buyerPhone: string
+  ticketIds?: string[]
 }) {
   try {
     const supabase = await createClient()
@@ -1433,14 +1434,23 @@ export async function resolveRaffleRefundRequestAction(input: {
 
     // Si es resuelta (aprobada) y se solicita borrar boletos, los eliminamos de la BD
     if (input.status === 'resolved' && input.deleteTickets) {
-      const cleanPhone = input.buyerPhone.replace(/\D/g, '')
-      const { error: deleteError } = await adminSupabase
-        .from('tickets')
-        .delete()
-        .eq('raffle_id', input.raffleId)
-        .or(`buyer_phone.eq.${input.buyerPhone},buyer_phone.eq.${cleanPhone}`)
+      if (input.ticketIds && input.ticketIds.length > 0) {
+        const { error: deleteError } = await adminSupabase
+          .from('tickets')
+          .delete()
+          .in('id', input.ticketIds)
+          
+        if (deleteError) return { error: deleteError.message }
+      } else {
+        const cleanPhone = input.buyerPhone.replace(/\D/g, '')
+        const { error: deleteError } = await adminSupabase
+          .from('tickets')
+          .delete()
+          .eq('raffle_id', input.raffleId)
+          .or(`buyer_phone.eq.${input.buyerPhone},buyer_phone.eq.${cleanPhone}`)
 
-      if (deleteError) return { error: deleteError.message }
+        if (deleteError) return { error: deleteError.message }
+      }
     }
 
     revalidatePath(`/admin/raffles/${input.raffleId}`)

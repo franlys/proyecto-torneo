@@ -38,7 +38,8 @@ export function RaffleAdminClient({ raffle, tickets, profiles }: RaffleAdminClie
     requestId: string,
     status: 'resolved' | 'rejected',
     deleteTickets: boolean,
-    buyerPhone: string
+    buyerPhone: string,
+    ticketIds: string[] = []
   ) => {
     const confirmation = window.confirm(
       status === 'resolved'
@@ -57,6 +58,7 @@ export function RaffleAdminClient({ raffle, tickets, profiles }: RaffleAdminClie
         deleteTickets,
         raffleId: raffle.id,
         buyerPhone,
+        ticketIds,
       })
 
       if (res && 'error' in res) {
@@ -1535,19 +1537,19 @@ export function RaffleAdminClient({ raffle, tickets, profiles }: RaffleAdminClie
                         {req.status === 'pending' && (
                           <div className="flex flex-wrap items-center gap-2">
                             <button
-                              onClick={() => handleResolveRefund(req.id, 'resolved', true, req.buyer_phone)}
+                              onClick={() => handleResolveRefund(req.id, 'resolved', true, req.buyer_phone, buyerTickets.map(t => t.id))}
                               className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-black bg-green-400 hover:bg-green-400/85 uppercase tracking-wider transition-all"
                             >
                               ✓ Aprobar y Borrar Boletos
                             </button>
                             <button
-                              onClick={() => handleResolveRefund(req.id, 'resolved', false, req.buyer_phone)}
+                              onClick={() => handleResolveRefund(req.id, 'resolved', false, req.buyer_phone, buyerTickets.map(t => t.id))}
                               className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-white bg-white/5 border border-white/10 hover:bg-white/10 uppercase tracking-wider transition-all"
                             >
                               ✓ Aprobar (Mantener Boletos)
                             </button>
                             <button
-                              onClick={() => handleResolveRefund(req.id, 'rejected', false, req.buyer_phone)}
+                              onClick={() => handleResolveRefund(req.id, 'rejected', false, req.buyer_phone, buyerTickets.map(t => t.id))}
                               className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500 hover:text-white uppercase tracking-wider transition-all"
                             >
                               ✗ Rechazar
