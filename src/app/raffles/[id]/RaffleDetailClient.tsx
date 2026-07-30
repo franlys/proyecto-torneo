@@ -63,6 +63,17 @@ export function RaffleDetailClient({
   const [refundError, setRefundError] = useState('')
 
   useEffect(() => {
+    if (showPaypalModal || isRefundModalOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [showPaypalModal, isRefundModalOpen])
+
+  useEffect(() => {
     if (paymentMethod !== 'paypal_direct' || !sdkLoaded || !(window as any).paypal) return
     if (!showPaypalModal) return
 
@@ -710,11 +721,11 @@ export function RaffleDetailClient({
                       </button>
                     </div>
 
-                    {/* Body — single col mobile, two col desktop */}
-                    <div className="overflow-y-auto flex-1 flex flex-col sm:flex-row">
+                    {/* Body — separate scrolling per column on desktop */}
+                    <div className="flex-1 flex flex-col sm:flex-row overflow-hidden">
 
                       {/* LEFT PANEL — Order Summary (desktop only sidebar) */}
-                      <div className="sm:w-64 sm:flex-shrink-0 p-6 sm:border-r border-b sm:border-b-0 border-white/[0.06] space-y-5 bg-white/[0.01]">
+                      <div className="sm:w-64 sm:flex-shrink-0 p-6 sm:border-r border-b sm:border-b-0 border-white/[0.06] space-y-5 bg-white/[0.01] overflow-y-auto">
                         <div>
                           <p className="text-[10px] text-white/25 uppercase tracking-widest font-semibold mb-3">Resumen del pedido</p>
                           <div className="space-y-2">
@@ -750,7 +761,7 @@ export function RaffleDetailClient({
                       </div>
 
                       {/* RIGHT PANEL — Payment */}
-                      <div className="flex-1 p-6 space-y-5 flex flex-col justify-center bg-white relative">
+                      <div className="flex-1 p-6 space-y-5 flex flex-col justify-start bg-white relative overflow-y-auto">
                         <p className="text-[10px] text-gray-500 uppercase tracking-widest text-center font-bold">Elige tu método de pago</p>
 
                         {isUploading ? (
