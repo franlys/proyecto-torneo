@@ -74,10 +74,11 @@ export function RaffleDetailClient({
       style: {
         layout: 'vertical',
         color: 'gold',
-        shape: 'pill',
+        shape: 'rect',
         label: 'pay',
-        height: 45,
-        tagline: false
+        height: 48,
+        tagline: false,
+        borderRadius: 12
       },
       createOrder: async () => {
         try {
@@ -729,15 +730,30 @@ export function RaffleDetailClient({
                       ) : (
                         <div className="space-y-3">
                           <p className="text-[10px] text-white/30 text-center uppercase tracking-widest">Elige tu método de pago</p>
+                          {/* CSS to neutralize PayPal's white iframe background */}
+                          <style dangerouslySetInnerHTML={{__html: `
+                            #raffle-paypal-button-container .paypal-buttons-context-iframe {
+                              border-radius: 12px;
+                              overflow: hidden;
+                            }
+                            #raffle-paypal-button-container iframe {
+                              border-radius: 12px;
+                            }
+                            .raffle-paypal-wrapper {
+                              background: #111318 !important;
+                              border-radius: 12px;
+                              overflow: hidden;
+                            }
+                          `}} />
                           {!paypalRendered && (
                             <div className="space-y-2">
-                              <div className="h-[45px] rounded-full bg-white/[0.04] animate-pulse" />
-                              <div className="h-[45px] rounded-full bg-white/[0.03] animate-pulse" />
+                              <div className="h-[48px] rounded-xl bg-[#FFC439]/20 animate-pulse" />
+                              <div className="h-[48px] rounded-xl bg-white/[0.04] animate-pulse" />
                             </div>
                           )}
                           <div
                             id="raffle-paypal-button-container"
-                            className={`w-full transition-opacity duration-300 ${paypalRendered ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}
+                            className={`raffle-paypal-wrapper w-full transition-opacity duration-300 ${paypalRendered ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}
                           />
                         </div>
                       )}
