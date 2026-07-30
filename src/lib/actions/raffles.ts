@@ -1240,6 +1240,7 @@ export async function requestRaffleRefundAction(input: {
   buyerName: string
   buyerPhone: string
   reason: string
+  quantity?: number
 }) {
   try {
     const supabase = await createClient()
@@ -1273,7 +1274,6 @@ export async function requestRaffleRefundAction(input: {
       }
     } else {
       if (isDummyPhone) {
-        // Un usuario anónimo no debería poder buscar con el teléfono dummy, no retornará tickets
         query = query.eq('buyer_phone', 'IMPOSSIBLE_PHONE_MATCH_TRIGGER')
       } else {
         query = query.or(`buyer_phone.eq.${input.buyerPhone},buyer_phone.eq.${cleanPhone}`)
@@ -1304,6 +1304,13 @@ export async function requestRaffleRefundAction(input: {
       return { error: 'Ya tienes una solicitud de devolución pendiente para este sorteo.' }
     }
 
+    const targetQuantity = input.quantity && input.quantity > 0 ? input.quantity : tickets.length
+    if (targetQuantity > tickets.length) {
+      return { error: `Solo tienes ${tickets.length} boletos disponibles. No puedes devolver ${targetQuantity}.` }
+    }
+
+    const ticketsToProcess = tickets.slice(0, targetQuantity)
+
     let allAutomatedAndRecent = true
     let requiresManualReview = false
     const now = new Date().getTime()
@@ -1313,35 +1320,33 @@ export async function requestRaffleRefundAction(input: {
     const paypalCaptures = new Map<string, number>() // captureId -> total amount to refund
     const ticketsToDelete: string[] = []
 
-    if (tickets && tickets.length > 0) {
-      for (const t of tickets) {
-        const ticketTime = new Date(t.created_at).getTime()
-        const isRecent = (now - ticketTime) <= FORTY_EIGHT_HOURS
-        const isKcoins = t.receipt_url === 'kcoin_payment'
-        const isPayPal = t.receipt_url === 'paypal_direct' || t.receipt_url?.startsWith('paypal_direct:')
+    for (const t of ticketsToProcess) {
+      const ticketTime = new Date(t.created_at).getTime()
+      const isRecent = (now - ticketTime) <= FORTY_EIGHT_HOURS
+      const isKcoins = t.receipt_url === 'kcoin_payment'
+      const isPayPal = t.receipt_url === 'paypal_direct' || t.receipt_url?.startsWith('paypal_direct:')
 
-        if (!isRecent || (!isKcoins && !isPayPal)) {
+      if (!isRecent || (!isKcoins && !isPayPal)) {
+        allAutomatedAndRecent = false
+        requiresManualReview = true
+        break
+      }
+
+      ticketsToDelete.push(t.id)
+
+      if (isKcoins) {
+        const discount = t.discount_amount || 0
+        kcoinsAmount += Math.max(0, ticketPrice - discount)
+      } else if (isPayPal) {
+        const captureId = t.receipt_url.split(':')[1]
+        if (captureId) {
+          const discount = t.discount_amount || 0
+          const amount = Math.max(0, ticketPrice - discount)
+          paypalCaptures.set(captureId, (paypalCaptures.get(captureId) || 0) + amount)
+        } else {
           allAutomatedAndRecent = false
           requiresManualReview = true
           break
-        }
-
-        ticketsToDelete.push(t.id)
-
-        if (isKcoins) {
-          const discount = t.discount_amount || 0
-          kcoinsAmount += Math.max(0, ticketPrice - discount)
-        } else if (isPayPal) {
-          const captureId = t.receipt_url.split(':')[1]
-          if (captureId) {
-            const discount = t.discount_amount || 0
-            const amount = Math.max(0, ticketPrice - discount)
-            paypalCaptures.set(captureId, (paypalCaptures.get(captureId) || 0) + amount)
-          } else {
-            allAutomatedAndRecent = false
-            requiresManualReview = true
-            break
-          }
         }
       }
     }
@@ -1402,7 +1407,10 @@ export async function requestRaffleRefundAction(input: {
     }
 
     // Fallback: Create manual refund request
-    const finalReason = user ? `[USER_ID:${user.id}]\n${input.reason}` : input.reason
+    let finalReason = user ? `[USER_ID:${user.id}]\n${input.reason}` : input.reason
+    if (input.quantity && input.quantity > 0) {
+      finalReason += `\n[CANTIDAD:${input.quantity}]`
+    }
 
     const { error } = await supabase
       .from('raffle_refund_requests')

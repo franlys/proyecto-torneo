@@ -194,10 +194,12 @@ export function RaffleDetailClient({
     })
   }, [paymentMethod, sdkLoaded, showPaypalModal, ticketCount, appliedPromoCode, buyerName, buyerPhone, buyerPhoneConfirm, buyerEmail])
 
+  const [refundQuantity, setRefundQuantity] = useState('')
+
   const handleRefundSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!refundName.trim() || !refundPhone.trim() || !refundReason.trim()) {
-      setRefundError('Por favor completa todos los campos.')
+      setRefundError('Por favor completa todos los campos obligatorios.')
       return
     }
 
@@ -210,6 +212,7 @@ export function RaffleDetailClient({
         buyerName: refundName.trim(),
         buyerPhone: refundPhone.trim(),
         reason: refundReason.trim(),
+        quantity: refundQuantity ? parseInt(refundQuantity) : undefined
       })
 
       if (res && 'error' in res) {
@@ -220,6 +223,7 @@ export function RaffleDetailClient({
         setRefundName('')
         setRefundPhone('')
         setRefundReason('')
+        setRefundQuantity('')
       }
     } catch (err: any) {
       setRefundError(err.message || 'Error al procesar la solicitud')
@@ -1250,6 +1254,23 @@ export function RaffleDetailClient({
                     </p>
                   </div>
                 )}
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-white/40 uppercase tracking-widest font-medium">
+                    Cantidad de Boletos (Opcional)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={refundQuantity}
+                    onChange={(e) => setRefundQuantity(e.target.value)}
+                    placeholder="Ej: 5 (Vacío para devolver todos)"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-neon-cyan placeholder:text-white/20"
+                  />
+                  <p className="text-[9px] text-white/30">
+                    Si dejas esto vacío, se solicitará la devolución de todos los boletos adquiridos en esta compra.
+                  </p>
+                </div>
 
                 <div className="space-y-1.5">
                   <label className="text-[10px] text-white/40 uppercase tracking-widest font-medium">

@@ -1507,17 +1507,28 @@ export function RaffleAdminClient({ raffle, tickets, profiles }: RaffleAdminClie
                 {refundRequests.map((req) => {
                   const userIdMatch = req.reason.match(/\[USER_ID:([a-f0-9\-]+)\]/)
                   const requestUserId = userIdMatch ? userIdMatch[1] : null
-                  const displayReason = req.reason.replace(/\[USER_ID:[a-f0-9\-]+\]\n?/, '')
+                  
+                  const qtyMatch = req.reason.match(/\[CANTIDAD:(\d+)\]/)
+                  const requestQty = qtyMatch ? parseInt(qtyMatch[1]) : null
+
+                  let displayReason = req.reason
+                    .replace(/\[USER_ID:[a-f0-9\-]+\]\n?/, '')
+                    .replace(/\[CANTIDAD:\d+\]\n?/, '')
+                    .trim()
 
                   const cleanReqPhone = req.buyer_phone.replace(/\D/g, '')
                   const isDummyPhone = cleanReqPhone === '0000000000'
 
-                  const buyerTickets = tickets.filter(t => {
+                  let buyerTickets = tickets.filter(t => {
                     if (requestUserId && t.user_id === requestUserId) return true
                     if (isDummyPhone) return false // Prevent cross-user matching on dummy phone
                     const cleanTicketPhone = (t.buyer_phone || '').replace(/\D/g, '')
                     return cleanTicketPhone === cleanReqPhone || (t.buyer_phone && t.buyer_phone === req.buyer_phone)
                   })
+                  
+                  if (requestQty && requestQty > 0) {
+                    buyerTickets = buyerTickets.slice(0, requestQty)
+                  }
                   
                   const receiptUrl = buyerTickets.find(t => t.receipt_url)?.receipt_url
 
