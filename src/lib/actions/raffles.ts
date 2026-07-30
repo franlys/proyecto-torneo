@@ -1282,6 +1282,28 @@ export async function requestRaffleRefundAction(input: {
 
     const { data: tickets } = await query
 
+    if (!tickets || tickets.length === 0) {
+      return { error: 'No se encontraron boletos válidos con estos datos para reembolsar.' }
+    }
+
+    // Check if there's already a pending request to prevent spam
+    let pendingQuery = adminSupabase
+      .from('raffle_refund_requests')
+      .select('id')
+      .eq('raffle_id', input.raffleId)
+      .eq('status', 'pending')
+
+    if (user) {
+      pendingQuery = pendingQuery.ilike('reason', `%[USER_ID:${user.id}]%`)
+    } else {
+      pendingQuery = pendingQuery.eq('buyer_phone', input.buyerPhone)
+    }
+
+    const { data: existingRequests } = await pendingQuery
+    if (existingRequests && existingRequests.length > 0) {
+      return { error: 'Ya tienes una solicitud de devolución pendiente para este sorteo.' }
+    }
+
     let allAutomatedAndRecent = true
     let requiresManualReview = false
     const now = new Date().getTime()
@@ -1322,9 +1344,6 @@ export async function requestRaffleRefundAction(input: {
           }
         }
       }
-    } else {
-      // No tickets found, maybe just create a manual ticket to let admin figure it out
-      requiresManualReview = true
     }
 
     if (allAutomatedAndRecent && !requiresManualReview && tickets && tickets.length > 0) {
