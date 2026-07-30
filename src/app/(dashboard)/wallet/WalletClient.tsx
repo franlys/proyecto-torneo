@@ -222,7 +222,13 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
               ) : (
                 <div className="space-y-4">
                   <div className="text-xs text-white/40 mb-2">Selecciona un método de pago seguro a través de PayPal:</div>
-                  <div id="paypal-button-container" className="w-full"></div>
+                  {!process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ? (
+                    <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold rounded-xl text-center">
+                      ⚠️ Error: La integración de PayPal no está configurada (Falta NEXT_PUBLIC_PAYPAL_CLIENT_ID en Vercel).
+                    </div>
+                  ) : (
+                    <div id="paypal-button-container" className="w-full"></div>
+                  )}
                 </div>
               )}
             </div>

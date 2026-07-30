@@ -626,7 +626,11 @@ export function RaffleDetailClient({
                     )}
 
                     <div className="pt-4 border-t border-white/5">
-                      {isUploading ? (
+                      {!process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ? (
+                        <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold rounded-xl text-center font-bold">
+                          ⚠️ Error: La integración de PayPal no está configurada (Falta NEXT_PUBLIC_PAYPAL_CLIENT_ID en Vercel).
+                        </div>
+                      ) : isUploading ? (
                         <div className="p-4 text-center bg-white/[0.01] border border-dashed border-white/10 rounded-xl space-y-2">
                           <Loader2 className="w-6 h-6 animate-spin text-blue-400 mx-auto" />
                           <p className="text-[10px] text-white/60">Acreditando tu pago de PayPal, por favor espera...</p>
