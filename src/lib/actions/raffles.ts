@@ -1263,10 +1263,21 @@ export async function requestRaffleRefundAction(input: {
       .select('*')
       .eq('raffle_id', input.raffleId)
 
+    const isDummyPhone = cleanPhone === '0000000000'
+
     if (user) {
-      query = query.or(`user_id.eq.${user.id},buyer_phone.eq.${input.buyerPhone},buyer_phone.eq.${cleanPhone}`)
+      if (isDummyPhone) {
+        query = query.eq('user_id', user.id)
+      } else {
+        query = query.or(`user_id.eq.${user.id},buyer_phone.eq.${input.buyerPhone},buyer_phone.eq.${cleanPhone}`)
+      }
     } else {
-      query = query.or(`buyer_phone.eq.${input.buyerPhone},buyer_phone.eq.${cleanPhone}`)
+      if (isDummyPhone) {
+        // Un usuario anónimo no debería poder buscar con el teléfono dummy, no retornará tickets
+        query = query.eq('buyer_phone', 'IMPOSSIBLE_PHONE_MATCH_TRIGGER')
+      } else {
+        query = query.or(`buyer_phone.eq.${input.buyerPhone},buyer_phone.eq.${cleanPhone}`)
+      }
     }
 
     const { data: tickets } = await query
@@ -1285,7 +1296,7 @@ export async function requestRaffleRefundAction(input: {
         const ticketTime = new Date(t.created_at).getTime()
         const isRecent = (now - ticketTime) <= FORTY_EIGHT_HOURS
         const isKcoins = t.receipt_url === 'kcoin_payment'
-        const isPayPal = t.receipt_url?.startsWith('paypal_direct:')
+        const isPayPal = t.receipt_url === 'paypal_direct' || t.receipt_url?.startsWith('paypal_direct:')
 
         if (!isRecent || (!isKcoins && !isPayPal)) {
           allAutomatedAndRecent = false
@@ -1372,13 +1383,15 @@ export async function requestRaffleRefundAction(input: {
     }
 
     // Fallback: Create manual refund request
+    const finalReason = user ? `[USER_ID:${user.id}]\n${input.reason}` : input.reason
+
     const { error } = await supabase
       .from('raffle_refund_requests')
       .insert({
         raffle_id: input.raffleId,
         buyer_name: input.buyerName,
         buyer_phone: input.buyerPhone,
-        reason: input.reason,
+        reason: finalReason,
         status: 'pending'
       })
 

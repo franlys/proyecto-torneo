@@ -1505,8 +1505,16 @@ export function RaffleAdminClient({ raffle, tickets, profiles }: RaffleAdminClie
             ) : (
               <div className="space-y-4">
                 {refundRequests.map((req) => {
+                  const userIdMatch = req.reason.match(/\[USER_ID:([a-f0-9\-]+)\]/)
+                  const requestUserId = userIdMatch ? userIdMatch[1] : null
+                  const displayReason = req.reason.replace(/\[USER_ID:[a-f0-9\-]+\]\n?/, '')
+
                   const cleanReqPhone = req.buyer_phone.replace(/\D/g, '')
+                  const isDummyPhone = cleanReqPhone === '0000000000'
+
                   const buyerTickets = tickets.filter(t => {
+                    if (requestUserId && t.user_id === requestUserId) return true
+                    if (isDummyPhone) return false // Prevent cross-user matching on dummy phone
                     const cleanTicketPhone = (t.buyer_phone || '').replace(/\D/g, '')
                     return cleanTicketPhone === cleanReqPhone || (t.buyer_phone && t.buyer_phone === req.buyer_phone)
                   })
@@ -1565,7 +1573,7 @@ export function RaffleAdminClient({ raffle, tickets, profiles }: RaffleAdminClie
                             Motivo de la Devolución
                           </span>
                           <p className="text-xs text-white/70 leading-relaxed bg-white/[0.01] border border-white/5 p-3.5 rounded-xl whitespace-pre-wrap">
-                            {req.reason}
+                            {displayReason}
                           </p>
                         </div>
 
