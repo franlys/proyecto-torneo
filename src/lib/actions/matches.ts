@@ -105,6 +105,14 @@ export async function updateMatch(
     })
   }
 
+  // Auto-resolve betting markets when match is marked as completed
+  if (data.isCompleted === true) {
+    const { autoResolveMatchMarketsAction } = await import('./predictions')
+    autoResolveMatchMarketsAction(matchId).catch((err: any) => {
+      console.error('[autoResolve] Error al liquidar mercados del match:', err)
+    })
+  }
+
   revalidatePath(`/t/[slug]`, 'page')
   revalidatePath(`/tournaments/${tournamentId}/matches`)
   return { success: true }

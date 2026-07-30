@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getProfile } from '@/lib/actions/auth-helpers'
 import { Navbar } from '@/components/navigation/Navbar'
 import { RaffleDetailClient } from './RaffleDetailClient'
+import { getUsdToDopRate } from '@/lib/services/exchange-rate'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,6 +27,9 @@ export default async function RaffleDetailPage({ params }: RaffleDetailPageProps
   const { data: { user } } = await supabase.auth.getUser()
   const profile = user ? await getProfile() : null
   const isLoggedIn = !!user
+  
+  const userBalance = profile?.balance || 0
+  const usdToDopRate = await getUsdToDopRate()
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white selection:bg-neon-cyan/30 pb-20">
@@ -35,6 +39,8 @@ export default async function RaffleDetailPage({ params }: RaffleDetailPageProps
           raffle={raffle}
           tickets={tickets}
           isLoggedIn={isLoggedIn}
+          userBalance={userBalance}
+          usdToDopRate={usdToDopRate}
         />
       </main>
     </div>

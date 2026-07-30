@@ -36,3 +36,6 @@ Thumbs.db
 
 # supabase local dev
 supabase/.temp/
+
+# scratch files
+scratch/

@@ -18,6 +18,7 @@ import { getFriendsList } from '@/lib/actions/friends'
 import { getGameAccountForUser, upsertGameAccount, GAME_LABELS } from '@/lib/actions/game-accounts'
 import { toast } from 'sonner'
 import { NicknameModal } from '@/components/profile/NicknameModal'
+import { placePredictionAction } from '@/lib/actions/predictions'
 
 const orbitron = Orbitron({ subsets: ['latin'] })
 
@@ -239,6 +240,11 @@ export function LeaderboardClient({
   entryFee = 0,
   maxPointsLimit,
   discordUrl,
+  betMarkets = [],
+  initialBalance = 0,
+  userBets = [],
+  isLoggedIn = false,
+  arenaBettingEnabled = false,
 }: {
   tournamentId: string
   tournamentName: string
@@ -294,6 +300,11 @@ export function LeaderboardClient({
   streamUrl?: string | null
   maxPointsLimit?: number
   discordUrl?: string | null
+  betMarkets?: any[]
+  initialBalance?: number
+  userBets?: any[]
+  isLoggedIn?: boolean
+  arenaBettingEnabled?: boolean
 }) {
   // Stable supabase client — created once, not on every render.
   // If this were inside the component body without useMemo, every render would produce
@@ -468,7 +479,14 @@ export function LeaderboardClient({
   const [currentSubmissions, setCurrentSubmissions] = useState(submissions || [])
   const [currentMatches, setCurrentMatches] = useState(matches || [])
   const [currentLiveViewers, setCurrentLiveViewers] = useState(totalLiveViewers || 0)
-  const [activeTab, setActiveTab] = useState<'ranking' | 'participants' | 'matches' | 'rules' | 'statistics' | 'evidences'>('ranking')
+  const [activeTab, setActiveTab] = useState<'ranking' | 'participants' | 'matches' | 'rules' | 'statistics' | 'evidences' | 'bets'>('ranking')
+  // Bets state
+  const [localBalance, setLocalBalance] = useState(initialBalance)
+  const [localUserBets, setLocalUserBets] = useState<any[]>(userBets)
+  const [betsLoading, setBetsLoading] = useState(false)
+  const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null)
+  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null)
+  const [betAmount, setBetAmount] = useState<string>('')
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null)
   const [watchingStream, setWatchingStream] = useState<string | null>(null)
 
@@ -1911,6 +1929,17 @@ export function LeaderboardClient({
         >
           Subir Evidencias
         </button>
+        {arenaBettingEnabled && (
+          <button
+            onClick={() => setActiveTab('bets')}
+            className={`shrink-0 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg relative ${
+              activeTab === 'bets' ? 'bg-yellow-500/20 text-yellow-300' : 'text-white/40 hover:text-white/80'
+            }`}
+            style={{ borderColor: activeTab === 'bets' ? '#eab308' : 'transparent', borderWidth: 1 }}
+          >
+            Apuestas 🪙
+          </button>
+        )}
       </div>
 
       {activeTab === 'ranking' ? (
@@ -2315,6 +2344,215 @@ export function LeaderboardClient({
               <span className="text-white font-orbitron font-bold text-sm uppercase">{currentStatus}</span>
             </div>
           </div>
+        </motion.div>
+      ) : activeTab === 'bets' ? (
+        <motion.div
+          key="bets-tab"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          {/* Balance Header */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gradient-to-r from-yellow-500/10 via-yellow-400/5 to-transparent border border-yellow-500/20 rounded-2xl p-5">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center text-2xl">
+                🪙
+              </div>
+              <div>
+                <p className="text-[10px] text-yellow-400/60 uppercase tracking-widest font-bold">Tu Saldo</p>
+                <p className="font-orbitron font-black text-2xl text-yellow-300">{localBalance.toFixed(2)} K-Coins</p>
+              </div>
+            </div>
+            <Link
+              href="/wallet"
+              className="flex items-center gap-2 px-4 py-2.5 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20 hover:border-yellow-500/40 text-yellow-300 font-bold text-xs uppercase tracking-wider rounded-xl transition-all"
+            >
+              + Recargar Saldo
+            </Link>
+          </div>
+
+          {/* Markets */}
+          {betMarkets.length === 0 ? (
+            <div className="py-16 text-center border border-dashed border-white/10 rounded-2xl">
+              <p className="text-4xl mb-3">🪙</p>
+              <p className="text-white/40 text-sm font-semibold uppercase tracking-widest">No hay mercados de apuestas activos</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {betMarkets.map((market: any) => {
+                const opts = market.options as { id: string; name: string; odds: number }[]
+                const isSelected = selectedMarketId === market.id
+                const userBetForMarket = localUserBets.find((b: any) => b.market_id === market.id)
+                const potentialWin = betAmount && selectedOptionId
+                  ? (parseFloat(betAmount) * (opts.find(o => o.id === selectedOptionId)?.odds || 1)).toFixed(2)
+                  : null
+
+                return (
+                  <div key={market.id} className={`bg-dark-card/60 backdrop-blur-xl border rounded-2xl overflow-hidden transition-all ${
+                    market.status === 'open' ? 'border-yellow-500/20 hover:border-yellow-500/30' :
+                    market.status === 'closed' ? 'border-white/10' :
+                    market.status === 'resolved' ? 'border-blue-500/20' : 'border-white/5'
+                  }`}>
+                    <div className="px-5 py-4 flex items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-white text-sm leading-snug">{market.question}</p>
+                        <p className="text-white/30 text-[10px] uppercase tracking-widest mt-0.5">
+                          {market.market_type === 'winner' ? '🏆 Ganador' : market.market_type === 'most_kills' ? '💀 Más Kills' : '✏️ Custom'}
+                        </p>
+                      </div>
+                      <span className={`shrink-0 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border ${
+                        market.status === 'open' ? 'text-green-400 bg-green-400/10 border-green-400/30' :
+                        market.status === 'closed' ? 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30' :
+                        market.status === 'resolved' ? 'text-blue-400 bg-blue-400/10 border-blue-400/30' :
+                        'text-white/30 bg-white/5 border-white/10'
+                      }`}>
+                        {market.status === 'open' ? 'Abierto' : market.status === 'closed' ? 'Cerrado' : market.status === 'resolved' ? 'Resuelto' : 'Cancelado'}
+                      </span>
+                    </div>
+
+                    {/* Options grid */}
+                    <div className="px-5 pb-4 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {opts.map(opt => (
+                        <button
+                          key={opt.id}
+                          disabled={market.status !== 'open' || !isLoggedIn}
+                          onClick={() => {
+                            setSelectedMarketId(market.id)
+                            setSelectedOptionId(opt.id)
+                          }}
+                          className={`py-3 px-3 rounded-xl text-left border transition-all ${
+                            market.winning_option_id === opt.id
+                              ? 'bg-green-500/20 border-green-500/40 text-green-300'
+                              : isSelected && selectedOptionId === opt.id
+                              ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-200'
+                              : 'bg-white/[0.03] border-white/5 text-white/70 hover:border-yellow-500/30 hover:bg-yellow-500/5 disabled:cursor-not-allowed'
+                          }`}
+                        >
+                          <p className="font-bold text-xs leading-tight">{opt.name}</p>
+                          <p className="font-orbitron font-black text-sm mt-1 ${
+                            market.winning_option_id === opt.id ? 'text-green-400' : 'text-yellow-400'
+                          }">{opt.odds}x</p>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Bet form — only if open, logged in, and this market is selected */}
+                    {market.status === 'open' && isLoggedIn && isSelected && selectedOptionId && (
+                      <div className="px-5 pb-5 pt-1 border-t border-white/5 space-y-3">
+                        <div className="flex gap-3 items-center">
+                          <div className="flex-1">
+                            <label className="text-[10px] text-white/30 uppercase tracking-widest font-bold block mb-1.5">Monto (K-Coins)</label>
+                            <input
+                              type="number"
+                              min="1"
+                              step="1"
+                              value={betAmount}
+                              onChange={e => setBetAmount(e.target.value)}
+                              placeholder="Ej: 50"
+                              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/20 outline-none focus:border-yellow-500/50 font-mono"
+                            />
+                          </div>
+                          {potentialWin && (
+                            <div className="text-right">
+                              <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Ganancia Potencial</p>
+                              <p className="font-orbitron font-black text-xl text-yellow-300">{potentialWin}</p>
+                              <p className="text-[9px] text-white/20">K-Coins</p>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          disabled={betsLoading || !betAmount || parseFloat(betAmount) <= 0}
+                          onClick={async () => {
+                            if (!selectedOptionId || !betAmount) return
+                            setBetsLoading(true)
+                            try {
+                              const res = await placePredictionAction({
+                                marketId: market.id,
+                                selectedOptionId,
+                                amount: parseFloat(betAmount),
+                              })
+                              if ('error' in res) {
+                                toast.error(res.error)
+                              } else {
+                                toast.success('¡Apuesta registrada con éxito!')
+                                setLocalBalance(res.balance)
+                                setLocalUserBets(prev => [res.bet, ...prev])
+                                setSelectedMarketId(null)
+                                setSelectedOptionId(null)
+                                setBetAmount('')
+                              }
+                            } finally {
+                              setBetsLoading(false)
+                            }
+                          }}
+                          className="w-full py-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm uppercase tracking-wider rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(234,179,8,0.2)]"
+                        >
+                          {betsLoading ? 'Procesando...' : 'Confirmar Apuesta 🪙'}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Login prompt */}
+                    {market.status === 'open' && !isLoggedIn && (
+                      <div className="px-5 pb-5">
+                        <Link href={`/login?redirectTo=/t/${slug}`} className="block w-full text-center py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all">
+                          Inicia sesión para apostar
+                        </Link>
+                      </div>
+                    )}
+
+                    {/* Existing user bet badge */}
+                    {userBetForMarket && (
+                      <div className={`mx-5 mb-4 px-4 py-2.5 rounded-xl border text-xs font-bold flex items-center justify-between ${
+                        userBetForMarket.status === 'won' ? 'bg-green-500/10 border-green-500/30 text-green-300' :
+                        userBetForMarket.status === 'lost' ? 'bg-red-500/10 border-red-500/30 text-red-400' :
+                        userBetForMarket.status === 'refunded' ? 'bg-white/5 border-white/10 text-white/40' :
+                        'bg-yellow-500/10 border-yellow-500/20 text-yellow-300'
+                      }`}>
+                        <span>Tu apuesta: {opts.find(o => o.id === userBetForMarket.selected_option_id)?.name}</span>
+                        <span>{userBetForMarket.amount} K-Coins → {parseFloat(userBetForMarket.potential_payout).toFixed(2)}</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* User Bet History */}
+          {localUserBets.length > 0 && (
+            <div className="bg-dark-card/40 border border-white/5 rounded-2xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-white/5">
+                <h3 className="font-orbitron font-bold text-sm text-white uppercase tracking-widest">Mis Apuestas en este Torneo</h3>
+              </div>
+              <div className="divide-y divide-white/[0.04]">
+                {localUserBets.map((bet: any) => {
+                  const market = betMarkets.find((m: any) => m.id === bet.market_id)
+                  const opts = market?.options as { id: string; name: string; odds: number }[] || []
+                  const chosenOpt = opts.find(o => o.id === bet.selected_option_id)
+                  return (
+                    <div key={bet.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white/80 text-xs font-semibold truncate">{market?.question}</p>
+                        <p className="text-white/40 text-[10px] mt-0.5">Aposté a: <b className="text-white/60">{chosenOpt?.name || '—'}</b></p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-mono font-bold text-sm text-white">{parseFloat(bet.amount).toFixed(0)} K</p>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                          bet.status === 'won' ? 'bg-green-500/20 text-green-300' :
+                          bet.status === 'lost' ? 'bg-red-500/20 text-red-400' :
+                          bet.status === 'refunded' ? 'bg-white/10 text-white/40' :
+                          'bg-yellow-500/10 text-yellow-300'
+                        }`}>
+                          {bet.status === 'won' ? '✓ Ganada' : bet.status === 'lost' ? '✗ Perdida' : bet.status === 'refunded' ? 'Reembolsada' : 'Pendiente'}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </motion.div>
       ) : activeTab === 'evidences' ? (
         <motion.div 

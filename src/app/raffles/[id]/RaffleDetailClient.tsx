@@ -1,24 +1,29 @@
 'use client'
 
-import React, { useState, useTransition } from 'react'
+import React, { useState, useTransition, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Trophy, Calendar, Ticket, ArrowLeft, Upload, Loader2, Sparkles, CheckCircle2, ShieldCheck, Landmark, X } from 'lucide-react'
 import { CountdownClock } from '@/components/raffles/CountdownClock'
 import { TicketSelector } from '@/components/raffles/TicketSelector'
-import { buyTicketAction, validatePromoCodeAction, buyTicketPublicAction, requestRaffleRefundAction } from '@/lib/actions/raffles'
+import { buyTicketAction, validatePromoCodeAction, buyTicketPublicAction, requestRaffleRefundAction, buyTicketWithKCoinsAction } from '@/lib/actions/raffles'
 import { uploadEvidence } from '@/lib/actions/storage'
+import Script from 'next/script'
 
 interface RaffleDetailClientProps {
   raffle: any
   tickets: any[]
   isLoggedIn: boolean
+  userBalance?: number
+  usdToDopRate?: number
 }
 
 export function RaffleDetailClient({
   raffle,
   tickets,
   isLoggedIn,
+  userBalance = 0,
+  usdToDopRate = 58.25,
 }: RaffleDetailClientProps) {
   const router = useRouter()
   const [ticketCount, setTicketCount] = useState(1)
@@ -30,6 +35,11 @@ export function RaffleDetailClient({
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [selectedQrUrl, setSelectedQrUrl] = useState<string | null>(null)
+  const [localBalance, setLocalBalance] = useState(userBalance)
+  const [paymentMethod, setPaymentMethod] = useState<'kcoins' | 'paypal_direct' | 'transfer'>(
+    isLoggedIn && userBalance >= (raffle.ticket_price * ticketCount) ? 'kcoins' : 'paypal_direct'
+  )
+  const [sdkLoaded, setSdkLoaded] = useState(false)
 
   const [promoCodeInput, setPromoCodeInput] = useState('')
   const [appliedPromoCode, setAppliedPromoCode] = useState<string | null>(null)
@@ -49,6 +59,106 @@ export function RaffleDetailClient({
   const [isRefundPending, setIsRefundPending] = useState(false)
   const [refundSuccess, setRefundSuccess] = useState(false)
   const [refundError, setRefundError] = useState('')
+
+  useEffect(() => {
+    if (paymentMethod !== 'paypal_direct' || !sdkLoaded || !(window as any).paypal) return
+
+    const container = document.getElementById('raffle-paypal-button-container')
+    if (container) container.innerHTML = ''
+
+    ;(window as any).paypal.Buttons({
+      style: {
+        layout: 'vertical',
+        color: 'gold',
+        shape: 'rect',
+        label: 'pay'
+      },
+      createOrder: async () => {
+        try {
+          const res = await fetch('/api/paypal/raffles/create-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              raffleId: raffle.id,
+              ticketCount,
+              promoCode: appliedPromoCode || undefined
+            })
+          })
+          const data = await res.json()
+          if (data.error) {
+            alert(data.error)
+            throw new Error(data.error)
+          }
+          return data.id
+        } catch (err: any) {
+          console.error(err)
+          alert('Error al iniciar orden de PayPal para la rifa')
+          throw err
+        }
+      },
+      onApprove: async (data: any) => {
+        setIsUploading(true)
+        setError(null)
+        try {
+          if (!isLoggedIn) {
+            if (!buyerName.trim()) {
+              alert('Por favor introduce tu nombre antes de pagar.')
+              setIsUploading(false)
+              return
+            }
+            if (!buyerPhone.trim()) {
+              alert('Por favor introduce tu número de celular o WhatsApp antes de pagar.')
+              setIsUploading(false)
+              return
+            }
+            if (buyerPhone.trim() !== buyerPhoneConfirm.trim()) {
+              alert('Los números de teléfono ingresados no coinciden.')
+              setIsUploading(false)
+              return
+            }
+          }
+
+          // Generate numbers first to check availability
+          const ticketNumbers = generateRandomNumbers(ticketCount)
+          if (ticketNumbers.length < ticketCount) {
+            alert('No quedan suficientes boletos disponibles.')
+            setIsUploading(false)
+            return
+          }
+
+          const res = await fetch('/api/paypal/raffles/capture-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderID: data.orderID,
+              raffleId: raffle.id,
+              buyerName: isLoggedIn ? 'Registrado' : buyerName.trim(),
+              buyerPhone: isLoggedIn ? 'Registrado' : buyerPhone.trim(),
+              buyerEmail: isLoggedIn ? undefined : buyerEmail.trim() || undefined,
+              ticketNumbers,
+              promoCode: appliedPromoCode || undefined
+            })
+          })
+          const capture = await res.json()
+          if (capture.error) {
+            alert(`Error al registrar el pago: ${capture.error}`)
+          } else {
+            setAssignedNumbers(ticketNumbers)
+            setPurchaseSuccess(true)
+          }
+        } catch (err: any) {
+          console.error(err)
+          alert('Error al acreditar tu pago')
+        } finally {
+          setIsUploading(false)
+        }
+      },
+      onError: (err: any) => {
+        console.error('PayPal button error:', err)
+        alert('Hubo un error con la pasarela de PayPal')
+      }
+    }).render('#raffle-paypal-button-container')
+  }, [paymentMethod, sdkLoaded, ticketCount, appliedPromoCode, buyerName, buyerPhone, buyerPhoneConfirm, buyerEmail])
 
   const handleRefundSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -128,7 +238,7 @@ export function RaffleDetailClient({
   }
 
   // Generar números de boletos aleatorios basados en los disponibles
-  const generateRandomNumbers = (count: number): string[] => {
+  function generateRandomNumbers(count: number): string[] {
     const occupiedNumbers = new Set(tickets.map(t => t.ticket_number))
     const numbers: string[] = []
     
@@ -149,8 +259,47 @@ export function RaffleDetailClient({
     return numbers
   }
 
+  const discountAmount = appliedPromoCode ? (raffle.ticket_price * promoDiscountPercent) / 100 : 0
+  const pricePerTicket = Math.max(0, raffle.ticket_price - discountAmount)
+  const totalCost = pricePerTicket * ticketCount
+
   const handlePurchase = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Generar números de boletos first to ensure availability
+    const ticketNumbers = generateRandomNumbers(ticketCount)
+    if (ticketNumbers.length < ticketCount) {
+      setError('No quedan suficientes boletos disponibles en este sorteo.')
+      return
+    }
+
+    if (paymentMethod === 'kcoins') {
+      if (localBalance < totalCost) {
+        setError('Saldo insuficiente en tu billetera de K-Coins.')
+        return
+      }
+      setIsUploading(true)
+      setError(null)
+      try {
+        startTransition(async () => {
+          const res = await buyTicketWithKCoinsAction(raffle.id, ticketNumbers, appliedPromoCode || undefined)
+          setIsUploading(false)
+          if ('error' in res) {
+            setError(res.error)
+          } else {
+            setLocalBalance(res.newBalance)
+            setAssignedNumbers(ticketNumbers)
+            setPurchaseSuccess(true)
+          }
+        })
+      } catch (err: any) {
+        setError(err.message || 'Error al procesar el pago con K-Coins.')
+        setIsUploading(false)
+      }
+      return
+    }
+
+    // Transfer flow
     if (!selectedFile) {
       setError('Por favor selecciona una captura o foto de tu comprobante de pago.')
       return
@@ -177,14 +326,6 @@ export function RaffleDetailClient({
 
       const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://otssvwinchttedisfqtr.supabase.co').replace(/\/$/, '')
       const receiptUrl = `${supabaseUrl}/storage/v1/object/public/evidences/${uploadRes.path}`
-
-      // 2. Generar números de boletos
-      const ticketNumbers = generateRandomNumbers(ticketCount)
-      if (ticketNumbers.length < ticketCount) {
-        setError('No quedan suficientes boletos disponibles en este sorteo.')
-        setIsUploading(false)
-        return
-      }
 
       // 3. Ejecutar compra en Server Action
       startTransition(async () => {
@@ -423,108 +564,223 @@ export function RaffleDetailClient({
                 )}
               </div>
 
+              {/* Payment Method Selector */}
+              <div className={`grid gap-2 ${isLoggedIn ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                {isLoggedIn && (
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('kcoins')}
+                    className={`py-2.5 rounded-xl text-[10px] font-bold font-orbitron transition-all border uppercase tracking-wider flex items-center justify-center gap-1 ${
+                      paymentMethod === 'kcoins'
+                        ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400 font-bold'
+                        : 'bg-white/5 border-transparent text-white/40 hover:text-white/60'
+                    }`}
+                  >
+                    🪙 K-Coins
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('paypal_direct')}
+                  className={`py-2.5 rounded-xl text-[10px] font-bold font-orbitron transition-all border uppercase tracking-wider flex items-center justify-center gap-1 ${
+                    paymentMethod === 'paypal_direct'
+                      ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 font-bold'
+                      : 'bg-white/5 border-transparent text-white/40 hover:text-white/60'
+                  }`}
+                >
+                  💳 PayPal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('transfer')}
+                  className={`py-2.5 rounded-xl text-[10px] font-bold font-orbitron transition-all border uppercase tracking-wider flex items-center justify-center gap-1 ${
+                    paymentMethod === 'transfer'
+                      ? 'bg-neon-purple/10 border-neon-purple/30 text-white font-bold'
+                      : 'bg-white/5 border-transparent text-white/40 hover:text-white/60'
+                  }`}
+                >
+                  🏦 Banco
+                </button>
+              </div>
+
+              {/* PayPal Direct Payment Details */}
+              {paymentMethod === 'paypal_direct' && (
+                <div className="p-5 bg-white/[0.01] border border-blue-500/10 rounded-2xl space-y-4">
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-blue-500/60 flex items-center gap-2 font-orbitron">
+                    💳 PAGO SEGURO CON PAYPAL
+                  </h4>
+                  <div className="space-y-3 text-xs">
+                    <div className="flex justify-between items-center py-1">
+                      <span className="text-white/40">Total en Pesos:</span>
+                      <span className="font-mono text-white font-bold">RD$ {totalCost.toFixed(2)} DOP</span>
+                    </div>
+                    <div className="flex justify-between items-center py-1 border-t border-white/5 pt-2">
+                      <span className="text-white/40">Equivalente a pagar (Tasa: {usdToDopRate.toFixed(2)}):</span>
+                      <span className="font-mono text-blue-400 font-bold">$ {(totalCost / usdToDopRate).toFixed(2)} USD</span>
+                    </div>
+
+                    {!isLoggedIn && (
+                      <div className="pt-2 border-t border-white/5 text-[10px] text-white/40">
+                        * Introduce tus datos de contacto abajo antes de proceder al botón de PayPal.
+                      </div>
+                    )}
+
+                    <div className="pt-4 border-t border-white/5">
+                      {isUploading ? (
+                        <div className="p-4 text-center bg-white/[0.01] border border-dashed border-white/10 rounded-xl space-y-2">
+                          <Loader2 className="w-6 h-6 animate-spin text-blue-400 mx-auto" />
+                          <p className="text-[10px] text-white/60">Acreditando tu pago de PayPal, por favor espera...</p>
+                        </div>
+                      ) : (
+                        <div id="raffle-paypal-button-container" className="w-full"></div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* K-Coins Payment Details */}
+              {paymentMethod === 'kcoins' && (
+                <div className="p-5 bg-white/[0.01] border border-yellow-500/10 rounded-2xl space-y-4">
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-yellow-500/60 flex items-center gap-2 font-orbitron">
+                    🪙 PAGO CON K-COINS
+                  </h4>
+                  <div className="space-y-3 text-xs">
+                    <div className="flex justify-between items-center py-1">
+                      <span className="text-white/40">Tu Saldo actual:</span>
+                      <span className="font-mono text-white font-bold">{localBalance.toFixed(2)} K-Coins</span>
+                    </div>
+                    <div className="flex justify-between items-center py-1 border-t border-white/5 pt-2">
+                      <span className="text-white/40">Total a debitar:</span>
+                      <span className="font-mono text-yellow-400 font-bold">{totalCost.toFixed(2)} K-Coins</span>
+                    </div>
+                    
+                    {localBalance < totalCost ? (
+                      <div className="space-y-3 pt-3 border-t border-white/5">
+                        <p className="text-[10px] text-red-400 font-bold leading-normal">
+                          ❌ Saldo insuficiente. Te faltan {(totalCost - localBalance).toFixed(2)} K-Coins para completar esta compra.
+                        </p>
+                        <Link
+                          href="/wallet"
+                          className="block text-center py-2 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 rounded-xl text-[10px] font-bold text-yellow-300 transition-all uppercase tracking-widest font-orbitron"
+                        >
+                          + Recargar Saldo
+                        </Link>
+                      </div>
+                    ) : (
+                      <div className="pt-2 text-[10px] text-green-400/80 leading-normal flex items-start gap-1">
+                        <span>✓</span>
+                        <span>Pago elegible. Al hacer clic abajo, se descontará de tu balance y los boletos se verificarán al instante.</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Bank Details */}
-              <div className="p-5 bg-white/[0.01] border border-white/5 rounded-2xl space-y-4">
-                <h4 className="text-xs font-bold uppercase tracking-widest text-white/50 flex items-center gap-2">
-                  <Landmark size={14} className="text-neon-purple" /> DATOS DE TRANSFERENCIA
-                </h4>
-                <div className="space-y-3">
-                  {(() => {
-                    let paymentMethodsList: {
-                      bankName: string
-                      accountHolder: string
-                      bankId: string
-                      instructions: string
-                      type?: 'banco' | 'paypal' | 'otro'
-                      qrUrl?: string
-                    }[] = [{
-                      bankName: raffle.payment_bank_name || '',
-                      accountHolder: raffle.payment_account_holder || '',
-                      bankId: raffle.payment_bank_id || '',
-                      instructions: raffle.payment_details || ''
-                    }]
-                    try {
-                      if (raffle.payment_details && raffle.payment_details.startsWith('[')) {
-                        paymentMethodsList = JSON.parse(raffle.payment_details)
-                      }
-                    } catch (e) {}
-
-                    const isUrl = (str: string) => {
-                      if (!str) return false
-                      return str.trim().startsWith('http://') || str.trim().startsWith('https://')
-                    }
-
-                    const renderTextWithLinks = (text: string) => {
-                      if (!text) return null
-                      const urlRegex = /(https?:\/\/[^\s]+)/g
-                      const parts = text.split(urlRegex)
-                      return parts.map((part, index) => {
-                        if (part.match(urlRegex)) {
-                          return (
-                            <a
-                              key={index}
-                              href={part}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-neon-cyan hover:underline font-semibold inline-flex items-center gap-0.5"
-                            >
-                              {part} 🔗
-                            </a>
-                          )
+              {paymentMethod === 'transfer' && (
+                <div className="p-5 bg-white/[0.01] border border-white/5 rounded-2xl space-y-4">
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-white/50 flex items-center gap-2">
+                    <Landmark size={14} className="text-neon-purple" /> DATOS DE TRANSFERENCIA
+                  </h4>
+                  <div className="space-y-3">
+                    {(() => {
+                      let paymentMethodsList: {
+                        bankName: string
+                        accountHolder: string
+                        bankId: string
+                        instructions: string
+                        type?: 'banco' | 'paypal' | 'otro'
+                        qrUrl?: string
+                      }[] = [{
+                        bankName: raffle.payment_bank_name || '',
+                        accountHolder: raffle.payment_account_holder || '',
+                        bankId: raffle.payment_bank_id || '',
+                        instructions: raffle.payment_details || ''
+                      }]
+                      try {
+                        if (raffle.payment_details && raffle.payment_details.startsWith('[')) {
+                          paymentMethodsList = JSON.parse(raffle.payment_details)
                         }
-                        return part
-                      })
-                    }
+                      } catch (e) {}
 
-                    return paymentMethodsList.map((pm, idx) => (
-                      <div key={idx} className="p-4 bg-white/[0.02] border border-white/5 rounded-xl text-xs space-y-2 text-white/70 relative">
-                        {paymentMethodsList.length > 1 && (
-                          <span className="text-[8px] font-orbitron font-bold text-neon-cyan uppercase block mb-1">
-                            Opción #{idx + 1}
-                          </span>
-                        )}
-                        <p><strong className="text-white/40">Banco:</strong> {pm.bankName}</p>
-                        <p><strong className="text-white/40">Titular:</strong> {pm.accountHolder}</p>
-                        <p>
-                          <strong className="text-white/40">
-                            {isUrl(pm.bankId) ? 'Enlace de Pago' : 'No. Cuenta'}:
-                          </strong>{' '}
-                          {isUrl(pm.bankId) ? (
-                            <a
-                              href={pm.bankId.trim()}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-neon-cyan hover:text-neon-cyan/80 font-bold underline bg-neon-cyan/10 border border-neon-cyan/20 px-2 py-0.5 rounded inline-flex items-center gap-1 transition-colors"
-                            >
-                              Pagar en línea 🔗
-                            </a>
-                          ) : (
-                            <span className="font-mono text-white font-bold bg-white/5 px-1.5 py-0.5 rounded">
-                              {pm.bankId}
+                      const isUrl = (str: string) => {
+                        if (!str) return false
+                        return str.trim().startsWith('http://') || str.trim().startsWith('https://')
+                      }
+
+                      const renderTextWithLinks = (text: string) => {
+                        if (!text) return null
+                        const urlRegex = /(https?:\/\/[^\s]+)/g
+                        const parts = text.split(urlRegex)
+                        return parts.map((part, index) => {
+                          if (part.match(urlRegex)) {
+                            return (
+                              <a
+                                key={index}
+                                href={part}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-neon-cyan hover:underline font-semibold inline-flex items-center gap-0.5"
+                              >
+                                {part} 🔗
+                              </a>
+                            )
+                          }
+                          return part
+                        })
+                      }
+
+                      return paymentMethodsList.map((pm, idx) => (
+                        <div key={idx} className="p-4 bg-white/[0.02] border border-white/5 rounded-xl text-xs space-y-2 text-white/70 relative">
+                          {paymentMethodsList.length > 1 && (
+                            <span className="text-[8px] font-orbitron font-bold text-neon-cyan uppercase block mb-1">
+                              Opción #{idx + 1}
                             </span>
                           )}
-                        </p>
-                        {pm.instructions && !pm.instructions.startsWith('[') && (
-                          <p className="text-white/40 italic mt-2 border-t border-white/5 pt-2">
-                            {renderTextWithLinks(pm.instructions)}
+                          <p><strong className="text-white/40">Banco:</strong> {pm.bankName}</p>
+                          <p><strong className="text-white/40">Titular:</strong> {pm.accountHolder}</p>
+                          <p>
+                            <strong className="text-white/40">
+                              {isUrl(pm.bankId) ? 'Enlace de Pago' : 'No. Cuenta'}:
+                            </strong>{' '}
+                            {isUrl(pm.bankId) ? (
+                              <a
+                                href={pm.bankId.trim()}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-neon-cyan hover:text-neon-cyan/80 font-bold underline bg-neon-cyan/10 border border-neon-cyan/20 px-2 py-0.5 rounded inline-flex items-center gap-1 transition-colors"
+                              >
+                                Pagar en línea 🔗
+                              </a>
+                            ) : (
+                              <span className="font-mono text-white font-bold bg-white/5 px-1.5 py-0.5 rounded">
+                                {pm.bankId}
+                              </span>
+                            )}
                           </p>
-                        )}
-                        {pm.qrUrl && (
-                          <div className="mt-2 pt-2 border-t border-white/5">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedQrUrl(pm.qrUrl || null)}
-                              className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-[9px] font-bold text-white bg-white/5 hover:bg-white/10 border border-white/10 uppercase tracking-widest transition-all"
-                            >
-                              📱 Ver Código QR
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  })()}
+                          {pm.instructions && !pm.instructions.startsWith('[') && (
+                            <p className="text-white/40 italic mt-2 border-t border-white/5 pt-2">
+                              {renderTextWithLinks(pm.instructions)}
+                            </p>
+                          )}
+                          {pm.qrUrl && (
+                            <div className="mt-2 pt-2 border-t border-white/5">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedQrUrl(pm.qrUrl || null)}
+                                className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-[9px] font-bold text-white bg-white/5 hover:bg-white/10 border border-white/10 uppercase tracking-widest transition-all"
+                              >
+                                📱 Ver Código QR
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    })()}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Datos de contacto (Solo si el usuario no ha iniciado sesión) */}
               {!isLoggedIn && (
@@ -584,40 +840,42 @@ export function RaffleDetailClient({
               )}
 
               {/* Image Receipt Upload */}
-              <div className="p-5 bg-white/[0.01] border border-white/5 rounded-2xl space-y-4">
-                <h4 className="text-xs font-bold uppercase tracking-widest text-white/50 flex items-center gap-2 font-orbitron">
-                  <Upload size={14} className="text-neon-cyan" /> COMPROBANTE DE DEPÓSITO
-                </h4>
-                
-                {filePreview ? (
-                  <div className="relative rounded-xl overflow-hidden border border-white/10 aspect-video bg-neutral-900">
-                    <img src={filePreview} alt="Comprobante" className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedFile(null)
-                        setFilePreview(null)
-                      }}
-                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/80 hover:bg-black text-white hover:scale-105 transition-all text-xs font-bold font-orbitron"
-                    >
-                      Cambiar
-                    </button>
-                  </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center border border-dashed border-white/10 hover:border-white/20 rounded-xl p-6 cursor-pointer bg-white/[0.01] hover:bg-white/[0.02] transition-all group">
-                    <Upload size={24} className="text-white/20 group-hover:text-white/40 transition-colors mb-2" />
-                    <span className="text-xs font-semibold text-white/40 group-hover:text-white/60 transition-colors font-orbitron">Subir Captura</span>
-                    <span className="text-[10px] text-white/20 mt-1">PNG, JPG o JPEG</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      className="hidden"
-                      required
-                    />
-                  </label>
-                )}
-              </div>
+              {paymentMethod === 'transfer' && (
+                <div className="p-5 bg-white/[0.01] border border-white/5 rounded-2xl space-y-4">
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-white/50 flex items-center gap-2 font-orbitron">
+                    <Upload size={14} className="text-neon-cyan" /> COMPROBANTE DE DEPÓSITO
+                  </h4>
+                  
+                  {filePreview ? (
+                    <div className="relative rounded-xl overflow-hidden border border-white/10 aspect-video bg-neutral-900">
+                      <img src={filePreview} alt="Comprobante" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedFile(null)
+                          setFilePreview(null)
+                        }}
+                        className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/80 hover:bg-black text-white hover:scale-105 transition-all text-xs font-bold font-orbitron"
+                      >
+                        Cambiar
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center border border-dashed border-white/10 hover:border-white/20 rounded-xl p-6 cursor-pointer bg-white/[0.01] hover:bg-white/[0.02] transition-all group">
+                      <Upload size={24} className="text-white/20 group-hover:text-white/40 transition-colors mb-2" />
+                      <span className="text-xs font-semibold text-white/40 group-hover:text-white/60 transition-colors font-orbitron">Subir Captura</span>
+                      <span className="text-[10px] text-white/20 mt-1">PNG, JPG o JPEG</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="hidden"
+                        required={paymentMethod === 'transfer'}
+                      />
+                    </label>
+                  )}
+                </div>
+              )}
 
               {/* Error messages */}
               {error && (
@@ -627,19 +885,21 @@ export function RaffleDetailClient({
               )}
 
               {/* Submit CTA */}
-              <button
-                type="submit"
-                disabled={isUploading || isPending}
-                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-neon-cyan to-neon-purple uppercase tracking-widest hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-40 font-orbitron"
-              >
-                {(isUploading || isPending) ? (
-                  <>
-                    <Loader2 size={14} className="animate-spin" /> Procesando...
-                  </>
-                ) : (
-                  'Confirmar Pago e Inscribirse'
-                )}
-              </button>
+              {paymentMethod !== 'paypal_direct' && (
+                <button
+                  type="submit"
+                  disabled={isUploading || isPending}
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-neon-cyan to-neon-purple uppercase tracking-widest hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-40 font-orbitron"
+                >
+                  {(isUploading || isPending) ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" /> Procesando...
+                    </>
+                  ) : (
+                    'Confirmar Pago e Inscribirse'
+                  )}
+                </button>
+              )}
             </form>
           )}
 
@@ -648,9 +908,13 @@ export function RaffleDetailClient({
             <div className="p-6 bg-gradient-to-b from-neon-cyan/10 to-transparent border border-neon-cyan/20 rounded-2xl text-center space-y-4">
               <CheckCircle2 size={44} className="mx-auto text-neon-cyan animate-pulse" />
               <div className="space-y-1">
-                <h3 className="text-base font-orbitron font-black text-white uppercase">¡Reserva Completada!</h3>
+                <h3 className="text-base font-orbitron font-black text-white uppercase">
+                  {(paymentMethod === 'kcoins' || paymentMethod === 'paypal_direct') ? '¡Compra Completada! ✅' : '¡Reserva Completada!'}
+                </h3>
                 <p className="text-xs text-white/40">
-                  Tu comprobante ha sido enviado. Tus números de boletos reservados son:
+                  {(paymentMethod === 'kcoins' || paymentMethod === 'paypal_direct')
+                    ? 'Tus boletos han sido validados automáticamente. Tus números son:'
+                    : 'Tu comprobante ha sido enviado. Tus números de boletos reservados son:'}
                 </p>
               </div>
               
@@ -661,11 +925,13 @@ export function RaffleDetailClient({
                   </span>
                 ))}
               </div>
-
+ 
               <div className="text-xs text-white/30 leading-relaxed border-t border-white/5 pt-4">
-                Hemos enviado un correo a tu cuenta con los detalles. Tu boleto estará verificado una vez confirmemos la transferencia bancaria.
+                {(paymentMethod === 'kcoins' || paymentMethod === 'paypal_direct')
+                  ? 'Hemos enviado un correo con los detalles. Tus boletos ya están activos para el sorteo.'
+                  : 'Hemos enviado un correo a tu cuenta con los detalles. Tu boleto estará verificado una vez confirmemos la transferencia bancaria.'}
               </div>
-
+ 
               <Link
                 href="/raffles/my-tickets"
                 className="inline-flex items-center gap-1.5 w-full justify-center py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all uppercase tracking-wider"
@@ -830,6 +1096,11 @@ export function RaffleDetailClient({
           </div>
         </div>
       )}
+      <Script
+        src={`https://www.paypal.com/sdk/js?client-id=${process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}&currency=USD`}
+        onLoad={() => setSdkLoaded(true)}
+        onError={() => console.error('Failed to load PayPal SDK in Raffles')}
+      />
     </div>
   )
 }

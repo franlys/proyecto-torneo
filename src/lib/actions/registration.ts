@@ -217,7 +217,46 @@ export async function registerTournament(
     }
 
     const hasEntryFee = tournament.entry_fee && Number(tournament.entry_fee) > 0
-    const initialStatus = hasEntryFee ? 'pending_approval' : 'confirmed'
+    let initialStatus = 'confirmed'
+
+    if (hasEntryFee) {
+      // 1. Fetch user profile balance
+      const { data: profile } = await adminSupabase
+        .from('profiles')
+        .select('balance')
+        .eq('id', user.id)
+        .single()
+
+      const balance = parseFloat(profile?.balance || '0.00')
+      const fee = Number(tournament.entry_fee)
+
+      if (balance < fee) {
+        return { error: `El torneo requiere una cuota de inscripción de ${fee.toFixed(2)} K-Coins. Tu saldo es de ${balance.toFixed(2)} K-Coins. Ve a tu billetera para recargar.` }
+      }
+
+      // 2. Deduct entry fee
+      const newBalance = parseFloat((balance - fee).toFixed(2))
+      const { error: balErr } = await adminSupabase
+        .from('profiles')
+        .update({ balance: newBalance })
+        .eq('id', user.id)
+
+      if (balErr) {
+        return { error: 'Error al descontar la cuota de inscripción de tu billetera.' }
+      }
+
+      // 3. Log coin transaction
+      try {
+        await adminSupabase.from('coin_transactions').insert({
+          user_id: user.id,
+          amount: -fee,
+          type: 'bet_placed',
+          reference_id: tournamentId
+        })
+      } catch (txErr) {
+        console.error('Error logging inscription transaction:', txErr)
+      }
+    }
 
     // 6. Insertar Equipo
     const { data: team, error: teamErr } = await adminSupabase
@@ -232,28 +271,16 @@ export async function registerTournament(
       .single()
 
     if (teamErr || !team) {
+      // Revert fee on registration failure
+      if (hasEntryFee) {
+        const { data: profile } = await adminSupabase.from('profiles').select('balance').eq('id', user.id).single()
+        const balance = parseFloat(profile?.balance || '0.00')
+        const fee = Number(tournament.entry_fee)
+        await adminSupabase.from('profiles').update({ balance: balance + fee }).eq('id', user.id)
+      }
       return { error: teamErr?.message || 'Error al registrar el equipo.' }
     }
 
-    // Si es de pago y requiere aprobación, notificar al streamer por correo
-    if (initialStatus === 'pending_approval') {
-      const { data: streamerProfile } = await adminSupabase
-        .from('profiles')
-        .select('email, username, organization_name')
-        .eq('id', tournament.creator_id)
-        .single()
-
-      if (streamerProfile?.email) {
-        const { sendRegistrationRequestEmail } = await import('@/lib/services/email')
-        await sendRegistrationRequestEmail({
-          email: streamerProfile.email,
-          streamerName: streamerProfile.organization_name || streamerProfile.username || 'Streamer',
-          tournamentName: tournament.name,
-          teamName: finalTeamName,
-          portalUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/tournaments/${tournament.id}/participants`
-        }).catch(e => console.error('Error al enviar correo de solicitud:', e))
-      }
-    }
 
     // Sincronizar equipo a ArenaCrypto
     pushToAC('teams', 'upsert', {

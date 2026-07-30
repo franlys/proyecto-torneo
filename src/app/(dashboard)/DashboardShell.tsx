@@ -24,6 +24,7 @@ export default function DashboardShell({
   avatarUrl,
   isStaff = false,
   missingGameAccountInfo = null,
+  balance = 0.00,
 }: {
   children: React.ReactNode
   userRole: 'SUPER_ADMIN' | 'ADMIN' | 'KRONIX_STAFF' | 'FEDERATION' | 'STREAMER' | 'USER'
@@ -31,6 +32,7 @@ export default function DashboardShell({
   avatarUrl?: string | null
   isStaff?: boolean
   missingGameAccountInfo?: { participantId: string; tournamentName: string; discipline: string; slug: string } | null
+  balance?: number
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const isAdminUser = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'KRONIX_STAFF'
@@ -193,6 +195,16 @@ export default function DashboardShell({
         </svg>
         🎟️ Mis Boletos Sorteos
       </Link>
+      <Link
+        href="/wallet"
+        onClick={() => setDrawerOpen(false)}
+        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+      >
+        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+        </svg>
+        🪙 Mi Billetera (K-Coins)
+      </Link>
 
       {(userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'KRONIX_STAFF') && (
         <>
@@ -292,6 +304,16 @@ export default function DashboardShell({
                 </svg>
                 Gestión de Sorteos
               </Link>
+              <Link
+                href="/admin/bets"
+                onClick={() => setDrawerOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Control Apuestas
+              </Link>
             </>
           )}
           <Link
@@ -334,6 +356,9 @@ export default function DashboardShell({
           </p>
           <p className={`text-[10px] font-semibold ${isStaff && userRole === 'USER' ? 'text-orange-300' : (ROLE_BADGE[userRole]?.color ?? 'text-white/40')}`}>
             {isStaff && userRole === 'USER' ? '🔧 Staff Colaborador' : (ROLE_BADGE[userRole]?.label ?? userRole)}
+          </p>
+          <p className="text-[10px] font-orbitron font-bold text-neon-cyan mt-1 flex items-center gap-1">
+            <span>🪙</span> {balance.toFixed(2)} K-Coins
           </p>
         </div>
       </Link>

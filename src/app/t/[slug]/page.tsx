@@ -227,6 +227,34 @@ export default async function PublicLeaderboardPage({
   const adsRes = await getAdBanners()
   const adBanners = adsRes && 'data' in adsRes ? adsRes.data : []
 
+  // Fetch active prediction markets
+  const { data: betMarkets } = await supabase
+    .from('bet_markets')
+    .select('*')
+    .eq('tournament_id', tournament.id)
+    .order('created_at', { ascending: false })
+
+  // Fetch user predictions if logged in
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  let userBalance = 0.00
+  let userBets: any[] = []
+
+  if (authUser) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('balance')
+      .eq('id', authUser.id)
+      .single()
+    userBalance = profile?.balance ? parseFloat(profile.balance as any) : 0.00
+
+    const { data: bets } = await supabase
+      .from('user_bets')
+      .select('*, bet_markets!inner(*)')
+      .eq('user_id', authUser.id)
+      .eq('bet_markets.tournament_id', tournament.id)
+    userBets = bets || []
+  }
+
   return (
     <main className="min-h-screen bg-transparent text-white font-inter">
       {tournament.arena_betting_enabled && (
@@ -234,6 +262,10 @@ export default async function PublicLeaderboardPage({
       )}
       <LeaderboardClient 
         tournamentId={tournament.id}
+        betMarkets={betMarkets || []}
+        initialBalance={userBalance}
+        userBets={userBets}
+        isLoggedIn={!!authUser}
         tournamentName={tournament.name}
         tournamentLogoUrl={tournament.logo_url}
         hideLogoInLeaderboard={tournament.hide_logo_in_leaderboard || false}
@@ -275,6 +307,7 @@ export default async function PublicLeaderboardPage({
         streamUrl={tournament.stream_url}
         maxPointsLimit={tournament.max_points_limit ? Number(tournament.max_points_limit) : undefined}
         discordUrl={tournament.discord_url}
+        arenaBettingEnabled={!!tournament.arena_betting_enabled}
       />
     </main>
   )

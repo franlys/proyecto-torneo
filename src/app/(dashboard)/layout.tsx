@@ -50,6 +50,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
     }
   }
 
+  const balance = profile?.balance ? parseFloat(profile.balance as any) : 0.00
+
   return (
     <DashboardShell
       userRole={(profile?.role as any) ?? 'USER'}
@@ -57,6 +59,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       avatarUrl={profile?.avatarUrl ?? null}
       isStaff={isStaff}
       missingGameAccountInfo={missingGameAccountInfo}
+      balance={balance}
     >
       {children}
     </DashboardShell>

@@ -573,7 +573,8 @@ export async function activateTournament(
 
 export async function finishTournament(
   id: string,
-  championImageUrl?: string
+  championImageUrl?: string,
+  mvpParticipantId?: string
 ): Promise<{ success: true } | { error: string }> {
   const supabase = await createClient()
   const {
@@ -625,17 +626,112 @@ export async function finishTournament(
     const totalPrizes = Number(t.prize_1st) + Number(t.prize_2nd) + Number(t.prize_3rd) + Number(t.prize_mvp)
     const remainder = totalRevenue - totalPrizes
     
+    const organizerPayout = parseFloat((remainder * (Number(t.organizer_split) / 100)).toFixed(2))
+    const streamerPayout = parseFloat((remainder * (Number(t.streamer_split) / 100)).toFixed(2))
+
     await supabase.from('tournament_financials').upsert(
       {
         tournament_id: id,
         total_revenue: totalRevenue,
         total_prizes: totalPrizes,
         remainder: remainder,
-        organizer_payout: remainder * (Number(t.organizer_split) / 100),
-        streamer_payout: remainder * (Number(t.streamer_split) / 100),
+        organizer_payout: organizerPayout,
+        streamer_payout: streamerPayout,
       },
       { onConflict: 'tournament_id' }
     )
+
+    const adminSupabase = await createAdminClient()
+
+    // 1. Distribuir a Streamer / Organizador
+    const organizerId = tournament.collaborator_id || tournament.creator_id
+    if (organizerPayout > 0 && organizerId) {
+      const { data: orgProfile } = await adminSupabase.from('profiles').select('balance').eq('id', organizerId).single()
+      const newBal = parseFloat((Number(orgProfile?.balance || 0) + organizerPayout).toFixed(2))
+      await adminSupabase.from('profiles').update({ balance: newBal }).eq('id', organizerId)
+      await adminSupabase.from('coin_transactions').insert({
+        user_id: organizerId,
+        amount: organizerPayout,
+        type: 'deposit',
+        reference_id: id
+      })
+    }
+
+    if (streamerPayout > 0 && tournament.collaborator_id && tournament.creator_id) {
+      const { data: strProfile } = await adminSupabase.from('profiles').select('balance').eq('id', tournament.creator_id).single()
+      const newBal = parseFloat((Number(strProfile?.balance || 0) + streamerPayout).toFixed(2))
+      await adminSupabase.from('profiles').update({ balance: newBal }).eq('id', tournament.creator_id)
+      await adminSupabase.from('coin_transactions').insert({
+        user_id: tournament.creator_id,
+        amount: streamerPayout,
+        type: 'deposit',
+        reference_id: id
+      })
+    }
+
+    // 2. Distribuir a Ganadores (1st, 2nd, 3rd)
+    const { data: teamStandings } = await adminSupabase
+      .from('team_standings')
+      .select('rank, team_id')
+      .eq('tournament_id', id)
+      .in('rank', [1, 2, 3])
+
+    if (teamStandings && teamStandings.length > 0) {
+      for (const standing of teamStandings) {
+        const rank = standing.rank
+        const prizePool = rank === 1 ? Number(t.prize_1st) : rank === 2 ? Number(t.prize_2nd) : Number(t.prize_3rd)
+        
+        if (prizePool > 0) {
+          // Obtener los participantes del equipo con cuenta de usuario
+          const { data: participants } = await adminSupabase
+            .from('participants')
+            .select('user_id')
+            .eq('team_id', standing.team_id)
+            .not('user_id', 'is', null)
+
+          if (participants && participants.length > 0) {
+            const splitPrize = parseFloat((prizePool / participants.length).toFixed(2))
+            
+            for (const part of participants) {
+              const userId = part.user_id
+              if (userId) {
+                const { data: pProfile } = await adminSupabase.from('profiles').select('balance').eq('id', userId).single()
+                const newBal = parseFloat((Number(pProfile?.balance || 0) + splitPrize).toFixed(2))
+                await adminSupabase.from('profiles').update({ balance: newBal }).eq('id', userId)
+                await adminSupabase.from('coin_transactions').insert({
+                  user_id: userId,
+                  amount: splitPrize,
+                  type: 'bet_won',
+                  reference_id: id
+                })
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 3. Distribuir Premio MVP
+    if (mvpParticipantId && Number(t.prize_mvp) > 0) {
+      const { data: mvpPart } = await adminSupabase
+        .from('participants')
+        .select('user_id')
+        .eq('id', mvpParticipantId)
+        .single()
+
+      const mvpUserId = mvpPart?.user_id
+      if (mvpUserId) {
+        const { data: mvpProfile } = await adminSupabase.from('profiles').select('balance').eq('id', mvpUserId).single()
+        const newBal = parseFloat((Number(mvpProfile?.balance || 0) + Number(t.prize_mvp)).toFixed(2))
+        await adminSupabase.from('profiles').update({ balance: newBal }).eq('id', mvpUserId)
+        await adminSupabase.from('coin_transactions').insert({
+          user_id: mvpUserId,
+          amount: Number(t.prize_mvp),
+          type: 'bet_won',
+          reference_id: id
+        })
+      }
+    }
   }
 
   // --- FEDERATION AUTO RANKING UPDATE ---

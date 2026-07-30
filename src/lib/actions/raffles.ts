@@ -1319,3 +1319,181 @@ export async function resolveRaffleRefundRequestAction(input: {
     return { error: err.message || 'Error al procesar la solicitud' }
   }
 }
+
+export async function buyTicketWithKCoinsAction(
+  raffleId: string,
+  ticketNumbers: string[],
+  promoCode?: string
+) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Debes iniciar sesión para comprar boletos.' }
+
+    const adminSupabase = await createAdminClient()
+
+    // 1. Get profile details including balance
+    const { data: profile } = await adminSupabase
+      .from('profiles')
+      .select('username, email, balance')
+      .eq('id', user.id)
+      .single()
+
+    if (!profile) return { error: 'Perfil no encontrado.' }
+
+    const buyerName = profile.username || 'Usuario Kronix'
+    const buyerEmail = profile.email || user.email || ''
+    const buyerPhone = user.user_metadata?.phone || ''
+
+    const balance = parseFloat(profile.balance || '0.00')
+
+    // 2. Validate raffle status
+    const { data: raffle } = await adminSupabase
+      .from('raffles')
+      .select('status, title, ticket_price')
+      .eq('id', raffleId)
+      .single()
+
+    if (!raffle || raffle.status !== 'active') {
+      return { error: 'El sorteo no está activo o ya finalizó.' }
+    }
+
+    // 3. Validate promo code
+    let promoSellerId = null
+    let discountAmountPerTicket = 0
+    let validatedCode = null
+
+    if (promoCode) {
+      const cleanCode = promoCode.trim().toUpperCase()
+      const { data: pcDetails } = await adminSupabase
+        .from('raffle_promo_codes')
+        .select('*')
+        .eq('code', cleanCode)
+        .eq('raffle_id', raffleId)
+        .eq('is_active', true)
+        .maybeSingle()
+
+      if (pcDetails) {
+        promoSellerId = pcDetails.seller_id || null
+        validatedCode = pcDetails.code
+        if (pcDetails.discount_percent > 0 && raffle.ticket_price) {
+          discountAmountPerTicket = (raffle.ticket_price * pcDetails.discount_percent) / 100
+        }
+      }
+    }
+
+    // 4. Validate availability of numbers
+    const { data: existing } = await adminSupabase
+      .from('tickets')
+      .select('ticket_number')
+      .eq('raffle_id', raffleId)
+      .in('ticket_number', ticketNumbers)
+
+    if (existing && existing.length > 0) {
+      const numbers = existing.map(t => t.ticket_number).join(', ')
+      return { error: `Los siguientes boletos ya han sido reservados: ${numbers}` }
+    }
+
+    // 5. Calculate cost and check balance
+    const pricePerTicket = Math.max(0, parseFloat(raffle.ticket_price) - discountAmountPerTicket)
+    const totalCost = parseFloat((pricePerTicket * ticketNumbers.length).toFixed(2))
+
+    if (balance < totalCost) {
+      return { error: `Saldo insuficiente. El costo es de ${totalCost.toFixed(2)} K-Coins y tu saldo es de ${balance.toFixed(2)} K-Coins.` }
+    }
+
+    // 6. Perform purchase inside transaction (simulate via consecutive queries)
+    const newBalance = parseFloat((balance - totalCost).toFixed(2))
+
+    // Deduct balance
+    const { error: balErr } = await adminSupabase
+      .from('profiles')
+      .update({ balance: newBalance })
+      .eq('id', user.id)
+
+    if (balErr) return { error: `Error al descontar saldo: ${balErr.message}` }
+
+    // Insert verified tickets
+    const ticketsToInsert = ticketNumbers.map(num => ({
+      raffle_id: raffleId,
+      user_id: user.id,
+      ticket_number: num,
+      buyer_name: buyerName,
+      buyer_email: buyerEmail,
+      buyer_phone: buyerPhone,
+      payment_status: 'verified',
+      receipt_url: 'kcoin_payment',
+      seller_id: promoSellerId,
+      promo_code: validatedCode,
+      discount_amount: discountAmountPerTicket
+    }))
+
+    const { error: insErr } = await adminSupabase
+      .from('tickets')
+      .insert(ticketsToInsert)
+
+    if (insErr) {
+      // Rollback balance on error
+      await adminSupabase.from('profiles').update({ balance }).eq('id', user.id)
+      return { error: `Error al crear boletos: ${insErr.message}` }
+    }
+
+    // Insert coin transaction
+    let txType = 'raffle_ticket'
+    try {
+      const { error: txErr } = await adminSupabase
+        .from('coin_transactions')
+        .insert({
+          user_id: user.id,
+          amount: -totalCost,
+          type: txType,
+          reference_id: raffleId
+        })
+
+      if (txErr) {
+        // Fallback to bet_placed if raffle_ticket constraint fails
+        const { error: fallbackErr } = await adminSupabase
+          .from('coin_transactions')
+          .insert({
+            user_id: user.id,
+            amount: -totalCost,
+            type: 'bet_placed',
+            reference_id: raffleId
+          })
+        if (fallbackErr) {
+          console.error('Error inserting fallback coin transaction:', fallbackErr.message)
+        }
+      }
+    } catch (err) {
+      console.error('Coin transaction insert error, trying fallback:', err)
+      await adminSupabase
+        .from('coin_transactions')
+        .insert({
+          user_id: user.id,
+          amount: -totalCost,
+          type: 'bet_placed',
+          reference_id: raffleId
+        })
+    }
+
+    // 7. Send confirmation email
+    try {
+      const { sendTicketConfirmedEmail } = await import('@/lib/services/email')
+      await sendTicketConfirmedEmail({
+        email: buyerEmail,
+        buyerName,
+        raffleName: raffle.title,
+        ticketNumbers,
+      })
+    } catch (mailErr) {
+      console.error('Error al enviar correo de confirmación de boletos:', mailErr)
+    }
+
+    revalidatePath(`/raffles/${raffleId}`)
+    revalidatePath('/raffles/my-tickets')
+    return { success: true, ticketNumbers, newBalance }
+  } catch (err: any) {
+    return { error: err.message || 'Error al procesar la compra con K-Coins' }
+  }
+}
+
