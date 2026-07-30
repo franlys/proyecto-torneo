@@ -25,7 +25,7 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
   const [purchasedCoins, setPurchasedCoins] = useState(0)
 
   useEffect(() => {
-    if (showPayment || showPaypalModal || showThankYouModal) {
+    if (showPaypalModal || showThankYouModal) {
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = 'unset'
@@ -33,7 +33,7 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
     return () => {
       document.body.style.overflow = 'unset'
     }
-  }, [showPayment, showPaypalModal, showThankYouModal])
+  }, [showPaypalModal, showThankYouModal])
   const [transactionId, setTransactionId] = useState('')
 
   const [exchangeRate, setExchangeRate] = useState<number>(58.25)
