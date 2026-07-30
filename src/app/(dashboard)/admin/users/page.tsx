@@ -9,6 +9,7 @@ import { CreateUserForm } from './CreateUserForm'
 import { DeleteUserButton } from './DeleteUserButton'
 import { ChangePasswordButton } from './ChangePasswordButton'
 import { EditPaymentDetailsButton } from './EditPaymentDetailsButton'
+import { GrantKCoinsButton } from './GrantKCoinsButton'
 import { AdminErrorCard } from '@/components/ui/AdminErrorCard'
 import { createMissingProfile } from '@/lib/actions/admin'
 export const dynamic = 'force-dynamic'
@@ -41,7 +42,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
     // Perfiles existentes
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, username, role, subscription_status, created_at, has_ranking_license, payment_details')
+      .select('id, username, role, subscription_status, created_at, has_ranking_license, payment_details, balance')
     if (profilesError) throw profilesError
 
     const profileMap = new Map(profiles?.map((p) => [p.id, p]) ?? [])
@@ -201,6 +202,9 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
                               userEmail={u.email ?? '—'} 
                               initialPaymentDetails={profile.payment_details} 
                             />
+                          )}
+                          {profile && (
+                            <GrantKCoinsButton userId={u.id} currentBalance={parseFloat(profile.balance || '0')} />
                           )}
                           <ChangePasswordButton userId={u.id} userEmail={u.email ?? '—'} />
                           <DeleteUserButton userId={u.id} userEmail={u.email ?? '—'} />

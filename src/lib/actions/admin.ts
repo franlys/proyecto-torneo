@@ -295,3 +295,43 @@ export async function uploadPaymentQRAction(userId: string, formData: FormData) 
   return { success: true, url: publicUrl }
 }
 
+export async function grantKCoinsAction(userId: string, amount: number) {
+  const admin = await isAdmin()
+  if (!admin) return { error: 'No autorizado' }
+
+  if (amount <= 0) return { error: 'Cantidad inválida' }
+
+  const supabase = await createAdminClient()
+
+  // 1. Get current balance
+  const { data: profile, error: profErr } = await supabase
+    .from('profiles')
+    .select('balance')
+    .eq('id', userId)
+    .single()
+
+  if (profErr || !profile) return { error: 'Perfil no encontrado' }
+
+  const newBalance = parseFloat(profile.balance || '0') + amount
+
+  // 2. Update balance
+  const { error: updErr } = await supabase
+    .from('profiles')
+    .update({ balance: newBalance })
+    .eq('id', userId)
+
+  if (updErr) return { error: updErr.message }
+
+  // 3. Log transaction
+  await supabase
+    .from('coin_transactions')
+    .insert({
+      user_id: userId,
+      amount: amount,
+      type: 'deposit',
+      reference_id: 'admin_grant'
+    })
+
+  revalidatePath('/admin/users')
+  return { success: true }
+}
