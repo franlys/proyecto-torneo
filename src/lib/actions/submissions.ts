@@ -434,7 +434,7 @@ export async function approveSubmission(
   // Validate access using checkTournamentAccess
   const { data: submission, error: subErr } = await supabase
     .from('submissions')
-    .select('tournament_id, status, tournaments!inner(creator_id, collaborator_id)')
+    .select('tournament_id, match_id, status, tournaments!inner(creator_id, collaborator_id)')
     .eq('id', submissionId)
     .single()
 
@@ -470,6 +470,22 @@ export async function approveSubmission(
 
   // Trigger recalculation of standings
   await recalculateStandings(adminSupabase, submission.tournament_id)
+
+  // Auto-resolve betting markets if this submission's match is completed
+  try {
+    const { data: match } = await adminSupabase
+      .from('matches')
+      .select('is_completed')
+      .eq('id', submission.match_id)
+      .single()
+
+    if (match?.is_completed) {
+      const { autoResolveMatchMarketsAction } = await import('./predictions')
+      await autoResolveMatchMarketsAction(submission.match_id)
+    }
+  } catch (autoResolveErr) {
+    console.error('[autoResolve] Error in approveSubmission auto-resolve:', autoResolveErr)
+  }
 
   return { success: true }
 }
