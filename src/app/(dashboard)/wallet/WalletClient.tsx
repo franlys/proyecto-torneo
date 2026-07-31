@@ -144,7 +144,7 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
           if (capture.error) {
             alert(`Error al capturar el pago: ${capture.error}`)
           } else if (capture.success) {
-            setPurchasedCoins(capture.coinsAdded)
+            setPurchasedCoins(capture.coinsAdded || capture.dopAmount || 0)
             setTransactionId(capture.depositId || '')
             setShowPaypalModal(false)
             setShowThankYouModal(true)
@@ -190,7 +190,7 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
             <span className="text-xl">🪙</span>
           </div>
           <div className="space-y-1">
-            <h2 className="text-3xl font-orbitron font-black text-white">{initialBalance.toFixed(2)}</h2>
+            <h2 className="text-3xl font-orbitron font-black text-white">{(initialBalance || 0).toFixed(2)}</h2>
             <p className="text-xs text-neon-cyan uppercase font-bold tracking-widest font-orbitron">K-Coins Disponibles</p>
           </div>
         </div>
@@ -644,7 +644,7 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                   
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-white/45">Monto Acreditado:</span>
-                    <span className="font-orbitron font-bold text-yellow-400">🪙 {purchasedCoins.toFixed(2)} K-Coins</span>
+                    <span className="font-orbitron font-bold text-yellow-400">🪙 {(purchasedCoins || 0).toFixed(2)} K-Coins</span>
                   </div>
 
                   <div className="flex justify-between items-center text-xs border-t border-white/[0.03] pt-2">
