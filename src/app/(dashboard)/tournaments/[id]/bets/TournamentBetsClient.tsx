@@ -209,12 +209,6 @@ export function TournamentBetsClient({ tournament, matches, betMarkets: initialB
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <Link
-            href={`/tournaments/${tournament.id}`}
-            className="inline-flex items-center gap-2 text-xs font-bold text-white/50 hover:text-white uppercase tracking-wider transition-colors mb-2"
-          >
-            <ArrowLeft size={14} /> Volver al Torneo
-          </Link>
           <h1 className="font-orbitron font-black text-3xl text-white uppercase tracking-tight">
             Apuestas del Torneo
           </h1>

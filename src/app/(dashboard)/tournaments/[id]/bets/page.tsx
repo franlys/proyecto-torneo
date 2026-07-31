@@ -52,13 +52,11 @@ export default async function TournamentBetsPage({
     .order('name', { ascending: true })
 
   return (
-    <div className="min-h-screen bg-transparent text-white p-6 lg:p-8 space-y-8">
-      <TournamentBetsClient
-        tournament={tournament}
-        matches={matches || []}
-        betMarkets={betMarkets || []}
-        confirmedTeams={teams || []}
-      />
-    </div>
+    <TournamentBetsClient
+      tournament={tournament}
+      matches={matches || []}
+      betMarkets={betMarkets || []}
+      confirmedTeams={teams || []}
+    />
   )
 }

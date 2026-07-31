@@ -170,36 +170,15 @@ export default async function TournamentOverviewPage({
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      {/* Breadcrumb */}
-      <Link
-        href="/tournaments"
-        className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-white/60
-          transition-colors duration-150 mb-6"
-      >
-        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-        Mis Torneos
-      </Link>
-
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 mb-8">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <StatusBadge status={tournament.status} />
-            <VisibilityToggle id={tournament.id} isPrivate={tournament.isPrivate || false} />
-            <span className="text-xs text-white/30 border border-white/10 px-2.5 py-1 rounded-full">
-              {FORMAT_LABELS[tournament.format]}
-            </span>
-          </div>
-
-          <h1 className="font-orbitron text-2xl font-bold text-white tracking-wide">
-            {tournament.name}
-          </h1>
-          {tournament.description && (
-            <p className="text-white/40 text-sm mt-2 max-w-xl">{tournament.description}</p>
-          )}
+    <div className="space-y-6 text-left">
+      {/* Top Controls Info Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-white/5">
+        <div className="flex items-center gap-3">
+          <StatusBadge status={tournament.status} />
+          <VisibilityToggle id={tournament.id} isPrivate={tournament.isPrivate || false} />
+          <span className="text-xs text-white/30 border border-white/10 px-2.5 py-1 rounded-full">
+            {FORMAT_LABELS[tournament.format]}
+          </span>
         </div>
 
         {/* Public link */}
@@ -217,6 +196,10 @@ export default async function TournamentOverviewPage({
           Ver público
         </Link>
       </div>
+
+      {tournament.description && (
+        <p className="text-white/40 text-sm">{tournament.description}</p>
+      )}
 
       {/* Corporate Branding */}
       <TournamentBranding 

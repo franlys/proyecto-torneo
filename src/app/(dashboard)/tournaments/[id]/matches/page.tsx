@@ -18,20 +18,12 @@ export default async function MatchesPage({ params }: { params: { id: string } }
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-orbitron font-black text-white uppercase tracking-tighter">
-            Gestión de Partidas
-          </h1>
-          <p className="text-white/40 text-sm mt-1">Configura los nombres de rondas y mapas para {tRes.data.name}</p>
-        </div>
-        <Link 
-          href={`/tournaments/${params.id}`}
-          className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white rounded-lg transition-all text-sm border border-white/5"
-        >
-          ← Volver al Torneo
-        </Link>
+    <div className="space-y-6 text-left">
+      <div className="mb-6">
+        <h1 className="text-2xl font-orbitron font-black text-white uppercase tracking-tighter">
+          Gestión de Partidas
+        </h1>
+        <p className="text-white/40 text-sm mt-1">Configura los nombres de rondas y mapas para {tRes.data.name}</p>
       </div>
 
       <MatchesManager 
