@@ -238,19 +238,20 @@ export default async function PublicLeaderboardPage({
     .order('created_at', { ascending: false })
 
   // Fetch user predictions if logged in
-  const { data: { user: authUser } } = await supabase.auth.getUser()
+  const userSupabase = await createClient()
+  const { data: { user: authUser } } = await userSupabase.auth.getUser()
   let userBalance = 0.00
   let userBets: any[] = []
 
   if (authUser) {
-    const { data: profile } = await supabase
+    const { data: profile } = await userSupabase
       .from('profiles')
       .select('balance')
       .eq('id', authUser.id)
       .single()
     userBalance = profile?.balance ? parseFloat(profile.balance as any) : 0.00
 
-    const { data: bets } = await supabase
+    const { data: bets } = await userSupabase
       .from('user_bets')
       .select('*, bet_markets!inner(*)')
       .eq('user_id', authUser.id)
