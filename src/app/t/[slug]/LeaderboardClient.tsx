@@ -481,6 +481,43 @@ export function LeaderboardClient({
       isSubmittingReg.current = false
     }
   }
+
+  const [payPendingLoading, setPayPendingLoading] = useState(false)
+
+  const handlePayPendingFee = async () => {
+    if (!userTeam) return
+    const rate = exchangeRate || 58.25
+    const entryFeeInKCoins = entryFee * rate
+    const currentPaid = userTeam.amount_paid || userTeam.amountPaid || 0
+    const remaining = Math.max(0, entryFeeInKCoins - currentPaid)
+
+    if (remaining <= 0) {
+      toast.error('El equipo ya ha pagado la cuota completa.')
+      return
+    }
+
+    setPayPendingLoading(true)
+    try {
+      const { contributeToTeamFeeAction } = await import('@/lib/actions/team-payments')
+      const res = await contributeToTeamFeeAction(userTeam.id, remaining.toString())
+      if (res && 'error' in res) {
+        toast.error(res.error)
+      } else {
+        toast.success('¡Pago completado con éxito! Inscripción confirmada.')
+        setUserTeam((prev: any) => ({
+          ...prev,
+          registration_status: 'confirmed',
+          amount_paid: entryFeeInKCoins
+        }))
+        router.refresh()
+      }
+    } catch (err: any) {
+      toast.error('Error al procesar el pago.')
+    } finally {
+      setPayPendingLoading(false)
+    }
+  }
+
   const [isMounted, setIsMounted] = useState(false)
   const [host, setHost] = useState('localhost')
   const [standings, setStandings] = useState(initialStandings)
@@ -566,7 +603,7 @@ export function LeaderboardClient({
         // Check if user is registered in this tournament
         const { data: registration } = await supabase
           .from('participants')
-          .select('id, team:teams(id, name, registration_status, payment_evidence_url)')
+          .select('id, team:teams(id, name, registration_status, payment_evidence_url, amount_paid)')
           .eq('tournament_id', tournamentId)
           .eq('user_id', user.id)
           .maybeSingle()
@@ -1728,14 +1765,25 @@ export function LeaderboardClient({
                         )
                       }
                       if (status === 'approved_to_pay') {
+                        const rate = exchangeRate || 58.25
+                        const entryFeeInKCoins = entryFee * rate
+                        const currentPaid = userTeam?.amount_paid || userTeam?.amountPaid || 0
+                        const remaining = Math.max(0, entryFeeInKCoins - currentPaid)
                         return (
-                          <div className="flex flex-col items-end gap-1.5">
-                            <span className="inline-block w-full md:w-auto text-center text-xs font-bold bg-orange-500/20 text-orange-400 px-5 py-3 rounded-xl border border-orange-500/30 uppercase tracking-wider animate-pulse">
+                          <div className="flex flex-col items-end gap-2.5">
+                            <span className="inline-block w-full md:w-auto text-center text-xs font-bold bg-orange-500/20 text-orange-400 px-5 py-2.5 rounded-xl border border-orange-500/30 uppercase tracking-wider">
                               💳 Pendiente de Pago
                             </span>
-                            <span className="text-[9px] text-white/40 text-right max-w-[200px] leading-tight">
-                              Completa el pago siguiendo las instrucciones a la izquierda.
+                            <span className="text-[10px] text-white/50 text-right max-w-[200px] leading-snug">
+                              Costo: <strong className="text-white">${entryFee} USD</strong> (~{entryFeeInKCoins.toLocaleString('es-ES', { maximumFractionDigits: 0 })} K-Coins)
                             </span>
+                            <button
+                              onClick={handlePayPendingFee}
+                              disabled={payPendingLoading}
+                              className="px-5 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black font-black uppercase tracking-wider text-xs rounded-xl transition-all shadow-[0_0_15px_rgba(234,179,8,0.3)] disabled:opacity-40"
+                            >
+                              {payPendingLoading ? 'Procesando Pago...' : 'Pagar Inscripción 🪙'}
+                            </button>
                           </div>
                         )
                       }

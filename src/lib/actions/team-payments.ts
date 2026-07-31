@@ -4,6 +4,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { pushToAC } from './ac-push'
 import { getProfile } from './auth-helpers'
 import { revalidatePath } from 'next/cache'
+import { getUsdToDopRate } from '@/lib/services/exchange-rate'
 
 export async function contributeToTeamFeeAction(
   teamId: string,
@@ -39,7 +40,9 @@ export async function contributeToTeamFeeAction(
 
     const entryFee = Number(tournament.entry_fee) || 0
     const currentPaid = Number(team.amount_paid) || 0
-    const remaining = Math.max(0, entryFee - currentPaid)
+    const rate = await getUsdToDopRate()
+    const entryFeeInKCoins = parseFloat((entryFee * rate).toFixed(2))
+    const remaining = Math.max(0, entryFeeInKCoins - currentPaid)
 
     if (remaining <= 0) {
       return { error: 'El equipo ya ha pagado la cuota completa.' }
@@ -71,11 +74,12 @@ export async function contributeToTeamFeeAction(
     if (balErr) return { error: 'Error al procesar el pago desde tu billetera.' }
 
     // 4. Log transaction
+    const finalAmountUsd = parseFloat((finalAmount / rate).toFixed(2))
     await adminSupabase.from('coin_transactions').insert({
       user_id: profile.id,
       amount: -finalAmount,
       transaction_type: 'tournament_fee',
-      description: `Aporte a inscripción de equipo: ${team.name} (Torneo: ${tournament.name})`,
+      description: `Aporte a inscripción de equipo: ${team.name} (Torneo: ${tournament.name}) ($${finalAmountUsd.toFixed(2)} USD)`,
       reference_id: tournament.id,
       metadata: { teamId, tournamentName: tournament.name }
     })
@@ -84,7 +88,7 @@ export async function contributeToTeamFeeAction(
     const newPaid = currentPaid + finalAmount
     let newStatus = team.registration_status
 
-    if (newPaid >= entryFee) {
+    if (newPaid >= entryFeeInKCoins) {
       newStatus = 'confirmed'
     }
 
