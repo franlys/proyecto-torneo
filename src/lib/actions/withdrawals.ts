@@ -25,10 +25,10 @@ export async function requestWithdrawalAction(
 
     const adminSupabase = await createAdminClient()
 
-    // 1. Fetch user's current profile balance
+    // 1. Fetch user's current profile balance and version timestamp
     const { data: profile, error: profileErr } = await adminSupabase
       .from('profiles')
-      .select('balance')
+      .select('balance, updated_at')
       .eq('id', user.id)
       .single()
 
@@ -37,6 +37,8 @@ export async function requestWithdrawalAction(
     }
 
     const currentBalance = parseFloat(profile.balance || '0.00')
+    const lastUpdatedAt = profile.updated_at
+
     if (currentBalance < parsedAmount) {
       return { success: false, error: `Saldo insuficiente. Tu saldo es de ${currentBalance.toFixed(2)} K-Coins.` }
     }
@@ -49,15 +51,20 @@ export async function requestWithdrawalAction(
       return { success: false, error: 'El monto a retirar es demasiado bajo para la conversión en USD.' }
     }
 
-    // 3. Deduct balance temporarily
+    // 3. Deduct balance temporarily using OCC
     const temporaryBalance = parseFloat((currentBalance - parsedAmount).toFixed(2))
-    const { error: deductErr } = await adminSupabase
+    const { data: updateData, error: deductErr } = await adminSupabase
       .from('profiles')
-      .update({ balance: temporaryBalance })
+      .update({ 
+        balance: temporaryBalance,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', user.id)
+      .eq('updated_at', lastUpdatedAt)
+      .select()
 
-    if (deductErr) {
-      return { success: false, error: 'Error al procesar el débito en cuenta.' }
+    if (deductErr || !updateData || updateData.length === 0) {
+      return { success: false, error: 'Conflicto de transacción concurrente. Por favor, intenta de nuevo.' }
     }
 
     // 4. Create withdrawal record

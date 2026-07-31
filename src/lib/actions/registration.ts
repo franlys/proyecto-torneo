@@ -233,10 +233,10 @@ export async function registerTournament(
       const rate = await getUsdToDopRate()
       const entryFeeInKCoins = parseFloat((entryFeeUsd * rate).toFixed(2))
 
-      // Verificar saldo de K-Coins del capitán
+      // Verificar saldo de K-Coins del capitán y versión del perfil
       const { data: captainProfile, error: balErr } = await adminSupabase
         .from('profiles')
-        .select('balance')
+        .select('balance, updated_at')
         .eq('id', user.id)
         .single()
 
@@ -245,21 +245,27 @@ export async function registerTournament(
       }
 
       const currentBalance = parseFloat(captainProfile.balance || '0')
+      const lastUpdatedAt = captainProfile.updated_at
       if (currentBalance < entryFeeInKCoins) {
         return {
           error: `Saldo insuficiente de K-Coins. El costo es de $${entryFeeUsd} USD (~${entryFeeInKCoins.toLocaleString('es-ES')} K-Coins) y tu saldo es ${currentBalance.toFixed(2)} K-Coins. Recarga en tu billetera.`
         }
       }
 
-      // Descontar K-Coins del capitán
+      // Descontar K-Coins del capitán usando OCC
       const newBalance = parseFloat((currentBalance - entryFeeInKCoins).toFixed(2))
-      const { error: deductErr } = await adminSupabase
+      const { data: updateData, error: deductErr } = await adminSupabase
         .from('profiles')
-        .update({ balance: newBalance })
+        .update({ 
+          balance: newBalance,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', user.id)
+        .eq('updated_at', lastUpdatedAt)
+        .select()
 
-      if (deductErr) {
-        return { error: 'Error al procesar el pago de K-Coins. Intenta de nuevo.' }
+      if (deductErr || !updateData || updateData.length === 0) {
+        return { error: 'Conflicto de transacción concurrente. Por favor, intenta de nuevo.' }
       }
 
       // Registrar transacción

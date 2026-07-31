@@ -50,28 +50,36 @@ export async function contributeToTeamFeeAction(
 
     const finalAmount = Math.min(amount, remaining)
 
-    // 2. Check user balance
+    // 2. Check user balance and version timestamp
     const { data: userProfile, error: profErr } = await adminSupabase
       .from('profiles')
-      .select('balance')
+      .select('balance, updated_at')
       .eq('id', profile.id)
       .single()
 
     if (profErr || !userProfile) return { error: 'Error al verificar tu balance.' }
 
     const balance = parseFloat(userProfile.balance || '0.00')
+    const lastUpdatedAt = userProfile.updated_at
     if (balance < finalAmount) {
       return { error: `Saldo insuficiente. Necesitas al menos ${finalAmount} K-Coins.` }
     }
 
-    // 3. Deduct from user
+    // 3. Deduct from user using OCC
     const newBalance = parseFloat((balance - finalAmount).toFixed(2))
-    const { error: balErr } = await adminSupabase
+    const { data: updateData, error: balErr } = await adminSupabase
       .from('profiles')
-      .update({ balance: newBalance })
+      .update({ 
+        balance: newBalance,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', profile.id)
+      .eq('updated_at', lastUpdatedAt)
+      .select()
 
-    if (balErr) return { error: 'Error al procesar el pago desde tu billetera.' }
+    if (balErr || !updateData || updateData.length === 0) {
+      return { error: 'Conflicto de transacción concurrente. Por favor, intenta de nuevo.' }
+    }
 
     // 4. Log transaction
     const finalAmountUsd = parseFloat((finalAmount / rate).toFixed(2))
