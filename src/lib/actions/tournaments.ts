@@ -765,6 +765,120 @@ export async function finishTournament(
         })
       }
     }
+
+    // 4. Auto-resolve tournament-wide betting markets
+    try {
+      const { data: tournamentMarkets } = await adminSupabase
+        .from('bet_markets')
+        .select('*')
+        .eq('tournament_id', id)
+        .is('match_id', null)
+        .eq('status', 'open')
+
+      if (tournamentMarkets && tournamentMarkets.length > 0) {
+        // Fetch the champion team
+        const { data: championStanding } = await adminSupabase
+          .from('team_standings')
+          .select('team_id, teams(name)')
+          .eq('tournament_id', id)
+          .eq('rank', 1)
+          .single()
+
+        // Fetch the team with the most kills
+        const { data: killsSum } = await adminSupabase
+          .from('submissions')
+          .select('team_id, kill_count, teams(name)')
+          .eq('tournament_id', id)
+          .eq('status', 'approved')
+
+        const teamKillsMap: Record<string, { name: string; kills: number }> = {}
+        killsSum?.forEach(sub => {
+          const rawTeam = sub.teams as any
+          const tName = (Array.isArray(rawTeam) ? rawTeam[0]?.name : rawTeam?.name) || 'Unknown'
+          if (!teamKillsMap[sub.team_id]) {
+            teamKillsMap[sub.team_id] = { name: tName, kills: 0 }
+          }
+          teamKillsMap[sub.team_id].kills += Number(sub.kill_count) || 0
+        })
+
+        let maxKillsTeamName = ''
+        let maxKillsVal = -1
+        Object.values(teamKillsMap).forEach(t => {
+          if (t.kills > maxKillsVal) {
+            maxKillsVal = t.kills
+            maxKillsTeamName = t.name
+          }
+        })
+
+        for (const market of tournamentMarkets) {
+          let winningOptionId: string | null = null
+          const opts = market.options as any[]
+
+          if (market.market_type === 'winner' && championStanding?.teams) {
+            const rawTeam = championStanding.teams as any
+            const champName = (Array.isArray(rawTeam) ? rawTeam[0]?.name : rawTeam?.name) || ''
+            const opt = opts.find(o => o.name.toLowerCase().trim() === champName.toLowerCase().trim())
+            if (opt) winningOptionId = opt.id
+          } else if (market.market_type === 'most_kills' && maxKillsTeamName) {
+            const opt = opts.find(o => o.name.toLowerCase().trim() === maxKillsTeamName.toLowerCase().trim())
+            if (opt) winningOptionId = opt.id
+          }
+
+          if (winningOptionId) {
+            await adminSupabase
+              .from('bet_markets')
+              .update({
+                status: 'resolved',
+                winning_option_id: winningOptionId
+              })
+              .eq('id', market.id)
+
+            const { data: bets } = await adminSupabase
+              .from('user_bets')
+              .select('*')
+              .eq('market_id', market.id)
+              .eq('status', 'pending')
+
+            if (bets && bets.length > 0) {
+              for (const bet of bets) {
+                const isWinner = bet.selected_option_id === winningOptionId
+                const status = isWinner ? 'won' : 'lost'
+
+                await adminSupabase
+                  .from('user_bets')
+                  .update({ status })
+                  .eq('id', bet.id)
+
+                if (isWinner) {
+                  const winAmount = parseFloat(bet.potential_payout)
+                  const { data: userProfile } = await adminSupabase
+                    .from('profiles')
+                    .select('balance')
+                    .eq('id', bet.user_id)
+                    .single()
+
+                  const newBal = parseFloat((Number(userProfile?.balance || 0) + winAmount).toFixed(2))
+                  await adminSupabase
+                    .from('profiles')
+                    .update({ balance: newBal })
+                    .eq('id', bet.user_id)
+
+                  await adminSupabase.from('coin_transactions').insert({
+                    user_id: bet.user_id,
+                    amount: winAmount,
+                    type: 'bet_won',
+                    description: `Ganancia de Apuesta: Torneo Winner (${market.question})`,
+                    reference_id: bet.id
+                  })
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error auto-resolving tournament markets:", err)
+    }
   }
 
   // --- FEDERATION AUTO RANKING UPDATE ---

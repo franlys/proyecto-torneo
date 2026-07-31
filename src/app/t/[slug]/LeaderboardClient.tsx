@@ -579,7 +579,7 @@ export function LeaderboardClient({
     const now = new Date()
     const regEnd = registrationEndDate ? new Date(registrationEndDate) : null
     const hasRegEnded = regEnd ? now > regEnd : false
-    return isFull || hasRegEnded || currentStatus === 'active'
+    return isFull || hasRegEnded || currentStatus === 'active' || currentStatus === 'finished'
   }, [currentTeams.length, maxTeams, registrationEndDate, currentStatus])
 
   const captainTeam = useMemo(() => {
@@ -1486,41 +1486,7 @@ export function LeaderboardClient({
           filter: `drop-shadow(0 0 50px ${primaryColor}15)`,
         }}
       >
-        {/* Stream Modal */}
-        <AnimatePresence>
-          {watchingStream && (
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
-              onClick={() => setWatchingStream(null)}
-            >
-              <motion.div 
-                initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-dark-card w-full max-w-5xl aspect-video rounded-2xl overflow-hidden border border-white/10 relative"
-                onClick={e => e.stopPropagation()}
-              >
-                <div className="absolute top-4 right-4 z-10 flex gap-2">
-                  <a
-                    href={watchingStream}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-4 py-2 bg-neon-cyan/20 hover:bg-neon-cyan/40 text-neon-cyan rounded-lg transition-colors text-sm font-medium border border-neon-cyan/50 backdrop-blur-md flex items-center gap-2"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                    Ver en sitio original
-                  </a>
-                  <button 
-                    onClick={() => setWatchingStream(null)}
-                    className="p-2 bg-black/50 hover:bg-black/80 rounded-lg text-white/50 hover:text-white transition-all backdrop-blur-md border border-white/10"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
-                </div>
-                {renderStreamPlayer(watchingStream)}
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+
 
         <div className="text-center mb-12 flex flex-col items-center">
           {logoUrl && !hideLogoInLeaderboard ? (
@@ -2710,7 +2676,44 @@ export function LeaderboardClient({
           )}
         </motion.div>
       ) : null}
-        <AnimatePresence>
+      </div> {/* Close the main filter wrapper here to make modals fixed relative to viewport */}
+
+      <AnimatePresence>
+        {watchingStream && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
+            onClick={() => setWatchingStream(null)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-dark-card w-full max-w-5xl aspect-video rounded-2xl overflow-hidden border border-white/10 relative"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="absolute top-4 right-4 z-10 flex gap-2">
+                <a
+                  href={watchingStream}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-2 bg-neon-cyan/20 hover:bg-neon-cyan/40 text-neon-cyan rounded-lg transition-colors text-sm font-medium border border-neon-cyan/50 backdrop-blur-md flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                  Ver en sitio original
+                </a>
+                <button 
+                  onClick={() => setWatchingStream(null)}
+                  className="p-2 bg-black/50 hover:bg-black/80 rounded-lg text-white/50 hover:text-white transition-all backdrop-blur-md border border-white/10"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+              {renderStreamPlayer(watchingStream)}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
           {showHallOfFame && (
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -3101,7 +3104,6 @@ export function LeaderboardClient({
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
     </>
   )
 }
