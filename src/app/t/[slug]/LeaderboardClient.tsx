@@ -2838,7 +2838,7 @@ export function LeaderboardClient({
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-xl overflow-y-auto"
+              className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-xl overflow-y-auto"
               onClick={() => setIsRegistering(false)}
             >
               <motion.div
@@ -2846,7 +2846,7 @@ export function LeaderboardClient({
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.95, opacity: 0, y: 20 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="bg-dark-card/95 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.8)] w-full max-w-lg flex flex-col my-8"
+                className="bg-dark-card/95 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.8)] w-full max-w-lg flex flex-col max-h-[85vh] sm:max-h-[90vh] my-4 sm:my-8"
                 onClick={e => e.stopPropagation()}
               >
                 <div 
@@ -2868,7 +2868,8 @@ export function LeaderboardClient({
                     ✕
                   </button>
                 </div>
-                <form onSubmit={handleRegisterSubmit} className="p-6 space-y-4">
+                <form onSubmit={handleRegisterSubmit} className="flex flex-col flex-1 overflow-hidden">
+                  <div className="flex-1 overflow-y-auto p-6 space-y-4">
                   {mode !== 'individual' && (
                     <div>
                       <label className="block text-xs text-white/60 uppercase tracking-widest font-bold mb-1.5 ml-1">
@@ -3083,7 +3084,8 @@ export function LeaderboardClient({
                     </div>
                   )}
 
-                  <div className="flex gap-3 pt-4 border-t border-white/5">
+                  </div>
+                  <div className="flex gap-3 p-6 pt-4 border-t border-white/5 bg-white/[0.01]">
                     <button
                       type="submit"
                       disabled={regLoading}
