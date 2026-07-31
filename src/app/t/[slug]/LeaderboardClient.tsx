@@ -487,8 +487,8 @@ export function LeaderboardClient({
   const handlePayPendingFee = async () => {
     if (!userTeam) return
     const rate = exchangeRate || 58.25
-    const entryFeeInKCoins = entryFee * rate
-    const currentPaid = userTeam.amount_paid || userTeam.amountPaid || 0
+    const entryFeeInKCoins = Math.round(entryFee * rate)
+    const currentPaid = Math.round(userTeam.amount_paid || userTeam.amountPaid || 0)
     const remaining = Math.max(0, entryFeeInKCoins - currentPaid)
 
     if (remaining <= 0) {
@@ -1766,24 +1766,40 @@ export function LeaderboardClient({
                       }
                       if (status === 'approved_to_pay') {
                         const rate = exchangeRate || 58.25
-                        const entryFeeInKCoins = entryFee * rate
-                        const currentPaid = userTeam?.amount_paid || userTeam?.amountPaid || 0
+                        const entryFeeInKCoins = Math.round(entryFee * rate)
+                        const currentPaid = Math.round(userTeam?.amount_paid || userTeam?.amountPaid || 0)
                         const remaining = Math.max(0, entryFeeInKCoins - currentPaid)
+                        const hasEnough = localBalance >= remaining
+                        const remainingUsd = parseFloat((remaining / rate).toFixed(2))
+
                         return (
                           <div className="flex flex-col items-end gap-2.5">
                             <span className="inline-block w-full md:w-auto text-center text-xs font-bold bg-orange-500/20 text-orange-400 px-5 py-2.5 rounded-xl border border-orange-500/30 uppercase tracking-wider">
                               💳 Pendiente de Pago
                             </span>
                             <span className="text-[10px] text-white/50 text-right max-w-[200px] leading-snug">
-                              Costo: <strong className="text-white">${entryFee} USD</strong> (~{entryFeeInKCoins.toLocaleString('es-ES', { maximumFractionDigits: 0 })} K-Coins)
+                              Costo: <strong className="text-white">${entryFee} USD</strong> (~{entryFeeInKCoins.toLocaleString('es-ES')} K-Coins)
                             </span>
-                            <button
-                              onClick={handlePayPendingFee}
-                              disabled={payPendingLoading}
-                              className="px-5 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black font-black uppercase tracking-wider text-xs rounded-xl transition-all shadow-[0_0_15px_rgba(234,179,8,0.3)] disabled:opacity-40"
-                            >
-                              {payPendingLoading ? 'Procesando Pago...' : 'Pagar Inscripción 🪙'}
-                            </button>
+                            <span className="text-[9px] text-white/30 text-right max-w-[200px] block">
+                              Tu Saldo: {localBalance.toFixed(2)} K-Coins
+                            </span>
+
+                            {hasEnough ? (
+                              <button
+                                onClick={handlePayPendingFee}
+                                disabled={payPendingLoading}
+                                className="px-5 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black font-black uppercase tracking-wider text-xs rounded-xl transition-all shadow-[0_0_15px_rgba(234,179,8,0.3)] disabled:opacity-40"
+                              >
+                                {payPendingLoading ? 'Procesando Pago...' : 'Pagar Inscripción 🪙'}
+                              </button>
+                            ) : (
+                              <Link
+                                href={`/wallet?amount=${remainingUsd}&redirect=${encodeURIComponent(window.location.pathname)}`}
+                                className="px-5 py-2.5 bg-gradient-to-r from-neon-cyan to-blue-500 hover:opacity-90 active:scale-[0.98] text-black font-black uppercase tracking-wider text-xs rounded-xl transition-all shadow-[0_0_15px_rgba(0,245,255,0.25)] text-center block"
+                              >
+                                Pagar con PayPal / Tarjeta 💳
+                              </Link>
+                            )}
                           </div>
                         )
                       }
@@ -2968,16 +2984,32 @@ export function LeaderboardClient({
 
                   {/* Entry fee K-Coins notice inside the form */}
                   {entryFee > 0 && (
-                    <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-3 flex items-center gap-3">
-                      <span className="text-xl">🪙</span>
-                      <div>
-                        <p className="text-xs font-black text-yellow-300 uppercase tracking-wider">
-                          Costo: ${entryFee} USD (~{(entryFee * exchangeRate).toLocaleString('es-ES', { maximumFractionDigits: 2 })} K-Coins)
-                        </p>
-                        <p className="text-[10px] text-white/40 mt-0.5">
-                          Se descontará el equivalente en K-Coins de tu billetera al confirmar.
-                        </p>
+                    <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-3 flex flex-col gap-2.5">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl">🪙</span>
+                        <div>
+                          <p className="text-xs font-black text-yellow-300 uppercase tracking-wider">
+                            Costo: ${entryFee} USD (~{Math.round(entryFee * (exchangeRate || 58.25)).toLocaleString('es-ES')} K-Coins)
+                          </p>
+                          <p className="text-[10px] text-white/40 mt-0.5">
+                            Se descontará el equivalente en K-Coins de tu billetera al confirmar.
+                          </p>
+                        </div>
                       </div>
+
+                      {isLoggedIn && localBalance < (entryFee * (exchangeRate || 58.25)) && (
+                        <div className="mt-1 p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex flex-col gap-2">
+                          <p className="text-[10px] text-red-400 font-semibold text-left">
+                            ⚠️ Tu Saldo: {localBalance.toFixed(2)} K-Coins (Faltan {((entryFee * (exchangeRate || 58.25)) - localBalance).toFixed(2)} K-Coins)
+                          </p>
+                          <Link
+                            href={`/wallet?amount=${parseFloat((entryFee - (localBalance / (exchangeRate || 58.25))).toFixed(2))}&redirect=${encodeURIComponent(window.location.pathname)}`}
+                            className="text-center px-4 py-2 bg-gradient-to-r from-neon-cyan to-blue-500 hover:opacity-90 active:scale-[0.98] text-black text-[10px] font-black uppercase rounded-lg transition-all shadow-[0_0_10px_rgba(0,245,255,0.15)]"
+                          >
+                            Pagar con PayPal / Tarjeta 💳
+                          </Link>
+                        </div>
+                      )}
                     </div>
                   )}
 

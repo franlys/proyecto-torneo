@@ -10,10 +10,12 @@ interface WalletClientProps {
   initialBalance: number
   transactions: any[]
   deposits: any[]
+  prefilledAmount?: number
+  redirectUrl?: string
 }
 
-export function WalletClient({ initialBalance, transactions, deposits }: WalletClientProps) {
-  const [amount, setAmount] = useState<number>(10)
+export function WalletClient({ initialBalance, transactions, deposits, prefilledAmount, redirectUrl }: WalletClientProps) {
+  const [amount, setAmount] = useState<number>(prefilledAmount || 10)
   const [showPayment, setShowPayment] = useState(false)
   const [sdkLoaded, setSdkLoaded] = useState(typeof window !== 'undefined' && !!(window as any).paypal)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -23,6 +25,14 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
   // Thank You modal states
   const [showThankYouModal, setShowThankYouModal] = useState(false)
   const [purchasedCoins, setPurchasedCoins] = useState(0)
+
+  // Auto-trigger deposit payment if amount is prefilled
+  useEffect(() => {
+    if (prefilledAmount && prefilledAmount > 0) {
+      setShowPayment(true)
+      setShowPaypalModal(true)
+    }
+  }, [prefilledAmount])
 
   useEffect(() => {
     if (showPaypalModal || showThankYouModal) {
@@ -140,7 +150,11 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
             setShowThankYouModal(true)
           } else {
             alert('¡Recarga acreditada con éxito!')
-            window.location.reload()
+            if (redirectUrl) {
+              window.location.href = redirectUrl
+            } else {
+              window.location.reload()
+            }
           }
         } catch (err: any) {
           console.error(err)
@@ -600,7 +614,11 @@ export function WalletClient({ initialBalance, transactions, deposits }: WalletC
               <button
                 onClick={() => {
                   setShowThankYouModal(false)
-                  window.location.reload()
+                  if (redirectUrl) {
+                    window.location.href = redirectUrl
+                  } else {
+                    window.location.reload()
+                  }
                 }}
                 className="absolute top-4 right-4 p-2 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-all"
               >

@@ -7,7 +7,11 @@ const orbitron = Orbitron({ subsets: ['latin'] })
 
 export const dynamic = 'force-dynamic'
 
-export default async function WalletPage() {
+export default async function WalletPage({
+  searchParams,
+}: {
+  searchParams: { amount?: string; redirect?: string }
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -41,6 +45,9 @@ export default async function WalletPage() {
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
+  const prefilledAmount = searchParams.amount ? parseFloat(searchParams.amount) : undefined
+  const redirectUrl = searchParams.redirect || undefined
+
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
       {/* Header */}
@@ -57,6 +64,8 @@ export default async function WalletPage() {
         initialBalance={balance}
         deposits={deposits || []}
         transactions={transactions || []}
+        prefilledAmount={prefilledAmount}
+        redirectUrl={redirectUrl}
       />
     </div>
   )
