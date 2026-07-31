@@ -2633,7 +2633,7 @@ export function LeaderboardClient({
                         <p className="text-white/40 text-[10px] mt-0.5">Aposté a: <b className="text-white/60">{chosenOpt?.name || '—'}</b></p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="font-mono font-bold text-sm text-white">{parseFloat(bet.amount).toFixed(0)} K</p>
+                        <p className="font-mono font-bold text-sm text-white">{parseFloat(bet.amount).toFixed(0)} K-Coins</p>
                         <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
                           bet.status === 'won' ? 'bg-green-500/20 text-green-300' :
                           bet.status === 'lost' ? 'bg-red-500/20 text-red-400' :
