@@ -536,6 +536,29 @@ export function LeaderboardClient({
   const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null)
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null)
   const [betAmount, setBetAmount] = useState<string>('')
+  const [selectedMatchFilter, setSelectedMatchFilter] = useState('all')
+
+  const matchFilterOptions = useMemo(() => {
+    const list = [
+      { id: 'all', name: 'Todas las Apuestas' },
+      { id: 'general', name: 'Torneo General' }
+    ]
+    const sortedMatches = [...(currentMatches || [])]
+      .filter(m => !m.parentMatchId)
+      .sort((a, b) => (a.matchNumber || 0) - (b.matchNumber || 0))
+    
+    sortedMatches.forEach(m => {
+      list.push({ id: m.id, name: m.name })
+    })
+    return list
+  }, [currentMatches])
+
+  const displayedMarkets = useMemo(() => {
+    if (selectedMatchFilter === 'all') return betMarkets
+    if (selectedMatchFilter === 'general') return betMarkets.filter((m: any) => !m.match_id)
+    return betMarkets.filter((m: any) => m.match_id === selectedMatchFilter)
+  }, [betMarkets, selectedMatchFilter])
+
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null)
   const [watchingStream, setWatchingStream] = useState<string | null>(null)
 
@@ -2400,15 +2423,36 @@ export function LeaderboardClient({
             </Link>
           </div>
 
+          {/* Match Selector Pill Bar */}
+          <div className="flex flex-wrap gap-2 mb-6">
+            {matchFilterOptions.map(opt => (
+              <button
+                key={opt.id}
+                onClick={() => {
+                  setSelectedMatchFilter(opt.id)
+                  setSelectedMarketId(null)
+                  setSelectedOptionId(null)
+                }}
+                className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-xl border transition-all ${
+                  selectedMatchFilter === opt.id
+                    ? 'bg-yellow-500/10 border-yellow-500/50 text-yellow-300'
+                    : 'bg-white/[0.03] border-white/5 text-white/50 hover:text-white/80 hover:border-white/10'
+                }`}
+              >
+                {opt.name}
+              </button>
+            ))}
+          </div>
+
           {/* Markets */}
-          {betMarkets.length === 0 ? (
+          {displayedMarkets.length === 0 ? (
             <div className="py-16 text-center border border-dashed border-white/10 rounded-2xl">
               <p className="text-4xl mb-3">🪙</p>
-              <p className="text-white/40 text-sm font-semibold uppercase tracking-widest">No hay mercados de apuestas activos</p>
+              <p className="text-white/40 text-sm font-semibold uppercase tracking-widest">No hay mercados de apuestas en esta sección</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {betMarkets.map((market: any) => {
+              {displayedMarkets.map((market: any) => {
                 const opts = market.options as { id: string; name: string; odds: number }[]
                 const isSelected = selectedMarketId === market.id
                 const userBetForMarket = localUserBets.find((b: any) => b.market_id === market.id)
@@ -2416,26 +2460,49 @@ export function LeaderboardClient({
                   ? (parseFloat(betAmount) * (opts.find(o => o.id === selectedOptionId)?.odds || 1)).toFixed(2)
                   : null
 
+                // Sequential Lock Calculation
+                const isLocked = (() => {
+                  if (!market.match_id) return false
+                  const currentMatch = currentMatches.find(m => m.id === market.match_id)
+                  if (!currentMatch) return false
+                  if (currentMatch.matchNumber > 1) {
+                    const prevMatch = currentMatches.find(m => m.matchNumber === currentMatch.matchNumber - 1 && !m.parentMatchId)
+                    if (prevMatch && !prevMatch.isCompleted) {
+                      return true
+                    }
+                  }
+                  return false
+                })()
+
                 return (
                   <div key={market.id} className={`bg-dark-card/60 backdrop-blur-xl border rounded-2xl overflow-hidden transition-all ${
+                    isLocked ? 'border-white/5 opacity-70' :
                     market.status === 'open' ? 'border-yellow-500/20 hover:border-yellow-500/30' :
                     market.status === 'closed' ? 'border-white/10' :
                     market.status === 'resolved' ? 'border-blue-500/20' : 'border-white/5'
                   }`}>
                     <div className="px-5 py-4 flex items-center justify-between gap-3">
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 text-left">
                         <p className="font-semibold text-white text-sm leading-snug">{market.question}</p>
-                        <p className="text-white/30 text-[10px] uppercase tracking-widest mt-0.5">
-                          {market.market_type === 'winner' ? '🏆 Ganador' : market.market_type === 'most_kills' ? '💀 Más Kills' : '✏️ Custom'}
-                        </p>
+                        <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                          <p className="text-white/30 text-[10px] uppercase tracking-widest">
+                            {market.market_type === 'winner' ? '🏆 Ganador' : market.market_type === 'most_kills' ? '💀 Más Kills' : '✏️ Custom'}
+                          </p>
+                          {isLocked && (
+                            <span className="text-yellow-500/60 text-[9px] font-semibold uppercase tracking-wider bg-yellow-500/5 px-2 py-0.5 rounded border border-yellow-500/10">
+                              🔒 Se habilitará al finalizar la partida anterior
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <span className={`shrink-0 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border ${
+                        isLocked ? 'text-white/30 bg-white/5 border-white/10' :
                         market.status === 'open' ? 'text-green-400 bg-green-400/10 border-green-400/30' :
                         market.status === 'closed' ? 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30' :
                         market.status === 'resolved' ? 'text-blue-400 bg-blue-400/10 border-blue-400/30' :
                         'text-white/30 bg-white/5 border-white/10'
                       }`}>
-                        {market.status === 'open' ? 'Abierto' : market.status === 'closed' ? 'Cerrado' : market.status === 'resolved' ? 'Resuelto' : 'Cancelado'}
+                        {isLocked ? '🔒 Bloqueado' : market.status === 'open' ? 'Abierto' : market.status === 'closed' ? 'Cerrado' : market.status === 'resolved' ? 'Resuelto' : 'Cancelado'}
                       </span>
                     </div>
 
@@ -2444,7 +2511,7 @@ export function LeaderboardClient({
                       {opts.map(opt => (
                         <button
                           key={opt.id}
-                          disabled={market.status !== 'open' || !isLoggedIn}
+                          disabled={market.status !== 'open' || !isLoggedIn || isLocked}
                           onClick={() => {
                             setSelectedMarketId(market.id)
                             setSelectedOptionId(opt.id)
@@ -2454,13 +2521,13 @@ export function LeaderboardClient({
                               ? 'bg-green-500/20 border-green-500/40 text-green-300'
                               : isSelected && selectedOptionId === opt.id
                               ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-200'
+                              : isLocked
+                              ? 'bg-white/[0.01] border-white/5 text-white/20 cursor-not-allowed'
                               : 'bg-white/[0.03] border-white/5 text-white/70 hover:border-yellow-500/30 hover:bg-yellow-500/5 disabled:cursor-not-allowed'
                           }`}
                         >
                           <p className="font-bold text-xs leading-tight">{opt.name}</p>
-                          <p className="font-orbitron font-black text-sm mt-1 ${
-                            market.winning_option_id === opt.id ? 'text-green-400' : 'text-yellow-400'
-                          }">{opt.odds}x</p>
+                          <p className="font-orbitron font-black text-sm mt-1 text-yellow-400">{opt.odds}x</p>
                         </button>
                       ))}
                     </div>

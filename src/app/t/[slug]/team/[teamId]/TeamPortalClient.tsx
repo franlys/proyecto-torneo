@@ -128,6 +128,12 @@ export function TeamPortalClient({
       return
     }
 
+    if (fileKills.size > 52_428_800 || fileTop.size > 52_428_800) {
+      setError('El tamaño de las imágenes supera el límite permitido de 50 MB')
+      setLoading(false)
+      return
+    }
+
     try {
       // 1. Upload Kills file via Server Action
       const fileKillsExt = fileKills.name.split('.').pop()
@@ -141,7 +147,7 @@ export function TeamPortalClient({
       const uploadResultKills = await uploadEvidence(uploadFormDataKills)
       
       if (!uploadResultKills) {
-        throw new Error('La imagen de Kills es demasiado pesada (límite de 4 MB) o hubo un error de conexión.')
+        throw new Error('La imagen de Kills es demasiado pesada (límite de 50 MB) o hubo un error de conexión.')
       }
       
       if ('error' in uploadResultKills) {
@@ -160,7 +166,7 @@ export function TeamPortalClient({
       const uploadResultTop = await uploadEvidence(uploadFormDataTop)
       
       if (!uploadResultTop) {
-        throw new Error('La imagen del Top es demasiado pesada (límite de 4 MB) o hubo un error de conexión.')
+        throw new Error('La imagen del Top es demasiado pesada (límite de 50 MB) o hubo un error de conexión.')
       }
       
       if ('error' in uploadResultTop) {

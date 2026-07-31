@@ -109,6 +109,28 @@ export async function placePredictionAction(input: {
     if (marketErr || !market) return { error: 'Mercado de apuestas no encontrado' }
     if (market.status !== 'open') return { error: 'Las apuestas para este mercado están cerradas' }
 
+    // Enforce sequential betting: locked if linked to match N > 1 and match N-1 is not completed
+    if (market.match_id) {
+      const { data: currentMatch } = await adminSupabase
+        .from('matches')
+        .select('match_number, tournament_id')
+        .eq('id', market.match_id)
+        .single()
+
+      if (currentMatch && currentMatch.match_number > 1) {
+        const { data: prevMatch } = await adminSupabase
+          .from('matches')
+          .select('is_completed')
+          .eq('tournament_id', currentMatch.tournament_id)
+          .eq('match_number', currentMatch.match_number - 1)
+          .maybeSingle()
+
+        if (prevMatch && !prevMatch.is_completed) {
+          return { error: 'Esta apuesta se habilitará cuando finalice la partida anterior.' }
+        }
+      }
+    }
+
     // Find option and lock the odds
     const option = (market.options as any[]).find((opt) => opt.id === input.selectedOptionId)
     if (!option) return { error: 'Opción de apuesta seleccionada inválida' }
