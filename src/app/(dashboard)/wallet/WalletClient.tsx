@@ -50,7 +50,7 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
   const [loadingRate, setLoadingRate] = useState<boolean>(true)
 
   // Withdrawal States
-  const [withdrawAmount, setWithdrawAmount] = useState<number>(10)
+  const [withdrawAmount, setWithdrawAmount] = useState<number | ''>(10)
   const [withdrawEmail, setWithdrawEmail] = useState<string>('')
   const [withdrawPending, setWithdrawPending] = useState(false)
   const [withdrawError, setWithdrawError] = useState<string | null>(null)
@@ -58,12 +58,16 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
 
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!withdrawAmount || withdrawAmount <= 0) {
+      setWithdrawError('Por favor, ingresa un monto válido a retirar.')
+      return
+    }
     setWithdrawPending(true)
     setWithdrawError(null)
     setWithdrawSuccess(false)
 
     try {
-      const res = await requestWithdrawalAction(withdrawAmount, withdrawEmail)
+      const res = await requestWithdrawalAction(withdrawAmount as number, withdrawEmail)
       if (res.error) {
         setWithdrawError(res.error)
       } else {
@@ -472,12 +476,12 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
               <div>
                 <span className="text-[10px] text-white/40 uppercase block">Resumen del Retiro (Tasa: 1 USD = {exchangeRate.toFixed(2)} DOP)</span>
                 <span className="text-sm font-bold text-white">
-                  🪙 {withdrawAmount.toFixed(2)} K-Coins &rarr; $ {(withdrawAmount / exchangeRate).toFixed(2)} USD
+                  🪙 {(withdrawAmount || 0).toFixed(2)} K-Coins &rarr; $ {((withdrawAmount || 0) / exchangeRate).toFixed(2)} USD
                 </span>
               </div>
               <button
                 type="submit"
-                disabled={withdrawPending || withdrawAmount <= 0 || !withdrawEmail.trim() || initialBalance < withdrawAmount}
+                disabled={withdrawPending || !withdrawAmount || withdrawAmount <= 0 || !withdrawEmail.trim() || initialBalance < (withdrawAmount || 0)}
                 className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold font-orbitron rounded-xl text-xs uppercase tracking-widest transition-all disabled:opacity-40"
               >
                 {withdrawPending ? (
@@ -496,7 +500,7 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
             )}
 
             {/* Balance check warning */}
-            {initialBalance < withdrawAmount && (
+            {withdrawAmount !== '' && initialBalance < (withdrawAmount || 0) && (
               <p className="text-[10px] text-red-400/90 font-bold leading-normal">
                 ❌ Saldo insuficiente en tu billetera para retirar este monto.
               </p>
