@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import React, { useState, useTransition, useMemo } from 'react'
 import { toast } from 'sonner'
@@ -108,6 +108,52 @@ export function AdminBetsClient({ tournaments, matches, betMarkets: initialBetMa
         resetForm()
       }
     })
+  }
+
+  const applyPreset = (presetType: 'winner_match' | 'kills_match' | 'winner_tournament' | 'kills_tournament') => {
+    if (!selectedTournamentId) {
+      toast.error('Selecciona un torneo primero')
+      return
+    }
+
+    const tournament = tournaments.find(t => t.id === selectedTournamentId)
+    const match = matchesForTournament.find(m => m.id === selectedMatchId)
+    
+    // Autofill options with teams
+    if (teamsForTournament.length === 0) {
+      toast.error('No hay equipos confirmados para este torneo para auto-completar')
+      return
+    }
+    const teamOptions = teamsForTournament.map(t => ({ id: crypto.randomUUID(), name: t.name, odds: 1.8 }))
+
+    if (presetType === 'winner_match') {
+      if (!selectedMatchId) {
+        toast.error('Selecciona una partida para esta plantilla')
+        return
+      }
+      setMarketType('winner')
+      setQuestion(`¿Qué equipo ganará la partida "${match?.name}"?`)
+      setOptions(teamOptions)
+    } else if (presetType === 'kills_match') {
+      if (!selectedMatchId) {
+        toast.error('Selecciona una partida para esta plantilla')
+        return
+      }
+      setMarketType('most_kills')
+      setQuestion(`¿Qué equipo tendrá más bajas (kills) en la partida "${match?.name}"?`)
+      setOptions(teamOptions)
+    } else if (presetType === 'winner_tournament') {
+      setMarketType('winner')
+      setSelectedMatchId('')
+      setQuestion(`¿Qué equipo se coronará campeón del torneo "${tournament?.name}"?`)
+      setOptions(teamOptions)
+    } else if (presetType === 'kills_tournament') {
+      setMarketType('most_kills')
+      setSelectedMatchId('')
+      setQuestion(`¿Qué equipo acumulará más bajas (kills) en todo el torneo "${tournament?.name}"?`)
+      setOptions(teamOptions)
+    }
+    toast.success('Plantilla cargada con éxito')
   }
 
   const resetForm = () => {
@@ -345,6 +391,44 @@ export function AdminBetsClient({ tournaments, matches, betMarkets: initialBetMa
                       <option key={m.id} value={m.id}>{m.name} {m.is_completed ? '(Completada)' : ''}</option>
                     ))}
                   </select>
+                </div>
+              )}
+
+              {selectedTournamentId && (
+                <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl space-y-3">
+                  <p className="text-[10px] text-white/50 uppercase tracking-widest font-black text-left">Plantillas Predeterminadas (Auto-Completado)</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => applyPreset('winner_match')}
+                      disabled={!selectedMatchId}
+                      className="p-2.5 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 border border-yellow-500/20 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      🏆 Ganador de Partida
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyPreset('kills_match')}
+                      disabled={!selectedMatchId}
+                      className="p-2.5 bg-neon-cyan/10 hover:bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/20 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      💀 Más Kills de Partida
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyPreset('winner_tournament')}
+                      className="p-2.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all"
+                    >
+                      👑 Campeón de Torneo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyPreset('kills_tournament')}
+                      className="p-2.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all"
+                    >
+                      🔫 Más Kills del Torneo
+                    </button>
+                  </div>
                 </div>
               )}
 
