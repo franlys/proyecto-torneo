@@ -22,6 +22,9 @@ export default async function AdminBetsPage() {
   const { data: tournaments } = await adminSupabase
     .from('tournaments')
     .select('id, name, slug, arena_betting_enabled')
+    .neq('status', 'draft')
+    .neq('status', 'finished')
+    .eq('arena_betting_enabled', true)
     .order('created_at', { ascending: false })
 
   const { data: matches } = await adminSupabase
