@@ -4,6 +4,30 @@ Este archivo sirve como bitácora de progreso, decisiones técnicas y contexto d
 
 ---
 
+## [2026-08-01] — Mejoras de Billetera, Validación Manual de Match Point y Penalidades de Evidencia
+
+### Billetera Virtual (UX Fix)
+- **Problema**: Los campos de recarga y retiro (`amount` y `withdrawAmount`) forzaban el valor a `1` al intentar borrarlos por completo, dificultando la escritura.
+- **Solución**: Se actualizaron los estados y validaciones en `WalletClient.tsx` para aceptar `number | ''` y permitir vaciar el campo libremente. Se añadieron validaciones seguras de tipo y desactivación de botones si el input está vacío o es `<= 0`.
+
+### Cómputo de Match Point: Validación Manual y Bloqueo de Partidas
+- **Desactivación de Auto-Finalización**: Se modificó `recalculateStandings` en `submissions.ts` para que no fuerce el estado del torneo a `finished` cuando se detecta un ganador en fase de Match Point. El torneo permanece `active`.
+- **Bloqueo Preventivo**: Se bloquea la creación de nuevas partidas en `addDynamicMatch` si existe una victoria por Match Point pendiente de validación. El botón "Agregar Siguiente Partida" se inhabilita con un candado `🔒 Bloqueado: Validar Match Point`.
+- **Panel de Alerta Admin**: Se renderiza una advertencia amarilla informativa en el dashboard administrativo describiendo la victoria e incorporando botones directos para que el administrador valide y finalice manualmente el torneo (vía `FinishTournamentButton`) o proceda a auditar evidencias.
+
+### Sistema Administrativo de Penalizaciones/Sanciones
+- **Cómputo Flexible de Sanciones**: Se implementó una opción en el modal de edición de evidencias (`SubmissionsManager.tsx`) para penalizar el puntaje obtenido por los equipos:
+  - *Ninguna*: Cómputo regular.
+  - *Obtener la mitad de los puntos (`half_points`)*: Multiplica el total de la partida por 0.5.
+  - *Solo sumar kills (`kills_only`)*: Anula el multiplicador de posición sumando solo puntos por kills.
+- **Estructura JSONB**: Se almacena en la base de datos dentro del campo `ai_data` como `manual_penalty`, evitando alterar el esquema relacional rígido.
+- **Alertas Visuales**: Adición de etiquetas de advertencia (`⚠️ Sanción: 50% Pts` y `⚠️ Sanción: Solo Kills`) al lado del nombre de los equipos penalizados en la tabla de evidencias.
+
+### Leaderboard: Insignias de Match Point Permanentes
+- **Persistencia del Estado**: Se ajustó `LeaderboardClient.tsx` para mostrar la insignia de Match Point (`🎯 MATCH POINT` en desktop, `🎯 MP` en móvil) a cualquier equipo elegible, omitiendo la restricción de que el torneo deba estar en estado `active`, permitiendo que el historial del leaderboard las preserve.
+
+---
+
 ## [2026-04-16] — Arena Crypto Sync, is_active en matches y fixes de acceso
 
 ### matches.is_active — Control de partida en vivo para AC

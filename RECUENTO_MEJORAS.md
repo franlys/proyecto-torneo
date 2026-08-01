@@ -52,13 +52,34 @@ Este documento resume todas las intervenciones técnicas realizadas para corregi
 
 ---
 
+## 5. Control de Match Point (WSOW) y Penalizaciones Manuales
+
+### 🏆 Flujo de Validación de Match Point (Sin Auto-Cierre)
+- **Cambio de Flujo**: Se deshabilitó el cierre automático del torneo a `'finished'` cuando un equipo en Match Point gana la última partida. Esto permite al staff revisar la legitimidad de la victoria.
+- **Bloqueo de Siguiente Partida**: Mientras haya un ganador de Match Point pendiente de validación por parte del administrador, se bloquea la creación de nuevas partidas (tanto en el botón del panel del administrador como en la acción del servidor `addDynamicMatch`).
+- **Alerta Administrativa**: Se incorporó una tarjeta de alerta amarilla prominente en el panel de control del torneo detallando que la victoria está bajo revisión, permitiendo al administrador finalizar el torneo de forma manual (subiendo la foto de gloria) o revisar evidencias para sancionar al equipo infractor.
+
+### ⚠️ Sistema de Penalizaciones y Sanciones
+- **Opciones de Sanción**: Se implementó una opción en el modal de edición de evidencias de partida (`SubmissionsManager.tsx`) para sancionar equipos. Las penalizaciones son:
+  - **Ninguna (Puntos completos)**.
+  - **Mitad de puntos (`half_points`)**: El puntaje total de la partida (kills + posición) se divide a la mitad (x0.5).
+  - **Solo Kills sin multiplicador (`kills_only`)**: Se anulan los puntos o multiplicador de posición, sumando únicamente las kills base.
+- **Persistencia**: Se almacena estructuradamente en el campo `ai_data` como `manual_penalty: 'half_points' | 'kills_only' | null`, persistiendo los datos sin requerir nuevas migraciones de base de datos.
+- **Visualización y Visual Badges**: Se renderizan etiquetas rojas/naranjas en la tabla de evidencias (`⚠️ Sanción: 50% Pts` o `⚠️ Sanción: Solo Kills`) para identificar rápidamente a los equipos sancionados.
+
+### 🎖️ Insignias de Match Point Permanentes
+- **Persistencia Visual**: Se refactorizó la visualización del leaderboard público (`LeaderboardClient.tsx`) para mostrar la insignia `🎯 MATCH POINT` (y `🎯 MP` en móvil) a cualquier equipo elegible por puntos, independientemente de si el torneo está activo o finalizado, manteniendo el historial visual en el ranking.
+
+---
+
 ## 🚀 Estado Actual
 - **Base de Datos**: Consistente y segura.
 - **Storage**: Operativo para logos y evidencias.
 - **UI**: Fluida, sin errores de consola y visualmente impactante.
+- **Match Point & Penalizaciones**: Totalmente operativos y probados bajo vitest.
 
 > [!IMPORTANT]
 > Los scripts finales de permisos están en la carpeta `supabase/migrations`. Si el servidor no los aplica solo, asegúrate de ejecutarlos en el Editor SQL de tu panel de Supabase.
 
 ---
-*Documentación generada el 08-04-2026 por Antigravity AI.*
+*Documentación generada el 01-08-2026 por Antigravity AI.*
