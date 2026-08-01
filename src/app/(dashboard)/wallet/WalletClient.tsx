@@ -15,7 +15,7 @@ interface WalletClientProps {
 }
 
 export function WalletClient({ initialBalance, transactions, deposits, prefilledAmount, redirectUrl }: WalletClientProps) {
-  const [amount, setAmount] = useState<number>(prefilledAmount || 10)
+  const [amount, setAmount] = useState<number | ''>(prefilledAmount || 10)
   const [showPayment, setShowPayment] = useState(false)
   const [sdkLoaded, setSdkLoaded] = useState(typeof window !== 'undefined' && !!(window as any).paypal)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -24,7 +24,7 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
 
   // Thank You modal states
   const [showThankYouModal, setShowThankYouModal] = useState(false)
-  const [purchasedCoins, setPurchasedCoins] = useState(0)
+  const [purchasedCoins, setPurchasedCoins] = useState<number | undefined>(undefined)
 
   // Auto-trigger deposit payment if amount is prefilled
   useEffect(() => {
@@ -215,13 +215,22 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                     <input
                       type="number"
                       value={amount}
-                      onChange={(e) => setAmount(Math.max(1, parseFloat(e.target.value) || 0))}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        if (val === '') {
+                          setAmount('')
+                        } else {
+                          const parsed = parseFloat(val)
+                          setAmount(isNaN(parsed) ? '' : Math.max(0, parsed))
+                        }
+                      }}
                       className="w-full pl-8 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-neon-cyan"
                     />
                   </div>
                   <button
                     onClick={() => setShowPayment(true)}
-                    className="px-6 py-2.5 bg-neon-cyan hover:bg-neon-cyan/85 text-black font-bold font-orbitron rounded-xl text-xs uppercase tracking-widest transition-all"
+                    disabled={!amount || amount <= 0}
+                    className="px-6 py-2.5 bg-neon-cyan hover:bg-neon-cyan/85 text-black font-bold font-orbitron rounded-xl text-xs uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     Confirmar
                   </button>
@@ -270,11 +279,11 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                 <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 space-y-2">
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-white/40">Monto a Recargar:</span>
-                    <span className="font-bold text-white">${amount.toFixed(2)} USD</span>
+                    <span className="font-bold text-white">${(amount || 0).toFixed(2)} USD</span>
                   </div>
                   <div className="flex justify-between items-center text-xs border-t border-white/[0.04] pt-2">
                     <span className="text-white/40">K-Coins a recibir (×{exchangeRate.toFixed(2)}):</span>
-                    <span className="font-orbitron font-black text-yellow-400">🪙 {(amount * exchangeRate).toFixed(2)}</span>
+                    <span className="font-orbitron font-black text-yellow-400">🪙 {((amount || 0) * exchangeRate).toFixed(2)}</span>
                   </div>
                 </div>
 
@@ -350,7 +359,7 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                       <div className="space-y-2">
                         <div className="flex justify-between items-center gap-2">
                           <span className="text-xs text-white/50">Recarga de K-Coins</span>
-                          <span className="text-xs font-bold text-white whitespace-nowrap">${amount.toFixed(2)} USD</span>
+                          <span className="text-xs font-bold text-white whitespace-nowrap">${(amount || 0).toFixed(2)} USD</span>
                         </div>
                       </div>
                     </div>
@@ -360,7 +369,7 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                         <span className="text-[10px] text-white/30 uppercase tracking-widest">Recibirás</span>
                       </div>
                       <div className="flex items-baseline gap-1">
-                        <span className="font-orbitron font-black text-yellow-400 text-2xl">{(amount * exchangeRate).toFixed(0)}</span>
+                        <span className="font-orbitron font-black text-yellow-400 text-2xl">{((amount || 0) * exchangeRate).toFixed(0)}</span>
                         <span className="text-xs text-white/30">K-Coins</span>
                       </div>
                       <p className="text-[9px] text-white/20 mt-1">1 USD = {exchangeRate.toFixed(2)} K-Coins</p>
