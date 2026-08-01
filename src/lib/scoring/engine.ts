@@ -130,16 +130,39 @@ export function computeStandings(
     if (rule.useMultiplier) {
       totalPointsWithoutVip = subs.reduce((sum, s) => {
         const pos = s.rank || (s.potTop ? 1 : 0)
-        return sum + calculateMatchPoints(rule, pos, s.killCount)
+        let pts = calculateMatchPoints(rule, pos, s.killCount)
+        const penalty = (s as any).aiData?.manual_penalty || (s as any).ai_data?.manual_penalty
+        if (penalty === 'half_points') {
+          pts = pts / 2
+        } else if (penalty === 'kills_only') {
+          pts = s.killCount * rule.killPoints
+        }
+        return sum + pts
       }, 0)
     } else {
       totalPlacementPoints = subs.reduce((sum, s) => {
         const pos = s.rank || (s.potTop ? 1 : 0)
         const pRules = (rule.placementPoints as any) || {}
-        const points = pos > 0 ? (Number(pRules[String(pos)]) || 0) : 0
+        let points = pos > 0 ? (Number(pRules[String(pos)]) || 0) : 0
+        const penalty = (s as any).aiData?.manual_penalty || (s as any).ai_data?.manual_penalty
+        if (penalty === 'half_points') {
+          points = points / 2
+        } else if (penalty === 'kills_only') {
+          points = 0
+        }
         return sum + points
       }, 0)
-      totalPointsWithoutVip = (totalKills * rule.killPoints) + totalPlacementPoints
+
+      const killsPoints = subs.reduce((sum, s) => {
+        let pts = s.killCount * rule.killPoints
+        const penalty = (s as any).aiData?.manual_penalty || (s as any).ai_data?.manual_penalty
+        if (penalty === 'half_points') {
+          pts = pts / 2
+        }
+        return sum + pts
+      }, 0)
+
+      totalPointsWithoutVip = killsPoints + totalPlacementPoints
     }
 
     const potTopCount = calculatePotTopCount(subs)

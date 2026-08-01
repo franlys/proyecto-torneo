@@ -264,5 +264,73 @@ describe('Scoring Engine — Property-Based Tests', () => {
     // 4th place (unconfigured placement, defaults to 1.0x) with 6 kills -> 6 * 1.5 * 1.0 = 9 points
     expect(calculateMatchPoints(multiplierRule, 4, 6)).toBe(9)
   })
+
+  it('Feature: computeStandings works correctly with manual penalties (half_points and kills_only)', () => {
+    const rule: ScoringRule = {
+      id: 'rule-1',
+      tournamentId: 't-1',
+      killPoints: 2,
+      placementPoints: {
+        '1': 10,
+        '2': 5,
+      },
+      useMultiplier: false,
+    }
+
+    const teams = [
+      { id: 't-normal', name: 'Normal Team', vipScore: 0 },
+      { id: 't-half', name: 'Half Points Team', vipScore: 0 },
+      { id: 't-kills', name: 'Kills Only Team', vipScore: 0 }
+    ]
+
+    const submissions: any[] = [
+      {
+        id: 's-1',
+        teamId: 't-normal',
+        matchId: 'm-1',
+        killCount: 5,
+        rank: 1,
+        potTop: true,
+        status: 'approved',
+        submittedAt: new Date().toISOString()
+      },
+      {
+        id: 's-2',
+        teamId: 't-half',
+        matchId: 'm-1',
+        killCount: 5,
+        rank: 1,
+        potTop: true,
+        status: 'approved',
+        submittedAt: new Date().toISOString(),
+        aiData: { manual_penalty: 'half_points' }
+      },
+      {
+        id: 's-3',
+        teamId: 't-kills',
+        matchId: 'm-1',
+        killCount: 5,
+        rank: 1,
+        potTop: true,
+        status: 'approved',
+        submittedAt: new Date().toISOString(),
+        aiData: { manual_penalty: 'kills_only' }
+      }
+    ]
+
+    const standings = computeStandings(submissions, rule, { totalMatches: 1, teams })
+
+    // t-normal: 5 kills * 2 + 10 placement = 20 points
+    const norm = standings.find(s => s.teamId === 't-normal')
+    expect(norm?.totalPoints).toBe(20)
+
+    // t-half: (5 kills * 2 + 10 placement) / 2 = 10 points
+    const half = standings.find(s => s.teamId === 't-half')
+    expect(half?.totalPoints).toBe(10)
+
+    // t-kills: 5 kills * 2 = 10 points (placement points ignored/0)
+    const kills = standings.find(s => s.teamId === 't-kills')
+    expect(kills?.totalPoints).toBe(10)
+  })
 })
 

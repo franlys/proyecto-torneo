@@ -28,7 +28,7 @@ type PendingSubmission = {
   matches?: { name: string; match_number: number } | { name: string; match_number: number }[]
   evidence_files?: EvidenceFile[]
   ai_status?: 'pending' | 'processing' | 'completed' | 'failed'
-  ai_data?: { team_name?: string; kill_count?: number; rank?: number }
+  ai_data?: { team_name?: string; kill_count?: number; rank?: number; manual_penalty?: 'half_points' | 'kills_only' | null }
   ai_confidence?: number
   ai_error?: string
   player_kills?: Record<string, number>
@@ -64,12 +64,14 @@ export function SubmissionsManager({
   const [editRank, setEditRank] = useState<number | null>(null)
   const [editPotTop, setEditPotTop] = useState<boolean>(false)
   const [editPlayerKills, setEditPlayerKills] = useState<Record<string, number>>({})
+  const [editPenalty, setEditPenalty] = useState<'half_points' | 'kills_only' | null>(null)
 
   const openEditSubmission = (sub: PendingSubmission) => {
     setEditingSub(sub)
     setEditKills(sub.kill_count)
     setEditRank(sub.rank || null)
     setEditPotTop(sub.pot_top || false)
+    setEditPenalty(sub.ai_data?.manual_penalty || null)
     
     // Initialize player kills. If a player is not in player_kills, default to 0.
     const pKills: Record<string, number> = {}
@@ -102,6 +104,7 @@ export function SubmissionsManager({
         rank: editRank,
         potTop: editPotTop,
         playerKills: editPlayerKills,
+        penalty: editPenalty,
       })
       if ('error' in res) throw new Error(res.error)
       
@@ -111,6 +114,10 @@ export function SubmissionsManager({
         rank: editRank || undefined,
         pot_top: editPotTop,
         player_kills: editPlayerKills,
+        ai_data: {
+          ...s.ai_data,
+          manual_penalty: editPenalty
+        }
       } : s))
       setEditingSub(null)
     } catch (err: any) {
@@ -383,7 +390,17 @@ export function SubmissionsManager({
                     <tbody className="divide-y divide-white/5">
                       {matchSubmissions.map(sub => (
                         <tr key={sub.id} className="hover:bg-white/[0.02] transition-colors">
-                          <td className="px-6 py-4 font-medium text-white">{getTeamName(sub)}</td>
+                          <td className="px-6 py-4 font-medium text-white">
+                            <div className="flex flex-col gap-1">
+                              <span>{getTeamName(sub)}</span>
+                              {sub.ai_data?.manual_penalty === 'half_points' && (
+                                <span className="max-w-fit px-1.5 py-0.5 rounded text-[8px] uppercase font-black bg-red-500/10 text-red-400 border border-red-500/25 tracking-wider">⚠️ Sanción: 50% Pts</span>
+                              )}
+                              {sub.ai_data?.manual_penalty === 'kills_only' && (
+                                <span className="max-w-fit px-1.5 py-0.5 rounded text-[8px] uppercase font-black bg-orange-500/10 text-orange-400 border border-orange-500/25 tracking-wider">⚠️ Sanción: Solo Kills</span>
+                              )}
+                            </div>
+                          </td>
                           <td className="px-6 py-4 text-center font-orbitron text-neon-cyan">{sub.kill_count}</td>
                           <td className="px-6 py-4 text-center">
                              {sub.rank ? (
@@ -604,6 +621,21 @@ export function SubmissionsManager({
                 >
                   ¿Potencial Top / Victoria? (Top 1)
                 </label>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-2">
+                  Penalización / Sanción de Puntos
+                </label>
+                <select
+                  value={editPenalty || ''}
+                  onChange={(e) => setEditPenalty((e.target.value as any) || null)}
+                  className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-white focus:border-neon-cyan focus:outline-none transition-colors"
+                >
+                  <option value="" className="bg-[#0f1115] text-white">Ninguna (Puntos completos)</option>
+                  <option value="half_points" className="bg-[#0f1115] text-white">Obtener la mitad de los puntos (x0.5)</option>
+                  <option value="kills_only" className="bg-[#0f1115] text-white">Solo sumar kills (Sin multiplicador de posición)</option>
+                </select>
               </div>
 
               <div>

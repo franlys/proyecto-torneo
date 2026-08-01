@@ -236,7 +236,7 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
   const mappedSubs = (subs || []).map((s: any) => ({
     id: s.id, tournamentId: s.tournament_id, teamId: s.team_id, matchId: s.match_id,
     submittedBy: s.submitted_by, killCount: s.kill_count, rank: s.rank, potTop: s.pot_top, status: s.status,
-    submittedAt: s.submitted_at
+    submittedAt: s.submitted_at, aiData: s.ai_data
   }))
 
   // STRATEGY: Only count the LATEST approved submission for each team/match pair
@@ -355,9 +355,18 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
         for (const sub of matchSubs) {
           const placementPts = Number(rule.placementPoints[String(sub.rank)] ?? 0)
           const killPts = sub.killCount * rule.killPoints
-          const matchScore = rule.useMultiplier
+          let matchScore = rule.useMultiplier
             ? sub.killCount * rule.killPoints * placementPts
             : placementPts + killPts
+
+          // Apply manual penalty
+          const penalty = (sub as any).aiData?.manual_penalty
+          if (penalty === 'half_points') {
+            matchScore = matchScore / 2
+          } else if (penalty === 'kills_only') {
+            matchScore = sub.killCount * rule.killPoints
+          }
+
           cumulativePoints[sub.teamId] = (cumulativePoints[sub.teamId] ?? 0) + matchScore
         }
       }
@@ -799,6 +808,7 @@ export async function updateSubmissionAction(
     rank?: number | null
     potTop: boolean
     playerKills: Record<string, number>
+    penalty?: 'half_points' | 'kills_only' | null
   }
 ): Promise<{ success: boolean } | { error: string }> {
   const supabase = await createClient()
@@ -808,7 +818,7 @@ export async function updateSubmissionAction(
   // Verify tournament creator/collaborator permission
   const { data: submission, error: subErr } = await supabase
     .from('submissions')
-    .select('tournament_id, match_id, status, tournaments!inner(creator_id, collaborator_id)')
+    .select('tournament_id, match_id, status, ai_data, tournaments!inner(creator_id, collaborator_id)')
     .eq('id', submissionId)
     .single()
 
@@ -839,14 +849,24 @@ export async function updateSubmissionAction(
       .neq('id', submissionId)
   }
 
+  const updates: any = {
+    kill_count: data.killCount,
+    rank: data.rank,
+    pot_top: data.potTop,
+    player_kills: data.playerKills,
+  }
+
+  if (data.penalty !== undefined) {
+    const currentAiData = (submission as any).ai_data || {}
+    updates.ai_data = {
+      ...(typeof currentAiData === 'object' ? currentAiData : {}),
+      manual_penalty: data.penalty
+    }
+  }
+
   const { error: updateErr } = await adminSupabase
     .from('submissions')
-    .update({
-      kill_count: data.killCount,
-      rank: data.rank,
-      pot_top: data.potTop,
-      player_kills: data.playerKills,
-    })
+    .update(updates)
     .eq('id', submissionId)
 
   if (updateErr) {
