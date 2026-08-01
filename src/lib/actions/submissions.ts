@@ -325,11 +325,6 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
           // ¡Match Point confirmado! Este equipo ganó siendo ya Match Point
           console.log(`[MATCH POINT] Equipo ${winner.teamId} ya tenía ${cumulativePoints[winner.teamId]} pts (>= ${limit}) y acaba de ganar la partida ${match.id}. ¡CAMPEÓN!`)
 
-          await supabase
-            .from('tournaments')
-            .update({ status: 'finished' })
-            .eq('id', tournamentId)
-
           const { revalidatePath } = await import('next/cache')
           revalidatePath(`/tournaments/${tournamentId}`)
           revalidatePath(`/t/${tourney.slug}`)
@@ -882,6 +877,104 @@ export async function updateSubmissionAction(
   }
 
   return { success: true }
+}
+
+export async function getMatchPointWinner(
+  supabase: any,
+  tournamentId: string
+): Promise<{ teamId: string; teamName: string; matchId: string; accumulatedPoints: number } | null> {
+  const { data: tourney } = await supabase
+    .from('tournaments')
+    .select('id, max_points_limit, scoring_rules(kill_points, placement_points, use_multiplier)')
+    .eq('id', tournamentId)
+    .single()
+
+  if (!tourney || !tourney.max_points_limit || tourney.max_points_limit <= 0) return null
+  const limit = Number(tourney.max_points_limit)
+
+  const { data: subs } = await supabase
+    .from('submissions')
+    .select('*')
+    .eq('tournament_id', tournamentId)
+    .eq('status', 'approved')
+
+  if (!subs || subs.length === 0) return null
+
+  const { data: allMatches } = await supabase
+    .from('matches')
+    .select('id, match_number')
+    .eq('tournament_id', tournamentId)
+    .order('match_number', { ascending: true })
+
+  if (!allMatches || allMatches.length === 0) return null
+
+  // Fetch all teams to get their names
+  const { data: teams } = await supabase
+    .from('teams')
+    .select('id, name')
+    .eq('tournament_id', tournamentId)
+
+  const teamNames: Record<string, string> = {}
+  if (teams) {
+    teams.forEach((t: any) => {
+      teamNames[t.id] = t.name
+    })
+  }
+
+  const uniqueApprovedSubs = subs
+    .sort((a: any, b: any) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime())
+    .filter((sub: any, index: number, self: any[]) =>
+      index === self.findIndex((t: any) => (
+        t.team_id === sub.team_id && t.match_id === sub.match_id
+      ))
+    )
+
+  const sRules = Array.isArray(tourney.scoring_rules) ? tourney.scoring_rules[0] : tourney.scoring_rules
+  const rule = {
+    killPoints: Number(sRules?.kill_points ?? 1),
+    placementPoints: sRules?.placement_points ?? {},
+    useMultiplier: !!sRules?.use_multiplier,
+  }
+
+  const subsByMatch: Record<string, typeof uniqueApprovedSubs> = {}
+  for (const sub of uniqueApprovedSubs) {
+    if (!subsByMatch[sub.match_id]) subsByMatch[sub.match_id] = []
+    subsByMatch[sub.match_id].push(sub)
+  }
+
+  const cumulativePoints: Record<string, number> = {}
+
+  for (const match of allMatches) {
+    const matchSubs = subsByMatch[match.id] || []
+    const winner = matchSubs.find((s: any) => s.rank === 1)
+    if (winner && (cumulativePoints[winner.team_id] ?? 0) >= limit) {
+      return {
+        teamId: winner.team_id,
+        teamName: teamNames[winner.team_id] || 'Equipo desconocido',
+        matchId: match.id,
+        accumulatedPoints: cumulativePoints[winner.team_id]
+      }
+    }
+
+    for (const sub of matchSubs) {
+      const placementPts = Number(rule.placementPoints[String(sub.rank)] ?? 0)
+      const killPts = sub.kill_count * rule.killPoints
+      let matchScore = rule.useMultiplier
+        ? sub.kill_count * rule.killPoints * placementPts
+        : placementPts + killPts
+
+      const penalty = sub.ai_data?.manual_penalty
+      if (penalty === 'half_points') {
+        matchScore = matchScore / 2
+      } else if (penalty === 'kills_only') {
+        matchScore = sub.kill_count * rule.killPoints
+      }
+
+      cumulativePoints[sub.team_id] = (cumulativePoints[sub.team_id] ?? 0) + matchScore
+    }
+  }
+
+  return null
 }
 
 

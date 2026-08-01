@@ -5,6 +5,7 @@ import { DeleteTournamentButton } from './DeleteTournamentButton'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Tournament } from '@/types'
+import { createClient } from '@/lib/supabase/server'
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
@@ -161,6 +162,10 @@ export default async function TournamentOverviewPage({
 
   const { scoringRule, ...tournament } = result.data
 
+  const supabase = await createClient()
+  const { getMatchPointWinner } = await import('@/lib/actions/submissions')
+  const mpWinner = await getMatchPointWinner(supabase, id)
+
   const FORMAT_LABELS: Record<Tournament['format'], string> = {
     battle_royale_clasico: 'Battle Royale Clásico',
     kill_race: 'Kill Race',
@@ -199,6 +204,37 @@ export default async function TournamentOverviewPage({
 
       {tournament.description && (
         <p className="text-white/40 text-sm">{tournament.description}</p>
+      )}
+
+      {mpWinner && (
+        <div className="p-6 bg-yellow-500/10 border border-yellow-500/25 rounded-2xl space-y-4">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl shrink-0">⚠️</span>
+            <div className="space-y-1">
+              <h3 className="font-orbitron font-black text-white text-sm uppercase tracking-wider">
+                ¡Victoria de Match Point Detectada!
+              </h3>
+              <p className="text-xs text-white/70 leading-relaxed">
+                El equipo <strong className="text-yellow-400 font-bold">{mpWinner.teamName}</strong> ha alcanzado el límite de puntos ({tournament.maxPointsLimit || 150}) y acaba de ganar la última partida.
+              </p>
+              <p className="text-xs text-white/50 leading-relaxed">
+                Por favor, verifica si el equipo cumplió con todas las reglas (evidencia de partida, armas permitidas, skins no baneadas, etc.) antes de validar el resultado.
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-3 border-t border-white/5 pt-4">
+            <div className="w-full sm:w-auto">
+              <FinishTournamentButton id={id} />
+            </div>
+            <Link
+              href={`/tournaments/${id}/submissions`}
+              className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white transition-all uppercase tracking-wider font-orbitron"
+            >
+              Revisar Evidencias
+            </Link>
+          </div>
+        </div>
       )}
 
       {/* Corporate Branding */}
@@ -387,7 +423,7 @@ export default async function TournamentOverviewPage({
             <p className="text-xs text-white/30 mb-4">
               Crea la siguiente partida de forma dinámica durante el transcurso del torneo en vivo.
             </p>
-            <AddMatchButton id={id} />
+            <AddMatchButton id={id} disabled={!!mpWinner} />
           </div>
           <div className="bg-dark-card border border-gold/10 rounded-2xl p-6">
             <h2 className="text-sm font-semibold text-white mb-1">Finalizar Torneo</h2>

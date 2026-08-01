@@ -1462,6 +1462,12 @@ export async function addDynamicMatch(
   if (!(await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id))) return { error: 'Sin permisos' }
   if (tournament.status !== 'active') return { error: 'El torneo debe estar activo para agregar partidas' }
 
+  const { getMatchPointWinner } = await import('./submissions')
+  const mpWinner = await getMatchPointWinner(supabase, tournamentId)
+  if (mpWinner) {
+    return { error: `No se pueden agregar más partidas. El equipo "${mpWinner.teamName}" ha ganado por Match Point y requiere validación del administrador.` }
+  }
+
   const nextMatchNumber = (tournament.total_matches || 0) + 1
 
   // 1. Increment total_matches on tournaments

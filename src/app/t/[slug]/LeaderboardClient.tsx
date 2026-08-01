@@ -860,7 +860,7 @@ export function LeaderboardClient({
                               </div>
                             )}
                             {/* Badge Match Point */}
-                            {maxPointsLimit && maxPointsLimit > 0 && s.totalPoints >= maxPointsLimit && status === 'active' && (
+                            {maxPointsLimit && maxPointsLimit > 0 && s.totalPoints >= maxPointsLimit && (
                               <div className="flex items-center gap-1 animate-pulse">
                                 <span className="text-[9px] font-black px-2 py-0.5 rounded-full border uppercase tracking-wider bg-orange-500/20 text-orange-400 border-orange-500/40 shadow-[0_0_8px_rgba(249,115,22,0.4)]">
                                   🎯 MATCH POINT
@@ -2261,8 +2261,15 @@ export function LeaderboardClient({
                               {idx + 1}
                            </div>
                         </div>
-                        <div>
-                           <h4 className="font-orbitron font-bold text-white group-hover:text-neon-cyan transition-colors truncate max-w-[150px]">{team.teamName}</h4>
+                        <div className="space-y-0.5">
+                           <div className="flex items-center gap-2">
+                              <h4 className="font-orbitron font-bold text-white group-hover:text-neon-cyan transition-colors truncate max-w-[120px]">{team.teamName}</h4>
+                              {maxPointsLimit && maxPointsLimit > 0 && team.totalPoints >= maxPointsLimit && (
+                                 <span className="text-[7px] font-black px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/40 uppercase tracking-widest animate-pulse shrink-0">
+                                    🎯 MP
+                                 </span>
+                              )}
+                           </div>
                            <p className="text-[10px] text-white/40 uppercase tracking-widest font-black">Analizar Equipo</p>
                         </div>
                      </div>
