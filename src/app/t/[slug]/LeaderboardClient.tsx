@@ -554,9 +554,10 @@ export function LeaderboardClient({
   }, [currentMatches])
 
   const displayedMarkets = useMemo(() => {
-    if (selectedMatchFilter === 'all') return betMarkets
-    if (selectedMatchFilter === 'general') return betMarkets.filter((m: any) => !m.match_id)
-    return betMarkets.filter((m: any) => m.match_id === selectedMatchFilter)
+    const activeMarkets = betMarkets.filter((m: any) => m.status !== 'cancelled')
+    if (selectedMatchFilter === 'all') return activeMarkets
+    if (selectedMatchFilter === 'general') return activeMarkets.filter((m: any) => !m.match_id)
+    return activeMarkets.filter((m: any) => m.match_id === selectedMatchFilter)
   }, [betMarkets, selectedMatchFilter])
 
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null)
