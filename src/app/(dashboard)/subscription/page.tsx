@@ -18,7 +18,7 @@ export default async function SubscriptionPage() {
   // Get current status
   const { data: profile } = await supabase
     .from('profiles')
-    .select('subscription_status, subscription_expiry, role')
+    .select('subscription_status, subscription_expiry, role, balance')
     .eq('id', user.id)
     .single()
 
@@ -38,6 +38,7 @@ export default async function SubscriptionPage() {
           initialStatus={profile?.subscription_status || 'NONE'}
           initialExpiry={profile?.subscription_expiry}
           role={profile?.role}
+          initialBalance={parseFloat(profile?.balance || '0.00')}
         />
       </div>
     </div>
