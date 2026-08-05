@@ -90,6 +90,11 @@ Este documento resume todas las intervenciones técnicas realizadas para corregi
 ### 📂 Colapsabilidad de Encuentros
 - **Gestión Cómoda**: Se incorporó un sistema de colapso y despliegue por encuentro en la pestaña "Evidencias" (`SubmissionsManager.tsx`). Esto permite contraer las partidas anteriores ya validadas y centrar la atención solo en la partida activa.
 
+### 👑 Gestión de Membresía VIP y Colaboradores
+- **Acceso Directo para Administradores**: Se modificó la vista de la membresía ([SubscriptionClient.tsx](file:///C:/Users/elmae/Proyecto-torneos/src/app/(dashboard)/subscription/SubscriptionClient.tsx)) para detectar si el usuario logueado posee rol `SUPER_ADMIN` o `ADMIN`. De ser así, se le otorga **acceso VIP gratuito e ilimitado** de por vida, ocultando el grid de pagos de PayPal y mostrando un panel con todos sus beneficios activos.
+- **Límite Ampliado de Colaboradores (Staff)**: Se mejoró la oferta de la membresía para streamers. Ahora, los streamers que posean una cuenta Free tienen un límite de **2 colaboradores**, mientras que los streamers con membresía **VIP Activa** disfrutan de un límite ampliado de hasta **5 colaboradores** de soporte en [streamer-staff.ts](file:///C:/Users/elmae/Proyecto-torneos/src/lib/actions/streamer-staff.ts).
+- **Nuevos Beneficios en la Oferta**: Se actualizaron y enriquecieron visualmente las tarjetas de la membresía detallando el beneficio del incremento de colaboradores (máx. 5) y la opción de personalización avanzada de patrocinadores en la ficha del torneo.
+
 ---
 
 ## 🚀 Estado Actual
