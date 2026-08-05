@@ -285,6 +285,72 @@ export async function resolvePredictionMarketAction(marketId: string, winningOpt
   }
 }
 
+export async function cancelPredictionMarketInternal(adminSupabase: any, marketId: string) {
+  // Fetch market details
+  const { data: market, error: marketErr } = await adminSupabase
+    .from('bet_markets')
+    .select('*')
+    .eq('id', marketId)
+    .single()
+
+  if (marketErr || !market) return { error: 'Mercado no encontrado' }
+  if (market.status === 'resolved') return { error: 'No se puede cancelar un mercado ya resuelto' }
+
+  // Update market status
+  const { error: resolveErr } = await adminSupabase
+    .from('bet_markets')
+    .update({ status: 'cancelled' })
+    .eq('id', marketId)
+
+  if (resolveErr) return { error: resolveErr.message }
+
+  // Fetch all pending/active bets
+  const { data: bets } = await adminSupabase
+    .from('user_bets')
+    .select('*')
+    .eq('market_id', marketId)
+    .eq('status', 'pending')
+
+  // Process refunds
+  for (const bet of (bets || [])) {
+    const refundAmount = parseFloat(bet.amount)
+
+    await adminSupabase
+      .from('user_bets')
+      .update({ status: 'refunded' })
+      .eq('id', bet.id)
+
+    // Refund balance to user
+    const { data: userProfile } = await adminSupabase
+      .from('profiles')
+      .select('balance')
+      .eq('id', bet.user_id)
+      .single()
+
+    if (userProfile) {
+      const currentBalance = parseFloat(userProfile.balance || '0.00')
+      const newBalance = currentBalance + refundAmount
+
+      await adminSupabase
+        .from('profiles')
+        .update({ balance: newBalance })
+        .eq('id', bet.user_id)
+
+      // Log transaction
+      await adminSupabase.from('coin_transactions').insert({
+        user_id: bet.user_id,
+        amount: refundAmount,
+        type: 'bet_refunded',
+        reference_id: bet.id
+      })
+    }
+  }
+
+  revalidatePath(`/admin/bets`)
+  revalidatePath(`/t/[slug]`)
+  return { success: true }
+}
+
 // 5. Cancel and Refund Prediction Market (Admin only)
 export async function cancelPredictionMarketAction(marketId: string) {
   try {
@@ -292,70 +358,7 @@ export async function cancelPredictionMarketAction(marketId: string) {
     if (!admin) return { error: 'No autorizado' }
 
     const adminSupabase = await createAdminClient()
-
-    // Fetch market details
-    const { data: market, error: marketErr } = await adminSupabase
-      .from('bet_markets')
-      .select('*')
-      .eq('id', marketId)
-      .single()
-
-    if (marketErr || !market) return { error: 'Mercado no encontrado' }
-    if (market.status === 'resolved') return { error: 'No se puede cancelar un mercado ya resuelto' }
-
-    // Update market status
-    const { error: resolveErr } = await adminSupabase
-      .from('bet_markets')
-      .update({ status: 'cancelled' })
-      .eq('id', marketId)
-
-    if (resolveErr) return { error: resolveErr.message }
-
-    // Fetch all pending/active bets
-    const { data: bets } = await adminSupabase
-      .from('user_bets')
-      .select('*')
-      .eq('market_id', marketId)
-      .eq('status', 'pending')
-
-    // Process refunds
-    for (const bet of (bets || [])) {
-      const refundAmount = parseFloat(bet.amount)
-
-      await adminSupabase
-        .from('user_bets')
-        .update({ status: 'refunded' })
-        .eq('id', bet.id)
-
-      // Refund balance to user
-      const { data: userProfile } = await adminSupabase
-        .from('profiles')
-        .select('balance')
-        .eq('id', bet.user_id)
-        .single()
-
-      if (userProfile) {
-        const currentBalance = parseFloat(userProfile.balance || '0.00')
-        const newBalance = currentBalance + refundAmount
-
-        await adminSupabase
-          .from('profiles')
-          .update({ balance: newBalance })
-          .eq('id', bet.user_id)
-
-        // Log transaction
-        await adminSupabase.from('coin_transactions').insert({
-          user_id: bet.user_id,
-          amount: refundAmount,
-          type: 'bet_refunded',
-          reference_id: bet.id
-        })
-      }
-    }
-
-    revalidatePath(`/admin/bets`)
-    revalidatePath(`/t/[slug]`)
-    return { success: true }
+    return await cancelPredictionMarketInternal(adminSupabase, marketId)
   } catch (err: any) {
     return { error: err.message || 'Error al cancelar el mercado' }
   }

@@ -1072,6 +1072,11 @@ export function LeaderboardClient({
                             </div>
                           )}
                           <span className="font-orbitron font-bold text-xs text-white truncate max-w-[120px]">{p.displayName}</span>
+                          {currentStatus === 'finished' && idx === 0 && (
+                            <span className="px-1.5 py-0.5 rounded text-[8px] font-black bg-neon-purple/20 text-neon-purple border border-neon-purple/30 uppercase tracking-widest animate-pulse shrink-0">
+                              👑 MVP
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3.5">
@@ -1619,14 +1624,21 @@ export function LeaderboardClient({
               return (
                 <div className="mt-8 flex flex-col items-center gap-6 w-full max-w-4xl mx-auto">
                   {/* Clean start date display */}
-                  {tourneyStart && (
+                  {currentStatus === 'finished' ? (
+                    <div className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 backdrop-blur-md">
+                      <span className="text-xl">🏆</span>
+                      <span className="text-xs sm:text-sm font-orbitron font-bold text-emerald-400 uppercase tracking-wider">
+                        Torneo Finalizado
+                      </span>
+                    </div>
+                  ) : tourneyStart ? (
                     <div className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-white/[0.03] border border-white/5 backdrop-blur-md">
                       <span className="text-xl">🚀</span>
                       <span className="text-xs sm:text-sm font-orbitron font-bold text-white uppercase tracking-wider">
                         Inicio del Torneo: <span className="text-neon-cyan">{formatDate(tourneyStart)}</span>
                       </span>
                     </div>
-                  )}
+                  ) : null}
 
                   {/* Center stream player */}
                   {streamUrl && (
@@ -1694,14 +1706,21 @@ export function LeaderboardClient({
                         </span>
                       </div>
                     )}
-                    {tourneyStart && (
+                    {currentStatus === 'finished' ? (
+                      <div className="flex items-center gap-1.5 sm:col-span-2 text-emerald-400 font-bold">
+                        <span>🏆</span>
+                        <span>
+                          <strong>Estado del Torneo:</strong> Finalizado
+                        </span>
+                      </div>
+                    ) : tourneyStart ? (
                       <div className="flex items-center gap-1.5 sm:col-span-2">
                         <span className="text-gold">🚀</span>
                         <span>
                           <strong>Inicio del Torneo:</strong> {formatDate(tourneyStart)}
                         </span>
                       </div>
-                    )}
+                    ) : null}
                     {totalPrize > 0 && (
                       <div className="flex items-center gap-1.5 sm:col-span-2 text-gold font-bold mt-1">
                         <span>💰</span>
@@ -2015,7 +2034,14 @@ export function LeaderboardClient({
                               {idx + 1 === 1 ? '🥇' : idx + 1 === 2 ? '🥈' : '🥉'}
                             </span>
                             <div className="min-w-0">
-                              <p className="font-orbitron font-bold text-xs text-white truncate max-w-[140px]">{p.displayName}</p>
+                               <div className="flex items-center gap-1.5 min-w-0">
+                                 <p className="font-orbitron font-bold text-xs text-white truncate max-w-[140px]">{p.displayName}</p>
+                                 {currentStatus === 'finished' && idx === 0 && (
+                                   <span className="shrink-0 px-1 py-0.5 rounded text-[8px] font-black bg-neon-purple/20 text-neon-purple border border-neon-purple/30 uppercase tracking-widest animate-pulse">
+                                     👑 MVP
+                                   </span>
+                                 )}
+                               </div>
                               <p className="text-[10px] text-white/40 truncate max-w-[140px]">{p.teamName}</p>
                             </div>
                           </div>

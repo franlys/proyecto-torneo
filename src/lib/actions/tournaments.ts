@@ -604,6 +604,66 @@ export async function finishTournament(
 
   if (finishErr) return { error: finishErr.message }
 
+  // --- Close all matches and resolve/cancel their betting markets ---
+  try {
+    const adminSupabase = await createAdminClient()
+    const { data: matches } = await adminSupabase
+      .from('matches')
+      .select('id, is_completed, name, match_number, round_number, map_name, parent_match_id, is_warmup')
+      .eq('tournament_id', id)
+
+    const { autoResolveMatchMarketsAction, cancelPredictionMarketInternal } = await import('./predictions')
+
+    for (const match of (matches || [])) {
+      // 1. Mark match as completed if not already completed
+      if (!match.is_completed) {
+        await adminSupabase
+          .from('matches')
+          .update({ is_completed: true, is_active: false })
+          .eq('id', match.id)
+
+        // Push to AC
+        pushToAC('matches', 'upsert', {
+          id: match.id,
+          tournamentId: id,
+          name: match.name,
+          matchNumber: match.match_number,
+          roundNumber: match.round_number,
+          mapName: match.map_name,
+          isCompleted: true,
+          isActive: false,
+          isWarmup: match.is_warmup,
+          parentMatchId: match.parent_match_id,
+        })
+      }
+
+      // 2. Fetch approved submissions count for this match
+      const { count: approvedCount } = await adminSupabase
+        .from('submissions')
+        .select('id', { count: 'exact', head: true })
+        .eq('match_id', match.id)
+        .eq('status', 'approved')
+
+      if ((approvedCount || 0) > 0) {
+        // Resolve match-specific betting markets
+        await autoResolveMatchMarketsAction(match.id)
+      } else {
+        // Cancel and refund open prediction markets for this unplayed match
+        const { data: matchMarkets } = await adminSupabase
+          .from('bet_markets')
+          .select('id')
+          .eq('match_id', match.id)
+          .eq('status', 'open')
+
+        for (const market of (matchMarkets || [])) {
+          await cancelPredictionMarketInternal(adminSupabase, market.id)
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[finishTournament] Error closing matches & resolving/refunding bets:', err)
+  }
+
   // --- Financial Calculation ---
   const { count: teamsCount } = await supabase
     .from('teams')
@@ -737,11 +797,44 @@ export async function finishTournament(
     }
 
     // 3. Distribuir Premio MVP
-    if (mvpParticipantId && Number(t.prize_mvp) > 0) {
+    let finalMvpParticipantId = mvpParticipantId
+    if (!finalMvpParticipantId && Number(t.prize_mvp) > 0) {
+      const { data: subs } = await adminSupabase
+        .from('submissions')
+        .select('player_kills')
+        .eq('tournament_id', id)
+        .eq('status', 'approved')
+
+      const killsMap: Record<string, number> = {}
+      if (subs) {
+        subs.forEach((s: any) => {
+          if (s.player_kills && typeof s.player_kills === 'object') {
+            Object.entries(s.player_kills).forEach(([pId, kills]) => {
+              killsMap[pId] = (killsMap[pId] || 0) + (Number(kills) || 0)
+            })
+          }
+        })
+      }
+
+      let maxKills = -1
+      let bestParticipantId = null
+      Object.entries(killsMap).forEach(([pId, kills]) => {
+        if (kills > maxKills) {
+          maxKills = kills
+          bestParticipantId = pId
+        }
+      })
+
+      if (bestParticipantId) {
+        finalMvpParticipantId = bestParticipantId
+      }
+    }
+
+    if (finalMvpParticipantId && Number(t.prize_mvp) > 0) {
       const { data: mvpPart } = await adminSupabase
         .from('participants')
         .select('user_id')
-        .eq('id', mvpParticipantId)
+        .eq('id', finalMvpParticipantId)
         .single()
 
       const mvpUserId = mvpPart?.user_id

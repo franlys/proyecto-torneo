@@ -206,7 +206,7 @@ export default async function TournamentOverviewPage({
         <p className="text-white/40 text-sm">{tournament.description}</p>
       )}
 
-      {mpWinner && (
+      {mpWinner && tournament.status === 'active' && (
         <div className="p-6 bg-yellow-500/10 border border-yellow-500/25 rounded-2xl space-y-4">
           <div className="flex items-start gap-3">
             <span className="text-2xl shrink-0">⚠️</span>

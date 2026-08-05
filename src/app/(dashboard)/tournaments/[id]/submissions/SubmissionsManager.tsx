@@ -58,6 +58,7 @@ export function SubmissionsManager({
   const [modalImageUrl, setModalImageUrl] = useState('')
   const [modalEvidenceFiles, setModalEvidenceFiles] = useState<Array<{ url: string; evidence_type: string }>>([])
   const [selectedSubmissionDetails, setSelectedSubmissionDetails] = useState<any>(null)
+  const [collapsedMatches, setCollapsedMatches] = useState<Record<string, boolean>>({})
 
   const [editingSub, setEditingSub] = useState<PendingSubmission | null>(null)
   const [editKills, setEditKills] = useState<number>(0)
@@ -131,7 +132,8 @@ export function SubmissionsManager({
     killCount: number,
     rank: number | null,
     potTop: boolean,
-    playerKills: Record<string, number>
+    playerKills: Record<string, number>,
+    penalty: 'half_points' | 'kills_only' | null
   ) => {
     if (!selectedSubmissionDetails) return
     const submissionId = selectedSubmissionDetails.id
@@ -142,6 +144,7 @@ export function SubmissionsManager({
         rank,
         potTop,
         playerKills,
+        penalty,
       })
       if ('error' in res) throw new Error(res.error)
       
@@ -152,6 +155,10 @@ export function SubmissionsManager({
         rank: rank || undefined,
         pot_top: potTop,
         player_kills: playerKills,
+        ai_data: {
+          ...s.ai_data,
+          manual_penalty: penalty
+        }
       } : s))
 
       // Update selected details so the modal UI updates instantly
@@ -172,12 +179,20 @@ export function SubmissionsManager({
             rank: rank || undefined,
             potTop,
             playerKillsBreakdown,
+            aiData: {
+              ...prev.aiData,
+              manual_penalty: penalty
+            },
             rawSubmission: {
               ...prev.rawSubmission,
               kill_count: killCount,
               rank: rank || undefined,
               pot_top: potTop,
               player_kills: playerKills,
+              ai_data: {
+                ...prev.rawSubmission?.ai_data,
+                manual_penalty: penalty
+              }
             }
           }
         }
@@ -320,18 +335,30 @@ export function SubmissionsManager({
           // Find teams that have NOT submitted for this specific match
           const submittedTeamIds = new Set(matchSubmissions.map(s => s.team_id))
           const missingTeams = allTeams.filter(t => !submittedTeamIds.has(t.id))
+          const isCollapsed = !!collapsedMatches[matchId]
 
           return (
-            <div key={matchId} className="space-y-4">
-              <div className="flex items-center gap-4">
-                <h2 className="font-orbitron text-lg font-bold text-neon-cyan tracking-wider truncate">
-                  {matchName}
-                </h2>
-                <div className="h-px flex-1 bg-gradient-to-r from-neon-cyan/30 to-transparent" />
-                <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">
+            <div key={matchId} className="space-y-4 border-b border-white/[0.02] pb-6 last:border-0 last:pb-0">
+              <div 
+                className="flex items-center justify-between gap-4 cursor-pointer select-none group"
+                onClick={() => setCollapsedMatches(prev => ({ ...prev, [matchId]: !prev[matchId] }))}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-neon-cyan/60 group-hover:text-neon-cyan transition-colors text-xs font-black w-4">
+                    {isCollapsed ? '▶' : '▼'}
+                  </span>
+                  <h2 className="font-orbitron text-lg font-bold text-neon-cyan tracking-wider truncate group-hover:text-neon-cyan/80 transition-colors">
+                    {matchName}
+                  </h2>
+                </div>
+                <div className="h-px flex-1 bg-gradient-to-r from-neon-cyan/20 to-transparent" />
+                <span className="text-[10px] font-black text-white/30 uppercase tracking-widest bg-white/[0.02] border border-white/5 px-2.5 py-1 rounded-lg">
                   {matchSubmissions.length} ENVÍOS
                 </span>
               </div>
+
+              {!isCollapsed && (
+                <>
 
               {missingTeams.length > 0 && (
                 <div className="bg-red-500/5 border border-red-500/10 rounded-xl p-4 space-y-3">
@@ -548,10 +575,11 @@ export function SubmissionsManager({
                   </table>
                 </div>
               </div>
-            </div>
-          )
-        })
-      )}
+            </>)}
+          </div>
+        )
+      })
+    )}
 
       {/* Edit Submission Modal */}
       {editingSub && (

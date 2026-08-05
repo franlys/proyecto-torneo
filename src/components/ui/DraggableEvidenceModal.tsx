@@ -33,7 +33,8 @@ interface DraggableEvidenceModalProps {
     killCount: number,
     rank: number | null,
     potTop: boolean,
-    playerKills: Record<string, number>
+    playerKills: Record<string, number>,
+    penalty: 'half_points' | 'kills_only' | null
   ) => Promise<void>
 }
 
@@ -58,6 +59,7 @@ export function DraggableEvidenceModal({
   const [editPotTop, setEditPotTop] = useState(false)
   const [editPlayerKills, setEditPlayerKills] = useState<Record<string, number>>({})
   const [editTotalKills, setEditTotalKills] = useState(0)
+  const [editPenalty, setEditPenalty] = useState<'half_points' | 'kills_only' | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
   // Initialize edit states when entering edit mode or when submissionDetails changes
@@ -65,6 +67,11 @@ export function DraggableEvidenceModal({
     if (submissionDetails) {
       setEditRank(submissionDetails.rank || null)
       setEditPotTop(submissionDetails.potTop || false)
+      setEditPenalty(
+        (submissionDetails.aiData as any)?.manual_penalty || 
+        (submissionDetails.rawSubmission as any)?.ai_data?.manual_penalty || 
+        null
+      )
       
       const pKills: Record<string, number> = {}
       const rawSub = submissionDetails.rawSubmission
@@ -98,7 +105,7 @@ export function DraggableEvidenceModal({
     if (!onSaveDetails) return
     setIsSaving(true)
     try {
-      await onSaveDetails(editTotalKills, editRank, editPotTop, editPlayerKills)
+      await onSaveDetails(editTotalKills, editRank, editPotTop, editPlayerKills, editPenalty)
       setIsEditing(false)
     } catch (err: any) {
       alert(err.message || 'Error al guardar')
@@ -336,6 +343,21 @@ export function DraggableEvidenceModal({
                           >
                             ¿Victoria? (Top 1)
                           </label>
+                        </div>
+
+                        <div>
+                          <label className="block text-[9px] font-black text-white/40 uppercase tracking-wider mb-1.5">
+                            Penalización / Sanción de Puntos
+                          </label>
+                          <select
+                            value={editPenalty || ''}
+                            onChange={(e) => setEditPenalty((e.target.value as any) || null)}
+                            className="w-full bg-[#0f1115] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-neon-cyan focus:outline-none transition-colors"
+                          >
+                            <option value="" className="bg-[#0f1115] text-white">Ninguna (Puntos completos)</option>
+                            <option value="half_points" className="bg-[#0f1115] text-white">Obtener la mitad de los puntos (x0.5)</option>
+                            <option value="kills_only" className="bg-[#0f1115] text-white">Solo sumar kills (Sin multiplicador)</option>
+                          </select>
                         </div>
 
                         {/* Desglose de Jugadores (Edit Mode) */}
