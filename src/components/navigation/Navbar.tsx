@@ -83,7 +83,7 @@ export function Navbar({ user, profile }: NavbarProps) {
               href="/login"
               className="hidden sm:inline-block bg-white text-black px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-neon-cyan hover:scale-[1.02] transition-all"
             >
-              Acceso Streamer
+              Iniciar Sesión
             </Link>
           )}
 
@@ -162,24 +162,22 @@ export function Navbar({ user, profile }: NavbarProps) {
                   </div>
                 )}
                 <div>
-                  <div className="text-[10px] text-white/40 font-bold uppercase tracking-wider">Usuario</div>
+                  <div className="text-[10px] text-white/40 font-bold uppercase tracking-wider">
+                    {profile?.role === 'SUPER_ADMIN' ? 'Super Admin'
+                      : profile?.role === 'ADMIN' ? 'Administrador'
+                      : profile?.role === 'STREAMER' ? 'Streamer / Organizador'
+                      : 'Jugador'}
+                  </div>
                   <div className="text-sm text-white font-bold truncate max-w-[180px]">{username}</div>
                 </div>
               </div>
-              {/* Mi Perfil button */}
-              <Link
-                href="/profile"
-                onClick={toggleMenu}
-                className="w-full flex items-center justify-center gap-2 bg-neon-cyan/10 border border-neon-cyan/20 text-neon-cyan py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-neon-cyan/20 transition-all"
-              >
-                <span>👤</span> Mi Perfil
-              </Link>
-              {/* Dashboard link (for creators/admins) */}
+              
+              {/* Simplified Dashboard Buttons */}
               {(profile?.role === 'SUPER_ADMIN' || profile?.role === 'ADMIN') && (
                 <Link
                   href="/admin"
                   onClick={toggleMenu}
-                  className="w-full block text-center bg-gradient-to-r from-neon-cyan to-neon-purple text-white py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:opacity-90 transition-all mb-2"
+                  className="w-full block text-center bg-gradient-to-r from-neon-cyan to-neon-purple text-white py-3.5 rounded-xl text-xs font-black uppercase tracking-widest hover:opacity-90 transition-all"
                 >
                   ⚙️ Panel Admin (Global)
                 </Link>
@@ -187,9 +185,9 @@ export function Navbar({ user, profile }: NavbarProps) {
               <Link
                 href="/tournaments"
                 onClick={toggleMenu}
-                className="w-full block text-center bg-white text-black py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-neon-cyan transition-all"
+                className="w-full block text-center bg-white text-black py-3.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-neon-cyan transition-all"
               >
-                Panel de Torneos
+                Ir al Dashboard
               </Link>
             </div>
           ) : (
@@ -199,10 +197,10 @@ export function Navbar({ user, profile }: NavbarProps) {
                 onClick={toggleMenu}
                 className="w-full block text-center bg-neon-cyan text-black py-4 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-[1.02] transition-all"
               >
-                Acceso Streamer
+                Iniciar Sesión
               </Link>
               <p className="text-[10px] text-white/30 text-center uppercase tracking-widest font-semibold leading-relaxed">
-                Membresía Pro para gestores de torneos.
+                Accede a tu panel, gestiona torneos y participa.
               </p>
             </div>
           )}
