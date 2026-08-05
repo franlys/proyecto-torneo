@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 interface SubscriptionClientProps {
   initialStatus: string
   initialExpiry: string | null
+  role?: string
 }
 
 const PLANS = [
@@ -20,10 +21,12 @@ const BENEFITS = [
   { icon: <Crown className="w-4 h-4 text-yellow-400" />, text: 'Insignia VIP exclusiva en tu perfil y líderboards.' },
   { icon: <Zap className="w-4 h-4 text-blue-400" />, text: '0% de comisión por retiro de K-Coins.' },
   { icon: <Star className="w-4 h-4 text-purple-400" />, text: 'Acceso anticipado a torneos oficiales Kronix.' },
-  { icon: <Shield className="w-4 h-4 text-emerald-400" />, text: 'Soporte prioritario 24/7.' }
+  { icon: <Shield className="w-4 h-4 text-emerald-400" />, text: 'Soporte prioritario y atención VIP 24/7.' },
+  { icon: <Shield className="w-4 h-4 text-neon-cyan" />, text: 'Hasta 5 colaboradores de Staff para tus torneos (Plan Free incluye máx. 2).' },
+  { icon: <Crown className="w-4 h-4 text-gold" />, text: 'Personalización avanzada de patrocinadores en la ficha del torneo.' }
 ]
 
-export default function SubscriptionClient({ initialStatus, initialExpiry }: SubscriptionClientProps) {
+export default function SubscriptionClient({ initialStatus, initialExpiry, role }: SubscriptionClientProps) {
   const router = useRouter()
   const [status, setStatus] = useState(initialStatus)
   const [expiry, setExpiry] = useState(initialExpiry)
@@ -129,79 +132,125 @@ export default function SubscriptionClient({ initialStatus, initialExpiry }: Sub
     }
   }, [])
 
+  const isAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN'
+
   return (
     <div className="space-y-8">
       {/* Current Status Banner */}
-      <div className={`p-6 rounded-2xl border ${status === 'ACTIVE' ? 'bg-gradient-to-r from-yellow-500/10 to-amber-500/5 border-yellow-500/20' : 'bg-dark-card border-white/5'} flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg`}>
-        <div className="flex items-center gap-4">
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${status === 'ACTIVE' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-white/5 text-white/50'}`}>
-            <Crown className="w-6 h-6" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              Estado Actual: {status === 'ACTIVE' ? <span className="text-yellow-400">VIP Activo</span> : <span className="text-white/50">Cuenta Free</span>}
-            </h2>
-            {status === 'ACTIVE' && expiry && (
-              <p className="text-sm text-white/60 flex items-center gap-1 mt-1">
-                <Calendar className="w-3 h-3" />
-                Válido hasta: <span className="text-white font-mono">{new Date(expiry).toLocaleDateString('es-DO', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+      {isAdmin ? (
+        <div className="p-6 rounded-2xl border bg-gradient-to-r from-yellow-500/10 to-amber-500/5 border-yellow-500/20 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center bg-yellow-500/20 text-yellow-400">
+              <Crown className="w-6 h-6 animate-pulse" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2 font-orbitron uppercase tracking-wider">
+                Estado Actual: <span className="text-yellow-400 font-black">Administrador (VIP Gratis)</span>
+              </h2>
+              <p className="text-sm text-white/50 mt-1">
+                Tu cuenta de administración cuenta con privilegios VIP ilimitados y gratuitos de por vida.
               </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {PLANS.map((plan) => (
-          <div 
-            key={plan.id}
-            className={`relative rounded-3xl p-[1px] transition-all duration-300 ${selectedPlan === plan.id ? 'bg-gradient-to-b from-[#009cde] to-blue-900 shadow-[0_0_30px_rgba(0,156,222,0.3)] transform -translate-y-2' : 'bg-white/10 hover:bg-white/20 hover:-translate-y-1'}`}
-            onClick={() => setSelectedPlan(plan.id)}
-          >
-            {plan.badge && (
-              <div className="absolute -top-3 inset-x-0 flex justify-center z-10">
-                <span className="bg-[#009cde] text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full shadow-lg">
-                  {plan.badge}
-                </span>
-              </div>
-            )}
-            <div className="bg-[#0d0f15] h-full rounded-3xl p-6 flex flex-col cursor-pointer">
-              <div className="text-center mb-6">
-                <h3 className="text-lg font-bold text-white uppercase tracking-widest font-orbitron">{plan.title}</h3>
-                <div className="mt-4 flex items-center justify-center gap-1">
-                  <span className="text-2xl font-bold text-white/50">$</span>
-                  <span className="text-5xl font-black text-white">{plan.amount}</span>
-                  <span className="text-sm text-white/50 self-end mb-1">USD</span>
-                </div>
-              </div>
-
-              <div className="flex-1 space-y-4">
-                {BENEFITS.map((b, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <div className="mt-0.5">{b.icon}</div>
-                    <span className="text-xs text-white/70 leading-relaxed">{b.text}</span>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setSelectedPlan(plan.id)
-                  setShowPaypalModal(true)
-                }}
-                className={`mt-8 w-full py-3 rounded-xl font-bold uppercase tracking-widest text-sm transition-all ${
-                  selectedPlan === plan.id 
-                    ? 'bg-[#009cde] hover:bg-[#007fb5] text-white shadow-[0_0_20px_rgba(0,156,222,0.4)]' 
-                    : 'bg-white/5 hover:bg-white/10 text-white/80'
-                }`}
-              >
-                Elegir Pase
-              </button>
             </div>
           </div>
-        ))}
-      </div>
+        </div>
+      ) : (
+        <div className={`p-6 rounded-2xl border ${status === 'ACTIVE' ? 'bg-gradient-to-r from-yellow-500/10 to-amber-500/5 border-yellow-500/20' : 'bg-dark-card border-white/5'} flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg`}>
+          <div className="flex items-center gap-4">
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${status === 'ACTIVE' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-white/5 text-white/50'}`}>
+              <Crown className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                Estado Actual: {status === 'ACTIVE' ? <span className="text-yellow-400">VIP Activo</span> : <span className="text-white/50">Cuenta Free</span>}
+              </h2>
+              {status === 'ACTIVE' && expiry && (
+                <p className="text-sm text-white/60 flex items-center gap-1 mt-1">
+                  <Calendar className="w-3 h-3" />
+                  Válido hasta: <span className="text-white font-mono">{new Date(expiry).toLocaleDateString('es-DO', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAdmin ? (
+        <div className="bg-dark-card border border-yellow-500/20 rounded-3xl p-8 max-w-2xl mx-auto text-center space-y-6 shadow-[0_0_50px_rgba(234,179,8,0.08)]">
+          <div className="w-16 h-16 bg-yellow-500/10 rounded-full mx-auto flex items-center justify-center border border-yellow-500/30">
+            <Crown className="w-8 h-8 text-yellow-400 animate-pulse" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold text-white font-orbitron uppercase tracking-widest">¡Tu cuenta es VIP Premium!</h2>
+            <p className="text-sm text-white/60 max-w-md mx-auto">
+              Como administrador de Kronix, disfrutas de acceso completo e ilimitado a todos los privilegios premium de la plataforma.
+            </p>
+          </div>
+          
+          <div className="border-t border-white/5 pt-6 text-left max-w-md mx-auto space-y-4">
+            <p className="text-[10px] text-white/30 uppercase tracking-widest font-black mb-2">Privilegios Activos en tu Cuenta:</p>
+            {BENEFITS.map((b, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="flex-shrink-0 text-emerald-400 bg-emerald-500/10 p-1 rounded-full">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-xs text-white/80 leading-relaxed font-semibold">{b.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {PLANS.map((plan) => (
+            <div 
+              key={plan.id}
+              className={`relative rounded-3xl p-[1px] transition-all duration-300 ${selectedPlan === plan.id ? 'bg-gradient-to-b from-[#009cde] to-blue-900 shadow-[0_0_30px_rgba(0,156,222,0.3)] transform -translate-y-2' : 'bg-white/10 hover:bg-white/20 hover:-translate-y-1'}`}
+              onClick={() => setSelectedPlan(plan.id)}
+            >
+              {plan.badge && (
+                <div className="absolute -top-3 inset-x-0 flex justify-center z-10">
+                  <span className="bg-[#009cde] text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full shadow-lg">
+                    {plan.badge}
+                  </span>
+                </div>
+              )}
+              <div className="bg-[#0d0f15] h-full rounded-3xl p-6 flex flex-col cursor-pointer">
+                <div className="text-center mb-6">
+                  <h3 className="text-lg font-bold text-white uppercase tracking-widest font-orbitron">{plan.title}</h3>
+                  <div className="mt-4 flex items-center justify-center gap-1">
+                    <span className="text-2xl font-bold text-white/50">$</span>
+                    <span className="text-5xl font-black text-white">{plan.amount}</span>
+                    <span className="text-sm text-white/50 self-end mb-1">USD</span>
+                  </div>
+                </div>
+
+                <div className="flex-1 space-y-4">
+                  {BENEFITS.map((b, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <div className="mt-0.5">{b.icon}</div>
+                      <span className="text-xs text-white/70 leading-relaxed">{b.text}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setSelectedPlan(plan.id)
+                    setShowPaypalModal(true)
+                  }}
+                  className={`mt-8 w-full py-3 rounded-xl font-bold uppercase tracking-widest text-sm transition-all ${
+                    selectedPlan === plan.id 
+                      ? 'bg-[#009cde] hover:bg-[#007fb5] text-white shadow-[0_0_20px_rgba(0,156,222,0.4)]' 
+                      : 'bg-white/5 hover:bg-white/10 text-white/80'
+                  }`}
+                >
+                  Elegir Pase
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── PayPal Modal Overlay ── */}
       {showPaypalModal && activePlanDetails && (

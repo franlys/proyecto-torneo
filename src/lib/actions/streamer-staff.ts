@@ -28,7 +28,7 @@ export async function inviteStaffMember(
 
   const supabase = await createClient()
 
-  // Verify staff limit for STREAMER accounts
+  // Verify staff limit for STREAMER accounts (VIP has 5, Free has 2)
   if (streamerProfile.role === 'STREAMER') {
     const { count, error: countErr } = await supabase
       .from('streamer_staff')
@@ -36,8 +36,18 @@ export async function inviteStaffMember(
       .eq('streamer_id', streamerProfile.id)
 
     if (countErr) return { error: countErr.message }
-    if (count !== null && count >= 2) {
-      return { error: 'Has alcanzado el límite de 2 colaboradores incluidos en tu plan. Para agregar más, contacta a Kronix ($5/mes por usuario adicional).' }
+
+    const isVip = 
+      streamerProfile.subscriptionStatus === 'ACTIVE' || 
+      (streamerProfile as any).subscription_status === 'ACTIVE'
+    const allowedLimit = isVip ? 5 : 2
+
+    if (count !== null && count >= allowedLimit) {
+      if (isVip) {
+        return { error: 'Has alcanzado el límite de 5 colaboradores del plan VIP. Para agregar más, contacta al soporte de Kronix.' }
+      } else {
+        return { error: 'Has alcanzado el límite de 2 colaboradores incluidos en tu plan Free. Activa tu suscripción VIP para ampliar el límite a 5 colaboradores.' }
+      }
     }
   }
 
