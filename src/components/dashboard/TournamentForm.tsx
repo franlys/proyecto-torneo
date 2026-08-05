@@ -207,6 +207,13 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
   const isPrivate = watch('isPrivate')
   const discipline = watch('discipline')
   const maxPointsLimit = watch('maxPointsLimit')
+  
+  const entryFee = watch('entryFee') || 0
+  const maxTeams = watch('maxTeams') || 0
+  const prize1st = watch('prize1st') || 0
+  const prize2nd = watch('prize2nd') || 0
+  const prize3rd = watch('prize3rd') || 0
+  const prizeMvp = watch('prizeMvp') || 0
 
   const maxMatches = level === 'casual' ? 3 : level === 'profesional' ? 12 : undefined
   const minMatches = level === 'profesional' ? 6 : 1
@@ -1000,6 +1007,72 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
                     </div>
                   </div>
                 </div>
+
+                {/* Live Financial Summary & Proportional Calculator */}
+                {maxTeams > 0 && entryFee > 0 && (
+                  <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-3 mt-4">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-white/40 uppercase tracking-wider">Recaudación Estimada:</span>
+                      <span className="font-bold text-white">
+                        ${(entryFee * maxTeams).toFixed(2)} USD ({maxTeams} eq. × ${entryFee} USD)
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-white/40 uppercase tracking-wider">Total de Premios:</span>
+                      <span className="font-bold text-white">
+                        ${(prize1st + prize2nd + prize3rd + prizeMvp).toFixed(2)} USD
+                      </span>
+                    </div>
+
+                    <div className="border-t border-white/5 pt-3 flex justify-between items-center text-xs font-orbitron">
+                      <span className="text-white/40 uppercase tracking-wider text-[10px]">Balance del Pozo:</span>
+                      {entryFee * maxTeams - (prize1st + prize2nd + prize3rd + prizeMvp) < 0 ? (
+                        <span className="font-bold text-red-400">
+                          -${Math.abs(entryFee * maxTeams - (prize1st + prize2nd + prize3rd + prizeMvp)).toFixed(2)} USD (Déficit)
+                        </span>
+                      ) : (
+                        <span className="font-bold text-green-400">
+                          +${(entryFee * maxTeams - (prize1st + prize2nd + prize3rd + prizeMvp)).toFixed(2)} USD (Excedente)
+                        </span>
+                      )}
+                    </div>
+
+                    {entryFee * maxTeams - (prize1st + prize2nd + prize3rd + prizeMvp) < 0 ? (
+                      <p className="text-[10px] text-yellow-500/80 leading-relaxed italic bg-yellow-500/5 p-2 rounded-lg border border-yellow-500/10 text-left">
+                        ⚠️ Los premios superan el dinero recaudado. Como organizador, deberás financiar el déficit de ${Math.abs(entryFee * maxTeams - (prize1st + prize2nd + prize3rd + prizeMvp)).toFixed(2)} USD con fondos externos o patrocinadores.
+                      </p>
+                    ) : entryFee * maxTeams - (prize1st + prize2nd + prize3rd + prizeMvp) > 0 ? (
+                      <p className="text-[10px] text-cyan-400/80 leading-relaxed italic bg-cyan-400/5 p-2 rounded-lg border border-cyan-400/10 text-left">
+                        💡 Hay un excedente de ${(entryFee * maxTeams - (prize1st + prize2nd + prize3rd + prizeMvp)).toFixed(2)} USD. Este dinero sobrante se repartirá según el split de colaboración.
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-green-400/80 leading-relaxed italic bg-green-400/5 p-2 rounded-lg border border-green-400/10 text-left">
+                        ✅ Cuadre perfecto. Toda la recaudación de las inscripciones se destina a los premios.
+                      </p>
+                    )}
+
+                    {/* Proportional distribution trigger */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const totalPot = entryFee * maxTeams
+                        const p1 = Math.round(totalPot * 0.50) // 50%
+                        const p2 = Math.round(totalPot * 0.25) // 25%
+                        const p3 = Math.round(totalPot * 0.15) // 15%
+                        const mvp = Math.round(totalPot * 0.10) // 10%
+
+                        setValue('prize1st', p1)
+                        setValue('prize2nd', p2)
+                        setValue('prize3rd', p3)
+                        setValue('prizeMvp', mvp)
+                        toast.success('Premios distribuidos proporcionalmente al pozo (50% / 25% / 15% / 10%)')
+                      }}
+                      className="w-full mt-2 py-2 text-[10px] font-bold text-neon-cyan hover:text-white uppercase tracking-widest bg-neon-cyan/5 hover:bg-neon-cyan/20 border border-neon-cyan/15 rounded-lg transition-all text-center"
+                    >
+                      ⚡ Distribuir Pozo Proporcionalmente
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Revenue Splits & Collaborator selection */}
