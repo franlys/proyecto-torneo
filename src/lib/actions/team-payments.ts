@@ -82,14 +82,11 @@ export async function contributeToTeamFeeAction(
     }
 
     // 4. Log transaction
-    const finalAmountUsd = parseFloat((finalAmount / rate).toFixed(2))
     await adminSupabase.from('coin_transactions').insert({
       user_id: profile.id,
       amount: -finalAmount,
-      transaction_type: 'tournament_fee',
-      description: `Aporte a inscripción de equipo: ${team.name} (Torneo: ${tournament.name}) ($${finalAmountUsd.toFixed(2)} USD)`,
-      reference_id: tournament.id,
-      metadata: { teamId, tournamentName: tournament.name }
+      type: 'tournament_entry',
+      reference_id: tournament.id
     })
 
     // 5. Update team amount_paid
