@@ -714,7 +714,6 @@ export async function finishTournament(
         user_id: organizerId,
         amount: organizerPayoutInKCoins,
         type: 'deposit',
-        description: `Comisión de Torneo: ${tournament.name} ($${organizerPayout.toFixed(2)} USD)`,
         reference_id: id
       })
       await adminSupabase.from('notifications').insert({
@@ -732,7 +731,6 @@ export async function finishTournament(
         user_id: tournament.creator_id,
         amount: streamerPayoutInKCoins,
         type: 'deposit',
-        description: `Comisión de Torneo (Socio): ${tournament.name} ($${streamerPayout.toFixed(2)} USD)`,
         reference_id: id
       })
       await adminSupabase.from('notifications').insert({
@@ -781,7 +779,6 @@ export async function finishTournament(
                   user_id: userId,
                   amount: splitPrizeKCoins,
                   type: 'bet_won',
-                  description: `Premio #${rank} Torneo: ${tournament.name} ($${splitPrizeUsd.toFixed(2)} USD)`,
                   reference_id: id
                 })
                 await adminSupabase.from('notifications').insert({
@@ -848,7 +845,6 @@ export async function finishTournament(
           user_id: mvpUserId,
           amount: mvpPrizeKCoins,
           type: 'bet_won',
-          description: `Premio MVP Torneo: ${tournament.name} ($${mvpPrizeUsd.toFixed(2)} USD)`,
           reference_id: id
         })
         await adminSupabase.from('notifications').insert({
@@ -960,7 +956,6 @@ export async function finishTournament(
                     user_id: bet.user_id,
                     amount: winAmount,
                     type: 'bet_won',
-                    description: `Ganancia de Apuesta: Torneo Winner (${market.question})`,
                     reference_id: bet.id
                   })
                 }
