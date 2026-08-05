@@ -243,16 +243,18 @@ export default function DashboardShell({
         </svg>
         🪙 Mi Billetera (K-Coins)
       </Link>
-      <Link
-        href="/subscription"
-        onClick={() => setDrawerOpen(false)}
-        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-yellow-500/80 hover:text-yellow-400 hover:bg-yellow-500/10 transition-colors"
-      >
-        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-        </svg>
-        👑 Membresía VIP
-      </Link>
+      {(userRole === 'STREAMER' || userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && (
+        <Link
+          href="/subscription"
+          onClick={() => setDrawerOpen(false)}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-yellow-500/80 hover:text-yellow-400 hover:bg-yellow-500/10 transition-colors"
+        >
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+          </svg>
+          👑 Membresía VIP
+        </Link>
+      )}
 
       {(userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'KRONIX_STAFF') && (
         <>
