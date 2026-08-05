@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getUsdToDopRate } from '@/lib/services/exchange-rate'
 import { revalidatePath } from 'next/cache'
+import { sendTransactionReceiptEmail } from '@/lib/services/email'
 
 const PLANS_PRICING: Record<string, { amount: number; days: number; name: string }> = {
   '1_month': { amount: 5, days: 30, name: '1 Mes' },
@@ -23,7 +24,7 @@ export async function buySubscriptionWithCoins(planId: string): Promise<{ succes
     // Fetch user profile balance
     const { data: profile, error: profileErr } = await supabase
       .from('profiles')
-      .select('balance, subscription_status')
+      .select('balance, subscription_status, email, username')
       .eq('id', user.id)
       .single()
 
@@ -71,6 +72,22 @@ export async function buySubscriptionWithCoins(planId: string): Promise<{ succes
 
     if (logErr) {
       console.error('Error logging coin transaction for VIP purchase:', logErr.message)
+    }
+
+    // Send email receipt
+    if (profile.email) {
+      await sendTransactionReceiptEmail({
+        email: profile.email,
+        username: profile.username || 'Usuario',
+        amount: -kCoinsPrice,
+        type: 'vip_purchase',
+        referenceId: planId,
+        balanceBefore: currentBalance,
+        balanceAfter: newBalance,
+        description: `Adquisición de Membresía VIP (${plan.name}) con K-Coins`
+      }).catch(err => {
+        console.error('Error sending VIP receipt email:', err)
+      })
     }
 
     revalidatePath('/subscription')

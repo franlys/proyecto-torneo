@@ -917,5 +917,118 @@ export async function sendAdminTicketNotificationEmail({
   }
 }
 
+interface TransactionReceiptEmailParams {
+  email: string
+  username: string
+  amount: number
+  type: 'deposit' | 'withdrawal' | 'vip_purchase' | 'tournament_entry'
+  referenceId?: string
+  balanceBefore: number
+  balanceAfter: number
+  description: string
+}
+
+export async function sendTransactionReceiptEmail({
+  email,
+  username,
+  amount,
+  type,
+  referenceId,
+  balanceBefore,
+  balanceAfter,
+  description,
+}: TransactionReceiptEmailParams) {
+  if (!resend) {
+    console.warn('RESEND_API_KEY no configurado. Saltando envío de comprobante de transacción.')
+    return { success: false, error: 'RESEND_API_KEY no configurado' }
+  }
+
+  try {
+    const formattedAmount = `${amount >= 0 ? '+' : ''}${amount.toLocaleString('es-DO')} K-Coins`
+    const amountColor = amount >= 0 ? '#10B981' : '#EF4444'
+    const conceptLabel = 
+      type === 'deposit' ? 'Depósito / Recarga' :
+      type === 'withdrawal' ? 'Retiro de Billetera' :
+      type === 'vip_purchase' ? 'Membresía VIP' :
+      type === 'tournament_entry' ? 'Inscripción a Torneo' : 'Movimiento de Billetera'
+
+    const dateStr = new Date().toLocaleDateString('es-DO', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+
+    const html = `
+      <div style="background-color: #0b0d12; color: #ffffff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; border-radius: 16px; max-width: 500px; margin: auto; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+        <div style="text-align: center; margin-bottom: 25px;">
+          <h1 style="color: #00f5ff; font-size: 24px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin: 0;">KRONIX E-SPORTS</h1>
+          <p style="color: rgba(255,255,255,0.4); font-size: 11px; margin-top: 5px; text-transform: uppercase; letter-spacing: 1px;">Comprobante de Transacción Digital</p>
+        </div>
+
+        <div style="background-color: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 20px; border-radius: 12px;">
+          <p style="margin: 0 0 15px 0; font-size: 13px; color: rgba(255,255,255,0.7);">Hola <strong>${username || 'Usuario'}</strong>,</p>
+          <p style="margin: 0 0 20px 0; font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.5;">Se ha registrado un movimiento en tu billetera virtual de K-Coins. A continuación te presentamos el comprobante oficial de la transacción:</p>
+
+          <div style="background-color: rgba(0,245,255,0.03); border: 1px dashed rgba(0,245,255,0.2); padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 20px;">
+            <span style="font-size: 10px; color: rgba(0,245,255,0.5); text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 4px;">Monto Transado</span>
+            <span style="font-size: 28px; font-weight: 900; color: ${amountColor};">${formattedAmount}</span>
+          </div>
+
+          <table style="width: 100%; font-size: 12px; border-collapse: collapse; margin-bottom: 15px;">
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+              <td style="padding: 8px 0; color: rgba(255,255,255,0.4);">Concepto:</td>
+              <td style="padding: 8px 0; font-weight: bold; text-align: right; color: #ffffff;">${conceptLabel}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+              <td style="padding: 8px 0; color: rgba(255,255,255,0.4);">Detalle:</td>
+              <td style="padding: 8px 0; text-align: right; color: rgba(255,255,255,0.8);">${description}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+              <td style="padding: 8px 0; color: rgba(255,255,255,0.4);">Fecha:</td>
+              <td style="padding: 8px 0; text-align: right; color: rgba(255,255,255,0.8);">${dateStr}</td>
+            </tr>
+            ${referenceId ? `
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+              <td style="padding: 8px 0; color: rgba(255,255,255,0.4);">ID de Referencia:</td>
+              <td style="padding: 8px 0; text-align: right; font-family: monospace; color: rgba(255,255,255,0.5);">${referenceId}</td>
+            </tr>
+            ` : ''}
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+              <td style="padding: 8px 0; color: rgba(255,255,255,0.4);">Saldo Anterior:</td>
+              <td style="padding: 8px 0; text-align: right; color: rgba(255,255,255,0.6);">🪙 ${balanceBefore.toLocaleString('es-DO')} K-Coins</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: rgba(255,255,255,0.4);">Saldo Posterior:</td>
+              <td style="padding: 8px 0; text-align: right; font-weight: bold; color: #00f5ff;">🪙 ${balanceAfter.toLocaleString('es-DO')} K-Coins</td>
+            </tr>
+          </table>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 24px 0;" />
+        
+        <p style="color: rgba(255,255,255,0.3); font-size: 10px; text-align: center; line-height: 1.5; margin: 0;">
+          Este correo es un comprobante digital oficial generado automáticamente por la plataforma Kronix E-sports. Por favor no respondas a este mensaje.<br/>
+          Si no reconoces este movimiento, por favor ponte en contacto inmediato con el soporte de Kronix.
+        </p>
+      </div>
+    `
+
+    const { data, error } = await resend.emails.send({
+      from: 'Kronix E-sports <no-reply@kronix.do>',
+      to: email,
+      subject: `Comprobante de Transacción: ${conceptLabel} [${formattedAmount}]`,
+      html,
+    })
+
+    if (error) throw error
+    return { success: true, data }
+  } catch (err: any) {
+    console.error('Error al enviar correo de comprobante de transaccion:', err)
+    return { success: false, error: err.message }
+  }
+}
+
 
 

@@ -4,6 +4,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getUsdToDopRate } from '@/lib/services/exchange-rate'
 import { sendPayPalPayout } from '@/lib/paypal'
 import { revalidatePath } from 'next/cache'
+import { sendTransactionReceiptEmail } from '@/lib/services/email'
 
 export async function requestWithdrawalAction(
   amount: number,
@@ -28,7 +29,7 @@ export async function requestWithdrawalAction(
     // 1. Fetch user's current profile balance and version timestamp
     const { data: profile, error: profileErr } = await adminSupabase
       .from('profiles')
-      .select('balance, updated_at')
+      .select('balance, updated_at, username')
       .eq('id', user.id)
       .single()
 
@@ -128,6 +129,22 @@ export async function requestWithdrawalAction(
             type: 'bet_placed',
             reference_id: withdrawal.id
           })
+      }
+
+      // Send email receipt
+      if (user.email) {
+        await sendTransactionReceiptEmail({
+          email: user.email,
+          username: profile.username || 'Usuario',
+          amount: -parsedAmount,
+          type: 'withdrawal',
+          referenceId: withdrawal.id,
+          balanceBefore: currentBalance,
+          balanceAfter: temporaryBalance,
+          description: `Retiro de fondos aprobado y enviado a la cuenta PayPal ${paypalEmail}`
+        }).catch(err => {
+          console.error('Error sending withdrawal receipt email:', err)
+        })
       }
 
       revalidatePath('/wallet')

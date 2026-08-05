@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { capturePayPalPayment } from '@/lib/paypal'
 import { getUsdToDopRate } from '@/lib/services/exchange-rate'
+import { sendTransactionReceiptEmail } from '@/lib/services/email'
 
 export async function POST(req: Request) {
   try {
@@ -68,7 +69,7 @@ export async function POST(req: Request) {
     // Fetch user's current profile balance
     const { data: profile, error: profileErr } = await adminSupabase
       .from('profiles')
-      .select('balance')
+      .select('balance, username')
       .eq('id', user.id)
       .single()
 
@@ -104,9 +105,23 @@ export async function POST(req: Request) {
     }
 
     if (user.email) {
+      // Send both legacy recharge email and the new detailed transaction receipt
       import('@/lib/email').then(({ sendWalletRechargeEmail }) => {
         sendWalletRechargeEmail(user.email!, dopAmount)
       }).catch(e => console.error("Error sending recharge email:", e))
+
+      sendTransactionReceiptEmail({
+        email: user.email,
+        username: profile.username || 'Usuario',
+        amount: dopAmount,
+        type: 'deposit',
+        referenceId: deposit.id,
+        balanceBefore: currentBalance,
+        balanceAfter: newBalance,
+        description: `Recarga de fondos exitosa mediante PayPal de $${(dopAmount / rate).toFixed(2)} USD`
+      }).catch(err => {
+        console.error('Error sending deposit receipt email:', err)
+      })
     }
 
     return NextResponse.json({ success: true, balance: newBalance, dopAmount, rate })

@@ -5,6 +5,7 @@ import { pushToAC } from './ac-push'
 import { getProfile } from './auth-helpers'
 import { revalidatePath } from 'next/cache'
 import { getUsdToDopRate } from '@/lib/services/exchange-rate'
+import { sendTransactionReceiptEmail } from '@/lib/services/email'
 
 export async function contributeToTeamFeeAction(
   teamId: string,
@@ -88,6 +89,22 @@ export async function contributeToTeamFeeAction(
       type: 'tournament_entry',
       reference_id: tournament.id
     })
+
+    // Send email receipt
+    if ((profile as any).email) {
+      await sendTransactionReceiptEmail({
+        email: (profile as any).email,
+        username: (profile as any).username || 'Usuario',
+        amount: -finalAmount,
+        type: 'tournament_entry',
+        referenceId: tournament.id,
+        balanceBefore: balance,
+        balanceAfter: newBalance,
+        description: `Inscripción de Equipo "${team.name}" (Torneo: ${tournament.name})`
+      }).catch(err => {
+        console.error('Error sending team fee receipt email:', err)
+      })
+    }
 
     // 5. Update team amount_paid
     const newPaid = currentPaid + finalAmount
