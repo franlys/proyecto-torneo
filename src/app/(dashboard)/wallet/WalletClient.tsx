@@ -587,6 +587,7 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                     <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">
                       {tx.type === 'deposit' ? 'Depósito'
                         : tx.type === 'withdrawal' ? 'Retiro PayPal'
+                        : tx.type === 'vip_purchase' ? 'Membresía VIP'
                         : tx.type === 'raffle_ticket' ? 'Compra de Rifa'
                         : tx.type === 'bet_placed' ? 'Apuesta Realizada'
                         : tx.type === 'bet_won' ? 'Apuesta Ganada'

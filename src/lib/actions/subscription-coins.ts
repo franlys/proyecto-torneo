@@ -65,8 +65,8 @@ export async function buySubscriptionWithCoins(planId: string): Promise<{ succes
       .insert({
         user_id: user.id,
         amount: -kCoinsPrice,
-        type: 'withdrawal',
-        description: `Pago de Membresía VIP (${plan.name}) con K-Coins`
+        type: 'vip_purchase',
+        reference_id: planId
       })
 
     if (logErr) {
