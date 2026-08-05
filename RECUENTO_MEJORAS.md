@@ -72,14 +72,35 @@ Este documento resume todas las intervenciones técnicas realizadas para corregi
 
 ---
 
+## 6. Automatización de Apuestas, Colapsabilidad y Visualización de MVP (05-08-2026)
+
+### 💰 Cierre Automático de Partidas y Liquidación de Apuestas
+- **Auto-cierre**: Al presionar "Finalizar Torneo", el sistema actualiza automáticamente el estado de todas las partidas restantes a completadas (`is_completed = true, is_active = false`) y las sincroniza con ArenaCrypto.
+- **Resolución Inmediata**: Las apuestas de encuentros que sí se jugaron se liquidan en base a los standings, distribuyendo las K-Coins inmediatamente.
+- **Cancelación y Reembolso**: Los mercados de apuestas correspondientes a partidas futuras/no disputadas (por ejemplo, si el torneo termina en la partida 3 por Match Point pero había 5 planificadas) se cancelan y reembolsan en su totalidad a los usuarios de manera automática, liberando sus fondos.
+
+### 👑 Coronación y Visualización del MVP
+- **Cómputo Automático**: Si el administrador finaliza el torneo sin especificar un ID de MVP, el backend realiza un recuento atómico de las bajas de todas las partidas aprobadas y asigna el premio de K-Coins y las notificaciones al jugador con mayor puntaje (Top Fragger).
+- **Badge Distintivo**: Se añadió un badge interactivo y parpadeante de `👑 MVP` junto al nombre del jugador coronado tanto en la tabla principal como en la vista de tarjetas en el Leaderboard público.
+- **Badge de Torneo Finalizado**: Para torneos en estado `'finished'`, se reemplazó el cartel de fecha de inicio por un badge con el texto `🏆 Torneo Finalizado` en color esmeralda, evitando confusiones sobre fechas de inicio pasadas.
+
+### 🛡️ Sanciones desde el Visor de Evidencias
+- **Integración Directa**: Se añadió el selector de penalizaciones manuales (`Ninguna`, `Mitad de puntos`, `Solo Kills`) dentro de la interfaz sidebar del visor de imágenes (`DraggableEvidenceModal.tsx`). Esto permite al staff aplicar una sanción de forma inmediata mientras valida la imagen sin necesidad de abrir otro modal de edición.
+
+### 📂 Colapsabilidad de Encuentros
+- **Gestión Cómoda**: Se incorporó un sistema de colapso y despliegue por encuentro en la pestaña "Evidencias" (`SubmissionsManager.tsx`). Esto permite contraer las partidas anteriores ya validadas y centrar la atención solo en la partida activa.
+
+---
+
 ## 🚀 Estado Actual
 - **Base de Datos**: Consistente y segura.
 - **Storage**: Operativo para logos y evidencias.
-- **UI**: Fluida, sin errores de consola y visualmente impactante.
-- **Match Point & Penalizaciones**: Totalmente operativos y probados bajo vitest.
+- **UI**: Fluida, sin errores de consola, con vistas colapsables limpias e indicación visual de MVP.
+- **Apuestas y MVP**: Resolución y liquidación automatizadas tanto por encuentro como por finalización de torneo (incluyendo cancelaciones y reembolsos).
+- **Match Point & Penalizaciones**: Totalmente operativos y probados bajo vitest, con alertas dinámicas autolimitadas al estado activo del torneo.
 
 > [!IMPORTANT]
 > Los scripts finales de permisos están en la carpeta `supabase/migrations`. Si el servidor no los aplica solo, asegúrate de ejecutarlos en el Editor SQL de tu panel de Supabase.
 
 ---
-*Documentación generada el 01-08-2026 por Antigravity AI.*
+*Documentación generada el 05-08-2026 por Antigravity AI.*
