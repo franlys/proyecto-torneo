@@ -2511,7 +2511,7 @@ export function LeaderboardClient({
                       {opts.map(opt => (
                         <button
                           key={opt.id}
-                          disabled={market.status !== 'open' || !isLoggedIn || isLocked}
+                          disabled={market.status !== 'open' || !isLoggedIn || isLocked || currentStatus === 'finished'}
                           onClick={() => {
                             setSelectedMarketId(market.id)
                             setSelectedOptionId(opt.id)
