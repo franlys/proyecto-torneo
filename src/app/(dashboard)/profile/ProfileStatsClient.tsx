@@ -85,6 +85,7 @@ export function ProfileStatsClient({
   const [username, setUsername] = useState(profile?.username ?? '')
   const [streamUrl, setStreamUrl] = useState(profile?.stream_url ?? '')
   const [discordUsername, setDiscordUsername] = useState(profile?.discord_username ?? '')
+  const [discordGuildId, setDiscordGuildId] = useState(profile?.discord_guild_id ?? '')
   const [isSaving, setIsSaving] = useState(false)
 
   // Friends states
@@ -166,7 +167,7 @@ export function ProfileStatsClient({
       if (res && 'error' in res) {
         toast.error(res.error)
       } else {
-        const discordRes = await updateDiscordUsername(discordUsername)
+        const discordRes = await updateDiscordUsername(discordUsername, discordGuildId)
         if ('error' in discordRes) {
           toast.error(discordRes.error)
         } else {
@@ -950,6 +951,24 @@ export function ProfileStatsClient({
                   />
                   <p className="text-[10px] text-white/40 mt-1">
                     Vincula tu usuario de Discord para coordinar partidas y verificar tu identidad social.
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="discord_guild_id" className="block text-xs text-white/50 uppercase tracking-widest font-bold mb-1.5">
+                    Servidor de Discord (ID de Guild)
+                  </label>
+                  <input
+                    id="discord_guild_id"
+                    name="discord_guild_id"
+                    type="text"
+                    value={discordGuildId}
+                    onChange={(e) => setDiscordGuildId(e.target.value)}
+                    placeholder="Ej: 112233445566778899"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30 transition-colors"
+                  />
+                  <p className="text-[10px] text-white/40 mt-1">
+                    Solo para Organizadores/Streamers. Ingresa el ID de tu servidor de Discord donde deseas habilitar las salas de voz privadas para tus torneos.
                   </p>
                 </div>
 

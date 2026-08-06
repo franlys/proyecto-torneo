@@ -16,14 +16,21 @@ export const GAME_LABELS: Record<string, { label: string; idLabel: string; usern
   clash_royale:          { label: 'Clash Royale',               idLabel: 'Player Tag',            usernameLabel: 'Nombre en CR',          idPlaceholder: 'Ej: #2PP0YR0',               usernamePlaceholder: 'Ej: RoyaleKing',       icon: '👑' },
 }
 
-export async function updateDiscordUsername(discordUsername: string): Promise<{ success: true } | { error: string }> {
+export async function updateDiscordUsername(
+  discordUsername: string,
+  discordGuildId?: string | null
+): Promise<{ success: true } | { error: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
   const { error } = await supabase
     .from('profiles')
-    .update({ discord_username: discordUsername.trim() })
+    .update({ 
+      discord_username: discordUsername.trim(),
+      discord_guild_id: discordGuildId?.trim() || null,
+      discord_connected: !!discordGuildId?.trim()
+    })
     .eq('id', user.id)
 
   if (error) return { error: error.message }
