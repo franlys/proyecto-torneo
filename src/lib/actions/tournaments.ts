@@ -478,7 +478,7 @@ export async function activateTournament(
   // Verify ownership
   const { data: tournament, error: fetchErr } = await supabase
     .from('tournaments')
-    .select('status, creator_id, collaborator_id, format, kill_race_time_limit_minutes, name')
+    .select('status, creator_id, collaborator_id, format, kill_race_time_limit_minutes, name, discord_integration_enabled, discord_announcement_channel_id')
     .eq('id', id)
     .single()
 
@@ -510,6 +510,93 @@ export async function activateTournament(
     .eq('id', id)
 
   if (activateErr) return { error: activateErr.message }
+
+  // Configuración de Canales de Discord si está habilitado
+  if (tournament.discord_integration_enabled) {
+    try {
+      const { data: creatorProfile } = await supabase
+        .from('profiles')
+        .select('discord_guild_id')
+        .eq('id', tournament.creator_id)
+        .single()
+
+      const guildId = creatorProfile?.discord_guild_id
+      if (guildId) {
+        const { createDiscordCategory, createPrivateVoiceChannel, sendDiscordEmbed } = await import('@/lib/services/discord')
+        const adminSupabase = await createAdminClient()
+
+        console.log(`[Discord Setup] Creando categoría para el torneo: ${tournament.name}`)
+        const categoryRes = await createDiscordCategory(guildId, `🏆 Torneo: ${tournament.name}`)
+
+        if (categoryRes.success && categoryRes.id) {
+          const categoryId = categoryRes.id
+
+          // Guardar el id de la categoría en el torneo
+          await supabase
+            .from('tournaments')
+            .update({ discord_voice_category_id: categoryId })
+            .eq('id', id)
+
+          // Obtener los equipos registrados en el torneo
+          const { data: teams } = await supabase
+            .from('teams')
+            .select('id, name')
+            .eq('tournament_id', id)
+
+          if (teams && teams.length > 0) {
+            for (const team of teams) {
+              // Consultar los participantes del equipo
+              const { data: participants } = await supabase
+                .from('participants')
+                .select('user_id')
+                .eq('team_id', team.id)
+                .not('user_id', 'is', null)
+
+              const teamUserIds = (participants || []).map((p) => p.user_id).filter(Boolean) as string[]
+
+              // Consultar IDs de Discord desde auth.identities
+              let teamDiscordIds: string[] = []
+              if (teamUserIds.length > 0) {
+                const { data: identities } = await adminSupabase
+                  .schema('auth')
+                  .from('identities')
+                  .select('user_id, provider_id')
+                  .eq('provider', 'discord')
+                  .in('user_id', teamUserIds)
+
+                if (identities) {
+                  teamDiscordIds = identities.map((i) => i.provider_id).filter(Boolean)
+                }
+              }
+
+              // Crear canal de voz privado para este equipo
+              console.log(`[Discord Setup] Creando canal de voz para equipo: ${team.name} con ${teamDiscordIds.length} integrantes.`)
+              const voiceRes = await createPrivateVoiceChannel(guildId, `🔊 ${team.name}`, categoryId, teamDiscordIds)
+              if (voiceRes.success && voiceRes.id) {
+                // Guardar el id del canal en el equipo
+                await supabase
+                  .from('teams')
+                  .update({ discord_voice_channel_id: voiceRes.id })
+                  .eq('id', team.id)
+              }
+            }
+          }
+        }
+
+        // Anunciar inicio en el canal de texto configurado
+        if (tournament.discord_announcement_channel_id) {
+          await sendDiscordEmbed(tournament.discord_announcement_channel_id, {
+            title: `🏆 ¡El torneo ${tournament.name} ha comenzado!`,
+            description: `El torneo ha iniciado oficialmente. Las salas de voz de los equipos han sido creadas. ¡Buena suerte a todos los competidores!`,
+            color: 62909, // Neon cyan color equivalent #00F5FF in dec
+            timestamp: new Date().toISOString(),
+          })
+        }
+      }
+    } catch (discordErr: any) {
+      console.error('[Discord Setup] Error al configurar canales de Discord:', discordErr.message || discordErr)
+    }
+  }
 
   // Enviar notificaciones in-app y simulación de correos electrónicos
   try {
@@ -582,7 +669,7 @@ export async function finishTournament(
   // Verify ownership
   const { data: tournament, error: fetchErr } = await supabase
     .from('tournaments')
-    .select('creator_id, collaborator_id, status, slug, is_sanctioned, mode, discipline, badge_url, name')
+    .select('creator_id, collaborator_id, status, slug, is_sanctioned, mode, discipline, badge_url, name, discord_integration_enabled, discord_voice_category_id, discord_announcement_channel_id')
     .eq('id', id)
     .single()
 
@@ -603,6 +690,55 @@ export async function finishTournament(
     .eq('id', id)
 
   if (finishErr) return { error: finishErr.message }
+
+  // Discord Autocleanup
+  if (tournament.discord_integration_enabled && tournament.creator_id) {
+    try {
+      const { data: creatorProfile } = await supabase
+        .from('profiles')
+        .select('discord_guild_id')
+        .eq('id', tournament.creator_id)
+        .single()
+
+      const guildId = creatorProfile?.discord_guild_id
+      if (guildId) {
+        const { deleteDiscordChannel, sendDiscordEmbed } = await import('@/lib/services/discord')
+
+        // 1. Delete all team voice channels
+        const { data: teams } = await supabase
+          .from('teams')
+          .select('discord_voice_channel_id')
+          .eq('tournament_id', id)
+
+        if (teams) {
+          for (const team of teams) {
+            if (team.discord_voice_channel_id) {
+              console.log(`[Discord Cleanup] Eliminando canal de voz: ${team.discord_voice_channel_id}`)
+              await deleteDiscordChannel(team.discord_voice_channel_id)
+            }
+          }
+        }
+
+        // 2. Delete the category
+        if (tournament.discord_voice_category_id) {
+          console.log(`[Discord Cleanup] Eliminando categoría de torneo: ${tournament.discord_voice_category_id}`)
+          await deleteDiscordChannel(tournament.discord_voice_category_id)
+        }
+
+        // 3. Send final announcement
+        if (tournament.discord_announcement_channel_id) {
+          await sendDiscordEmbed(tournament.discord_announcement_channel_id, {
+            title: `🏁 ¡El torneo ${tournament.name} ha finalizado!`,
+            description: `El torneo ha concluido oficialmente. Gracias a todos por participar. Las salas de voz temporales han sido eliminadas.`,
+            color: 16766720, // Gold color equivalent #FFD700 in dec
+            timestamp: new Date().toISOString(),
+          })
+        }
+      }
+    } catch (cleanErr: any) {
+      console.error('[Discord Cleanup] Error al limpiar canales de Discord:', cleanErr.message || cleanErr)
+    }
+  }
 
   // --- Close all matches and resolve/cancel their betting markets ---
   try {

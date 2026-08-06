@@ -59,6 +59,11 @@ export interface Tournament {
   arenaBettingStatus: 'open' | 'closed' | 'paused';
   totalLiveViewers: number;
 
+  // Discord Integration
+  discordIntegrationEnabled: boolean;
+  discordAnnouncementChannelId?: string | null;
+  discordVoiceCategoryId?: string | null;
+
   // Arena Crypto sync
   tournamentType: TournamentType;
 

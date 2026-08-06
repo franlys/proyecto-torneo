@@ -61,6 +61,11 @@ const tournamentBaseSchema = z.object({
   // Arena Betting
   arenaBettingEnabled: z.boolean().default(false),
 
+  // Discord Integration
+  discordIntegrationEnabled: z.boolean().default(false),
+  discordAnnouncementChannelId: z.string().optional().nullable(),
+  discordVoiceCategoryId: z.string().optional().nullable(),
+
   scoringRule: scoringRuleSchema,
 })
 

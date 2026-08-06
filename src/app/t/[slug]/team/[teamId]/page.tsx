@@ -17,11 +17,24 @@ export default async function TeamPortalPage({
   // Fetch the tournament
   const { data: tournament, error: tErr } = await supabase
     .from('tournaments')
-    .select('id, name, status, kill_rate_enabled, pot_top_enabled, discipline, clash_royale_tag')
+    .select('id, name, status, kill_rate_enabled, pot_top_enabled, discipline, clash_royale_tag, creator_id, discord_integration_enabled')
     .eq('slug', normalizedSlug)
     .single()
 
   if (tErr || !tournament) notFound()
+
+  // Fetch discord_guild_id from the tournament creator's profile
+  let discordGuildId: string | null = null
+  if (tournament.creator_id) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('discord_guild_id')
+      .eq('id', tournament.creator_id)
+      .single()
+    if (profile) {
+      discordGuildId = profile.discord_guild_id
+    }
+  }
 
   // Fetch the team
   const { data: team, error: teamErr } = await supabase
@@ -105,6 +118,7 @@ export default async function TeamPortalPage({
               team={team}
               participants={participants || []}
               matches={matches || []}
+              discordGuildId={discordGuildId}
             />
           )}
         </div>

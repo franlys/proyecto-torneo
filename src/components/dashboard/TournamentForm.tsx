@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { createTournamentSchema, type CreateTournamentInput } from '@/lib/validations/schemas'
 import { createTournament, updateTournament } from '@/lib/actions/tournaments'
+import { getDiscordChannelsAction } from '@/lib/actions/discord-channels'
 import { ScoringRuleEditor } from './ScoringRuleEditor'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -87,6 +88,8 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
   const [mounted, setMounted] = useState(false)
   const [currentUserProfile, setCurrentUserProfile] = useState<any>(null)
   const [streamers, setStreamers] = useState<{ id: string; username: string }[]>([])
+  const [discordChannels, setDiscordChannels] = useState<{ id: string; name: string }[]>([])
+  const [fetchingChannels, setFetchingChannels] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -97,7 +100,7 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role')
+        .select('role, discord_guild_id, discord_connected')
         .eq('id', user.id)
         .single()
 
@@ -118,6 +121,27 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
     }
     loadData()
   }, [])
+
+  useEffect(() => {
+    if (!currentUserProfile?.discord_guild_id) return
+
+    async function fetchChannels() {
+      setFetchingChannels(true)
+      try {
+        const res = await getDiscordChannelsAction(currentUserProfile.discord_guild_id)
+        if ('success' in res && res.success) {
+          setDiscordChannels(res.data || [])
+        } else {
+          console.error('[Discord Form] Error fetching channels:', 'error' in res ? res.error : 'Unknown error')
+        }
+      } catch (err) {
+        console.error('[Discord Form] Network error fetching channels:', err)
+      } finally {
+        setFetchingChannels(false)
+      }
+    }
+    fetchChannels()
+  }, [currentUserProfile?.discord_guild_id])
 
   const handleBadgeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -168,6 +192,8 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
     organizerSplit: initialData?.organizerSplit ?? 50,
     streamerSplit: initialData?.streamerSplit ?? 50,
     arenaBettingEnabled: initialData?.arenaBettingEnabled ?? false,
+    discordIntegrationEnabled: initialData?.discordIntegrationEnabled ?? false,
+    discordAnnouncementChannelId: initialData?.discordAnnouncementChannelId ?? '',
     collaboratorId: initialData?.collaboratorId ?? '',
     discordUrl: initialData?.discordUrl ?? '',
     discipline: initialData?.discipline ?? 'warzone',
@@ -1165,6 +1191,84 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
                   <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${watch('arenaBettingEnabled') ? 'left-7' : 'left-1'}`} />
                 </div>
               </button>
+            </div>
+          )}
+
+          {/* Discord Integration */}
+          {currentUserProfile && (
+            <div className="pt-6 border-t border-white/5">
+              <SectionHeader 
+                title="Discord Automation" 
+                subtitle="Crea canales de voz por equipo y publica anuncios en tu servidor de Discord automáticamente" 
+              />
+              
+              {!currentUserProfile.discord_guild_id ? (
+                <div className="rounded-xl bg-yellow-500/10 border border-yellow-500/30 p-4 text-sm text-yellow-300">
+                  <p className="font-semibold mb-1">🔌 Discord no conectado</p>
+                  <p className="text-white/60">Para utilizar las funciones de automatización (salas de voz por equipo y alertas de inicio), primero debes conectar tu servidor de Discord en la configuración de tu perfil.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <button
+                    type="button"
+                    onClick={() => setValue('discordIntegrationEnabled', !watch('discordIntegrationEnabled'))}
+                    className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all duration-150
+                      ${watch('discordIntegrationEnabled')
+                        ? 'border-neon-purple bg-neon-purple/10'
+                        : 'border-white/10 bg-white/5 hover:border-white/20'
+                      }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`p-2 rounded-lg ${watch('discordIntegrationEnabled') ? 'bg-neon-purple text-white' : 'bg-white/10 text-white/40'}`}>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
+                        </svg>
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-bold text-white uppercase tracking-tight">Habilitar Integración de Discord</p>
+                        <p className="text-xs text-white/40">Se crearán salas de voz privadas para cada equipo al iniciar el torneo.</p>
+                      </div>
+                    </div>
+                    <div className={`w-12 h-6 rounded-full relative transition-colors ${watch('discordIntegrationEnabled') ? 'bg-neon-purple' : 'bg-white/20'}`}>
+                      <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${watch('discordIntegrationEnabled') ? 'left-7' : 'left-1'}`} />
+                    </div>
+                  </button>
+
+                  {watch('discordIntegrationEnabled') && (
+                    <div className="space-y-4 p-4 rounded-xl border border-neon-purple/20 bg-neon-purple/5 mt-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div>
+                        <label className="block text-xs font-bold text-white/60 uppercase tracking-wider mb-2">
+                          Canal de Anuncios
+                        </label>
+                        {fetchingChannels ? (
+                          <div className="text-xs text-white/40 animate-pulse py-2">
+                            Cargando canales del servidor de Discord...
+                          </div>
+                        ) : discordChannels.length === 0 ? (
+                          <div className="text-xs text-yellow-400/80 py-2">
+                            No se encontraron canales de texto en tu servidor. Asegúrate de que el bot de Kronix tenga permisos.
+                          </div>
+                        ) : (
+                          <select
+                            {...methods.register('discordAnnouncementChannelId')}
+                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-neon-purple transition-all"
+                          >
+                            <option value="">-- No enviar anuncios --</option>
+                            {discordChannels.map((ch) => (
+                              <option key={ch.id} value={ch.id} className="bg-neutral-900">
+                                # {ch.name}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        <p className="text-[10px] text-white/40 mt-1">
+                          Canal de Discord donde el bot enviará la alerta cuando el torneo inicie o finalice.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </section>

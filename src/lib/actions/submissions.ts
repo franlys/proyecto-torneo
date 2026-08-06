@@ -158,6 +158,11 @@ export async function createSubmission(
       .catch(err => console.error('Background AI validation failed:', err));
   }
 
+  // Trigger Discord notification asynchronously
+  import('@/lib/actions/discord-notification').then(({ notifySubmissionToDiscord }) => {
+    notifySubmissionToDiscord(submission.id).catch(err => console.error('Failed to send Discord submission notification:', err))
+  }).catch(console.error)
+
   return {
     data: {
       id: submission.id,
