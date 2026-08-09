@@ -25,6 +25,39 @@ export function extractDiscordGuildId(input?: string | null): string | null {
   return null
 }
 
+/**
+ * Resuelve el ID de un Servidor de Discord a partir de:
+ * 1. Un ID numérico directo (snowflake de 17-21 dígitos)
+ * 2. Una URL de canal (https://discord.com/channels/GUILD_ID/CHANNEL_ID)
+ * 3. Un enlace de invitación (https://discord.gg/CODE o https://discord.com/invite/CODE)
+ */
+export async function resolveDiscordGuildId(input?: string | null): Promise<string | null> {
+  if (!input) return null
+  const directId = extractDiscordGuildId(input)
+  if (directId) return directId
+
+  const trimmed = input.trim()
+  const inviteMatch = trimmed.match(/(?:discord\.gg\/|discord(?:app)?\.com\/invite\/)([a-zA-Z0-9-]+)/i)
+  const inviteCode = inviteMatch ? inviteMatch[1] : (/^[a-zA-Z0-9-]{5,16}$/.test(trimmed) ? trimmed : null)
+
+  if (inviteCode) {
+    try {
+      const response = await fetch(`${DISCORD_API_URL}/invites/${inviteCode}`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data?.guild?.id) {
+          console.log(`[Discord Service] ID de Servidor resuelto desde invitación (${inviteCode}): ${data.guild.id} (${data.guild.name})`)
+          return data.guild.id
+        }
+      }
+    } catch (err) {
+      console.warn('[Discord Service] Error al resolver invitación de Discord:', err)
+    }
+  }
+
+  return null
+}
+
 function parseDiscordError(status: number, errJson: any, errText: string): string {
   if (errJson?.code === 10004 || status === 404) {
     return 'Servidor de Discord no encontrado (Unknown Guild). Asegúrate de invitar al bot de Kronix a tu servidor primero.'

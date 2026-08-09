@@ -956,7 +956,7 @@ export function ProfileStatsClient({
 
                 <div>
                   <label htmlFor="discord_guild_id" className="block text-xs text-white/50 uppercase tracking-widest font-bold mb-1.5">
-                    Servidor de Discord (ID de Guild)
+                    Servidor de Discord (Enlace de Invitación o ID)
                   </label>
                   <input
                     id="discord_guild_id"
@@ -964,11 +964,11 @@ export function ProfileStatsClient({
                     type="text"
                     value={discordGuildId}
                     onChange={(e) => setDiscordGuildId(e.target.value)}
-                    placeholder="Ej: 112233445566778899"
+                    placeholder="Ej: https://discord.gg/4CFcdEC7V o ID de Servidor"
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30 transition-colors"
                   />
                   <p className="text-[10px] text-white/40 mt-1">
-                    Solo para Organizadores/Streamers. Ingresa el ID de tu servidor de Discord donde deseas habilitar las salas de voz privadas para tus torneos.
+                    Solo para Organizadores/Streamers. Puedes pegar el <strong>enlace de invitación de tu servidor</strong> (ej: <code className="text-neon-cyan">https://discord.gg/...</code>) o el ID numérico. El sistema lo detectará automáticamente.
                   </p>
                 </div>
 

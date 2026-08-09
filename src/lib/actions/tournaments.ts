@@ -478,7 +478,7 @@ export async function activateTournament(
   // Verify ownership
   const { data: tournament, error: fetchErr } = await supabase
     .from('tournaments')
-    .select('status, creator_id, collaborator_id, format, kill_race_time_limit_minutes, name, discord_integration_enabled, discord_announcement_channel_id')
+    .select('status, creator_id, collaborator_id, format, kill_race_time_limit_minutes, name, discord_integration_enabled, discord_announcement_channel_id, discord_url')
     .eq('id', id)
     .single()
 
@@ -511,8 +511,8 @@ export async function activateTournament(
 
   if (activateErr) return { error: activateErr.message }
 
-  // Configuración de Canales de Discord si está habilitado
-  if (tournament.discord_integration_enabled) {
+  // Configuración de Canales de Discord si está habilitado o tiene enlace
+  if (tournament.discord_integration_enabled || tournament.discord_url) {
     try {
       const { data: creatorProfile } = await supabase
         .from('profiles')
@@ -520,9 +520,17 @@ export async function activateTournament(
         .eq('id', tournament.creator_id)
         .single()
 
-      const guildId = creatorProfile?.discord_guild_id
+      const { resolveDiscordGuildId, createDiscordCategory, createPrivateVoiceChannel, sendDiscordEmbed } = await import('@/lib/services/discord')
+
+      let guildId = await resolveDiscordGuildId(creatorProfile?.discord_guild_id)
+      if (!guildId && tournament.discord_url) {
+        guildId = await resolveDiscordGuildId(tournament.discord_url)
+        if (guildId && tournament.creator_id) {
+          await supabase.from('profiles').update({ discord_guild_id: guildId, discord_connected: true }).eq('id', tournament.creator_id)
+        }
+      }
+
       if (guildId) {
-        const { createDiscordCategory, createPrivateVoiceChannel, sendDiscordEmbed } = await import('@/lib/services/discord')
         const adminSupabase = await createAdminClient()
 
         console.log(`[Discord Setup] Creando categoría para el torneo: ${tournament.name}`)
@@ -1857,20 +1865,23 @@ export async function syncTournamentDiscordChannels(
     .eq('id', tournament.creator_id)
     .single()
 
-  const { extractDiscordGuildId, createDiscordCategory, createPrivateVoiceChannel, sendDiscordEmbed } = await import('@/lib/services/discord')
+  const { resolveDiscordGuildId, createDiscordCategory, createPrivateVoiceChannel, sendDiscordEmbed } = await import('@/lib/services/discord')
 
-  let guildId = creatorProfile?.discord_guild_id
+  let guildId = await resolveDiscordGuildId(creatorProfile?.discord_guild_id)
   if (!guildId && tournament.discord_url) {
-    guildId = extractDiscordGuildId(tournament.discord_url)
+    guildId = await resolveDiscordGuildId(tournament.discord_url)
+    if (guildId && tournament.creator_id) {
+      await supabase.from('profiles').update({ discord_guild_id: guildId, discord_connected: true }).eq('id', tournament.creator_id)
+    }
   }
 
   if (!guildId) {
     return {
-      error: 'No se encontró el ID de Servidor de Discord (Guild ID). Por favor configúralo en tu Perfil (Ajustes) o pega el enlace del canal/servidor en el torneo.',
+      error: 'No se pudo detectar el servidor de Discord. Asegúrate de colocar tu enlace de invitación (ej: https://discord.gg/...) o ID de servidor en los Ajustes del Torneo o de tu Perfil.',
     }
   }
 
-  const cleanGuildId = extractDiscordGuildId(guildId) || guildId
+  const cleanGuildId = guildId
   const adminSupabase = await createAdminClient()
 
   // 3. Create or reuse category

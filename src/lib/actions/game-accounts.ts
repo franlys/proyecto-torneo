@@ -24,12 +24,21 @@ export async function updateDiscordUsername(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
+  let cleanGuildId = discordGuildId?.trim() || null
+  if (cleanGuildId) {
+    const { resolveDiscordGuildId } = await import('@/lib/services/discord')
+    const resolved = await resolveDiscordGuildId(cleanGuildId)
+    if (resolved) {
+      cleanGuildId = resolved
+    }
+  }
+
   const { error } = await supabase
     .from('profiles')
     .update({ 
       discord_username: discordUsername.trim(),
-      discord_guild_id: discordGuildId?.trim() || null,
-      discord_connected: !!discordGuildId?.trim()
+      discord_guild_id: cleanGuildId,
+      discord_connected: !!cleanGuildId
     })
     .eq('id', user.id)
 
