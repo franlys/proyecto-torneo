@@ -130,14 +130,14 @@ export function MatchesManager({
     if (match.isActive) {
       return (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-green-400 animate-pulse mr-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-            En curso · Apuestas en Vivo
+          <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-green-400 bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-lg">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+            En curso
           </span>
           <button
             onClick={() => handleNotifyEvidence(match)}
             disabled={isNotifying || isSaving}
-            className="text-[10px] px-3 py-1.5 rounded-lg border border-neon-purple/40 text-white bg-neon-purple/20 hover:bg-neon-purple/40 font-black uppercase tracking-widest transition-all disabled:opacity-40 flex items-center gap-1 shadow-lg shadow-neon-purple/10 active:scale-95"
+            className="text-[10px] px-3 py-1.5 rounded-lg border border-neon-purple/40 text-white bg-neon-purple/30 hover:bg-neon-purple/50 font-black uppercase tracking-widest transition-all disabled:opacity-40 flex items-center gap-1 shadow-lg shadow-neon-purple/10 active:scale-95 whitespace-nowrap"
             title="Avisa al bot de Discord y a los jugadores que la partida terminó y deben subir sus capturas de evidencia"
           >
             {isNotifying ? 'Enviando...' : '📸 Pedir Evidencias'}
@@ -145,7 +145,7 @@ export function MatchesManager({
           <button
             onClick={() => handleFinish(match)}
             disabled={isSaving}
-            className="text-[10px] px-3 py-1.5 rounded-lg border border-gold/30 text-gold bg-gold/10 hover:bg-gold/20 font-black uppercase tracking-widest transition-colors disabled:opacity-40 active:scale-95"
+            className="text-[10px] px-3 py-1.5 rounded-lg border border-gold/40 text-gold bg-gold/10 hover:bg-gold/20 font-black uppercase tracking-widest transition-colors disabled:opacity-40 active:scale-95 whitespace-nowrap"
           >
             {isSaving ? '...' : '✓ Finalizar'}
           </button>
@@ -158,7 +158,7 @@ export function MatchesManager({
       <button
         onClick={() => handleStart(match)}
         disabled={isSaving}
-        className="text-[10px] px-3 py-1.5 rounded-lg border border-neon-cyan/30 text-neon-cyan bg-neon-cyan/10 hover:bg-neon-cyan/20 font-black uppercase tracking-widest transition-colors disabled:opacity-40"
+        className="text-[10px] px-3.5 py-1.5 rounded-lg border border-neon-cyan/30 text-neon-cyan bg-neon-cyan/10 hover:bg-neon-cyan/20 font-black uppercase tracking-widest transition-colors disabled:opacity-40 whitespace-nowrap active:scale-95"
       >
         {isSaving ? '...' : '▶ Iniciar'}
       </button>
@@ -167,14 +167,14 @@ export function MatchesManager({
 
   return (
     <div className="space-y-6 pb-20">
-      <div className="flex items-center justify-between bg-white/[0.02] border border-white/5 p-4 rounded-2xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/[0.02] border border-white/5 p-4 sm:p-5 rounded-2xl">
         <span className="text-xs font-bold text-white/40 uppercase tracking-widest font-orbitron">
           Secuencia de Encuentros
         </span>
         <button
           onClick={handleAddMatch}
           disabled={creating}
-          className="flex items-center gap-2 px-4 py-2 bg-neon-purple hover:bg-neon-purple/90 disabled:opacity-50 text-xs font-bold text-white rounded-xl transition-all border border-neon-purple/30 active:scale-95"
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-neon-purple hover:bg-neon-purple/90 disabled:opacity-50 text-xs font-bold text-white rounded-xl transition-all border border-neon-purple/30 active:scale-95 w-full sm:w-auto"
         >
           {creating ? 'Creando...' : '+ Agregar Encuentro'}
         </button>
@@ -219,9 +219,9 @@ export function MatchesManager({
               }`}
             >
               {/* Header */}
-              <div className="px-8 py-5 border-b border-white/5 bg-white/[0.02] flex items-center justify-between gap-4">
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-orbitron font-black text-sm shrink-0 border ${
+              <div className="p-4 sm:p-5 border-b border-white/5 bg-white/[0.02] flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-orbitron font-black text-sm shrink-0 border ${
                     encounter.isActive
                       ? 'bg-green-400/10 border-green-400/30 text-green-400'
                       : encounter.isCompleted
@@ -230,23 +230,21 @@ export function MatchesManager({
                   }`}>
                     {encounter.matchNumber}
                   </div>
-                  <div className="min-w-0">
-                    <input
-                      className="bg-transparent border-none text-lg font-orbitron font-black text-white p-0 focus:ring-0 w-56 hover:bg-white/5 transition-colors rounded px-2 -ml-2"
-                      defaultValue={encounter.name}
-                      onBlur={(e) => {
-                        if (e.target.value !== encounter.name) {
-                          handleUpdate(encounter.id, { name: e.target.value })
-                        }
-                      }}
-                    />
-                  </div>
+                  <input
+                    className="bg-transparent border-none text-base sm:text-lg font-orbitron font-black text-white p-0 focus:ring-0 w-full max-w-[200px] sm:max-w-[260px] hover:bg-white/5 transition-colors rounded px-2 -ml-2 truncate"
+                    defaultValue={encounter.name}
+                    onBlur={(e) => {
+                      if (e.target.value !== encounter.name) {
+                        handleUpdate(encounter.id, { name: e.target.value })
+                      }
+                    }}
+                  />
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0 justify-start md:justify-end">
                   <button
                     onClick={() => handleUpdate(encounter.id, { isWarmup: !encounter.isWarmup })}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${
                       encounter.isWarmup
                         ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/40'
                         : 'bg-white/5 text-white/40 border-white/10 hover:border-white/20'
@@ -258,7 +256,7 @@ export function MatchesManager({
                   {!hasRounds && <MatchControls match={encounter} />}
 
                   {saving === encounter.id && (
-                    <div className="animate-spin w-4 h-4 border-2 border-neon-purple border-t-transparent rounded-full" />
+                    <div className="animate-spin w-4 h-4 border-2 border-neon-purple border-t-transparent rounded-full shrink-0" />
                   )}
                 </div>
               </div>
