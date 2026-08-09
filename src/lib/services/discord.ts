@@ -246,6 +246,72 @@ export async function createPrivateVoiceChannel(
 }
 
 /**
+ * Crea un canal de texto privado dentro de una categoría, para avisos del bot y chat del equipo.
+ */
+export async function createPrivateTextChannel(
+  guildId: string,
+  name: string,
+  parentId: string,
+  teamDiscordIds: string[]
+) {
+  const cleanGuildId = extractDiscordGuildId(guildId) || guildId
+  const sanitizedName = name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9_-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+
+  try {
+    const permissionOverwrites: any[] = [
+      {
+        id: cleanGuildId,
+        type: 0, // ROLE @everyone
+        allow: '0',
+        deny: '1024', // Denegar VIEW_CHANNEL (1<<10)
+      },
+    ]
+
+    teamDiscordIds.forEach((discordUserId) => {
+      if (discordUserId) {
+        permissionOverwrites.push({
+          id: discordUserId,
+          type: 1, // MEMBER
+          allow: '68608', // VIEW_CHANNEL (1024) + SEND_MESSAGES (2048) + READ_MESSAGE_HISTORY (65536)
+          deny: '0',
+        })
+      }
+    })
+
+    const response = await fetch(`${DISCORD_API_URL}/guilds/${cleanGuildId}/channels`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        name: `chat-${sanitizedName || 'equipo'}`,
+        type: 0, // GUILD_TEXT
+        parent_id: parentId,
+        permission_overwrites: permissionOverwrites,
+      }),
+    })
+
+    if (!response.ok) {
+      const errText = await response.text()
+      let errJson: any = null
+      try { errJson = JSON.parse(errText) } catch {}
+      const errMsg = parseDiscordError(response.status, errJson, errText)
+      console.error('[Discord Service] Error al crear canal de texto privado:', errMsg)
+      return { error: errMsg }
+    }
+    const data = await response.json()
+    return { success: true, id: data.id }
+  } catch (err: any) {
+    console.error('[Discord Service] Error de red al crear canal de texto privado:', err)
+    return { error: err.message || err }
+  }
+}
+
+/**
  * Elimina un canal o categoría por ID.
  */
 export async function deleteDiscordChannel(channelId: string) {

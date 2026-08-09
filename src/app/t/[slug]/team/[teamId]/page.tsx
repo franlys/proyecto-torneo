@@ -97,7 +97,7 @@ export default async function TeamPortalPage({
           </div>
 
           {/* Hub de Discord para el Equipo (Siempre visible para coordinar) */}
-          {(team.discord_voice_channel_id || tournament.discord_url) && (
+          {(team.discord_voice_channel_id || team.discord_text_channel_id || tournament.discord_url) && (
             <div className="mb-6 bg-[#5865F2]/10 border border-[#5865F2]/25 rounded-2xl p-4 space-y-3 shadow-[0_0_20px_rgba(88,101,242,0.12)] animate-in fade-in duration-300">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-[#5865F2]/20 border border-[#5865F2]/40 flex items-center justify-center text-white shrink-0">
@@ -108,21 +108,32 @@ export default async function TeamPortalPage({
                 <div className="flex-1 min-w-0">
                   <h4 className="text-xs font-orbitron font-bold text-white uppercase tracking-wider">Discord de la Partida</h4>
                   <p className="text-[10px] text-white/50 leading-tight">
-                    {team.discord_voice_channel_id ? 'Sala de voz privada y canal oficial' : 'Servidor oficial del torneo'}
+                    Canales oficiales y salas privadas de tu equipo
                   </p>
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                 {team.discord_voice_channel_id && discordGuildId && (
                   <a 
                     href={`https://discord.com/channels/${discordGuildId}/${team.discord_voice_channel_id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#5865F2] hover:bg-[#4752C4] text-white font-orbitron font-bold text-[11px] uppercase tracking-wider transition-all shadow-[0_4px_12px_rgba(88,101,242,0.35)] active:scale-[0.98]"
+                    className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#5865F2] hover:bg-[#4752C4] text-white font-orbitron font-bold text-[11px] uppercase tracking-wider transition-all shadow-[0_4px_12px_rgba(88,101,242,0.35)] active:scale-[0.98]"
                   >
                     <span>🔊</span>
                     <span>Voz de Equipo</span>
+                  </a>
+                )}
+                {team.discord_text_channel_id && discordGuildId && (
+                  <a 
+                    href={`https://discord.com/channels/${discordGuildId}/${team.discord_text_channel_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-neon-purple/20 hover:bg-neon-purple/30 border border-neon-purple/40 text-white font-orbitron font-bold text-[11px] uppercase tracking-wider transition-all"
+                  >
+                    <span>💬</span>
+                    <span>Chat de Equipo</span>
                   </a>
                 )}
                 {tournament.discord_url && (
@@ -130,9 +141,11 @@ export default async function TeamPortalPage({
                     href={tournament.discord_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-orbitron font-bold text-[11px] uppercase tracking-wider transition-all"
+                    className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-orbitron font-bold text-[11px] uppercase tracking-wider transition-all ${
+                      team.discord_voice_channel_id && team.discord_text_channel_id ? 'sm:col-span-2' : ''
+                    }`}
                   >
-                    <span>💬</span>
+                    <span>🌐</span>
                     <span>Servidor Discord</span>
                   </a>
                 )}
