@@ -123,33 +123,6 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
     loadData()
   }, [])
 
-  const discordUrlValue = watch('discordUrl')
-  const effectiveGuildId = currentUserProfile?.discord_guild_id || extractDiscordGuildId(discordUrlValue)
-
-  useEffect(() => {
-    if (!effectiveGuildId) {
-      setDiscordChannels([])
-      return
-    }
-
-    async function fetchChannels() {
-      setFetchingChannels(true)
-      try {
-        const res = await getDiscordChannelsAction(effectiveGuildId as string)
-        if ('success' in res && res.success) {
-          setDiscordChannels(res.data || [])
-        } else {
-          console.error('[Discord Form] Error fetching channels:', 'error' in res ? res.error : 'Unknown error')
-        }
-      } catch (err) {
-        console.error('[Discord Form] Network error fetching channels:', err)
-      } finally {
-        setFetchingChannels(false)
-      }
-    }
-    fetchChannels()
-  }, [effectiveGuildId])
-
   const handleBadgeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -240,6 +213,33 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
   const isPrivate = watch('isPrivate')
   const discipline = watch('discipline')
   const maxPointsLimit = watch('maxPointsLimit')
+
+  const discordUrlValue = watch('discordUrl')
+  const effectiveGuildId = currentUserProfile?.discord_guild_id || extractDiscordGuildId(discordUrlValue)
+
+  useEffect(() => {
+    if (!effectiveGuildId) {
+      setDiscordChannels([])
+      return
+    }
+
+    async function fetchChannels() {
+      setFetchingChannels(true)
+      try {
+        const res = await getDiscordChannelsAction(effectiveGuildId as string)
+        if ('success' in res && res.success) {
+          setDiscordChannels(res.data || [])
+        } else {
+          console.error('[Discord Form] Error fetching channels:', 'error' in res ? res.error : 'Unknown error')
+        }
+      } catch (err) {
+        console.error('[Discord Form] Network error fetching channels:', err)
+      } finally {
+        setFetchingChannels(false)
+      }
+    }
+    fetchChannels()
+  }, [effectiveGuildId])
   
   const entryFee = watch('entryFee') || 0
   const maxTeams = watch('maxTeams') || 0
