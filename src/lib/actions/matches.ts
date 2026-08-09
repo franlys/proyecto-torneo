@@ -298,3 +298,94 @@ export async function createMatch(
   
   return { data: mapped }
 }
+
+export async function notifyEvidenceWindowAction(
+  tournamentId: string,
+  matchId: string
+): Promise<{ success: true } | { error: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  // Verify ownership or admin
+  const { data: tournament } = await supabase
+    .from('tournaments')
+    .select('name, creator_id, collaborator_id, discord_announcement_channel_id')
+    .eq('id', tournamentId)
+    .single()
+
+  if (!tournament) return { error: 'Torneo no encontrado' }
+
+  const { checkTournamentAccess } = await import('./tournaments')
+  const hasAccess = await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id)
+  if (!hasAccess) return { error: 'Sin permisos' }
+
+  const { data: match } = await supabase
+    .from('matches')
+    .select('name')
+    .eq('id', matchId)
+    .single()
+
+  const matchName = match?.name || 'Partida'
+
+  // 1. Send in-app notifications to all players
+  try {
+    const { data: players } = await supabase
+      .from('participants')
+      .select('user_id')
+      .eq('tournament_id', tournamentId)
+      .not('user_id', 'is', null)
+
+    if (players && players.length > 0) {
+      const uniqueUserIds = Array.from(new Set(players.map((p: any) => p.user_id)))
+      const notificationsToInsert = uniqueUserIds.map((uId) => ({
+        user_id: uId,
+        title: '📸 ¡Sube tus Evidencias! 🏆',
+        message: `La ${matchName} del torneo "${tournament.name}" ha concluido. Sube tu captura de pantalla en el Portal de Equipo.`
+      }))
+      await supabase.from('notifications').insert(notificationsToInsert)
+    }
+  } catch (err) {
+    console.error('Error sending evidence in-app notifications:', err)
+  }
+
+  // 2. Send Discord announcements to announcement channel and all team private channels
+  try {
+    const { sendDiscordEmbed } = await import('@/lib/services/discord')
+
+    // Public announcement channel
+    if (tournament.discord_announcement_channel_id) {
+      await sendDiscordEmbed(tournament.discord_announcement_channel_id, {
+        title: `📸 ¡RECEPCIÓN DE EVIDENCIAS ABIERTA - ${matchName}! 🏁`,
+        description: `La partida **${matchName}** del torneo **${tournament.name}** ha concluido.\n\n👉 **Capitanes:** Tienen la ventana abierta para subir sus capturas de pantalla de bajas y posiciones en el Portal de Equipo.\n\n⏳ *Por favor carguen sus evidencias lo antes posible para el cómputo de puntos.*`,
+        color: 16753920, // Orange/Gold
+        timestamp: new Date().toISOString(),
+      })
+    }
+
+    // All Team Private text channels
+    const { data: teams } = await supabase
+      .from('teams')
+      .select('id, name, discord_text_channel_id')
+      .eq('tournament_id', tournamentId)
+
+    if (teams) {
+      for (const team of teams as any[]) {
+        if (team.discord_text_channel_id) {
+          await sendDiscordEmbed(team.discord_text_channel_id, {
+            title: `📸 ¡SUBAN SUS EVIDENCIAS - ${matchName}! 🚨`,
+            description: `¡Atención equipo **${team.name}**!\n\nLa partida **${matchName}** ha concluido.\n\n👉 **Acción Requerida:** Entren a su **Portal de Equipo** y suban la captura de pantalla clara de su partida (tabla de puntuación y bajas).\n\n⚠️ *Eviten sanciones enviando su evidencia a tiempo.*`,
+            color: 16753920, // Orange/Gold
+            timestamp: new Date().toISOString(),
+          })
+        }
+      }
+    }
+  } catch (discordErr) {
+    console.error('Error sending Discord Evidence Window announcement:', discordErr)
+  }
+
+  revalidatePath(`/tournaments/${tournamentId}/matches`)
+  revalidatePath(`/t/[slug]`, 'page')
+  return { success: true }
+}

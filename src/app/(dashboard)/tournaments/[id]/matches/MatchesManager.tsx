@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Match } from '@/types'
-import { updateMatch, createMatch } from '@/lib/actions/matches'
+import { updateMatch, createMatch, notifyEvidenceWindowAction } from '@/lib/actions/matches'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 
@@ -15,6 +15,7 @@ export function MatchesManager({
 }) {
   const [matches, setMatches] = useState(initialMatches)
   const [saving, setSaving] = useState<string | null>(null)
+  const [notifyingEvidence, setNotifyingEvidence] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
 
   const encounters = matches.filter(m => !m.parentMatchId)
@@ -70,6 +71,22 @@ export function MatchesManager({
     toast.success(`▶ ${match.name} marcada como EN CURSO — Alertas enviadas a Discord`)
   }
 
+  const handleNotifyEvidence = async (match: Match) => {
+    setNotifyingEvidence(match.id)
+    try {
+      const res = await notifyEvidenceWindowAction(tournamentId, match.id)
+      if ('error' in res) {
+        toast.error(res.error)
+      } else {
+        toast.success(`📸 ¡Alerta de subida de evidencias enviada a Discord y jugadores para ${match.name}!`)
+      }
+    } catch (err: any) {
+      toast.error('Error al enviar alerta de evidencias: ' + (err.message || err))
+    } finally {
+      setNotifyingEvidence(null)
+    }
+  }
+
   const handleFinish = async (match: Match) => {
     await handleUpdate(match.id, { isActive: false, isCompleted: true })
     toast.success(`✓ ${match.name} finalizada — Mercados liquidados y alerta de evidencias enviada`)
@@ -82,6 +99,7 @@ export function MatchesManager({
 
   function MatchControls({ match }: { match: Match }) {
     const isSaving = saving === match.id
+    const isNotifying = notifyingEvidence === match.id
 
     if (match.isWarmup) {
       return (
@@ -111,17 +129,25 @@ export function MatchesManager({
 
     if (match.isActive) {
       return (
-        <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-green-400 animate-pulse">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-green-400 animate-pulse mr-1">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
             En curso · Apuestas en Vivo
           </span>
           <button
+            onClick={() => handleNotifyEvidence(match)}
+            disabled={isNotifying || isSaving}
+            className="text-[10px] px-3 py-1.5 rounded-lg border border-neon-purple/40 text-white bg-neon-purple/20 hover:bg-neon-purple/40 font-black uppercase tracking-widest transition-all disabled:opacity-40 flex items-center gap-1 shadow-lg shadow-neon-purple/10 active:scale-95"
+            title="Avisa al bot de Discord y a los jugadores que la partida terminó y deben subir sus capturas de evidencia"
+          >
+            {isNotifying ? 'Enviando...' : '📸 Pedir Evidencias'}
+          </button>
+          <button
             onClick={() => handleFinish(match)}
             disabled={isSaving}
-            className="text-[10px] px-3 py-1.5 rounded-lg border border-gold/30 text-gold bg-gold/10 hover:bg-gold/20 font-black uppercase tracking-widest transition-colors disabled:opacity-40"
+            className="text-[10px] px-3 py-1.5 rounded-lg border border-gold/30 text-gold bg-gold/10 hover:bg-gold/20 font-black uppercase tracking-widest transition-colors disabled:opacity-40 active:scale-95"
           >
-            {isSaving ? '...' : 'Finalizar'}
+            {isSaving ? '...' : '✓ Finalizar'}
           </button>
         </div>
       )
