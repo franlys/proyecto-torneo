@@ -67,12 +67,12 @@ export function MatchesManager({
       return
     }
     await handleUpdate(match.id, { isActive: true })
-    toast.success(`▶ ${match.name} marcada como EN CURSO — AC abre mercados`)
+    toast.success(`▶ ${match.name} marcada como EN CURSO — Alertas enviadas a Discord`)
   }
 
   const handleFinish = async (match: Match) => {
     await handleUpdate(match.id, { isActive: false, isCompleted: true })
-    toast.success(`✓ ${match.name} finalizada — AC cierra y resuelve mercados`)
+    toast.success(`✓ ${match.name} finalizada — Mercados liquidados y alerta de evidencias enviada`)
   }
 
   const handleReopen = async (match: Match) => {
@@ -86,7 +86,7 @@ export function MatchesManager({
     if (match.isWarmup) {
       return (
         <span className="text-[10px] text-yellow-500/60 uppercase font-black tracking-widest">
-          Warmup — sin mercados
+          Warmup — sin apuestas
         </span>
       )
     }
@@ -114,7 +114,7 @@ export function MatchesManager({
         <div className="flex items-center gap-2">
           <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-green-400 animate-pulse">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-            En curso · AC live
+            En curso · Apuestas en Vivo
           </span>
           <button
             onClick={() => handleFinish(match)}
@@ -160,10 +160,10 @@ export function MatchesManager({
           <span className="w-2 h-2 rounded-full bg-white/20" /> Pendiente
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" /> En curso · AC abierto
+          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" /> En curso · Apuestas activas
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-neon-cyan" /> Finalizada · AC resuelto
+          <span className="w-2 h-2 rounded-full bg-neon-cyan" /> Finalizada · Liquidada
         </span>
       </div>
 
