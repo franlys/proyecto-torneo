@@ -336,9 +336,9 @@ export function LeaderboardClient({
   const [userFriends, setUserFriends] = useState<any[]>([])
   const [regPassword, setRegPassword] = useState('')
   const [regLoading, setRegLoading] = useState(false)
-  // Game account fields (captain only)
-  const [regGameId, setRegGameId] = useState('')
-  const [regGameUsername, setRegGameUsername] = useState('')
+  // Game account fields for all participants (captain + teammates)
+  const [regParticipantGameIds, setRegParticipantGameIds] = useState<string[]>([])
+  const [regParticipantGameUsernames, setRegParticipantGameUsernames] = useState<string[]>([])
   // Nickname modal: show if user has no username
   const [showNicknameModal, setShowNicknameModal] = useState(false)
   // Quick friend add state inside registration modal
@@ -354,6 +354,8 @@ export function LeaderboardClient({
     const initialParticipants = Array(size).fill('')
     const initialUserIds = Array(size).fill(null)
     const initialStreams = Array(size).fill('')
+    const initialGameIds = Array(size).fill('')
+    const initialGameUsernames = Array(size).fill('')
 
     if (currentUser) {
       try {
@@ -374,25 +376,21 @@ export function LeaderboardClient({
       }
       initialUserIds[0] = currentUser.id
 
-      // Auto-load game account for this discipline
+      // Auto-load captain's game account for this discipline
       try {
         const gameRes = await getGameAccountForUser(currentUser.id, discipline)
         if ('data' in gameRes && gameRes.data) {
-          setRegGameId(gameRes.data.game_id)
-          setRegGameUsername(gameRes.data.game_username)
-        } else {
-          setRegGameId('')
-          setRegGameUsername('')
+          initialGameIds[0] = gameRes.data.game_id || ''
+          initialGameUsernames[0] = gameRes.data.game_username || ''
         }
-      } catch {
-        setRegGameId('')
-        setRegGameUsername('')
-      }
+      } catch {}
     }
 
     setRegParticipants(initialParticipants)
     setRegParticipantUserIds(initialUserIds)
     setRegParticipantStreams(initialStreams)
+    setRegParticipantGameIds(initialGameIds)
+    setRegParticipantGameUsernames(initialGameUsernames)
     setRegTeamName('')
     setRegStreamUrl(initialStreams[0] || '')
     setRegPassword('')
@@ -490,30 +488,47 @@ export function LeaderboardClient({
         return
       }
 
-      if (!regGameId.trim()) {
-        toast.error('El ID de tu cuenta en el juego es obligatorio.')
-        setRegLoading(false)
-        isSubmittingReg.current = false
-        return
+      const gameInfo = GAME_LABELS[discipline] || {
+        label: discipline,
+        idLabel: 'ID de cuenta',
+        usernameLabel: 'Nombre en el juego',
+        idPlaceholder: 'Ej: TuID123',
+        usernamePlaceholder: 'Ej: TuNombre',
+        icon: '🎮'
       }
-      if (!regGameUsername.trim()) {
-        toast.error('Tu nombre en el juego es obligatorio.')
-        setRegLoading(false)
-        isSubmittingReg.current = false
-        return
+
+      for (let i = 0; i < regParticipants.length; i++) {
+        const memberLabel = i === 0 ? 'del Capitán' : `del Integrante ${i + 1} (${regParticipants[i] || 'compañero'})`
+        if (!regParticipantGameIds[i]?.trim()) {
+          toast.error(`Por favor, ingresa el ${gameInfo.idLabel} ${memberLabel}`)
+          setRegLoading(false)
+          isSubmittingReg.current = false
+          return
+        }
+        if (!regParticipantGameUsernames[i]?.trim()) {
+          toast.error(`Por favor, ingresa el ${gameInfo.usernameLabel} ${memberLabel}`)
+          setRegLoading(false)
+          isSubmittingReg.current = false
+          return
+        }
       }
 
       const members = regParticipants.map((name, index) => ({
         displayName: name,
         userId: regParticipantUserIds[index] || undefined,
         streamUrl: index === 0 ? (regStreamUrl || undefined) : (regParticipantStreams[index] || undefined),
-        // Solo el capitán (índice 0) lleva el game_id
-        gameId: index === 0 ? regGameId : undefined,
-        gameUsername: index === 0 ? regGameUsername : undefined,
+        gameId: regParticipantGameIds[index]?.trim(),
+        gameUsername: regParticipantGameUsernames[index]?.trim(),
       }))
 
-      // Auto-save game account to profile for future use (silent, no blocking)
-      upsertGameAccount({ game: discipline, gameId: regGameId.trim(), gameUsername: regGameUsername.trim() }).catch(() => {})
+      // Auto-save captain game account to profile for future use (silent, no blocking)
+      if (regParticipantGameIds[0] && regParticipantGameUsernames[0]) {
+        upsertGameAccount({
+          game: discipline,
+          gameId: regParticipantGameIds[0].trim(),
+          gameUsername: regParticipantGameUsernames[0].trim()
+        }).catch(() => {})
+      }
 
       const res = await registerTournament(tournamentId, {
         teamName: mode === 'individual' ? regParticipants[0] : regTeamName,
@@ -3072,136 +3087,155 @@ export function LeaderboardClient({
                       </div>
                     )}
 
-                    {regParticipants.map((name, idx) => (
-                      <div key={idx} className="space-y-2 p-3.5 rounded-xl bg-white/[0.02] border border-white/5">
-                        <span className="text-[10px] text-white/40 font-bold uppercase tracking-wider block">
-                          {mode === 'individual' ? 'Tu GamerTag / Nombre' : idx === 0 ? 'Capitán (Tú)' : `Integrante ${idx + 1}`}
-                        </span>
+                    {regParticipants.map((name, idx) => {
+                      const gameInfo = GAME_LABELS[discipline] || {
+                        label: discipline,
+                        idLabel: 'ID de cuenta',
+                        usernameLabel: 'Nombre en el juego',
+                        idPlaceholder: 'Ej: TuID123',
+                        usernamePlaceholder: 'Ej: TuNombre',
+                        icon: '🎮'
+                      }
 
-                        {idx === 0 ? (
-                          <input
-                            required
-                            type="text"
-                            value={name}
-                            onChange={e => {
-                              const newParticipants = [...regParticipants]
-                              newParticipants[idx] = e.target.value
-                              setRegParticipants(newParticipants)
-                            }}
-                            placeholder="Tu display name / GamerTag"
-                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30 transition-all"
-                          />
-                        ) : (
-                          <div className="space-y-2">
-                            <select
-                              required
-                              value={regParticipantUserIds[idx] || ''}
-                              onChange={e => {
-                                const val = e.target.value
-                                const newParticipants = [...regParticipants]
-                                const newIds = [...regParticipantUserIds]
-                                const newStreams = [...regParticipantStreams]
-
-                                if (!val) {
-                                  newIds[idx] = null
-                                  newParticipants[idx] = ''
-                                } else {
-                                  const friend = userFriends.find(f => f.id === val)
-                                  if (friend) {
-                                    newIds[idx] = friend.id
-                                    newParticipants[idx] = friend.username || friend.short_id || 'Amigo'
-                                    newStreams[idx] = friend.stream_url || ''
-                                  }
-                                }
-                                setRegParticipants(newParticipants)
-                                setRegParticipantUserIds(newIds)
-                                setRegParticipantStreams(newStreams)
-                              }}
-                              className="w-full bg-black/60 border border-white/10 rounded-xl px-3.5 py-3 text-xs text-white outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30"
-                            >
-                              <option value="">-- Seleccionar de mi Lista de Amigos --</option>
-                              {userFriends.map(f => (
-                                <option key={f.id} value={f.id}>
-                                  👤 {f.username || 'Usuario'} {f.short_id ? `(${f.short_id})` : ''}
-                                </option>
-                              ))}
-                            </select>
-
-                            {userFriends.length === 0 && (
-                              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-300 leading-snug">
-                                ⚠️ No tienes amigos agregados aún. Usa el buscador de arriba para agregar a tu compañero por su <strong>@usuario</strong> o <strong>ID</strong> de Kronix.
-                              </div>
-                            )}
-
+                      return (
+                        <div key={idx} className="space-y-3 p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-orbitron font-bold text-white uppercase tracking-wider">
+                              {mode === 'individual' ? '👤 Datos del Jugador' : idx === 0 ? '👑 Capitán (Tú)' : `👤 Integrante ${idx + 1}`}
+                            </span>
                             {regParticipantUserIds[idx] && (
-                              <div className="flex items-center gap-1.5 ml-1 text-[10px] text-neon-cyan/90 font-semibold">
-                                <span>✓</span>
-                                <span>Jugador registrado verificado ({name})</span>
-                              </div>
+                              <span className="text-[9px] text-neon-cyan/90 bg-neon-cyan/10 px-2 py-0.5 rounded-full border border-neon-cyan/30 font-semibold">
+                                ✓ Registrado
+                              </span>
                             )}
                           </div>
-                        )}
-                      </div>
-                    ))}
+
+                          {idx === 0 ? (
+                            <div>
+                              <label className="block text-[10px] text-white/50 uppercase tracking-widest font-bold mb-1 ml-1">
+                                Tu Nombre / Nickname en Kronix
+                              </label>
+                              <input
+                                required
+                                type="text"
+                                value={name}
+                                onChange={e => {
+                                  const newParticipants = [...regParticipants]
+                                  newParticipants[idx] = e.target.value
+                                  setRegParticipants(newParticipants)
+                                }}
+                                placeholder="Tu display name / GamerTag"
+                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/20 outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30 transition-all"
+                              />
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <label className="block text-[10px] text-white/50 uppercase tracking-widest font-bold mb-1 ml-1">
+                                Amigo de Kronix <span className="text-red-400">*</span>
+                              </label>
+                              <select
+                                required
+                                value={regParticipantUserIds[idx] || ''}
+                                onChange={e => {
+                                  const val = e.target.value
+                                  const newParticipants = [...regParticipants]
+                                  const newIds = [...regParticipantUserIds]
+                                  const newStreams = [...regParticipantStreams]
+
+                                  if (!val) {
+                                    newIds[idx] = null
+                                    newParticipants[idx] = ''
+                                  } else {
+                                    const friend = userFriends.find(f => f.id === val)
+                                    if (friend) {
+                                      newIds[idx] = friend.id
+                                      newParticipants[idx] = friend.username || friend.short_id || 'Amigo'
+                                      newStreams[idx] = friend.stream_url || ''
+
+                                      // Auto-load friend's game credentials
+                                      getGameAccountForUser(friend.id, discipline).then(res => {
+                                        if (res && 'data' in res && res.data) {
+                                          const gameData = res.data;
+                                          setRegParticipantGameIds(prev => {
+                                            const updated = [...prev]
+                                            updated[idx] = gameData.game_id || ''
+                                            return updated
+                                          })
+                                          setRegParticipantGameUsernames(prev => {
+                                            const updated = [...prev]
+                                            updated[idx] = gameData.game_username || ''
+                                            return updated
+                                          })
+                                        }
+                                      }).catch(() => {})
+                                    }
+                                  }
+                                  setRegParticipants(newParticipants)
+                                  setRegParticipantUserIds(newIds)
+                                  setRegParticipantStreams(newStreams)
+                                }}
+                                className="w-full bg-black/60 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30"
+                              >
+                                <option value="">-- Seleccionar de mi Lista de Amigos --</option>
+                                {userFriends.map(f => (
+                                  <option key={f.id} value={f.id}>
+                                    👤 {f.username || 'Usuario'} {f.short_id ? `(${f.short_id})` : ''}
+                                  </option>
+                                ))}
+                              </select>
+
+                              {userFriends.length === 0 && (
+                                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-300 leading-snug">
+                                  ⚠️ No tienes amigos agregados aún. Usa el buscador de arriba para agregar a tu compañero por su <strong>@usuario</strong> o <strong>ID</strong> de Kronix.
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Credenciales de juego para este integrante */}
+                          <div className="pt-2 border-t border-white/5 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <div>
+                              <label className="block text-[10px] text-neon-cyan/70 uppercase tracking-widest font-bold mb-1 ml-1 flex items-center gap-1">
+                                <span>{gameInfo.icon}</span>
+                                <span>{gameInfo.idLabel} <span className="text-red-400">*</span></span>
+                              </label>
+                              <input
+                                required
+                                type="text"
+                                value={regParticipantGameIds[idx] || ''}
+                                onChange={e => {
+                                  const updated = [...regParticipantGameIds]
+                                  updated[idx] = e.target.value
+                                  setRegParticipantGameIds(updated)
+                                }}
+                                placeholder={gameInfo.idPlaceholder}
+                                className="w-full bg-black/40 border border-neon-cyan/20 rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/20 outline-none focus:border-neon-cyan/60 focus:ring-1 focus:ring-neon-cyan/30 transition-all font-mono"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-[10px] text-neon-cyan/70 uppercase tracking-widest font-bold mb-1 ml-1 flex items-center gap-1">
+                                <span>🏷️</span>
+                                <span>{gameInfo.usernameLabel} <span className="text-red-400">*</span></span>
+                              </label>
+                              <input
+                                required
+                                type="text"
+                                value={regParticipantGameUsernames[idx] || ''}
+                                onChange={e => {
+                                  const updated = [...regParticipantGameUsernames]
+                                  updated[idx] = e.target.value
+                                  setRegParticipantGameUsernames(updated)
+                                }}
+                                placeholder={gameInfo.usernamePlaceholder}
+                                className="w-full bg-black/40 border border-neon-cyan/20 rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/20 outline-none focus:border-neon-cyan/60 focus:ring-1 focus:ring-neon-cyan/30 transition-all"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
-
-                  {/* ── Game Account Section ── */}
-                  {(() => {
-                    const gameInfo = GAME_LABELS[discipline] || {
-                      label: discipline,
-                      idLabel: 'ID de cuenta',
-                      usernameLabel: 'Nombre en el juego',
-                      idPlaceholder: 'Ej: TuID123',
-                      usernamePlaceholder: 'Ej: TuNombre',
-                      icon: '🎮'
-                    }
-                    return (
-                      <div className="rounded-2xl border border-neon-cyan/20 bg-neon-cyan/[0.04] p-4 space-y-3">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-lg">{gameInfo.icon}</span>
-                          <div>
-                            <p className="text-xs font-black text-neon-cyan uppercase tracking-wider">
-                              Cuenta de {gameInfo.label}
-                            </p>
-                            <p className="text-[10px] text-white/30 mt-0.5">
-                              {regGameId && regGameUsername
-                                ? '✓ Cargada desde tu perfil — puedes editarla si cambió'
-                                : 'Obligatorio para participar en este torneo'}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-[10px] text-white/50 uppercase tracking-widest font-bold mb-1 ml-1">
-                              {gameInfo.idLabel} <span className="text-red-400">*</span>
-                            </label>
-                            <input
-                              required
-                              type="text"
-                              value={regGameId}
-                              onChange={e => setRegGameId(e.target.value)}
-                              placeholder={gameInfo.idPlaceholder}
-                              className="w-full bg-black/40 border border-neon-cyan/20 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/20 outline-none focus:border-neon-cyan/60 focus:ring-1 focus:ring-neon-cyan/30 transition-all font-mono"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[10px] text-white/50 uppercase tracking-widest font-bold mb-1 ml-1">
-                              {gameInfo.usernameLabel} <span className="text-red-400">*</span>
-                            </label>
-                            <input
-                              required
-                              type="text"
-                              value={regGameUsername}
-                              onChange={e => setRegGameUsername(e.target.value)}
-                              placeholder={gameInfo.usernamePlaceholder}
-                              className="w-full bg-black/40 border border-neon-cyan/20 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/20 outline-none focus:border-neon-cyan/60 focus:ring-1 focus:ring-neon-cyan/30 transition-all"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })()}
 
                   {/* Password for private tournaments */}
                   {isPrivate && (

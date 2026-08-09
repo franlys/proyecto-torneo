@@ -228,13 +228,16 @@ export async function registerTournament(
       }
     }
 
-    // 3.1. Validar que el capitán (primer participante) tenga Game ID y Game Username
-    const captain = pList[0]
-    if (!captain.gameId || !captain.gameId.trim()) {
-      return { error: 'El ID de cuenta del juego es obligatorio para inscribirse.' }
-    }
-    if (!captain.gameUsername || !captain.gameUsername.trim()) {
-      return { error: 'El nombre de cuenta en el juego es obligatorio para inscribirse.' }
+    // 3.1. Validar que TODOS los participantes del equipo tengan Game ID y Game Username
+    for (let i = 0; i < pList.length; i++) {
+      const p = pList[i]
+      const memberLabel = i === 0 ? 'del Capitán' : `del Integrante ${i + 1} (${p.displayName || 'compañero'})`
+      if (!p.gameId || !p.gameId.trim()) {
+        return { error: `El ID de cuenta en el juego ${memberLabel} es obligatorio para completar la inscripción.` }
+      }
+      if (!p.gameUsername || !p.gameUsername.trim()) {
+        return { error: `El nombre de cuenta en el juego ${memberLabel} es obligatorio para completar la inscripción.` }
+      }
     }
 
     // 5. Verificar si el nombre del equipo o del jugador individual ya está registrado
