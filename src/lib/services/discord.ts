@@ -359,3 +359,34 @@ export async function getGuildChannels(guildId: string) {
     return { error: err.message || err }
   }
 }
+
+/**
+ * Otorga permisos individuales a un usuario de Discord en un canal de voz o texto existente.
+ */
+export async function grantDiscordChannelAccess(
+  channelId: string,
+  discordUserId: string,
+  type: 'voice' | 'text'
+) {
+  try {
+    const allowBits = type === 'voice' ? '1049600' : '68608'
+    const response = await fetch(`${DISCORD_API_URL}/channels/${channelId}/permissions/${discordUserId}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        allow: allowBits,
+        deny: '0',
+        type: 1, // 1 = MEMBER
+      }),
+    })
+    if (!response.ok) {
+      const errText = await response.text()
+      console.warn(`[Discord Service] Error otorgando permisos a usuario ${discordUserId} en canal ${channelId}:`, errText)
+      return { error: errText }
+    }
+    return { success: true }
+  } catch (err: any) {
+    return { error: err.message || err }
+  }
+}
+

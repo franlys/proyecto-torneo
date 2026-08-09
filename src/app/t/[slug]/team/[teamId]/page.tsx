@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { notFound } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { TeamPortalClient } from './TeamPortalClient'
 
 export default async function TeamPortalPage({
@@ -55,9 +55,38 @@ export default async function TeamPortalPage({
   // Fetch the team's participants
   const { data: participants } = await supabase
     .from('participants')
-    .select('id, display_name, is_captain')
+    .select('id, display_name, is_captain, user_id')
     .eq('team_id', teamId)
     .order('is_captain', { ascending: false })
+
+  // Check logged-in user Discord identity and grant on-the-fly permissions
+  const { data: { user } } = await supabase.auth.getUser()
+  let userHasDiscord = false
+  if (user) {
+    const adminSupabase = await createAdminClient()
+    const { data: identities } = await adminSupabase
+      .schema('auth')
+      .from('identities')
+      .select('provider_id')
+      .eq('user_id', user.id)
+      .eq('provider', 'discord')
+      .maybeSingle()
+
+    if (identities?.provider_id) {
+      userHasDiscord = true
+      const userDiscordId = identities.provider_id
+      const isTeamMember = (participants || []).some((p: any) => p.user_id === user.id)
+      if (isTeamMember) {
+        const { grantDiscordChannelAccess } = await import('@/lib/services/discord')
+        if (team.discord_voice_channel_id) {
+          grantDiscordChannelAccess(team.discord_voice_channel_id, userDiscordId, 'voice').catch(() => {})
+        }
+        if (team.discord_text_channel_id) {
+          grantDiscordChannelAccess(team.discord_text_channel_id, userDiscordId, 'text').catch(() => {})
+        }
+      }
+    }
+  }
 
   // Fetch all matches for the tournament
   const { data: matches } = await supabase
@@ -150,6 +179,16 @@ export default async function TeamPortalPage({
                   </a>
                 )}
               </div>
+
+              {!userHasDiscord && (
+                <div className="mt-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-200 leading-snug">
+                  💡 <strong>¿No puedes entrar al canal privado?</strong> Asegúrate de estar en el servidor de Discord y tener tu cuenta de Discord vinculada en tus{' '}
+                  <a href="/profile?tab=ajustes" target="_blank" className="underline font-bold text-white hover:text-neon-cyan">
+                    Ajustes de Perfil
+                  </a>{' '}
+                  o haber iniciado sesión con Discord para que el bot te otorgue acceso automáticamente.
+                </div>
+              )}
             </div>
           )}
 
