@@ -552,7 +552,11 @@ export async function activateTournament(
             .eq('tournament_id', id)
 
           if (teams && teams.length > 0) {
-            for (const team of teams) {
+            const { getGuildChannels, createPrivateTextChannel } = await import('@/lib/services/discord')
+            const existingChannelsRes = await getGuildChannels(guildId)
+            const existingInCategory = (existingChannelsRes.data || []).filter((c: any) => c.parent_id === categoryId)
+
+            for (const team of teams as any[]) {
               // Consultar los participantes del equipo
               const { data: participants } = await supabase
                 .from('participants')
@@ -562,7 +566,6 @@ export async function activateTournament(
 
               const teamUserIds = (participants || []).map((p) => p.user_id).filter(Boolean) as string[]
 
-              // Consultar IDs de Discord desde auth.identities
               let teamDiscordIds: string[] = []
               if (teamUserIds.length > 0) {
                 const { data: identities } = await adminSupabase
@@ -577,24 +580,38 @@ export async function activateTournament(
                 }
               }
 
-              // Crear canal de voz y canal de texto privados para este equipo
-              const voiceRes = await createPrivateVoiceChannel(guildId, `🔊 ${team.name}`, categoryId, teamDiscordIds)
-              const { createPrivateTextChannel } = await import('@/lib/services/discord')
-              const textRes = await createPrivateTextChannel(guildId, team.name, categoryId, teamDiscordIds)
+              const voiceChannelName = `🔊 ${team.name}`
+              const textChannelName = `chat-${team.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'equipo'}`
+
+              let voiceId = team.discord_voice_channel_id
+              const existingVoice = existingInCategory.find((c: any) => c.type === 2 && (c.id === voiceId || c.name === voiceChannelName))
+              if (existingVoice) {
+                voiceId = existingVoice.id
+              } else {
+                const voiceRes = await createPrivateVoiceChannel(guildId, voiceChannelName, categoryId, teamDiscordIds)
+                if (voiceRes.success && voiceRes.id) voiceId = voiceRes.id
+              }
+
+              let textId = team.discord_text_channel_id
+              const existingText = existingInCategory.find((c: any) => c.type === 0 && (c.id === textId || c.name === textChannelName))
+              if (existingText) {
+                textId = existingText.id
+              } else {
+                const textRes = await createPrivateTextChannel(guildId, team.name, categoryId, teamDiscordIds)
+                if (textRes.success && textRes.id) {
+                  textId = textRes.id
+                  await sendDiscordEmbed(textRes.id, {
+                    title: `🎮 Sala Oficial: ${team.name}`,
+                    description: `¡Hola equipo **${team.name}**!\n\nEste es su canal de comunicaciones privado para el torneo.\n\n📌 **Aquí recibirán:**\n• 🏁 Avisos de inicio y fin de cada ronda.\n• 📸 Recordatorios de carga de evidencia.\n• ⚠️ Notificaciones de Match Point o sanciones.\n\n🔊 **Voz:** Únanse al canal de voz de su equipo para coordinar durante la partida.`,
+                    color: 5793266,
+                    timestamp: new Date().toISOString(),
+                  })
+                }
+              }
 
               const updatePayload: any = {}
-              if (voiceRes.success && voiceRes.id) {
-                updatePayload.discord_voice_channel_id = voiceRes.id
-              }
-              if (textRes.success && textRes.id) {
-                updatePayload.discord_text_channel_id = textRes.id
-                await sendDiscordEmbed(textRes.id, {
-                  title: `🎮 Sala Oficial: ${team.name}`,
-                  description: `¡Hola equipo **${team.name}**!\n\nEste es su canal de comunicaciones privado para el torneo.\n\n📌 **Aquí recibirán:**\n• 🏁 Avisos de inicio y fin de cada ronda.\n• 📸 Recordatorios de carga de evidencia.\n• ⚠️ Notificaciones de Match Point o sanciones.\n\n🔊 **Voz:** Únanse al canal de voz de su equipo para coordinar durante la partida.`,
-                  color: 5793266,
-                  timestamp: new Date().toISOString(),
-                })
-              }
+              if (voiceId) updatePayload.discord_voice_channel_id = voiceId
+              if (textId) updatePayload.discord_text_channel_id = textId
 
               if (Object.keys(updatePayload).length > 0) {
                 await supabase
@@ -1924,7 +1941,7 @@ export async function syncTournamentDiscordChannels(
   // 4. Fetch teams
   const { data: teams } = await supabase
     .from('teams')
-    .select('id, name, discord_voice_channel_id')
+    .select('id, name, discord_voice_channel_id, discord_text_channel_id')
     .eq('tournament_id', tournamentId)
 
   if (!teams || teams.length === 0) {
@@ -1934,8 +1951,12 @@ export async function syncTournamentDiscordChannels(
     }
   }
 
+  const { getGuildChannels, createPrivateTextChannel } = await import('@/lib/services/discord')
+  const existingChannelsRes = await getGuildChannels(cleanGuildId)
+  const existingInCategory = (existingChannelsRes.data || []).filter((c: any) => c.parent_id === categoryId)
+
   let createdCount = 0
-  for (const team of teams) {
+  for (const team of teams as any[]) {
     // Check participants
     const { data: participants } = await supabase
       .from('participants')
@@ -1959,23 +1980,38 @@ export async function syncTournamentDiscordChannels(
       }
     }
 
-    const { createPrivateTextChannel } = await import('@/lib/services/discord')
-    const voiceRes = await createPrivateVoiceChannel(cleanGuildId, `🔊 ${team.name}`, categoryId, teamDiscordIds)
-    const textRes = await createPrivateTextChannel(cleanGuildId, team.name, categoryId, teamDiscordIds)
+    const voiceChannelName = `🔊 ${team.name}`
+    const textChannelName = `chat-${team.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'equipo'}`
+
+    let voiceId = team.discord_voice_channel_id
+    const existingVoice = existingInCategory.find((c: any) => c.type === 2 && (c.id === voiceId || c.name === voiceChannelName))
+    if (existingVoice) {
+      voiceId = existingVoice.id
+    } else {
+      const voiceRes = await createPrivateVoiceChannel(cleanGuildId, voiceChannelName, categoryId, teamDiscordIds)
+      if (voiceRes.success && voiceRes.id) voiceId = voiceRes.id
+    }
+
+    let textId = team.discord_text_channel_id
+    const existingText = existingInCategory.find((c: any) => c.type === 0 && (c.id === textId || c.name === textChannelName))
+    if (existingText) {
+      textId = existingText.id
+    } else {
+      const textRes = await createPrivateTextChannel(cleanGuildId, team.name, categoryId, teamDiscordIds)
+      if (textRes.success && textRes.id) {
+        textId = textRes.id
+        await sendDiscordEmbed(textRes.id, {
+          title: `🎮 Sala Oficial: ${team.name}`,
+          description: `¡Hola equipo **${team.name}**!\n\nEste es su canal de comunicaciones privado para el torneo.\n\n📌 **Aquí recibirán:**\n• 🏁 Avisos de inicio y fin de cada ronda.\n• 📸 Recordatorios de carga de evidencia.\n• ⚠️ Notificaciones de Match Point o sanciones.\n\n🔊 **Voz:** Únanse al canal de voz de su equipo para coordinar durante la partida.`,
+          color: 5793266,
+          timestamp: new Date().toISOString(),
+        })
+      }
+    }
 
     const updatePayload: any = {}
-    if (voiceRes.success && voiceRes.id) {
-      updatePayload.discord_voice_channel_id = voiceRes.id
-    }
-    if (textRes.success && textRes.id) {
-      updatePayload.discord_text_channel_id = textRes.id
-      await sendDiscordEmbed(textRes.id, {
-        title: `🎮 Sala Oficial: ${team.name}`,
-        description: `¡Hola equipo **${team.name}**!\n\nEste es su canal de comunicaciones privado para el torneo.\n\n📌 **Aquí recibirán:**\n• 🏁 Avisos de inicio y fin de cada ronda.\n• 📸 Recordatorios de carga de evidencia.\n• ⚠️ Notificaciones de Match Point o sanciones.\n\n🔊 **Voz:** Únanse al canal de voz de su equipo para coordinar durante la partida.`,
-        color: 5793266,
-        timestamp: new Date().toISOString(),
-      })
-    }
+    if (voiceId) updatePayload.discord_voice_channel_id = voiceId
+    if (textId) updatePayload.discord_text_channel_id = textId
 
     if (Object.keys(updatePayload).length > 0) {
       createdCount++
