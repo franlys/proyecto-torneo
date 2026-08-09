@@ -58,6 +58,57 @@ export async function resolveDiscordGuildId(input?: string | null): Promise<stri
   return null
 }
 
+/**
+ * Obtiene el Client ID del Bot a partir de su Token o de variables de entorno.
+ */
+export function getDiscordClientId(): string | null {
+  if (process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID || process.env.DISCORD_CLIENT_ID) {
+    return process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID || process.env.DISCORD_CLIENT_ID || null
+  }
+  const token = process.env.DISCORD_BOT_TOKEN
+  if (!token) return null
+  try {
+    const base64Part = token.split('.')[0]
+    const decoded = Buffer.from(base64Part, 'base64').toString('utf8')
+    if (/^\d{17,21}$/.test(decoded)) {
+      return decoded
+    }
+  } catch (err) {
+    console.warn('[Discord Service] Error decodificando Client ID del token:', err)
+  }
+  return null
+}
+
+/**
+ * Genera el enlace oficial de invitación del Bot con permisos de Administrador pre-configurados.
+ */
+export function getDiscordBotInviteUrl(guildId?: string | null): string {
+  const clientId = getDiscordClientId() || '1403398939794079865'
+  const cleanGuild = guildId ? extractDiscordGuildId(guildId) : null
+  const guildParam = cleanGuild ? `&guild_id=${cleanGuild}` : ''
+  return `https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=8&scope=bot%20applications.commands${guildParam}`
+}
+
+/**
+ * Verifica si el Bot está presente en el servidor de Discord especificado.
+ */
+export async function checkBotInGuild(guildId: string): Promise<{ inGuild: boolean; guildName?: string; error?: string }> {
+  const cleanGuildId = extractDiscordGuildId(guildId) || guildId
+  try {
+    const response = await fetch(`${DISCORD_API_URL}/guilds/${cleanGuildId}`, {
+      method: 'GET',
+      headers: getHeaders(),
+    })
+    if (response.ok) {
+      const data = await response.json()
+      return { inGuild: true, guildName: data.name }
+    }
+    return { inGuild: false }
+  } catch (err: any) {
+    return { inGuild: false, error: err.message || err }
+  }
+}
+
 function parseDiscordError(status: number, errJson: any, errText: string): string {
   if (errJson?.code === 10004 || status === 404) {
     return 'Servidor de Discord no encontrado (Unknown Guild). Asegúrate de invitar al bot de Kronix a tu servidor primero.'
