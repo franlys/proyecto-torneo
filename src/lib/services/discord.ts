@@ -12,6 +12,36 @@ function getHeaders() {
 }
 
 /**
+ * Extrae el Guild ID (ID de servidor) de un ID puro o de una URL de canal de Discord (ej: https://discord.com/channels/123456/7890).
+ */
+export function extractDiscordGuildId(input?: string | null): string | null {
+  if (!input) return null
+  const trimmed = input.trim()
+  // Si ya es un snowflake numérico directo (17-21 dígitos)
+  if (/^\d{17,21}$/.test(trimmed)) return trimmed
+  // Si es una URL de Discord /channels/{guild_id}/...
+  const match = trimmed.match(/discord(?:app)?\.com\/channels\/(\d{17,21})/i)
+  if (match) return match[1]
+  return null
+}
+
+function parseDiscordError(status: number, errJson: any, errText: string): string {
+  if (errJson?.code === 10004 || status === 404) {
+    return 'Servidor de Discord no encontrado (Unknown Guild). Asegúrate de invitar al bot de Kronix a tu servidor primero.'
+  }
+  if (errJson?.code === 50013 || status === 403) {
+    return 'Permisos insuficientes (Missing Permissions). El bot necesita el permiso "Gestionar Canales" y "Gestionar Roles" en tu servidor de Discord.'
+  }
+  if (errJson?.code === 50001) {
+    return 'Acceso denegado (Missing Access). El bot no tiene acceso a este servidor de Discord.'
+  }
+  if (status === 401) {
+    return 'Error de autorización: DISCORD_BOT_TOKEN no configurado o inválido.'
+  }
+  return errJson?.message || errText || 'Error desconocido de la API de Discord'
+}
+
+/**
  * Envía un mensaje embebido a un canal específico.
  */
 export async function sendDiscordEmbed(channelId: string, embed: any) {
@@ -23,8 +53,11 @@ export async function sendDiscordEmbed(channelId: string, embed: any) {
     })
     if (!response.ok) {
       const errText = await response.text()
-      console.error('[Discord Service] Error al enviar embed:', errText)
-      return { error: errText }
+      let errJson: any = null
+      try { errJson = JSON.parse(errText) } catch {}
+      const errMsg = parseDiscordError(response.status, errJson, errText)
+      console.error('[Discord Service] Error al enviar embed:', errMsg)
+      return { error: errMsg }
     }
     return { success: true, data: await response.json() }
   } catch (err: any) {
@@ -37,8 +70,9 @@ export async function sendDiscordEmbed(channelId: string, embed: any) {
  * Crea una categoría en el servidor de Discord.
  */
 export async function createDiscordCategory(guildId: string, name: string) {
+  const cleanGuildId = extractDiscordGuildId(guildId) || guildId
   try {
-    const response = await fetch(`${DISCORD_API_URL}/guilds/${guildId}/channels`, {
+    const response = await fetch(`${DISCORD_API_URL}/guilds/${cleanGuildId}/channels`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({
@@ -48,8 +82,11 @@ export async function createDiscordCategory(guildId: string, name: string) {
     })
     if (!response.ok) {
       const errText = await response.text()
-      console.error('[Discord Service] Error al crear categoría:', errText)
-      return { error: errText }
+      let errJson: any = null
+      try { errJson = JSON.parse(errText) } catch {}
+      const errMsg = parseDiscordError(response.status, errJson, errText)
+      console.error('[Discord Service] Error al crear categoría:', errMsg)
+      return { error: errMsg }
     }
     const data = await response.json()
     return { success: true, id: data.id }
@@ -72,12 +109,13 @@ export async function createPrivateVoiceChannel(
   parentId: string,
   teamDiscordIds: string[]
 ) {
+  const cleanGuildId = extractDiscordGuildId(guildId) || guildId
   try {
     // Definir permission overwrites
-    // 1. Bloquear acceso a @everyone (guildId es el id del rol de everyone en Discord)
+    // 1. Bloquear acceso a @everyone (cleanGuildId es el id del rol de everyone en Discord)
     const permissionOverwrites: any[] = [
       {
-        id: guildId,
+        id: cleanGuildId,
         type: 0, // ROLE
         allow: '0',
         deny: '1048576', // Denegar CONNECT (1 << 20)
@@ -96,7 +134,7 @@ export async function createPrivateVoiceChannel(
       }
     })
 
-    const response = await fetch(`${DISCORD_API_URL}/guilds/${guildId}/channels`, {
+    const response = await fetch(`${DISCORD_API_URL}/guilds/${cleanGuildId}/channels`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({
@@ -109,8 +147,11 @@ export async function createPrivateVoiceChannel(
 
     if (!response.ok) {
       const errText = await response.text()
-      console.error('[Discord Service] Error al crear canal de voz privado:', errText)
-      return { error: errText }
+      let errJson: any = null
+      try { errJson = JSON.parse(errText) } catch {}
+      const errMsg = parseDiscordError(response.status, errJson, errText)
+      console.error('[Discord Service] Error al crear canal de voz privado:', errMsg)
+      return { error: errMsg }
     }
     const data = await response.json()
     return { success: true, id: data.id }
@@ -131,8 +172,11 @@ export async function deleteDiscordChannel(channelId: string) {
     })
     if (!response.ok) {
       const errText = await response.text()
-      console.error('[Discord Service] Error al eliminar canal:', errText)
-      return { error: errText }
+      let errJson: any = null
+      try { errJson = JSON.parse(errText) } catch {}
+      const errMsg = parseDiscordError(response.status, errJson, errText)
+      console.error('[Discord Service] Error al eliminar canal:', errMsg)
+      return { error: errMsg }
     }
     return { success: true }
   } catch (err: any) {
@@ -145,15 +189,19 @@ export async function deleteDiscordChannel(channelId: string) {
  * Obtiene todos los canales de un servidor de Discord.
  */
 export async function getGuildChannels(guildId: string) {
+  const cleanGuildId = extractDiscordGuildId(guildId) || guildId
   try {
-    const response = await fetch(`${DISCORD_API_URL}/guilds/${guildId}/channels`, {
+    const response = await fetch(`${DISCORD_API_URL}/guilds/${cleanGuildId}/channels`, {
       method: 'GET',
       headers: getHeaders(),
     })
     if (!response.ok) {
       const errText = await response.text()
-      console.error('[Discord Service] Error al obtener canales del servidor:', errText)
-      return { error: errText }
+      let errJson: any = null
+      try { errJson = JSON.parse(errText) } catch {}
+      const errMsg = parseDiscordError(response.status, errJson, errText)
+      console.error('[Discord Service] Error al obtener canales del servidor:', errMsg)
+      return { error: errMsg }
     }
     return { success: true, data: await response.json() }
   } catch (err: any) {

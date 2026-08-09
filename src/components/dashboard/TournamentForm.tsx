@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react'
 import { createTournamentSchema, type CreateTournamentInput } from '@/lib/validations/schemas'
 import { createTournament, updateTournament } from '@/lib/actions/tournaments'
 import { getDiscordChannelsAction } from '@/lib/actions/discord-channels'
+import { extractDiscordGuildId } from '@/lib/services/discord'
 import { ScoringRuleEditor } from './ScoringRuleEditor'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -122,13 +123,19 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
     loadData()
   }, [])
 
+  const discordUrlValue = watch('discordUrl')
+  const effectiveGuildId = currentUserProfile?.discord_guild_id || extractDiscordGuildId(discordUrlValue)
+
   useEffect(() => {
-    if (!currentUserProfile?.discord_guild_id) return
+    if (!effectiveGuildId) {
+      setDiscordChannels([])
+      return
+    }
 
     async function fetchChannels() {
       setFetchingChannels(true)
       try {
-        const res = await getDiscordChannelsAction(currentUserProfile.discord_guild_id)
+        const res = await getDiscordChannelsAction(effectiveGuildId as string)
         if ('success' in res && res.success) {
           setDiscordChannels(res.data || [])
         } else {
@@ -141,7 +148,7 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
       }
     }
     fetchChannels()
-  }, [currentUserProfile?.discord_guild_id])
+  }, [effectiveGuildId])
 
   const handleBadgeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -1202,10 +1209,18 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
                 subtitle="Crea canales de voz por equipo y publica anuncios en tu servidor de Discord automáticamente" 
               />
               
-              {!currentUserProfile.discord_guild_id ? (
-                <div className="rounded-xl bg-yellow-500/10 border border-yellow-500/30 p-4 text-sm text-yellow-300">
-                  <p className="font-semibold mb-1">🔌 Discord no conectado</p>
-                  <p className="text-white/60">Para utilizar las funciones de automatización (salas de voz por equipo y alertas de inicio), primero debes conectar tu servidor de Discord en la configuración de tu perfil.</p>
+              {!effectiveGuildId ? (
+                <div className="rounded-xl bg-yellow-500/10 border border-yellow-500/30 p-4 text-sm text-yellow-300 space-y-2">
+                  <p className="font-semibold flex items-center gap-2">
+                    <span>🔌</span>
+                    <span>Conexión de Servidor de Discord</span>
+                  </p>
+                  <p className="text-xs text-white/70 leading-relaxed">
+                    Para que el bot cree las salas de voz privadas por equipo y publique anuncios, necesitas vincular tu servidor de Discord.
+                  </p>
+                  <p className="text-xs text-white/50 leading-relaxed">
+                    💡 <strong>Tip rápido:</strong> Puedes pegar el enlace de cualquier canal de tu servidor en el campo <strong>&quot;Enlace de Discord para Equipos&quot;</strong> arriba (ej: <code className="text-neon-cyan">https://discord.com/channels/123456/789</code>) o ingresar tu ID de servidor en tus <a href="/profile?tab=ajustes" target="_blank" className="text-neon-cyan underline font-bold">Ajustes de Perfil</a>.
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-4">

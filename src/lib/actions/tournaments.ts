@@ -1829,5 +1829,138 @@ export async function announceTournamentToAllUsersAction(
   return { success: true }
 }
 
+export async function syncTournamentDiscordChannels(
+  tournamentId: string
+): Promise<{ success: true; message: string } | { error: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  // 1. Fetch tournament
+  const { data: tournament, error: fetchErr } = await supabase
+    .from('tournaments')
+    .select('id, name, slug, creator_id, collaborator_id, discord_integration_enabled, discord_announcement_channel_id, discord_voice_category_id, discord_url')
+    .eq('id', tournamentId)
+    .single()
+
+  if (fetchErr || !tournament) return { error: 'Torneo no encontrado' }
+  if (!(await checkTournamentAccess(tournament.creator_id, user.id, tournament.collaborator_id))) {
+    return { error: 'Sin permisos de administrador para este torneo' }
+  }
+
+  // 2. Resolve Discord Guild ID (from creator profile or from tournament.discord_url)
+  const { data: creatorProfile } = await supabase
+    .from('profiles')
+    .select('discord_guild_id')
+    .eq('id', tournament.creator_id)
+    .single()
+
+  const { extractDiscordGuildId, createDiscordCategory, createPrivateVoiceChannel, sendDiscordEmbed } = await import('@/lib/services/discord')
+
+  let guildId = creatorProfile?.discord_guild_id
+  if (!guildId && tournament.discord_url) {
+    guildId = extractDiscordGuildId(tournament.discord_url)
+  }
+
+  if (!guildId) {
+    return {
+      error: 'No se encontró el ID de Servidor de Discord (Guild ID). Por favor configúralo en tu Perfil (Ajustes) o pega el enlace del canal/servidor en el torneo.',
+    }
+  }
+
+  const cleanGuildId = extractDiscordGuildId(guildId) || guildId
+  const adminSupabase = await createAdminClient()
+
+  // 3. Create or reuse category
+  let categoryId = tournament.discord_voice_category_id
+  if (!categoryId) {
+    console.log(`[Discord Sync] Creando categoría para el torneo: ${tournament.name} en guild ${cleanGuildId}`)
+    const categoryRes = await createDiscordCategory(cleanGuildId, `🏆 Torneo: ${tournament.name}`)
+    if ('error' in categoryRes || !categoryRes.id) {
+      return { error: categoryRes.error || 'No se pudo crear la categoría en Discord. Verifica que el bot esté en el servidor y tenga permisos.' }
+    }
+    categoryId = categoryRes.id
+    await supabase
+      .from('tournaments')
+      .update({
+        discord_voice_category_id: categoryId,
+        discord_integration_enabled: true,
+      })
+      .eq('id', tournamentId)
+  }
+
+  // 4. Fetch teams
+  const { data: teams } = await supabase
+    .from('teams')
+    .select('id, name, discord_voice_channel_id')
+    .eq('tournament_id', tournamentId)
+
+  if (!teams || teams.length === 0) {
+    return {
+      success: true,
+      message: 'Categoría de Discord configurada. No hay equipos inscritos aún para crear canales de voz.',
+    }
+  }
+
+  let createdCount = 0
+  for (const team of teams) {
+    // Check participants
+    const { data: participants } = await supabase
+      .from('participants')
+      .select('user_id')
+      .eq('team_id', team.id)
+      .not('user_id', 'is', null)
+
+    const teamUserIds = (participants || []).map((p) => p.user_id).filter(Boolean) as string[]
+
+    let teamDiscordIds: string[] = []
+    if (teamUserIds.length > 0) {
+      const { data: identities } = await adminSupabase
+        .schema('auth')
+        .from('identities')
+        .select('user_id, provider_id')
+        .eq('provider', 'discord')
+        .in('user_id', teamUserIds)
+
+      if (identities) {
+        teamDiscordIds = identities.map((i) => i.provider_id).filter(Boolean)
+      }
+    }
+
+    const voiceRes = await createPrivateVoiceChannel(cleanGuildId, `🔊 ${team.name}`, categoryId, teamDiscordIds)
+    if (voiceRes.success && voiceRes.id) {
+      createdCount++
+      await supabase
+        .from('teams')
+        .update({ discord_voice_channel_id: voiceRes.id })
+        .eq('id', team.id)
+    } else if ('error' in voiceRes) {
+      console.warn(`[Discord Sync] Error al crear canal para ${team.name}:`, voiceRes.error)
+    }
+  }
+
+  // Optional announcement
+  if (tournament.discord_announcement_channel_id) {
+    await sendDiscordEmbed(tournament.discord_announcement_channel_id, {
+      title: `🏆 ¡Salas de Discord sincronizadas!`,
+      description: `Se han configurado las salas de voz para el torneo **${tournament.name}**.`,
+      color: 62909,
+      timestamp: new Date().toISOString(),
+    })
+  }
+
+  revalidatePath(`/tournaments/${tournamentId}`)
+  if (tournament.slug) {
+    revalidatePath(`/t/${tournament.slug}`)
+  }
+
+  return {
+    success: true,
+    message: `¡Sincronización exitosa! Se configuraron ${createdCount} salas de voz en tu servidor de Discord.`,
+  }
+}
+
 
 

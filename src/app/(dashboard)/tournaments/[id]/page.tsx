@@ -2,6 +2,7 @@ import React from 'react'
 import { getTournament, activateTournament } from '@/lib/actions/tournaments'
 import { exportTournamentDataCsv } from '@/lib/actions/export'
 import { DeleteTournamentButton } from './DeleteTournamentButton'
+import { SyncDiscordButton } from './SyncDiscordButton'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Tournament } from '@/types'
@@ -194,20 +195,24 @@ export default async function TournamentOverviewPage({
           </span>
         </div>
 
-        {/* Public link */}
-        <Link
-          href={`/t/${tournament.slug}`}
-          target="_blank"
-          className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium
-            text-white/50 border border-white/10 hover:border-neon-cyan/30 hover:text-neon-cyan
-            transition-all duration-150"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-          </svg>
-          Ver público
-        </Link>
+        {/* Actions */}
+        <div className="flex items-center gap-2">
+          <SyncDiscordButton id={tournament.id} />
+          
+          <Link
+            href={`/t/${tournament.slug}`}
+            target="_blank"
+            className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium
+              text-white/70 border border-white/10 hover:border-neon-cyan/30 hover:text-neon-cyan
+              transition-all duration-150"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            Ver público
+          </Link>
+        </div>
       </div>
 
       {tournament.description && (
