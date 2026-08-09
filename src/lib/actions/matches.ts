@@ -36,6 +36,63 @@ export async function getTournamentMatches(tournamentId: string): Promise<{ data
   return { data: mapped }
 }
 
+async function broadcastTournamentDiscordAlert(
+  supabase: any,
+  tournamentId: string,
+  embed: any
+) {
+  try {
+    const { data: tourney } = await supabase
+      .from('tournaments')
+      .select('name, creator_id, discord_url, discord_announcement_channel_id, discord_voice_category_id')
+      .eq('id', tournamentId)
+      .single()
+
+    if (!tourney) return
+
+    const { resolveDiscordGuildId, getGuildChannels, sendDiscordEmbed } = await import('@/lib/services/discord')
+
+    let guildId: string | null = null
+    if (tourney.discord_url) {
+      guildId = await resolveDiscordGuildId(tourney.discord_url)
+    }
+    if (!guildId && tourney.creator_id) {
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('discord_guild_id')
+        .eq('id', tourney.creator_id)
+        .single()
+      if (prof?.discord_guild_id) {
+        guildId = prof.discord_guild_id
+      }
+    }
+
+    const channelIdsToSend = new Set<string>()
+
+    // 1. Canal de anuncios público
+    if (tourney.discord_announcement_channel_id) {
+      channelIdsToSend.add(tourney.discord_announcement_channel_id)
+    }
+
+    // 2. Canales de texto bajo la categoría del torneo en Discord
+    if (guildId && tourney.discord_voice_category_id) {
+      const channelsRes = await getGuildChannels(guildId)
+      if (channelsRes.success && Array.isArray(channelsRes.data)) {
+        channelsRes.data
+          .filter((c: any) => c.type === 0 && c.parent_id === tourney.discord_voice_category_id)
+          .forEach((c: any) => channelIdsToSend.add(c.id))
+      }
+    }
+
+    // 3. Enviar a todos los canales detectados
+    for (const chId of Array.from(channelIdsToSend)) {
+      await sendDiscordEmbed(chId, embed)
+    }
+  } catch (err) {
+    console.error('[broadcastTournamentDiscordAlert] Error enviando alerta a Discord:', err)
+  }
+}
+
 export async function updateMatch(
   tournamentId: string,
   matchId: string,
@@ -147,75 +204,22 @@ export async function updateMatch(
 
   // Send Discord Announcements for Match Start or Match Completed
   try {
-    const { data: tourneyFull } = await supabase
-      .from('tournaments')
-      .select('name, discord_announcement_channel_id, discord_integration_enabled')
-      .eq('id', tournamentId)
-      .single()
+    const matchName = data.name || updatedMatch?.name || 'Partida'
 
-    if (tourneyFull) {
-      const { sendDiscordEmbed } = await import('@/lib/services/discord')
-      const matchName = data.name || updatedMatch?.name || 'Partida'
-
-      if (data.isActive === true) {
-        // 1. Canal de Anuncios General
-        if (tourneyFull.discord_announcement_channel_id) {
-          await sendDiscordEmbed(tourneyFull.discord_announcement_channel_id, {
-            title: `🏁 ¡${matchName} EN CURSO! ⚔️`,
-            description: `La partida del torneo **${tourneyFull.name}** ha comenzado oficialmente.\n\n🎮 **Equipos:** Conéctense a sus salas de voz y prepárense para el combate.`,
-            color: 65280, // Green
-            timestamp: new Date().toISOString(),
-          })
-        }
-
-        // 2. Canales Privados de Cada Equipo
-        const { data: teams } = await supabase
-          .from('teams')
-          .select('id, name, discord_text_channel_id')
-          .eq('tournament_id', tournamentId)
-
-        if (teams) {
-          for (const team of teams as any[]) {
-            if (team.discord_text_channel_id) {
-              await sendDiscordEmbed(team.discord_text_channel_id, {
-                title: `🚨 ¡${matchName} HA COMENZADO!`,
-                description: `¡Atención equipo **${team.name}**!\n\nLa partida está **EN CURSO**. Entren al canal de voz de su equipo para coordinar durante la partida.\n\n📸 Al terminar, no olviden tomar captura clara de la tabla de puntuación y bajas para subir su evidencia.`,
-                color: 65280,
-                timestamp: new Date().toISOString(),
-              })
-            }
-          }
-        }
-      } else if (data.isCompleted === true) {
-        // 1. Canal de Anuncios General
-        if (tourneyFull.discord_announcement_channel_id) {
-          await sendDiscordEmbed(tourneyFull.discord_announcement_channel_id, {
-            title: `🏁 ¡${matchName} FINALIZADA!`,
-            description: `La partida del torneo **${tourneyFull.name}** ha finalizado.\n\n📸 Los capitanes ya pueden subir sus evidencias en el portal del torneo.`,
-            color: 16766720, // Gold
-            timestamp: new Date().toISOString(),
-          })
-        }
-
-        // 2. Canales Privados de Cada Equipo
-        const { data: teams } = await supabase
-          .from('teams')
-          .select('id, name, discord_text_channel_id')
-          .eq('tournament_id', tournamentId)
-
-        if (teams) {
-          for (const team of teams as any[]) {
-            if (team.discord_text_channel_id) {
-              await sendDiscordEmbed(team.discord_text_channel_id, {
-                title: `📸 ¡SUBIR EVIDENCIAS - ${matchName}!`,
-                description: `La partida **${matchName}** ha concluido.\n\n👉 **Recordatorio:** Suban la captura de pantalla de su partida en el Portal de Equipo para computar sus bajas y puntos.`,
-                color: 16766720,
-                timestamp: new Date().toISOString(),
-              })
-            }
-          }
-        }
-      }
+    if (data.isActive === true) {
+      await broadcastTournamentDiscordAlert(supabase, tournamentId, {
+        title: `🏁 ¡${matchName} EN CURSO! ⚔️`,
+        description: `La partida ha comenzado oficialmente.\n\n🎮 **Equipos:** Conéctense a sus salas de voz y prepárense para el combate. ¡Mucho éxito!`,
+        color: 65280, // Green
+        timestamp: new Date().toISOString(),
+      })
+    } else if (data.isCompleted === true) {
+      await broadcastTournamentDiscordAlert(supabase, tournamentId, {
+        title: `🏁 ¡${matchName} FINALIZADA! 🏆`,
+        description: `La partida **${matchName}** ha finalizado.\n\n📸 Los capitanes ya pueden subir sus evidencias en el Portal de Equipo para el conteo de puntos.`,
+        color: 16766720, // Gold
+        timestamp: new Date().toISOString(),
+      })
     }
   } catch (discordErr) {
     console.error('Error sending Discord Match announcement:', discordErr)
@@ -351,36 +355,12 @@ export async function notifyEvidenceWindowAction(
 
   // 2. Send Discord announcements to announcement channel and all team private channels
   try {
-    const { sendDiscordEmbed } = await import('@/lib/services/discord')
-
-    // Public announcement channel
-    if (tournament.discord_announcement_channel_id) {
-      await sendDiscordEmbed(tournament.discord_announcement_channel_id, {
-        title: `📸 ¡RECEPCIÓN DE EVIDENCIAS ABIERTA - ${matchName}! 🏁`,
-        description: `La partida **${matchName}** del torneo **${tournament.name}** ha concluido.\n\n👉 **Capitanes:** Tienen la ventana abierta para subir sus capturas de pantalla de bajas y posiciones en el Portal de Equipo.\n\n⏳ *Por favor carguen sus evidencias lo antes posible para el cómputo de puntos.*`,
-        color: 16753920, // Orange/Gold
-        timestamp: new Date().toISOString(),
-      })
-    }
-
-    // All Team Private text channels
-    const { data: teams } = await supabase
-      .from('teams')
-      .select('id, name, discord_text_channel_id')
-      .eq('tournament_id', tournamentId)
-
-    if (teams) {
-      for (const team of teams as any[]) {
-        if (team.discord_text_channel_id) {
-          await sendDiscordEmbed(team.discord_text_channel_id, {
-            title: `📸 ¡SUBAN SUS EVIDENCIAS - ${matchName}! 🚨`,
-            description: `¡Atención equipo **${team.name}**!\n\nLa partida **${matchName}** ha concluido.\n\n👉 **Acción Requerida:** Entren a su **Portal de Equipo** y suban la captura de pantalla clara de su partida (tabla de puntuación y bajas).\n\n⚠️ *Eviten sanciones enviando su evidencia a tiempo.*`,
-            color: 16753920, // Orange/Gold
-            timestamp: new Date().toISOString(),
-          })
-        }
-      }
-    }
+    await broadcastTournamentDiscordAlert(supabase, tournamentId, {
+      title: `📸 ¡RECEPCIÓN DE EVIDENCIAS ABIERTA - ${matchName}! 🚨`,
+      description: `¡Atención equipos!\n\nLa partida **${matchName}** ha concluido.\n\n👉 **Acción Requerida:** Entren a su **Portal de Equipo** y suban la captura de pantalla clara de su partida (tabla de puntuación y bajas).\n\n⚠️ *Eviten sanciones enviando su evidencia a tiempo.*`,
+      color: 16753920, // Orange/Gold
+      timestamp: new Date().toISOString(),
+    })
   } catch (discordErr) {
     console.error('Error sending Discord Evidence Window announcement:', discordErr)
   }
