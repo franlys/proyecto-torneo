@@ -15,7 +15,7 @@ import { AdPlacement } from '@/components/federation/AdPlacement'
 import type { AdBanner } from '@/lib/actions/federation'
 import { trackEvent } from '@/lib/analytics'
 import { registerTournament } from '@/lib/actions/registration'
-import { getFriendsList } from '@/lib/actions/friends'
+import { getFriendsList, searchUsersForFriends, sendFriendRequest } from '@/lib/actions/friends'
 import { getGameAccountForUser, upsertGameAccount, GAME_LABELS } from '@/lib/actions/game-accounts'
 import { toast } from 'sonner'
 import { NicknameModal } from '@/components/profile/NicknameModal'
@@ -341,6 +341,11 @@ export function LeaderboardClient({
   const [regGameUsername, setRegGameUsername] = useState('')
   // Nickname modal: show if user has no username
   const [showNicknameModal, setShowNicknameModal] = useState(false)
+  // Quick friend add state inside registration modal
+  const [quickFriendQuery, setQuickFriendQuery] = useState('')
+  const [isSearchingFriend, setIsSearchingFriend] = useState(false)
+  const [friendSearchResults, setFriendSearchResults] = useState<any[]>([])
+  const [showQuickAddFriend, setShowQuickAddFriend] = useState(false)
   const isSubmittingReg = React.useRef(false)
   const router = useRouter()
 
@@ -420,12 +425,63 @@ export function LeaderboardClient({
     setIsRegistering(true)
   }
 
+  const handleSearchFriend = async () => {
+    if (!quickFriendQuery.trim()) return
+    setIsSearchingFriend(true)
+    try {
+      const res = await searchUsersForFriends(quickFriendQuery.trim())
+      if (res && 'data' in res && res.data) {
+        setFriendSearchResults(res.data)
+        if (res.data.length === 0) {
+          toast.info('No se encontró ningún usuario con ese nombre o ID.')
+        }
+      } else if (res && 'error' in res) {
+        toast.error(res.error)
+      }
+    } catch (err: any) {
+      toast.error('Error al buscar usuario: ' + (err.message || err))
+    } finally {
+      setIsSearchingFriend(false)
+    }
+  }
+
+  const handleAddFriendFromModal = async (friendId: string) => {
+    try {
+      const res = await sendFriendRequest(friendId)
+      if (res && 'success' in res) {
+        toast.success('¡Amigo agregado con éxito!')
+        const friendsRes = await getFriendsList()
+        if (friendsRes && 'data' in friendsRes) {
+          setUserFriends(friendsRes.data || [])
+        }
+        setFriendSearchResults([])
+        setQuickFriendQuery('')
+        setShowQuickAddFriend(false)
+      } else if (res && 'error' in res) {
+        toast.error(res.error)
+      }
+    } catch (err: any) {
+      toast.error('Error al agregar amigo: ' + (err.message || err))
+    }
+  }
+
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (isSubmittingReg.current) return
     isSubmittingReg.current = true
     setRegLoading(true)
     try {
+      if (mode !== 'individual') {
+        for (let i = 1; i < regParticipants.length; i++) {
+          if (!regParticipantUserIds[i]) {
+            toast.error(`Por favor, selecciona un amigo registrado para el Integrante ${i + 1}. Todos los compañeros deben tener cuenta en Kronix.`)
+            setRegLoading(false)
+            isSubmittingReg.current = false
+            return
+          }
+        }
+      }
+
       const emptyNameIndex = regParticipants.findIndex(name => name.trim() === '')
       if (emptyNameIndex !== -1) {
         toast.error(`Por favor, completa el nombre del Integrante ${emptyNameIndex + 1}`)
@@ -2935,33 +2991,125 @@ export function LeaderboardClient({
 
 
 
-                  <div className="space-y-3">
-                    <label className="block text-xs text-white/60 uppercase tracking-widest font-bold mb-1 ml-1">
-                      Integrantes ({regParticipants.length})
-                    </label>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between ml-1">
+                      <label className="text-xs text-white/60 uppercase tracking-widest font-bold">
+                        Integrantes ({regParticipants.length})
+                      </label>
+                      {mode !== 'individual' && (
+                        <button
+                          type="button"
+                          onClick={() => setShowQuickAddFriend(prev => !prev)}
+                          className="text-[11px] text-neon-cyan hover:underline flex items-center gap-1 font-semibold"
+                        >
+                          <span>{showQuickAddFriend ? '✖ Cerrar buscador' : '➕ Buscar amigo por ID / @usuario'}</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Buscador Rápido de Amigos Integrado */}
+                    {showQuickAddFriend && (
+                      <div className="p-3.5 rounded-xl bg-neon-purple/10 border border-neon-purple/30 space-y-3 animate-in fade-in duration-200">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-orbitron font-bold text-white uppercase tracking-wider">
+                            🔍 Agregar Amigo a Kronix
+                          </span>
+                          <a
+                            href="/profile?tab=friends"
+                            target="_blank"
+                            className="text-[10px] text-white/50 hover:text-white underline"
+                          >
+                            Abrir lista completa ↗
+                          </a>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={quickFriendQuery}
+                            onChange={e => setQuickFriendQuery(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSearchFriend() } }}
+                            placeholder="Nombre de usuario o ID (ej: KX-ABC123)"
+                            className="flex-1 bg-black/60 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/20 outline-none focus:border-neon-purple"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleSearchFriend}
+                            disabled={isSearchingFriend}
+                            className="px-3.5 py-2 rounded-xl bg-neon-purple hover:bg-neon-purple/80 text-white font-bold text-xs transition-all disabled:opacity-50"
+                          >
+                            {isSearchingFriend ? 'Buscando...' : 'Buscar'}
+                          </button>
+                        </div>
+
+                        {friendSearchResults.length > 0 && (
+                          <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                            {friendSearchResults.map(u => (
+                              <div
+                                key={u.id}
+                                className="flex items-center justify-between p-2 rounded-lg bg-black/40 border border-white/5"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-xs">
+                                    👤
+                                  </div>
+                                  <div>
+                                    <span className="text-xs text-white font-bold block">{u.username || 'Usuario'}</span>
+                                    {u.short_id && <span className="text-[9px] text-white/40 block">{u.short_id}</span>}
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddFriendFromModal(u.id)}
+                                  className="px-2.5 py-1 rounded-lg bg-neon-cyan/20 border border-neon-cyan/40 text-neon-cyan hover:bg-neon-cyan hover:text-black font-bold text-[10px] transition-all"
+                                >
+                                  ➕ Agregar
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {regParticipants.map((name, idx) => (
-                      <div key={idx} className="space-y-1.5 p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                        <span className="text-[10px] text-white/40 font-bold uppercase tracking-wider block ml-1">
-                          {mode === 'individual' ? 'Tu GamerTag / Nombre' : idx === 0 ? 'Integrante 1 (Capitán / Tú)' : `Integrante ${idx + 1}`}
+                      <div key={idx} className="space-y-2 p-3.5 rounded-xl bg-white/[0.02] border border-white/5">
+                        <span className="text-[10px] text-white/40 font-bold uppercase tracking-wider block">
+                          {mode === 'individual' ? 'Tu GamerTag / Nombre' : idx === 0 ? 'Capitán (Tú)' : `Integrante ${idx + 1}`}
                         </span>
 
-                        {idx > 0 && userFriends.length > 0 && (
-                          <div>
+                        {idx === 0 ? (
+                          <input
+                            required
+                            type="text"
+                            value={name}
+                            onChange={e => {
+                              const newParticipants = [...regParticipants]
+                              newParticipants[idx] = e.target.value
+                              setRegParticipants(newParticipants)
+                            }}
+                            placeholder="Tu display name / GamerTag"
+                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30 transition-all"
+                          />
+                        ) : (
+                          <div className="space-y-2">
                             <select
+                              required
+                              value={regParticipantUserIds[idx] || ''}
                               onChange={e => {
                                 const val = e.target.value
                                 const newParticipants = [...regParticipants]
                                 const newIds = [...regParticipantUserIds]
                                 const newStreams = [...regParticipantStreams]
 
-                                if (val === 'manual') {
+                                if (!val) {
                                   newIds[idx] = null
                                   newParticipants[idx] = ''
                                 } else {
                                   const friend = userFriends.find(f => f.id === val)
                                   if (friend) {
                                     newIds[idx] = friend.id
-                                    newParticipants[idx] = friend.username || ''
+                                    newParticipants[idx] = friend.username || friend.short_id || 'Amigo'
                                     newStreams[idx] = friend.stream_url || ''
                                   }
                                 }
@@ -2969,39 +3117,28 @@ export function LeaderboardClient({
                                 setRegParticipantUserIds(newIds)
                                 setRegParticipantStreams(newStreams)
                               }}
-                              className="w-full bg-black/60 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/80 outline-none mb-2 focus:border-neon-cyan/50"
-                              value={regParticipantUserIds[idx] || 'manual'}
+                              className="w-full bg-black/60 border border-white/10 rounded-xl px-3.5 py-3 text-xs text-white outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30"
                             >
-                              <option value="manual">✍️ Manual (Escribir nombre)</option>
+                              <option value="">-- Seleccionar de mi Lista de Amigos --</option>
                               {userFriends.map(f => (
                                 <option key={f.id} value={f.id}>
-                                  👤 {f.username || 'Sin Nickname'}
+                                  👤 {f.username || 'Usuario'} {f.short_id ? `(${f.short_id})` : ''}
                                 </option>
                               ))}
                             </select>
-                          </div>
-                        )}
 
-                        <input
-                          required
-                          type="text"
-                          value={name}
-                          onChange={e => {
-                            const newParticipants = [...regParticipants]
-                            newParticipants[idx] = e.target.value
-                            setRegParticipants(newParticipants)
-                          }}
-                          readOnly={idx > 0 && regParticipantUserIds[idx] !== null}
-                          placeholder={idx === 0 ? "Tu display name / GamerTag" : `Display Name Integrante ${idx + 1}`}
-                          className={`w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30 transition-all ${
-                            idx > 0 && regParticipantUserIds[idx] !== null ? 'opacity-60 cursor-not-allowed bg-white/5' : ''
-                          }`}
-                        />
+                            {userFriends.length === 0 && (
+                              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-300 leading-snug">
+                                ⚠️ No tienes amigos agregados aún. Usa el buscador de arriba para agregar a tu compañero por su <strong>@usuario</strong> o <strong>ID</strong> de Kronix.
+                              </div>
+                            )}
 
-                        {idx > 0 && regParticipantUserIds[idx] !== null && (
-                          <div className="flex items-center gap-1.5 ml-1 mt-1 text-[9px] text-neon-cyan/80">
-                            <span>✓</span>
-                            <span>Amigo vinculado (las estadísticas irán a su perfil)</span>
+                            {regParticipantUserIds[idx] && (
+                              <div className="flex items-center gap-1.5 ml-1 text-[10px] text-neon-cyan/90 font-semibold">
+                                <span>✓</span>
+                                <span>Jugador registrado verificado ({name})</span>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

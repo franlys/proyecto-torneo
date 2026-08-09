@@ -165,6 +165,32 @@ export async function registerTournament(
 
     const maxPerTeam = ({ individual: 1, duos: 2, trios: 3, cuartetos: 4, quintas: 5 } as any)[tournament.mode] || 1
 
+    // En modalidades de equipo, exigir que todos los compañeros sean usuarios registrados de Kronix
+    if (tournament.mode !== 'individual') {
+      if (pList.length < maxPerTeam) {
+        return { error: `Tu equipo debe tener exactamente ${maxPerTeam} integrantes para inscribirse en este torneo.` }
+      }
+
+      const missingUserIndex = pList.findIndex((p, idx) => idx > 0 && !p.userId)
+      if (missingUserIndex !== -1) {
+        return {
+          error: `Todos los integrantes del equipo deben ser usuarios registrados en Kronix y seleccionados de tu lista de amigos. (Falta el Integrante ${missingUserIndex + 1})`
+        }
+      }
+
+      // Verificar que no haya usuarios duplicados dentro del mismo equipo
+      const teamUserSet = new Set<string>([user.id])
+      for (let i = 1; i < pList.length; i++) {
+        const uId = pList[i].userId
+        if (uId) {
+          if (teamUserSet.has(uId)) {
+            return { error: 'No puedes agregar al mismo usuario varias veces en el equipo.' }
+          }
+          teamUserSet.add(uId)
+        }
+      }
+    }
+
     // Verificar si alguno de los compañeros seleccionados ya está inscrito en este torneo
     const userIdsToCheck = pList
       .map(p => p.userId)
