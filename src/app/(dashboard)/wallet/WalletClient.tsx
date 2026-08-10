@@ -178,9 +178,9 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
-      {/* Script for PayPal SDK */}
+      {/* Script for PayPal SDK with all modern payment methods */}
       <Script
-        src={`https://www.paypal.com/sdk/js?client-id=${process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}&currency=USD&enable-funding=card&disable-funding=paylater,venmo`}
+        src={`https://www.paypal.com/sdk/js?client-id=${process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}&currency=USD&enable-funding=card,paylater,venmo,applepay,googlepay`}
         onLoad={() => setSdkLoaded(true)}
         onError={() => console.error('Failed to load PayPal SDK')}
       />

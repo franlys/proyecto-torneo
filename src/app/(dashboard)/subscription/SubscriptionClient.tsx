@@ -146,7 +146,7 @@ export default function SubscriptionClient({ initialStatus, initialExpiry, role,
     if (!document.getElementById('paypal-sdk')) {
       const script = document.createElement('script')
       script.id = 'paypal-sdk'
-      script.src = `https://www.paypal.com/sdk/js?client-id=${process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}&currency=USD`
+      script.src = `https://www.paypal.com/sdk/js?client-id=${process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}&currency=USD&enable-funding=card,paylater,venmo,applepay,googlepay`
       script.async = true
       document.body.appendChild(script)
     }

@@ -695,6 +695,116 @@ export async function activateTournament(
   return { success: true }
 }
 
+async function broadcastTournamentFinishDiscord(supabase: any, tournamentId: string) {
+  try {
+    const { data: tourney } = await supabase
+      .from('tournaments')
+      .select('id, name, slug, creator_id, discord_url, discord_voice_category_id, discord_announcement_channel_id, prize_1st, prize_2nd, prize_3rd, prize_mvp')
+      .eq('id', tournamentId)
+      .single()
+
+    if (!tourney) return
+
+    const { resolveDiscordGuildId, getGuildChannels, sendDiscordEmbed } = await import('@/lib/services/discord')
+
+    let guildId: string | null = null
+    if (tourney.discord_url) {
+      guildId = await resolveDiscordGuildId(tourney.discord_url)
+    }
+    if (!guildId && tourney.creator_id) {
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('discord_guild_id')
+        .eq('id', tourney.creator_id)
+        .single()
+      if (prof?.discord_guild_id) {
+        guildId = prof.discord_guild_id
+      }
+    }
+
+    if (!guildId) return
+
+    // 1. Fetch Standings (podium)
+    const { data: standings } = await supabase
+      .from('team_standings')
+      .select('*, teams(id, name, avatar_url)')
+      .eq('tournament_id', tournamentId)
+      .order('total_points', { ascending: false })
+      .order('total_kills', { ascending: false })
+
+    // 2. Fetch Top MVP Player
+    const { data: participants } = await supabase
+      .from('participants')
+      .select('*, teams(name)')
+      .eq('tournament_id', tournamentId)
+      .order('total_kills', { ascending: false })
+
+    const team1 = standings?.[0]
+    const team2 = standings?.[1]
+    const team3 = standings?.[2]
+    const mvp = participants?.[0]
+
+    const prize1 = tourney.prize_1st ? ` — 💵 Premio: $${tourney.prize_1st} USD` : ''
+    const prize2 = tourney.prize_2nd ? ` — 💵 Premio: $${tourney.prize_2nd} USD` : ''
+    const prize3 = tourney.prize_3rd ? ` — 💵 Premio: $${tourney.prize_3rd} USD` : ''
+    const prizeMvp = tourney.prize_mvp ? ` — 💵 Premio: $${tourney.prize_mvp} USD` : ''
+
+    let podiumText = ''
+    if (team1) {
+      podiumText += `🥇 **1ER LUGAR (CAMPEÓN):**\n👑 **${team1.teams?.name || 'Equipo 1'}** — **${team1.total_points} PTS** (${team1.total_kills} Kills)${prize1}\n\n`
+    }
+    if (team2) {
+      podiumText += `🥈 **2DO LUGAR (SUBCAMPEÓN):**\n🥈 **${team2.teams?.name || 'Equipo 2'}** — **${team2.total_points} PTS** (${team2.total_kills} Kills)${prize2}\n\n`
+    }
+    if (team3) {
+      podiumText += `🥉 **3ER LUGAR:**\n🥉 **${team3.teams?.name || 'Equipo 3'}** — **${team3.total_points} PTS** (${team3.total_kills} Kills)${prize3}\n\n`
+    }
+
+    let mvpText = ''
+    if (mvp && (mvp.total_kills || 0) > 0) {
+      mvpText = `🔥 **MVP DEL TORNEO (TOP FRAGGER):**\n👑 **${mvp.display_name}** (${mvp.teams?.name || 'Equipo'}) — **${mvp.total_kills} Kills**${prizeMvp}\n\n━━━━━━━━━━━━━━━━━━━━\n\n`
+    }
+
+    const embed = {
+      title: `🏆 ¡TORNEO FINALIZADO — CUADRO DE HONOR Y GANADORES! 👑`,
+      description: `El torneo **${tourney.name}** ha concluido oficialmente.\n¡Felicitaciones a todos los equipos y participantes por su gran desempeño!\n\n━━━━━━━━━━━━━━━━━━━━\n\n${podiumText}${mvpText}📊 **Leaderboard Completo y Estadísticas:**\nhttps://kronix.do/t/${tourney.slug}`,
+      color: 16766720, // Gold #FFD700
+      timestamp: new Date().toISOString(),
+      footer: {
+        text: 'Kronix Esports • Podio y Resultados Oficiales'
+      }
+    }
+
+    // 3. Find Discord Channels
+    const channelsRes = await getGuildChannels(guildId)
+    if (channelsRes.success && Array.isArray(channelsRes.data)) {
+      const allChannels = channelsRes.data
+
+      // Send to category team text channels
+      const categoryTextChannels = allChannels.filter(
+        (c: any) => c.type === 0 && c.parent_id === tourney.discord_voice_category_id
+      )
+      for (const ch of categoryTextChannels) {
+        await sendDiscordEmbed(ch.id, embed)
+      }
+
+      // Send to announcement / general channel
+      let annChannelId = tourney.discord_announcement_channel_id
+      if (!annChannelId) {
+        const generalCh = allChannels.find(
+          (c: any) => c.type === 0 && (c.name === 'general' || c.name.includes('anuncio') || c.name === 'bienvenida')
+        )
+        if (generalCh) annChannelId = generalCh.id
+      }
+      if (annChannelId) {
+        await sendDiscordEmbed(annChannelId, embed)
+      }
+    }
+  } catch (err) {
+    console.error('[broadcastTournamentFinishDiscord] Error:', err)
+  }
+}
+
 export async function finishTournament(
   id: string,
   championImageUrl?: string,
@@ -709,7 +819,7 @@ export async function finishTournament(
   // Verify ownership
   const { data: tournament, error: fetchErr } = await supabase
     .from('tournaments')
-    .select('creator_id, collaborator_id, status, slug, is_sanctioned, mode, discipline, badge_url, name, discord_integration_enabled, discord_voice_category_id, discord_announcement_channel_id')
+    .select('id, creator_id, collaborator_id, status, slug, is_sanctioned, mode, discipline, badge_url, name, discord_url, discord_integration_enabled, discord_voice_category_id, discord_announcement_channel_id, prize_1st, prize_2nd, prize_3rd, prize_mvp')
     .eq('id', id)
     .single()
 
@@ -731,57 +841,11 @@ export async function finishTournament(
 
   if (finishErr) return { error: finishErr.message }
 
-  // Discord Autocleanup
-  if (tournament.discord_integration_enabled && tournament.creator_id) {
-    try {
-      const { data: creatorProfile } = await supabase
-        .from('profiles')
-        .select('discord_guild_id')
-        .eq('id', tournament.creator_id)
-        .single()
-
-      const guildId = creatorProfile?.discord_guild_id
-      if (guildId) {
-        const { deleteDiscordChannel, sendDiscordEmbed } = await import('@/lib/services/discord')
-
-        // 1. Delete all team voice and text channels
-        const { data: teams } = await supabase
-          .from('teams')
-          .select('discord_voice_channel_id, discord_text_channel_id')
-          .eq('tournament_id', id)
-
-        if (teams) {
-          for (const team of teams as any[]) {
-            if (team.discord_voice_channel_id) {
-              console.log(`[Discord Cleanup] Eliminando canal de voz: ${team.discord_voice_channel_id}`)
-              await deleteDiscordChannel(team.discord_voice_channel_id)
-            }
-            if (team.discord_text_channel_id) {
-              console.log(`[Discord Cleanup] Eliminando canal de texto: ${team.discord_text_channel_id}`)
-              await deleteDiscordChannel(team.discord_text_channel_id)
-            }
-          }
-        }
-
-        // 2. Delete the category
-        if (tournament.discord_voice_category_id) {
-          console.log(`[Discord Cleanup] Eliminando categoría de torneo: ${tournament.discord_voice_category_id}`)
-          await deleteDiscordChannel(tournament.discord_voice_category_id)
-        }
-
-        // 3. Send final announcement
-        if (tournament.discord_announcement_channel_id) {
-          await sendDiscordEmbed(tournament.discord_announcement_channel_id, {
-            title: `🏁 ¡El torneo ${tournament.name} ha finalizado!`,
-            description: `El torneo ha concluido oficialmente. Gracias a todos por participar. Las salas de voz temporales han sido eliminadas.`,
-            color: 16766720, // Gold color equivalent #FFD700 in dec
-            timestamp: new Date().toISOString(),
-          })
-        }
-      }
-    } catch (cleanErr: any) {
-      console.error('[Discord Cleanup] Error al limpiar canales de Discord:', cleanErr.message || cleanErr)
-    }
+  // Announce Tournament End, Winners & Podium in Discord
+  try {
+    await broadcastTournamentFinishDiscord(supabase, id)
+  } catch (discErr) {
+    console.error('[finishTournament] Error enviando anuncio de fin de torneo a Discord:', discErr)
   }
 
   // --- Close all matches and resolve/cancel their betting markets ---
