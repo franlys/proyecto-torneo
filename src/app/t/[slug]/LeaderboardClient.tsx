@@ -1028,20 +1028,20 @@ export function LeaderboardClient({
   const renderSplitStandings = () => {
     if (standings.length === 0) {
       return (
-        <div className="py-16 text-center border border-dashed border-white/10 rounded-2xl w-full bg-dark-card/50">
-          <p className="text-white/40 font-orbitron">Aún no hay posiciones registradas</p>
+        <div className="py-16 text-center border border-dashed border-white/10 rounded-2xl w-full bg-[#0e0e18]/90">
+          <p className="text-white/40 font-orbitron text-sm">Aún no hay posiciones registradas</p>
         </div>
       )
     }
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full relative">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start w-full relative">
         {/* Left Table: General Standings & Kills */}
-        <div className="lg:col-span-5 bg-dark-card/75 backdrop-blur-md border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
-          <div className="px-6 py-4 border-b border-white/5 bg-white/[0.02] flex justify-between items-center">
-            <span className="font-orbitron font-bold text-xs text-white uppercase tracking-widest">Puntuación y Bajas</span>
+        <div className="lg:col-span-6 bg-[#0e0e18]/95 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+          <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-white/5 bg-white/[0.02] flex justify-between items-center">
+            <span className="font-orbitron font-bold text-xs sm:text-sm text-white uppercase tracking-widest">Puntuación y Bajas</span>
             <button 
               onClick={() => setIsTableMaximized(true)}
-              className="flex items-center gap-1 px-2.5 py-1 bg-white/5 hover:bg-white/10 text-white/50 text-[10px] uppercase font-bold rounded-lg border border-white/5 transition-all"
+              className="flex items-center gap-1 px-2.5 py-1 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-[10px] uppercase font-bold rounded-lg border border-white/5 transition-all"
             >
               <svg className="w-3 h-3 text-neon-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
@@ -1053,10 +1053,10 @@ export function LeaderboardClient({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-white/[0.03] border-b border-white/5 text-[10px] text-white/40 uppercase tracking-widest font-semibold">
-                  <th className="px-4 py-3 w-16 text-center">Rank</th>
-                  <th className="px-4 py-3">Equipo</th>
-                  <th className="px-4 py-3 text-center">PTS</th>
-                  {isShooter && <th className="px-4 py-3 text-center">Kills</th>}
+                  <th className="px-3 sm:px-4 py-3 w-12 sm:w-16 text-center">Rank</th>
+                  <th className="px-3 sm:px-4 py-3">Equipo</th>
+                  <th className="px-3 sm:px-4 py-3 text-center">PTS</th>
+                  {isShooter && <th className="px-3 sm:px-4 py-3 text-center">Kills</th>}
                 </tr>
               </thead>
               <tbody>
@@ -1068,26 +1068,26 @@ export function LeaderboardClient({
                     }`}
                     onClick={() => setExpandedTeamId(expandedTeamId === s.teamId ? null : s.teamId)}
                   >
-                    <td className="px-4 py-3.5 text-center font-orbitron font-black text-sm" style={{ color: (idx+1) === 1 ? '#FFD700' : (idx+1) === 2 ? '#C0C0C0' : (idx+1) === 3 ? '#CD7F32' : 'rgba(255,255,255,0.4)' }}>
+                    <td className="px-3 sm:px-4 py-3 text-center font-orbitron font-black text-sm" style={{ color: (idx+1) === 1 ? '#FFD700' : (idx+1) === 2 ? '#C0C0C0' : (idx+1) === 3 ? '#CD7F32' : 'rgba(255,255,255,0.4)' }}>
                       {idx + 1}
                     </td>
-                    <td className="px-4 py-3.5">
+                    <td className="px-3 sm:px-4 py-3">
                       <div className="flex items-center gap-2">
                         {s.avatarUrl ? (
-                          <img src={s.avatarUrl} alt="" className="w-7 h-7 rounded-lg object-cover" />
+                          <img src={s.avatarUrl} alt="" className="w-7 h-7 rounded-lg object-cover shrink-0" />
                         ) : (
-                          <div className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[10px] font-bold">
+                          <div className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[10px] font-bold shrink-0">
                             {s.teamName.substring(0, 1)}
                           </div>
                         )}
-                        <span className="font-orbitron font-bold text-xs truncate max-w-[120px]">{s.teamName}</span>
+                        <span className="font-orbitron font-bold text-xs truncate max-w-[130px] sm:max-w-[180px]">{s.teamName}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3.5 text-center font-orbitron font-black text-sm text-neon-cyan">
+                    <td className="px-3 sm:px-4 py-3 text-center font-orbitron font-black text-sm text-neon-cyan">
                       {Math.round(s.totalPoints * 10) / 10}
                     </td>
                     {isShooter && (
-                      <td className="px-4 py-3.5 text-center font-orbitron font-bold text-xs text-white/80">
+                      <td className="px-3 sm:px-4 py-3 text-center font-orbitron font-bold text-xs text-white/80">
                         {s.totalKills}
                       </td>
                     )}
@@ -1098,13 +1098,10 @@ export function LeaderboardClient({
           </div>
         </div>
 
-        {/* Center Space: Empty for branding */}
-        <div className="hidden lg:block lg:col-span-2 min-h-[100px]" />
-
         {/* Right Table: Top 3 Top Fraggers (MVPs) */}
-        <div className="lg:col-span-5 bg-dark-card/75 backdrop-blur-md border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
-          <div className="px-6 py-4 border-b border-white/5 bg-white/[0.02] flex justify-between items-center bg-gradient-to-r from-neon-purple/10 to-transparent">
-            <span className="font-orbitron font-bold text-xs text-white uppercase tracking-widest flex items-center gap-2">
+        <div className="lg:col-span-6 bg-[#0e0e18]/95 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+          <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-white/5 bg-white/[0.02] flex justify-between items-center bg-gradient-to-r from-neon-purple/10 to-transparent">
+            <span className="font-orbitron font-bold text-xs sm:text-sm text-white uppercase tracking-widest flex items-center gap-2">
               <span className="text-neon-purple">⚔️</span> Top Fraggers (MVP)
             </span>
             <span className="text-[10px] text-neon-purple font-bold uppercase tracking-wider">Top 3 Jugadores</span>
@@ -1113,10 +1110,10 @@ export function LeaderboardClient({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-white/[0.03] border-b border-white/5 text-[10px] text-white/40 uppercase tracking-widest font-semibold">
-                  <th className="px-4 py-3 w-16 text-center">Rank</th>
-                  <th className="px-4 py-3">Jugador</th>
-                  <th className="px-4 py-3">Equipo</th>
-                  <th className="px-4 py-3 text-center">Kills</th>
+                  <th className="px-3 sm:px-4 py-3 w-12 sm:w-16 text-center">Rank</th>
+                  <th className="px-3 sm:px-4 py-3">Jugador</th>
+                  <th className="px-3 sm:px-4 py-3">Equipo</th>
+                  <th className="px-3 sm:px-4 py-3 text-center">Kills</th>
                 </tr>
               </thead>
               <tbody>
@@ -1130,19 +1127,19 @@ export function LeaderboardClient({
                       key={p.id} 
                       className="border-b border-white/5 hover:bg-white/[0.04] transition-colors"
                     >
-                      <td className="px-4 py-3.5 text-center font-orbitron font-black text-sm" style={{ color: (idx+1) === 1 ? '#FFD700' : (idx+1) === 2 ? '#C0C0C0' : '#CD7F32' }}>
+                      <td className="px-3 sm:px-4 py-3 text-center font-orbitron font-black text-sm" style={{ color: (idx+1) === 1 ? '#FFD700' : (idx+1) === 2 ? '#C0C0C0' : '#CD7F32' }}>
                         {idx + 1 === 1 ? '🥇' : idx + 1 === 2 ? '🥈' : '🥉'}
                       </td>
-                      <td className="px-4 py-3.5">
+                      <td className="px-3 sm:px-4 py-3">
                         <div className="flex items-center gap-2">
                           {p.avatarUrl ? (
-                            <img src={p.avatarUrl} alt="" className="w-7 h-7 rounded-lg object-cover" />
+                            <img src={p.avatarUrl} alt="" className="w-7 h-7 rounded-lg object-cover shrink-0" />
                           ) : (
-                            <div className="w-7 h-7 rounded-lg bg-neon-purple/10 border border-neon-purple/20 flex items-center justify-center text-[10px] font-bold text-neon-purple">
+                            <div className="w-7 h-7 rounded-lg bg-neon-purple/10 border border-neon-purple/20 flex items-center justify-center text-[10px] font-bold text-neon-purple shrink-0">
                               {p.displayName.substring(0, 2).toUpperCase()}
                             </div>
                           )}
-                          <span className="font-orbitron font-bold text-xs text-white truncate max-w-[120px]">{p.displayName}</span>
+                          <span className="font-orbitron font-bold text-xs text-white truncate max-w-[120px] sm:max-w-[160px]">{p.displayName}</span>
                           {currentStatus === 'finished' && idx === 0 && (
                             <span className="px-1.5 py-0.5 rounded text-[8px] font-black bg-neon-purple/20 text-neon-purple border border-neon-purple/30 uppercase tracking-widest animate-pulse shrink-0">
                               👑 MVP
@@ -1150,17 +1147,17 @@ export function LeaderboardClient({
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3.5">
+                      <td className="px-3 sm:px-4 py-3">
                         <div className="flex items-center gap-1.5">
                           {p.teamAvatar ? (
-                            <img src={p.teamAvatar} alt="" className="w-4 h-4 rounded object-cover" />
+                            <img src={p.teamAvatar} alt="" className="w-4 h-4 rounded object-cover shrink-0" />
                           ) : (
                             <span className="text-[10px]">🎮</span>
                           )}
-                          <span className="text-xs text-white/50 truncate max-w-[100px]">{p.teamName}</span>
+                          <span className="text-xs text-white/50 truncate max-w-[100px] sm:max-w-[130px]">{p.teamName}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3.5 text-center font-orbitron font-black text-sm text-neon-purple">
+                      <td className="px-3 sm:px-4 py-3 text-center font-orbitron font-black text-sm text-neon-purple">
                         {p.totalKills || 0}
                       </td>
                     </tr>
@@ -1972,11 +1969,11 @@ export function LeaderboardClient({
 
 
 
-      {/* Tabs — scrollable on mobile */}
-      <div className="flex gap-1 mb-6 sm:mb-8 sm:justify-center overflow-x-auto pb-1 px-2 sm:px-0 scrollbar-hide">
+      {/* Tabs — scrollable on mobile without ugly scrollbars */}
+      <div className="flex items-center gap-1.5 mb-6 sm:mb-8 sm:justify-center overflow-x-auto pb-1 px-3 sm:px-0 scrollbar-none no-scrollbar max-w-full">
         <button
           onClick={() => setActiveTab('ranking')}
-          className={`shrink-0 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg ${
+          className={`shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap ${
             activeTab === 'ranking' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'
           }`}
           style={{ borderColor: activeTab === 'ranking' ? primaryColor : 'transparent', borderWidth: 1 }}
@@ -1985,7 +1982,7 @@ export function LeaderboardClient({
         </button>
         <button
           onClick={() => setActiveTab('participants')}
-          className={`shrink-0 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg ${
+          className={`shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap ${
             activeTab === 'participants' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'
           }`}
           style={{ borderColor: activeTab === 'participants' ? primaryColor : 'transparent', borderWidth: 1 }}
@@ -1995,7 +1992,7 @@ export function LeaderboardClient({
         {isShooter && (
           <button
             onClick={() => setActiveTab('matches')}
-            className={`shrink-0 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg ${
+            className={`shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap ${
               activeTab === 'matches' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'
             }`}
             style={{ borderColor: activeTab === 'matches' ? primaryColor : 'transparent', borderWidth: 1 }}
@@ -2006,7 +2003,7 @@ export function LeaderboardClient({
         {isShooter && (
           <button
             onClick={() => setActiveTab('statistics')}
-            className={`shrink-0 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg ${
+            className={`shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap ${
               activeTab === 'statistics' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'
             }`}
             style={{ borderColor: activeTab === 'statistics' ? primaryColor : 'transparent', borderWidth: 1 }}
@@ -2016,7 +2013,7 @@ export function LeaderboardClient({
         )}
         <button
           onClick={() => setActiveTab('rules')}
-          className={`shrink-0 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg ${
+          className={`shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap ${
             activeTab === 'rules' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'
           }`}
           style={{ borderColor: activeTab === 'rules' ? primaryColor : 'transparent', borderWidth: 1 }}
@@ -2025,7 +2022,7 @@ export function LeaderboardClient({
         </button>
         <button
           onClick={() => setActiveTab('evidences')}
-          className={`shrink-0 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg ${
+          className={`shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap ${
             activeTab === 'evidences' ? 'bg-neon-purple/20 text-white' : 'text-white/40 hover:text-white/80'
           }`}
           style={{ borderColor: activeTab === 'evidences' ? '#b026ff' : 'transparent', borderWidth: 1 }}
@@ -2035,7 +2032,7 @@ export function LeaderboardClient({
         {arenaBettingEnabled && (
           <button
             onClick={() => setActiveTab('bets')}
-            className={`shrink-0 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg relative ${
+            className={`shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg relative whitespace-nowrap ${
               activeTab === 'bets' ? 'bg-yellow-500/20 text-yellow-300' : 'text-white/40 hover:text-white/80'
             }`}
             style={{ borderColor: activeTab === 'bets' ? '#eab308' : 'transparent', borderWidth: 1 }}
