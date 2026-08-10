@@ -525,10 +525,10 @@ export function ParticipantsManager({
       </div>
 
       {isAdding && (
-        <div className="bg-dark-card border border-neon-purple/20 rounded-xl p-5 shadow-lg shadow-neon-purple/5">
+        <div className="bg-dark-card border border-neon-purple/20 rounded-xl p-4 sm:p-5 shadow-lg shadow-neon-purple/5">
           <form onSubmit={handleAdd} className="space-y-4">
-            <div className="flex gap-3 items-end">
-              <div className="flex-1">
+            <div className="flex flex-col sm:flex-row gap-3 sm:items-end w-full">
+              <div className="flex-1 w-full">
                 <label className="block text-xs text-white/50 mb-1.5 ml-1">
                   {isIndividual ? 'Nombre del Jugador' : 'Nombre del Equipo'}
                 </label>
@@ -543,7 +543,7 @@ export function ParticipantsManager({
                     text-white placeholder:text-white/20"
                 />
               </div>
-              <div className="flex-[0.6]">
+              <div className="flex-1 sm:flex-[0.6] w-full">
                 <label className="block text-xs text-white/50 mb-1.5 ml-1">
                   Link de Stream (Twitch/YouTube/Kick)
                 </label>
@@ -560,9 +560,9 @@ export function ParticipantsManager({
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2.5 bg-neon-purple hover:bg-neon-purple/90 active:scale-95 text-white 
+                className="w-full sm:w-auto px-6 py-2.5 bg-neon-purple hover:bg-neon-purple/90 active:scale-95 text-white 
                   text-sm font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed
-                  shadow-lg shadow-neon-purple/20"
+                  shadow-lg shadow-neon-purple/20 shrink-0"
               >
                 {loading ? 'Guardando...' : 'Guardar'}
               </button>
@@ -573,10 +573,10 @@ export function ParticipantsManager({
       )}
 
       {/* Tabs list */}
-      <div className="flex border-b border-white/5 mb-6 gap-2">
+      <div className="flex items-center border-b border-white/5 mb-6 gap-2 overflow-x-auto scrollbar-none no-scrollbar max-w-full">
         <button
           onClick={() => setActiveTab('confirmed')}
-          className={`px-4 py-2.5 font-orbitron text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
+          className={`px-4 py-2.5 font-orbitron text-xs font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap shrink-0 ${
             activeTab === 'confirmed'
               ? 'border-neon-cyan text-white font-black'
               : 'border-transparent text-white/40 hover:text-white/80 font-medium'
@@ -586,7 +586,7 @@ export function ParticipantsManager({
         </button>
         <button
           onClick={() => setActiveTab('pending')}
-          className={`px-4 py-2.5 font-orbitron text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
+          className={`px-4 py-2.5 font-orbitron text-xs font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap shrink-0 ${
             activeTab === 'pending'
               ? 'border-neon-purple text-white font-black'
               : 'border-transparent text-white/40 hover:text-white/80 font-medium'
@@ -596,7 +596,7 @@ export function ParticipantsManager({
         </button>
         <button
           onClick={() => setActiveTab('validation')}
-          className={`px-4 py-2.5 font-orbitron text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
+          className={`px-4 py-2.5 font-orbitron text-xs font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap shrink-0 ${
             activeTab === 'validation'
               ? 'border-gold text-white font-black'
               : 'border-transparent text-white/40 hover:text-white/80 font-medium'

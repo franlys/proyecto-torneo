@@ -246,12 +246,12 @@ export function TournamentBetsClient({ tournament, matches, betMarkets: initialB
       </div>
 
       {/* Match Filter Tab Bar */}
-      <div className="flex flex-wrap gap-2 pt-2">
+      <div className="flex items-center gap-2 pt-2 overflow-x-auto scrollbar-none no-scrollbar max-w-full pb-1">
         {matchFilterOptions.map(opt => (
           <button
             key={opt.id}
             onClick={() => setSelectedMatchFilter(opt.id)}
-            className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-xl border transition-all ${
+            className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-xl border transition-all whitespace-nowrap shrink-0 ${
               selectedMatchFilter === opt.id
                 ? 'bg-yellow-500/10 border-yellow-500/50 text-yellow-300'
                 : 'bg-white/[0.03] border-white/5 text-white/50 hover:text-white/80 hover:border-white/10'

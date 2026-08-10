@@ -113,12 +113,12 @@ export function MatchRecap({ matches, submissions, participants, primaryColor }:
     <div className="w-full space-y-6">
 
       {/* ── Selector de Encuentros (Principales) ─────────────────────── */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none no-scrollbar max-w-full">
         {encounters.map(m => (
           <button
             key={m.id}
             onClick={() => handleEncounterChange(m.id)}
-            className={`flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-2xl font-orbitron text-xs sm:text-sm transition-all border-2 ${
+            className={`flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-2xl font-orbitron text-xs sm:text-sm transition-all border-2 whitespace-nowrap ${
               activeEncounterId === m.id
                 ? 'bg-white/10 text-white'
                 : 'border-transparent bg-white/5 text-white/40 hover:text-white/80 hover:bg-white/[0.02]'
@@ -137,9 +137,9 @@ export function MatchRecap({ matches, submissions, participants, primaryColor }:
 
       {/* ── Selector de Rondas (Sub-menu) — Solo si hay rondas ────────── */}
       {rounds.length > 0 && (
-        <div className="flex items-center gap-4 px-2">
+        <div className="flex items-center gap-4 px-2 overflow-x-auto scrollbar-none no-scrollbar max-w-full">
            <span className="text-[10px] font-bold uppercase tracking-widest text-white/20 whitespace-nowrap">Rondas del Encuentro:</span>
-           <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
+           <div className="flex gap-1.5 overflow-x-auto scrollbar-none no-scrollbar">
              {rounds.map(r => (
                <button
                  key={r.id}
