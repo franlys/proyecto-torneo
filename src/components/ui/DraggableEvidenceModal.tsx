@@ -167,14 +167,14 @@ export function DraggableEvidenceModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-y-auto">
           {/* Backdrop (Cierra al hacer click) */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/20 cursor-pointer"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm cursor-pointer"
           />
 
           {/* Ventana del Modal Arrastrable */}
@@ -183,27 +183,24 @@ export function DraggableEvidenceModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 250 }}
-            drag
-            dragMomentum={false}
-            dragElastic={0.1}
-            className={`relative bg-[#0d0d15]/95 backdrop-blur-md border border-white/10 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] w-full overflow-hidden pointer-events-auto z-10 select-none flex flex-col transition-all duration-300 ${
+            className={`relative bg-[#0d0d15]/95 backdrop-blur-md border border-white/10 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] w-full max-h-[92vh] overflow-hidden pointer-events-auto z-10 select-none flex flex-col transition-all duration-300 my-auto ${
               hasDetails && showSidebar ? 'max-w-4xl' : 'max-w-2xl'
             }`}
           >
             {/* Cabecera / Barra de arrastre */}
-            <div className="px-5 py-3.5 bg-white/[0.02] border-b border-white/5 flex items-center justify-between cursor-move text-white active:cursor-grabbing select-none drag-handle">
-              <div className="flex items-center gap-3">
-                <Move className="w-4 h-4 text-white/40 shrink-0" />
-                <span className="font-sans font-bold text-xs uppercase tracking-widest text-white/70">
+            <div className="px-4 sm:px-5 py-3 bg-white/[0.02] border-b border-white/5 flex flex-wrap items-center justify-between gap-2 text-white select-none">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <Move className="w-4 h-4 text-white/40 shrink-0 hidden sm:block" />
+                <span className="font-sans font-bold text-xs uppercase tracking-widest text-white/70 truncate">
                   {title}
                 </span>
                 
                 {isDualMode && (
-                  <div className="flex items-center gap-1.5 bg-black/40 border border-white/10 rounded-lg p-0.5 ml-4">
+                  <div className="flex items-center gap-1 bg-black/40 border border-white/10 rounded-lg p-0.5 ml-1 sm:ml-4">
                     <button
                       onClick={() => setSelectedType('kills')}
                       type="button"
-                      className={`px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${
+                      className={`px-2.5 sm:px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${
                         selectedType === 'kills'
                           ? 'bg-neon-cyan text-black shadow-[0_0_10px_rgba(0,245,255,0.3)]'
                           : 'text-white/60 hover:text-white hover:bg-white/5'
@@ -214,7 +211,7 @@ export function DraggableEvidenceModal({
                     <button
                       onClick={() => setSelectedType('top')}
                       type="button"
-                      className={`px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${
+                      className={`px-2.5 sm:px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${
                         selectedType === 'top'
                           ? 'bg-gold text-black shadow-[0_0_10px_rgba(255,215,0,0.3)]'
                           : 'text-white/60 hover:text-white hover:bg-white/5'
@@ -226,7 +223,7 @@ export function DraggableEvidenceModal({
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 ml-auto">
                 {hasDetails && (
                   <button
                     onClick={() => setShowSidebar(!showSidebar)}
@@ -243,7 +240,7 @@ export function DraggableEvidenceModal({
                 <button
                   onClick={onClose}
                   type="button"
-                  className="p-1 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors"
+                  className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
                   title="Cerrar"
                 >
                   <X className="w-4 h-4" />
@@ -252,10 +249,10 @@ export function DraggableEvidenceModal({
             </div>
 
             {/* Contenido Principal (Dos columnas si se muestran detalles) */}
-            <div className="flex flex-col md:flex-row flex-1">
+            <div className="flex flex-col md:flex-row flex-1 overflow-y-auto min-h-0">
               
               {/* Visualizador de la Captura */}
-              <div className="flex-1 relative min-h-[380px] max-h-[550px] overflow-hidden bg-black/60 flex items-center justify-center p-4">
+              <div className="flex-1 relative min-h-[220px] sm:min-h-[300px] md:min-h-[420px] max-h-[40vh] md:max-h-none overflow-hidden bg-black/60 flex items-center justify-center p-3 sm:p-4 shrink-0 md:shrink">
                 {currentUrl ? (
                   <motion.div
                     animate={{ rotate: rotation, scale: scale }}
@@ -265,7 +262,7 @@ export function DraggableEvidenceModal({
                     <img
                       src={currentUrl}
                       alt="Evidencia cargada"
-                      className="max-w-full max-h-[500px] object-contain rounded-lg shadow-2xl pointer-events-none"
+                      className="max-w-full max-h-[36vh] md:max-h-[460px] object-contain rounded-lg shadow-2xl pointer-events-none"
                       draggable={false}
                     />
                   </motion.div>
@@ -279,7 +276,7 @@ export function DraggableEvidenceModal({
 
               {/* Panel Lateral de Detalles */}
               {hasDetails && showSidebar && (
-                <div className="w-full md:w-[320px] bg-black/40 border-t md:border-t-0 md:border-l border-white/5 flex flex-col p-5 overflow-y-auto max-h-[550px]">
+                <div className="w-full md:w-[340px] bg-black/40 border-t md:border-t-0 md:border-l border-white/5 flex flex-col p-4 sm:p-5 overflow-y-auto max-h-[50vh] md:max-h-none shrink-0 md:shrink">
                   <div className="space-y-5">
                     
                     {/* Encabezado del Equipo */}
