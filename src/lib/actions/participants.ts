@@ -142,12 +142,23 @@ export async function deleteTeam(
 
         let captainEmail = null
         if (captainPart?.user_id) {
-          const { data: capProfile } = await adminSupabase
-            .from('profiles')
-            .select('email')
-            .eq('id', captainPart.user_id)
-            .maybeSingle()
-          captainEmail = capProfile?.email
+          try {
+            const { data: authUserData } = await adminSupabase.auth.admin.getUserById(captainPart.user_id)
+            if (authUserData?.user?.email && !authUserData.user.email.endsWith('@manual.kronix.do')) {
+              captainEmail = authUserData.user.email
+            }
+          } catch (authErr) {
+            console.warn('Error fetching auth user email:', authErr)
+          }
+
+          if (!captainEmail) {
+            const { data: capProfile } = await adminSupabase
+              .from('profiles')
+              .select('email')
+              .eq('id', captainPart.user_id)
+              .maybeSingle()
+            captainEmail = capProfile?.email
+          }
         }
 
         // Obtener torneo completo y perfil del creador
