@@ -478,6 +478,25 @@ export function LeaderboardClient({
             return
           }
         }
+
+        // Validar que no se repitan usuarios (compañeros o capitán)
+        const allSelectedUserIds = [currentUser?.id, ...regParticipantUserIds.slice(1).filter(Boolean)].filter(Boolean)
+        const uniqueUsers = new Set(allSelectedUserIds)
+        if (uniqueUsers.size !== allSelectedUserIds.length) {
+          toast.error('No puedes inscribir al mismo usuario más de una vez en el equipo.')
+          setRegLoading(false)
+          isSubmittingReg.current = false
+          return
+        }
+
+        // Validar nombres de integrantes duplicados
+        const cleanNames = regParticipants.map(n => n.trim().toLowerCase()).filter(Boolean)
+        if (new Set(cleanNames).size !== cleanNames.length) {
+          toast.error('No puedes repetir el mismo nombre de jugador en el equipo.')
+          setRegLoading(false)
+          isSubmittingReg.current = false
+          return
+        }
       }
 
       const emptyNameIndex = regParticipants.findIndex(name => name.trim() === '')
@@ -511,6 +530,23 @@ export function LeaderboardClient({
           isSubmittingReg.current = false
           return
         }
+      }
+
+      // Validar IDs y Nombres de cuenta en el juego duplicados en el equipo
+      const cleanGameIds = regParticipantGameIds.map(g => g.trim()).filter(Boolean)
+      if (new Set(cleanGameIds).size !== cleanGameIds.length) {
+        toast.error('No puedes ingresar el mismo ID de cuenta del juego para varios integrantes del equipo.')
+        setRegLoading(false)
+        isSubmittingReg.current = false
+        return
+      }
+
+      const cleanGameUsernames = regParticipantGameUsernames.map(g => g.trim().toLowerCase()).filter(Boolean)
+      if (new Set(cleanGameUsernames).size !== cleanGameUsernames.length) {
+        toast.error('No puedes ingresar el mismo nombre de cuenta del juego para varios integrantes del equipo.')
+        setRegLoading(false)
+        isSubmittingReg.current = false
+        return
       }
 
       const members = regParticipants.map((name, index) => ({
@@ -3174,11 +3210,14 @@ export function LeaderboardClient({
                                 className="w-full bg-black/60 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30"
                               >
                                 <option value="">-- Seleccionar de mi Lista de Amigos --</option>
-                                {userFriends.map(f => (
-                                  <option key={f.id} value={f.id}>
-                                    👤 {f.username || 'Usuario'} {f.short_id ? `(${f.short_id})` : ''}
-                                  </option>
-                                ))}
+                                {userFriends.map(f => {
+                                  const isAlreadySelected = regParticipantUserIds.some((uid, uIdx) => uIdx !== idx && uid === f.id) || f.id === currentUser?.id
+                                  return (
+                                    <option key={f.id} value={f.id} disabled={isAlreadySelected}>
+                                      👤 {f.username || 'Usuario'} {f.short_id ? `(${f.short_id})` : ''} {isAlreadySelected ? '(Ya seleccionado)' : ''}
+                                    </option>
+                                  )
+                                })}
                               </select>
 
                               {userFriends.length === 0 && (

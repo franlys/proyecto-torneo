@@ -178,7 +178,7 @@ export async function registerTournament(
         }
       }
 
-      // Verificar que no haya usuarios duplicados dentro del mismo equipo
+      // Verificar que no haya usuarios duplicados dentro del mismo equipo (incluyendo al capitán)
       const teamUserSet = new Set<string>([user.id])
       for (let i = 1; i < pList.length; i++) {
         const uId = pList[i].userId
@@ -187,6 +187,18 @@ export async function registerTournament(
             return { error: 'No puedes agregar al mismo usuario varias veces en el equipo.' }
           }
           teamUserSet.add(uId)
+        }
+      }
+
+      // Verificar que no haya nombres duplicados dentro del equipo
+      const nameSet = new Set<string>()
+      for (const p of pList) {
+        const normalizedName = p.displayName.trim().toLowerCase()
+        if (normalizedName) {
+          if (nameSet.has(normalizedName)) {
+            return { error: `El nombre '${p.displayName}' está repetido en el equipo. Cada integrante debe tener un nombre único.` }
+          }
+          nameSet.add(normalizedName)
         }
       }
     }
@@ -229,6 +241,9 @@ export async function registerTournament(
     }
 
     // 3.1. Validar que TODOS los participantes del equipo tengan Game ID y Game Username
+    const gameIdSet = new Set<string>()
+    const gameUsernameSet = new Set<string>()
+
     for (let i = 0; i < pList.length; i++) {
       const p = pList[i]
       const memberLabel = i === 0 ? 'del Capitán' : `del Integrante ${i + 1} (${p.displayName || 'compañero'})`
@@ -237,6 +252,36 @@ export async function registerTournament(
       }
       if (!p.gameUsername || !p.gameUsername.trim()) {
         return { error: `El nombre de cuenta en el juego ${memberLabel} es obligatorio para completar la inscripción.` }
+      }
+
+      const cleanGId = p.gameId.trim()
+      const cleanGUser = p.gameUsername.trim().toLowerCase()
+
+      if (gameIdSet.has(cleanGId)) {
+        return { error: `El ID de juego '${cleanGId}' está repetido en el equipo. Cada jugador debe usar una cuenta de juego diferente.` }
+      }
+      gameIdSet.add(cleanGId)
+
+      if (gameUsernameSet.has(cleanGUser)) {
+        return { error: `El nombre de cuenta en el juego '${p.gameUsername.trim()}' está repetido en el equipo.` }
+      }
+      gameUsernameSet.add(cleanGUser)
+    }
+
+    // 3.2. Validar que ninguna cuenta de juego esté ya registrada en otro equipo de este torneo
+    const allGameIdsInTeam = Array.from(gameIdSet)
+    if (allGameIdsInTeam.length > 0) {
+      const { data: existingGameAccounts } = await adminSupabase
+        .from('participants')
+        .select('game_id, display_name')
+        .eq('tournament_id', tournamentId)
+        .in('game_id', allGameIdsInTeam)
+
+      if (existingGameAccounts && existingGameAccounts.length > 0) {
+        const conflict = existingGameAccounts[0]
+        return {
+          error: `La cuenta de juego con ID '${conflict.game_id}' (${conflict.display_name}) ya está registrada en este torneo en otro equipo.`
+        }
       }
     }
 
