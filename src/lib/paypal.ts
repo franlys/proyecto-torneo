@@ -1,7 +1,19 @@
+export function getPayPalApiUrl() {
+  if (process.env.PAYPAL_API_URL && !process.env.PAYPAL_API_URL.includes('sandbox')) {
+    return process.env.PAYPAL_API_URL.trim()
+  }
+  if (process.env.PAYPAL_MODE === 'live' || process.env.NODE_ENV === 'production') {
+    if (process.env.PAYPAL_ENVIRONMENT !== 'sandbox') {
+      return 'https://api-m.paypal.com'
+    }
+  }
+  return process.env.PAYPAL_API_URL || 'https://api-m.sandbox.paypal.com'
+}
+
 export async function getPayPalAccessToken() {
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID
   const clientSecret = process.env.PAYPAL_CLIENT_SECRET
-  const apiUrl = process.env.PAYPAL_API_URL || 'https://api-m.sandbox.paypal.com'
+  const apiUrl = getPayPalApiUrl()
 
   if (!clientId || !clientSecret) {
     throw new Error('PayPal client ID or client secret is not defined.')
@@ -29,7 +41,7 @@ export async function getPayPalAccessToken() {
 
 export async function createPayPalOrder(amount: number, currency: string = 'USD') {
   const token = await getPayPalAccessToken()
-  const apiUrl = process.env.PAYPAL_API_URL || 'https://api-m.sandbox.paypal.com'
+  const apiUrl = getPayPalApiUrl()
 
   const res = await fetch(`${apiUrl}/v2/checkout/orders`, {
     method: 'POST',
@@ -60,7 +72,7 @@ export async function createPayPalOrder(amount: number, currency: string = 'USD'
 
 export async function capturePayPalPayment(orderId: string) {
   const token = await getPayPalAccessToken()
-  const apiUrl = process.env.PAYPAL_API_URL || 'https://api-m.sandbox.paypal.com'
+  const apiUrl = getPayPalApiUrl()
 
   const res = await fetch(`${apiUrl}/v2/checkout/orders/${orderId}/capture`, {
     method: 'POST',
@@ -80,7 +92,7 @@ export async function capturePayPalPayment(orderId: string) {
 
 export async function sendPayPalPayout(email: string, amount: number) {
   const token = await getPayPalAccessToken()
-  const apiUrl = process.env.PAYPAL_API_URL || 'https://api-m.sandbox.paypal.com'
+  const apiUrl = getPayPalApiUrl()
   const senderBatchId = `batch_${Date.now()}_${Math.random().toString(36).substring(7)}`
   const senderItemId = `item_${Date.now()}_${Math.random().toString(36).substring(7)}`
 

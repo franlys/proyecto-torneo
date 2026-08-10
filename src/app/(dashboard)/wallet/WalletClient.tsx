@@ -678,11 +678,15 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                 <button
                   onClick={() => {
                     setShowThankYouModal(false)
-                    window.location.reload()
+                    if (redirectUrl) {
+                      window.location.href = redirectUrl
+                    } else {
+                      window.location.reload()
+                    }
                   }}
                   className="w-full py-3 bg-neon-cyan text-black hover:bg-neon-cyan/90 transition-all rounded-2xl text-xs font-black uppercase tracking-widest font-orbitron shadow-[0_0_15px_rgba(0,180,216,0.2)] active:scale-[0.98]"
                 >
-                  Volver al Comercio
+                  {redirectUrl ? 'Volver al Torneo y Continuar Inscripción 🏆' : 'Continuar en Kronix'}
                 </button>
               </div>
             </motion.div>

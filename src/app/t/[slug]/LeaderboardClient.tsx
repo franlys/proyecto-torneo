@@ -754,6 +754,14 @@ export function LeaderboardClient({
         if (!prof?.username || prof.username.trim() === '') {
           setShowNicknameModal(true)
         }
+
+        // Auto-open registration if redirected from wallet
+        if (typeof window !== 'undefined') {
+          const params = new URLSearchParams(window.location.search)
+          if (params.get('openRegister') === 'true' && !registration) {
+            handleOpenRegistration()
+          }
+        }
       }
     }
     fetchUser()
@@ -3310,15 +3318,15 @@ export function LeaderboardClient({
                       </div>
 
                       {isLoggedIn && localBalance < (entryFee * (exchangeRate || 58.25)) && (
-                        <div className="mt-1 p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex flex-col gap-2">
-                          <p className="text-[10px] text-red-400 font-semibold text-left">
-                            ⚠️ Tu Saldo: {localBalance.toFixed(2)} K-Coins (Faltan {((entryFee * (exchangeRate || 58.25)) - localBalance).toFixed(2)} K-Coins)
+                        <div className="mt-1 p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex flex-col gap-2.5">
+                          <p className="text-[11px] text-red-400 font-semibold text-left">
+                            ⚠️ Tu Saldo: <strong>{localBalance.toFixed(2)} K-Coins</strong> (Faltan {((entryFee * (exchangeRate || 58.25)) - localBalance).toFixed(2)} K-Coins para pagar la inscripción)
                           </p>
                           <Link
-                            href={`/wallet?amount=${parseFloat((entryFee - (localBalance / (exchangeRate || 58.25))).toFixed(2))}&redirect=${encodeURIComponent(window.location.pathname)}`}
-                            className="text-center px-4 py-2 bg-gradient-to-r from-neon-cyan to-blue-500 hover:opacity-90 active:scale-[0.98] text-black text-[10px] font-black uppercase rounded-lg transition-all shadow-[0_0_10px_rgba(0,245,255,0.15)]"
+                            href={`/wallet?amount=${Math.max(1, parseFloat((entryFee - (localBalance / (exchangeRate || 58.25))).toFixed(2)))}&redirect=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.pathname}?openRegister=true` : '')}`}
+                            className="text-center px-4 py-2.5 bg-gradient-to-r from-yellow-400 to-amber-500 hover:opacity-90 active:scale-[0.98] text-black text-xs font-black uppercase rounded-xl transition-all shadow-[0_0_15px_rgba(234,179,8,0.3)] flex items-center justify-center gap-2"
                           >
-                            Pagar con PayPal / Tarjeta 💳
+                            <span>💳 Pagar Cuota de Inscripción con PayPal / Tarjeta</span>
                           </Link>
                         </div>
                       )}
@@ -3327,13 +3335,22 @@ export function LeaderboardClient({
 
                   </div>
                   <div className="flex gap-3 p-6 pt-4 border-t border-white/5 bg-white/[0.01]">
-                    <button
-                      type="submit"
-                      disabled={regLoading}
-                      className="flex-1 py-3 bg-neon-cyan hover:bg-neon-cyan/95 active:scale-95 text-black font-bold text-sm uppercase tracking-wider rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(0,245,255,0.15)]"
-                    >
-                      {regLoading ? 'Procesando Inscripción...' : 'Enviar Inscripción'}
-                    </button>
+                    {entryFee > 0 && isLoggedIn && localBalance < (entryFee * (exchangeRate || 58.25)) ? (
+                      <Link
+                        href={`/wallet?amount=${Math.max(1, parseFloat((entryFee - (localBalance / (exchangeRate || 58.25))).toFixed(2)))}&redirect=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.pathname}?openRegister=true` : '')}`}
+                        className="flex-1 py-3 bg-gradient-to-r from-yellow-400 to-amber-500 hover:opacity-90 active:scale-95 text-black font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(234,179,8,0.25)] flex items-center justify-center gap-2 text-center"
+                      >
+                        <span>💳 Recargar Saldo para Inscribirse</span>
+                      </Link>
+                    ) : (
+                      <button
+                        type="submit"
+                        disabled={regLoading}
+                        className="flex-1 py-3 bg-neon-cyan hover:bg-neon-cyan/95 active:scale-95 text-black font-bold text-sm uppercase tracking-wider rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(0,245,255,0.15)]"
+                      >
+                        {regLoading ? 'Procesando Inscripción...' : 'Enviar Inscripción'}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setIsRegistering(false)}
