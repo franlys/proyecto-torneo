@@ -1965,7 +1965,7 @@ export async function syncTournamentDiscordChannels(
     .eq('id', tournament.creator_id)
     .single()
 
-  const { resolveDiscordGuildId, createDiscordCategory, sendDiscordEmbed } = await import('@/lib/services/discord')
+  const { resolveDiscordGuildId, sendDiscordEmbed } = await import('@/lib/services/discord')
 
   let guildId = await resolveDiscordGuildId(creatorProfile?.discord_guild_id)
   if (!guildId && tournament.discord_url) {
@@ -1984,13 +1984,24 @@ export async function syncTournamentDiscordChannels(
   const cleanGuildId = guildId
   const adminSupabase = await createAdminClient()
 
-  // 3. Create or reuse category
+  // 3. Resolve all guild channels to check category existence
+  const { getGuildChannels, createDiscordCategory, createGuildTextChannel, createPrivateTextChannel, createPrivateVoiceChannel, deleteDiscordChannel } = await import('@/lib/services/discord')
+  const existingChannelsRes = await getGuildChannels(cleanGuildId)
+  if (!existingChannelsRes.success || !Array.isArray(existingChannelsRes.data)) {
+    return { error: existingChannelsRes.error || 'No se pudieron consultar los canales del servidor de Discord.' }
+  }
+
+  const allGuildChannels = existingChannelsRes.data
+
+  // Verify if category actually exists on Discord
   let categoryId = tournament.discord_voice_category_id
-  if (!categoryId) {
-    console.log(`[Discord Sync] Creando categoría para el torneo: ${tournament.name} en guild ${cleanGuildId}`)
-    const categoryRes = await createDiscordCategory(cleanGuildId, `🏆 Torneo: ${tournament.name}`)
+  const categoryExists = categoryId ? allGuildChannels.some((c: any) => c.id === categoryId && c.type === 4) : false
+
+  if (!categoryExists) {
+    console.log(`[Discord Sync] Creando nueva categoría para el torneo: ${tournament.name} en guild ${cleanGuildId}`)
+    const categoryRes = await createDiscordCategory(cleanGuildId, `🏆 TORNEO: ${tournament.name.toUpperCase()}`)
     if ('error' in categoryRes || !categoryRes.id) {
-      return { error: categoryRes.error || 'No se pudo crear la categoría en Discord. Verifica que el bot esté en el servidor y tenga permisos.' }
+      return { error: categoryRes.error || 'No se pudo crear la categoría en Discord. Verifica los permisos de Administrador del bot.' }
     }
     categoryId = categoryRes.id
     await supabase
@@ -2003,9 +2014,7 @@ export async function syncTournamentDiscordChannels(
   }
 
   // 4. Create/Verify Default Organizational Channels under Category
-  const { getGuildChannels, createGuildTextChannel, createPrivateTextChannel, createPrivateVoiceChannel, deleteDiscordChannel } = await import('@/lib/services/discord')
-  const existingChannelsRes = await getGuildChannels(cleanGuildId)
-  const existingInCategory = (existingChannelsRes.data || []).filter((c: any) => c.parent_id === categoryId)
+  const existingInCategory = allGuildChannels.filter((c: any) => c.parent_id === categoryId)
 
   // 4.1. Canal Oficial de Anuncios
   let announcementChannelId = tournament.discord_announcement_channel_id
@@ -2140,7 +2149,7 @@ export async function syncTournamentDiscordChannels(
 
   return {
     success: true,
-    message: `¡Sincronización exitosa! Se configuraron los canales generales (#anuncios, #chat-general, #soporte) y las salas de voz/chat para ${createdCount} equipos en Discord.`,
+    message: `¡Sincronización exitosa! Se configuraron los canales generales (#anuncios, #chat-general, #soporte) y las salas de voz/chat para ${createdCount} equipos bajo la categoría del torneo.`,
   }
 }
 
@@ -2181,24 +2190,52 @@ export async function cleanupTournamentDiscordChannels(
 
   let deletedCount = 0
 
-  if (guildId && tournament.discord_voice_category_id) {
+  if (guildId) {
     try {
       const channelsRes = await getGuildChannels(guildId)
       if (channelsRes.success && Array.isArray(channelsRes.data)) {
-        const channelsInCategory = channelsRes.data.filter(
-          (c: any) => c.parent_id === tournament.discord_voice_category_id
-        )
+        const allChannels = channelsRes.data
 
-        for (const ch of channelsInCategory) {
-          console.log(`[Discord Cleanup] Eliminando canal ${ch.name} (${ch.id})`)
-          await deleteDiscordChannel(ch.id)
+        // 1. Channels inside tournament category
+        if (tournament.discord_voice_category_id) {
+          const channelsInCategory = allChannels.filter(
+            (c: any) => c.parent_id === tournament.discord_voice_category_id
+          )
+
+          for (const ch of channelsInCategory) {
+            console.log(`[Discord Cleanup] Eliminando canal en categoría: ${ch.name} (${ch.id})`)
+            await deleteDiscordChannel(ch.id)
+            deletedCount++
+          }
+
+          // Delete the category itself
+          console.log(`[Discord Cleanup] Eliminando categoría ${tournament.discord_voice_category_id}`)
+          await deleteDiscordChannel(tournament.discord_voice_category_id)
           deletedCount++
         }
-      }
 
-      // Delete the category itself
-      console.log(`[Discord Cleanup] Eliminando categoría ${tournament.discord_voice_category_id}`)
-      await deleteDiscordChannel(tournament.discord_voice_category_id)
+        // 2. Cleanup orphaned team channels that were previously left unparented
+        const { data: teams } = await supabase
+          .from('teams')
+          .select('name, discord_voice_channel_id, discord_text_channel_id')
+          .eq('tournament_id', tournamentId)
+
+        const teamNames = (teams || []).map(t => t.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
+        const recordedIds = new Set((teams || []).flatMap(t => [t.discord_voice_channel_id, t.discord_text_channel_id]).filter(Boolean))
+
+        for (const ch of allChannels) {
+          const isRecorded = recordedIds.has(ch.id)
+          const chNameClean = ch.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+          const isTeamChat = chNameClean.startsWith('chat-') && teamNames.some(t => chNameClean.includes(t))
+          const isTeamVoice = teamNames.some(t => chNameClean.includes(t))
+
+          if (isRecorded || isTeamChat || (ch.type === 2 && isTeamVoice)) {
+            console.log(`[Discord Cleanup] Eliminando canal huérfano/duplicado: ${ch.name} (${ch.id})`)
+            await deleteDiscordChannel(ch.id)
+            deletedCount++
+          }
+        }
+      }
     } catch (err: any) {
       console.error('[Discord Cleanup] Error al eliminar canales:', err)
     }
