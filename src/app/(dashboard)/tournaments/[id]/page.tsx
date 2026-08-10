@@ -3,6 +3,7 @@ import { getTournament, activateTournament } from '@/lib/actions/tournaments'
 import { exportTournamentDataCsv } from '@/lib/actions/export'
 import { DeleteTournamentButton } from './DeleteTournamentButton'
 import { SyncDiscordButton } from './SyncDiscordButton'
+import { CleanupDiscordButton } from './CleanupDiscordButton'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Tournament } from '@/types'
@@ -196,8 +197,9 @@ export default async function TournamentOverviewPage({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <SyncDiscordButton id={tournament.id} />
+          <CleanupDiscordButton id={tournament.id} />
           
           <Link
             href={`/t/${tournament.slug}`}

@@ -312,6 +312,54 @@ export async function createPrivateTextChannel(
 }
 
 /**
+ * Crea un canal de texto estándar (accesible para los participantes o dentro de una categoría).
+ */
+export async function createGuildTextChannel(
+  guildId: string,
+  name: string,
+  parentId?: string,
+  topic?: string
+) {
+  const cleanGuildId = extractDiscordGuildId(guildId) || guildId
+  const sanitizedName = name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9_-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+
+  try {
+    const body: any = {
+      name: sanitizedName,
+      type: 0, // GUILD_TEXT
+    }
+    if (parentId) body.parent_id = parentId
+    if (topic) body.topic = topic
+
+    const response = await fetch(`${DISCORD_API_URL}/guilds/${cleanGuildId}/channels`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(body),
+    })
+
+    if (!response.ok) {
+      const errText = await response.text()
+      let errJson: any = null
+      try { errJson = JSON.parse(errText) } catch {}
+      const errMsg = parseDiscordError(response.status, errJson, errText)
+      console.error('[Discord Service] Error al crear canal de texto estándar:', errMsg)
+      return { error: errMsg }
+    }
+    const data = await response.json()
+    return { success: true, id: data.id }
+  } catch (err: any) {
+    console.error('[Discord Service] Error de red al crear canal de texto estándar:', err)
+    return { error: err.message || err }
+  }
+}
+
+/**
  * Elimina un canal o categoría por ID.
  */
 export async function deleteDiscordChannel(channelId: string) {
