@@ -2196,44 +2196,98 @@ export async function cleanupTournamentDiscordChannels(
       if (channelsRes.success && Array.isArray(channelsRes.data)) {
         const allChannels = channelsRes.data
 
-        // 1. Channels inside tournament category
-        if (tournament.discord_voice_category_id) {
-          const channelsInCategory = allChannels.filter(
-            (c: any) => c.parent_id === tournament.discord_voice_category_id
-          )
-
-          for (const ch of channelsInCategory) {
-            console.log(`[Discord Cleanup] Eliminando canal en categoría: ${ch.name} (${ch.id})`)
-            await deleteDiscordChannel(ch.id)
-            deletedCount++
-          }
-
-          // Delete the category itself
-          console.log(`[Discord Cleanup] Eliminando categoría ${tournament.discord_voice_category_id}`)
-          await deleteDiscordChannel(tournament.discord_voice_category_id)
-          deletedCount++
-        }
-
-        // 2. Cleanup orphaned team channels that were previously left unparented
+        // 1. Get all teams for this tournament
         const { data: teams } = await supabase
           .from('teams')
           .select('name, discord_voice_channel_id, discord_text_channel_id')
           .eq('tournament_id', tournamentId)
 
-        const teamNames = (teams || []).map(t => t.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
-        const recordedIds = new Set((teams || []).flatMap(t => [t.discord_voice_channel_id, t.discord_text_channel_id]).filter(Boolean))
+        const teamNames = (teams || []).map(t =>
+          t.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
+        ).filter(Boolean)
+
+        const recordedIds = new Set(
+          (teams || []).flatMap(t => [t.discord_voice_channel_id, t.discord_text_channel_id]).filter(Boolean)
+        )
+
+        // Find all tournament categories
+        const tournamentCategories = allChannels.filter(
+          (c: any) =>
+            c.type === 4 &&
+            (c.id === tournament.discord_voice_category_id ||
+             c.name.toLowerCase().includes('torneo') ||
+             c.name.toLowerCase().includes(tournament.name.toLowerCase()))
+        )
+        const tournamentCategoryIds = new Set(tournamentCategories.map((c: any) => c.id))
+        if (tournament.discord_voice_category_id) {
+          tournamentCategoryIds.add(tournament.discord_voice_category_id)
+        }
+
+        // Channels to delete:
+        const channelsToDelete: any[] = []
 
         for (const ch of allChannels) {
-          const isRecorded = recordedIds.has(ch.id)
-          const chNameClean = ch.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-          const isTeamChat = chNameClean.startsWith('chat-') && teamNames.some(t => chNameClean.includes(t))
-          const isTeamVoice = teamNames.some(t => chNameClean.includes(t))
-
-          if (isRecorded || isTeamChat || (ch.type === 2 && isTeamVoice)) {
-            console.log(`[Discord Cleanup] Eliminando canal huérfano/duplicado: ${ch.name} (${ch.id})`)
-            await deleteDiscordChannel(ch.id)
-            deletedCount++
+          // Skip essential server channels
+          const chNameLower = ch.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
+          if (
+            chNameLower === 'general' ||
+            chNameLower === 'bienvenida' ||
+            chNameLower.startsWith('reglas') ||
+            chNameLower.includes('trading') ||
+            chNameLower.includes('aprendizaje') ||
+            chNameLower.includes('planificacion') ||
+            chNameLower.includes('estudio')
+          ) {
+            continue
           }
+
+          // Check if child of tournament category
+          if (ch.parent_id && tournamentCategoryIds.has(ch.parent_id)) {
+            channelsToDelete.push(ch)
+            continue
+          }
+
+          // Check if recorded ID
+          if (recordedIds.has(ch.id)) {
+            channelsToDelete.push(ch)
+            continue
+          }
+
+          // Check team text chats: "chat-makakp", "chat-...", "📢-anuncios-torneo", "💬-chat-general", "🆘-soporte-jueces"
+          const isTournamentOrgChat =
+            chNameLower.includes('anuncios-torneo') ||
+            chNameLower.includes('soporte-jueces') ||
+            chNameLower === 'chat-general' ||
+            chNameLower.includes('chat-general')
+
+          const isTeamChat =
+            chNameLower.startsWith('chat-') &&
+            (teamNames.length === 0 || teamNames.some(t => chNameLower.includes(t)))
+
+          const isTeamVoice =
+            ch.type === 2 &&
+            (chNameLower.includes('🔊') || teamNames.some(t => chNameLower.includes(t)))
+
+          if (isTournamentOrgChat || isTeamChat || isTeamVoice) {
+            channelsToDelete.push(ch)
+            continue
+          }
+        }
+
+        // Delete all matched channels
+        for (const ch of channelsToDelete) {
+          console.log(`[Discord Cleanup] Eliminando canal: ${ch.name} (${ch.id})`)
+          await deleteDiscordChannel(ch.id)
+          deletedCount++
+          await new Promise(r => setTimeout(r, 250)) // Delay to respect rate limits
+        }
+
+        // Delete the categories
+        for (const cat of tournamentCategories) {
+          console.log(`[Discord Cleanup] Eliminando categoría: ${cat.name} (${cat.id})`)
+          await deleteDiscordChannel(cat.id)
+          deletedCount++
+          await new Promise(r => setTimeout(r, 250))
         }
       }
     } catch (err: any) {
@@ -2261,7 +2315,7 @@ export async function cleanupTournamentDiscordChannels(
   revalidatePath(`/tournaments/${tournamentId}`)
   return {
     success: true,
-    message: `¡Limpieza completada! Se eliminaron ${deletedCount} canales y la categoría del torneo en Discord.`,
+    message: `¡Limpieza completada! Se eliminaron ${deletedCount} canales duplicados/antiguos en Discord.`,
   }
 }
 
