@@ -2068,7 +2068,7 @@ export async function syncTournamentDiscordChannels(
   }
 
   // 5. Fetch teams and configure team voice/chat channels
-  const { data: teams } = await supabase
+  const { data: teams } = await adminSupabase
     .from('teams')
     .select('id, name, discord_voice_channel_id, discord_text_channel_id')
     .eq('tournament_id', tournamentId)
@@ -2077,7 +2077,7 @@ export async function syncTournamentDiscordChannels(
   if (teams && teams.length > 0) {
     for (const team of teams as any[]) {
       // Check participants
-      const { data: participants } = await supabase
+      const { data: participants } = await adminSupabase
         .from('participants')
         .select('user_id')
         .eq('team_id', team.id)
@@ -2103,7 +2103,7 @@ export async function syncTournamentDiscordChannels(
       const textChannelName = `chat-${team.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'equipo'}`
 
       let voiceId = team.discord_voice_channel_id
-      const existingVoice = existingInCategory.find((c: any) => c.type === 2 && (c.id === voiceId || c.name === voiceChannelName))
+      const existingVoice = existingInCategory.find((c: any) => c.type === 2 && (c.id === voiceId || c.name === voiceChannelName || c.name === team.name))
       if (existingVoice) {
         voiceId = existingVoice.id
       } else {
@@ -2112,7 +2112,7 @@ export async function syncTournamentDiscordChannels(
       }
 
       let textId = team.discord_text_channel_id
-      const existingText = existingInCategory.find((c: any) => c.type === 0 && (c.id === textId || c.name === textChannelName))
+      const existingText = existingInCategory.find((c: any) => c.type === 0 && (c.id === textId || c.name === textChannelName || c.name.includes(team.name.toLowerCase())))
       if (existingText) {
         textId = existingText.id
       } else {
@@ -2134,7 +2134,7 @@ export async function syncTournamentDiscordChannels(
 
       if (Object.keys(updatePayload).length > 0) {
         createdCount++
-        await supabase
+        await adminSupabase
           .from('teams')
           .update(updatePayload)
           .eq('id', team.id)

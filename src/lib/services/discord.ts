@@ -195,38 +195,41 @@ export async function createPrivateVoiceChannel(
 ) {
   const cleanGuildId = extractDiscordGuildId(guildId) || guildId
   try {
-    // Definir permission overwrites
-    // 1. Bloquear acceso a @everyone (cleanGuildId es el id del rol de everyone en Discord)
-    const permissionOverwrites: any[] = [
-      {
-        id: cleanGuildId,
-        type: 0, // ROLE
-        allow: '0',
-        deny: '1048576', // Denegar CONNECT (1 << 20)
-      },
-    ]
+    const body: any = {
+      name,
+      type: 2, // GUILD_VOICE
+      parent_id: parentId,
+    }
 
-    // 2. Permitir acceso a los miembros del equipo
-    teamDiscordIds.forEach((discordUserId) => {
-      if (discordUserId) {
-        permissionOverwrites.push({
-          id: discordUserId,
-          type: 1, // MEMBER
-          allow: '1049600', // Permitir VIEW_CHANNEL (1<<10) + CONNECT (1<<20)
-          deny: '0',
-        })
-      }
-    })
+    // Only apply restrictive permission overwrites if specific team Discord IDs are provided
+    if (teamDiscordIds && teamDiscordIds.length > 0) {
+      const permissionOverwrites: any[] = [
+        {
+          id: cleanGuildId,
+          type: 0, // ROLE @everyone
+          allow: '0',
+          deny: '1048576', // Deny CONNECT (1 << 20)
+        },
+      ]
+
+      teamDiscordIds.forEach((discordUserId) => {
+        if (discordUserId) {
+          permissionOverwrites.push({
+            id: discordUserId,
+            type: 1, // MEMBER
+            allow: '1049600', // VIEW_CHANNEL (1<<10) + CONNECT (1<<20)
+            deny: '0',
+          })
+        }
+      })
+
+      body.permission_overwrites = permissionOverwrites
+    }
 
     const response = await fetch(`${DISCORD_API_URL}/guilds/${cleanGuildId}/channels`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({
-        name,
-        type: 2, // GUILD_VOICE
-        parent_id: parentId,
-        permission_overwrites: permissionOverwrites,
-      }),
+      body: JSON.stringify(body),
     })
 
     if (!response.ok) {
@@ -234,19 +237,19 @@ export async function createPrivateVoiceChannel(
       let errJson: any = null
       try { errJson = JSON.parse(errText) } catch {}
       const errMsg = parseDiscordError(response.status, errJson, errText)
-      console.error('[Discord Service] Error al crear canal de voz privado:', errMsg)
+      console.error('[Discord Service] Error al crear canal de voz:', errMsg)
       return { error: errMsg }
     }
     const data = await response.json()
     return { success: true, id: data.id }
   } catch (err: any) {
-    console.error('[Discord Service] Error de red al crear canal de voz privado:', err)
+    console.error('[Discord Service] Error de red al crear canal de voz:', err)
     return { error: err.message || err }
   }
 }
 
 /**
- * Crea un canal de texto privado dentro de una categoría, para avisos del bot y chat del equipo.
+ * Crea un canal de texto para el equipo dentro de una categoría.
  */
 export async function createPrivateTextChannel(
   guildId: string,
@@ -264,35 +267,41 @@ export async function createPrivateTextChannel(
     .replace(/^-|-$/g, '')
 
   try {
-    const permissionOverwrites: any[] = [
-      {
-        id: cleanGuildId,
-        type: 0, // ROLE @everyone
-        allow: '0',
-        deny: '1024', // Denegar VIEW_CHANNEL (1<<10)
-      },
-    ]
+    const body: any = {
+      name: `chat-${sanitizedName || 'equipo'}`,
+      type: 0, // GUILD_TEXT
+      parent_id: parentId,
+    }
 
-    teamDiscordIds.forEach((discordUserId) => {
-      if (discordUserId) {
-        permissionOverwrites.push({
-          id: discordUserId,
-          type: 1, // MEMBER
-          allow: '68608', // VIEW_CHANNEL (1024) + SEND_MESSAGES (2048) + READ_MESSAGE_HISTORY (65536)
-          deny: '0',
-        })
-      }
-    })
+    // Only apply restrictive permission overwrites if specific team Discord IDs are provided
+    if (teamDiscordIds && teamDiscordIds.length > 0) {
+      const permissionOverwrites: any[] = [
+        {
+          id: cleanGuildId,
+          type: 0, // ROLE @everyone
+          allow: '0',
+          deny: '1024', // Deny VIEW_CHANNEL (1<<10)
+        },
+      ]
+
+      teamDiscordIds.forEach((discordUserId) => {
+        if (discordUserId) {
+          permissionOverwrites.push({
+            id: discordUserId,
+            type: 1, // MEMBER
+            allow: '68608', // VIEW_CHANNEL (1024) + SEND_MESSAGES (2048) + READ_MESSAGE_HISTORY (65536)
+            deny: '0',
+          })
+        }
+      })
+
+      body.permission_overwrites = permissionOverwrites
+    }
 
     const response = await fetch(`${DISCORD_API_URL}/guilds/${cleanGuildId}/channels`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({
-        name: `chat-${sanitizedName || 'equipo'}`,
-        type: 0, // GUILD_TEXT
-        parent_id: parentId,
-        permission_overwrites: permissionOverwrites,
-      }),
+      body: JSON.stringify(body),
     })
 
     if (!response.ok) {
@@ -300,13 +309,13 @@ export async function createPrivateTextChannel(
       let errJson: any = null
       try { errJson = JSON.parse(errText) } catch {}
       const errMsg = parseDiscordError(response.status, errJson, errText)
-      console.error('[Discord Service] Error al crear canal de texto privado:', errMsg)
+      console.error('[Discord Service] Error al crear canal de texto de equipo:', errMsg)
       return { error: errMsg }
     }
     const data = await response.json()
     return { success: true, id: data.id }
   } catch (err: any) {
-    console.error('[Discord Service] Error de red al crear canal de texto privado:', err)
+    console.error('[Discord Service] Error de red al crear canal de texto de equipo:', err)
     return { error: err.message || err }
   }
 }
