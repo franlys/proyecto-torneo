@@ -132,13 +132,13 @@ export async function deleteTeam(
         .single()
 
       if (teamData) {
-        // Obtener capitán del equipo
-        const { data: captainPart } = await adminSupabase
+        // Obtener integrantes y capitán del equipo
+        const { data: teamMembers } = await adminSupabase
           .from('participants')
-          .select('display_name, user_id')
+          .select('display_name, user_id, is_captain')
           .eq('team_id', teamId)
-          .eq('is_captain', true)
-          .maybeSingle()
+
+        const captainPart = (teamMembers || []).find(p => p.is_captain) || (teamMembers || [])[0]
 
         let captainEmail = null
         if (captainPart?.user_id) {
@@ -150,46 +150,56 @@ export async function deleteTeam(
           captainEmail = capProfile?.email
         }
 
-        if (captainEmail) {
-          // Obtener torneo completo y perfil del creador
-          const { data: fullTournament } = await adminSupabase
-            .from('tournaments')
-            .select('name, creator_id, collaborator_id')
-            .eq('id', tournamentId)
+        // Obtener torneo completo y perfil del creador
+        const { data: fullTournament } = await adminSupabase
+          .from('tournaments')
+          .select('name, creator_id, collaborator_id')
+          .eq('id', tournamentId)
+          .single()
+
+        if (fullTournament) {
+          const { data: creatorProfile } = await adminSupabase
+            .from('profiles')
+            .select('username, email, whatsapp_link, discord_link, role')
+            .eq('id', fullTournament.creator_id)
             .single()
 
-          if (fullTournament) {
-            const { data: creatorProfile } = await adminSupabase
-              .from('profiles')
-              .select('username, email, whatsapp_link, discord_link, role')
-              .eq('id', fullTournament.creator_id)
-              .single()
+          if (creatorProfile && captainEmail) {
+            const { sendTeamRemovedEmail } = await import('@/lib/services/email')
 
-            if (creatorProfile) {
-              const { sendTeamRemovedEmail } = await import('@/lib/services/email')
+            const isKronixOfficial = creatorProfile.role === 'SUPER_ADMIN' || creatorProfile.role === 'ADMIN'
+            const isCollaboration = !isKronixOfficial && !!fullTournament.collaborator_id
 
-              const isKronixOfficial = creatorProfile.role === 'SUPER_ADMIN' || creatorProfile.role === 'ADMIN'
-              const isCollaboration = !isKronixOfficial && !!fullTournament.collaborator_id
+            await sendTeamRemovedEmail({
+              email: captainEmail,
+              captainName: captainPart?.display_name || 'Capitán',
+              teamName: teamData.name,
+              tournamentName: fullTournament.name,
+              reason: reason.trim(),
+              creatorName: creatorProfile.username || 'Organizador',
+              creatorEmail: creatorProfile.email || '',
+              whatsappLink: creatorProfile.whatsapp_link,
+              discordLink: creatorProfile.discord_link,
+              isKronixOfficial,
+              isCollaboration,
+            })
+          }
 
-              await sendTeamRemovedEmail({
-                email: captainEmail,
-                captainName: captainPart?.display_name || 'Capitán',
-                teamName: teamData.name,
-                tournamentName: fullTournament.name,
-                reason: reason.trim(),
-                creatorName: creatorProfile.username || 'Organizador',
-                creatorEmail: creatorProfile.email || '',
-                whatsappLink: creatorProfile.whatsapp_link,
-                discordLink: creatorProfile.discord_link,
-                isKronixOfficial,
-                isCollaboration,
+          // Crear notificación interna en la plataforma para todos los miembros del equipo con cuenta
+          for (const member of (teamMembers || [])) {
+            if (member.user_id) {
+              await adminSupabase.from('notifications').insert({
+                user_id: member.user_id,
+                title: `🚫 Expulsión del Torneo: ${fullTournament.name}`,
+                message: `Tu equipo "${teamData.name}" ha sido removido del torneo "${fullTournament.name}". Motivo: ${reason.trim() || 'Sin motivo especificado'}`,
+                is_read: false,
               })
             }
           }
         }
       }
     } catch (e) {
-      console.error('Error al intentar notificar expulsión de equipo por correo:', e)
+      console.error('Error al intentar notificar expulsión de equipo por correo o app:', e)
     }
   }
 

@@ -94,8 +94,20 @@ export async function banTeamForAbandonment(
             isCollaboration,
           })
         }
-      } catch (emailErr) {
-        console.error('Error al enviar correo de abandono:', emailErr)
+
+        // Crear notificación interna en la plataforma
+        for (const p of teamParticipants) {
+          if (p.user_id) {
+            await adminSupabase.from('notifications').insert({
+              user_id: p.user_id,
+              title: `🚫 Sanción de Torneo: ${tournament.name}`,
+              message: `Has sido removido del torneo "${tournament.name}". Motivo: Abandono de torneo sin previo aviso (Sanción del creador aplicada).`,
+              is_read: false,
+            })
+          }
+        }
+      } catch (notifyErr) {
+        console.error('Error al notificar baneo:', notifyErr)
       }
     }
 
