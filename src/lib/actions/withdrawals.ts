@@ -4,7 +4,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getUsdToDopRate } from '@/lib/services/exchange-rate'
 import { sendPayPalPayout } from '@/lib/paypal'
 import { revalidatePath } from 'next/cache'
-import { sendTransactionReceiptEmail } from '@/lib/services/email'
+import { sendTransactionReceiptEmail, sendAdminWithdrawalAlertEmail } from '@/lib/services/email'
 
 export async function requestWithdrawalAction(
   amount: number,
@@ -85,6 +85,24 @@ export async function requestWithdrawalAction(
       // Rollback balance on error
       await adminSupabase.from('profiles').update({ balance: currentBalance }).eq('id', user.id)
       return { success: false, error: 'Error al registrar la solicitud de retiro en el sistema.' }
+    }
+
+    // Enviar alerta inmediata por correo al Administrador
+    try {
+      const { data: admins } = await adminSupabase.from('profiles').select('email').eq('role', 'admin')
+      const adminEmailList = (admins || []).map((a: any) => a.email).filter(Boolean)
+
+      sendAdminWithdrawalAlertEmail({
+        adminEmails: adminEmailList,
+        username: profile.username || 'Usuario',
+        userEmail: user.email || '',
+        amountCoins: parsedAmount,
+        amountUsd: usdAmount,
+        paypalEmail: paypalEmail.trim(),
+        withdrawalId: withdrawal.id,
+      }).catch(e => console.error('Error sending admin withdrawal email:', e))
+    } catch (e) {
+      console.error('Error fetching admin emails:', e)
     }
 
     // 5. Send automated PayPal Payout

@@ -1030,5 +1030,98 @@ export async function sendTransactionReceiptEmail({
   }
 }
 
+interface AdminWithdrawalAlertEmailParams {
+  adminEmails: string[]
+  username: string
+  userEmail: string
+  amountCoins: number
+  amountUsd: number
+  paypalEmail: string
+  withdrawalId: string
+}
+
+export async function sendAdminWithdrawalAlertEmail({
+  adminEmails,
+  username,
+  userEmail,
+  amountCoins,
+  amountUsd,
+  paypalEmail,
+  withdrawalId,
+}: AdminWithdrawalAlertEmailParams) {
+  if (!resend) {
+    console.warn('RESEND_API_KEY no configurado.')
+    return { success: false }
+  }
+
+  const validEmails = (adminEmails || []).filter(e => Boolean(e) && e.includes('@'))
+  const recipientList = validEmails.length > 0 ? validEmails : ['franlysgonzaleztejeda@gmail.com']
+
+  try {
+    const html = `
+      <div style="background-color: #0b0d12; color: #ffffff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; border-radius: 16px; max-width: 550px; margin: auto; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 10px 40px rgba(0,0,0,0.7);">
+        <div style="text-align: center; margin-bottom: 25px;">
+          <div style="display: inline-block; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 50px; padding: 6px 16px; margin-bottom: 12px;">
+            <span style="color: #ef4444; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px;">🚨 Alerta de Administración</span>
+          </div>
+          <h1 style="color: #ffffff; font-size: 22px; font-weight: 900; margin: 0; text-transform: uppercase; letter-spacing: 1px;">Nueva Solicitud de Retiro</h1>
+          <p style="color: rgba(255,255,255,0.4); font-size: 12px; margin-top: 6px;">Un usuario ha solicitado transferir fondos desde su billetera Kronix</p>
+        </div>
+
+        <div style="background-color: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); padding: 22px; border-radius: 14px; margin-bottom: 25px;">
+          <div style="background: rgba(0, 245, 255, 0.04); border: 1px dashed rgba(0, 245, 255, 0.3); padding: 16px; border-radius: 10px; text-align: center; margin-bottom: 20px;">
+            <span style="font-size: 10px; color: rgba(255,255,255,0.4); text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 4px;">Monto a Pagar en PayPal</span>
+            <span style="font-size: 32px; font-weight: 900; color: #00f5ff; font-family: monospace;">$${amountUsd.toFixed(2)} USD</span>
+            <span style="font-size: 12px; color: #facc15; font-weight: bold; display: block; margin-top: 4px;">🪙 ${amountCoins.toLocaleString('es-DO')} K-Coins</span>
+          </div>
+
+          <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+              <td style="padding: 10px 0; color: rgba(255,255,255,0.4);">Usuario Solicitante:</td>
+              <td style="padding: 10px 0; font-weight: bold; text-align: right; color: #ffffff;">${username}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+              <td style="padding: 10px 0; color: rgba(255,255,255,0.4);">Email del Usuario:</td>
+              <td style="padding: 10px 0; text-align: right; color: rgba(255,255,255,0.7);">${userEmail || '-'}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+              <td style="padding: 10px 0; color: rgba(255,255,255,0.4);">Enviar fondos a (PayPal):</td>
+              <td style="padding: 10px 0; font-weight: bold; font-family: monospace; text-align: right; color: #38bdf8; font-size: 14px;">${paypalEmail}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; color: rgba(255,255,255,0.4);">ID del Retiro:</td>
+              <td style="padding: 10px 0; font-family: monospace; font-size: 10px; text-align: right; color: rgba(255,255,255,0.4);">${withdrawalId}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 25px;">
+          <a href="https://www.kronix.do/admin/finance" style="background: linear-gradient(90deg, #00f5ff 0%, #a855f7 100%); color: #000000; text-decoration: none; padding: 12px 24px; border-radius: 10px; font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block;">
+            Gestionar en Panel de Finanzas 📊
+          </a>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 20px 0;" />
+        <p style="color: rgba(255,255,255,0.25); font-size: 10px; text-align: center; line-height: 1.5; margin: 0;">
+          Notificación automática de seguridad enviada exclusivamente a administradores de Kronix E-sports.
+        </p>
+      </div>
+    `
+
+    const { data, error } = await resend.emails.send({
+      from: 'Kronix E-sports <no-reply@kronix.do>',
+      to: recipientList,
+      subject: `🚨 [Kronix] Nueva Solicitud de Retiro: $${amountUsd.toFixed(2)} USD (${paypalEmail})`,
+      html,
+    })
+
+    if (error) throw error
+    return { success: true, data }
+  } catch (err: any) {
+    console.error('Error al enviar correo de alerta de retiro al admin:', err)
+    return { success: false, error: err.message }
+  }
+}
+
 
 
