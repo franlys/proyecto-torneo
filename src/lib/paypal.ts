@@ -1,13 +1,14 @@
 export function getPayPalApiUrl() {
-  if (process.env.PAYPAL_API_URL && !process.env.PAYPAL_API_URL.includes('sandbox')) {
+  if (process.env.PAYPAL_API_URL) {
     return process.env.PAYPAL_API_URL.trim()
   }
-  if (process.env.PAYPAL_MODE === 'live' || process.env.NODE_ENV === 'production') {
-    if (process.env.PAYPAL_ENVIRONMENT !== 'sandbox') {
-      return 'https://api-m.paypal.com'
-    }
+  if (process.env.PAYPAL_ENVIRONMENT === 'sandbox') {
+    return 'https://api-m.sandbox.paypal.com'
   }
-  return process.env.PAYPAL_API_URL || 'https://api-m.sandbox.paypal.com'
+  if (process.env.PAYPAL_MODE === 'live' || process.env.NODE_ENV === 'production') {
+    return 'https://api-m.paypal.com'
+  }
+  return 'https://api-m.sandbox.paypal.com'
 }
 
 export async function getPayPalAccessToken() {
