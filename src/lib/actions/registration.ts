@@ -320,14 +320,17 @@ export async function registerTournament(
 
       const currentBalance = parseFloat(captainProfile.balance || '0')
       const lastUpdatedAt = captainProfile.updated_at
-      if (currentBalance < entryFeeInKCoins) {
+      
+      // Permitir tolerancia de hasta 2.0 K-Coins para absorber micro-variaciones de tasa de cambio y redondeos
+      if (currentBalance + 2.0 < entryFeeInKCoins) {
         return {
           error: `Saldo insuficiente de K-Coins. El costo es de $${entryFeeUsd} USD (~${entryFeeInKCoins.toLocaleString('es-ES')} K-Coins) y tu saldo es ${currentBalance.toFixed(2)} K-Coins. Recarga en tu billetera.`
         }
       }
 
-      // Descontar K-Coins del capitán usando OCC
-      const newBalance = parseFloat((currentBalance - entryFeeInKCoins).toFixed(2))
+      // Descontar K-Coins del capitán usando OCC (descontando el mínimo entre el saldo actual y el costo)
+      const deductionAmount = Math.min(currentBalance, entryFeeInKCoins)
+      const newBalance = parseFloat(Math.max(0, currentBalance - deductionAmount).toFixed(2))
       const { data: updateData, error: deductErr } = await adminSupabase
         .from('profiles')
         .update({ 

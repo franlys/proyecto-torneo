@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo, useCallback, Fragment } from 'reac
 import { motion, AnimatePresence } from 'framer-motion'
 import { Orbitron } from 'next/font/google'
 import Link from 'next/link'
+import Script from 'next/script'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { TeamStanding, Participant, Match, Submission, ScoringRule } from '@/types'
@@ -341,6 +342,10 @@ export function LeaderboardClient({
   const [regParticipantGameUsernames, setRegParticipantGameUsernames] = useState<string[]>([])
   // Nickname modal: show if user has no username
   const [showNicknameModal, setShowNicknameModal] = useState(false)
+  // Direct Payment Modal inside registration
+  const [showRegPayModal, setShowRegPayModal] = useState(false)
+  const [paypalSdkLoaded, setPaypalSdkLoaded] = useState(false)
+  const [isRegPaying, setIsRegPaying] = useState(false)
   // Quick friend add state inside registration modal
   const [quickFriendQuery, setQuickFriendQuery] = useState('')
   const [isSearchingFriend, setIsSearchingFriend] = useState(false)
@@ -348,6 +353,35 @@ export function LeaderboardClient({
   const [showQuickAddFriend, setShowQuickAddFriend] = useState(false)
   const isSubmittingReg = React.useRef(false)
   const router = useRouter()
+
+  // Auto-save registration draft to sessionStorage
+  useEffect(() => {
+    if (!isRegistering) return
+    try {
+      const draft = {
+        regTeamName,
+        regStreamUrl,
+        regPassword,
+        regParticipants,
+        regParticipantUserIds,
+        regParticipantStreams,
+        regParticipantGameIds,
+        regParticipantGameUsernames,
+      }
+      sessionStorage.setItem('kronix_reg_draft_' + tournamentId, JSON.stringify(draft))
+    } catch (e) {}
+  }, [
+    isRegistering,
+    tournamentId,
+    regTeamName,
+    regStreamUrl,
+    regPassword,
+    regParticipants,
+    regParticipantUserIds,
+    regParticipantStreams,
+    regParticipantGameIds,
+    regParticipantGameUsernames,
+  ])
 
   const handleOpenRegistration = async () => {
     const size = { individual: 1, duos: 2, trios: 3, cuartetos: 4, quintas: 5 }[mode] || 1
@@ -386,14 +420,67 @@ export function LeaderboardClient({
       } catch {}
     }
 
-    setRegParticipants(initialParticipants)
-    setRegParticipantUserIds(initialUserIds)
-    setRegParticipantStreams(initialStreams)
-    setRegParticipantGameIds(initialGameIds)
-    setRegParticipantGameUsernames(initialGameUsernames)
-    setRegTeamName('')
-    setRegStreamUrl(initialStreams[0] || '')
-    setRegPassword('')
+    // Try restoring saved draft
+    try {
+      const savedDraft = sessionStorage.getItem('kronix_reg_draft_' + tournamentId)
+      if (savedDraft) {
+        const draft = JSON.parse(savedDraft)
+        if (draft.regTeamName) setRegTeamName(draft.regTeamName)
+        else setRegTeamName('')
+        if (draft.regStreamUrl) setRegStreamUrl(draft.regStreamUrl)
+        else setRegStreamUrl(initialStreams[0] || '')
+        if (draft.regPassword) setRegPassword(draft.regPassword)
+        else setRegPassword('')
+
+        if (Array.isArray(draft.regParticipants) && draft.regParticipants.length === size) {
+          setRegParticipants(draft.regParticipants)
+        } else {
+          setRegParticipants(initialParticipants)
+        }
+
+        if (Array.isArray(draft.regParticipantUserIds) && draft.regParticipantUserIds.length === size) {
+          setRegParticipantUserIds(draft.regParticipantUserIds)
+        } else {
+          setRegParticipantUserIds(initialUserIds)
+        }
+
+        if (Array.isArray(draft.regParticipantStreams) && draft.regParticipantStreams.length === size) {
+          setRegParticipantStreams(draft.regParticipantStreams)
+        } else {
+          setRegParticipantStreams(initialStreams)
+        }
+
+        if (Array.isArray(draft.regParticipantGameIds) && draft.regParticipantGameIds.length === size) {
+          setRegParticipantGameIds(draft.regParticipantGameIds)
+        } else {
+          setRegParticipantGameIds(initialGameIds)
+        }
+
+        if (Array.isArray(draft.regParticipantGameUsernames) && draft.regParticipantGameUsernames.length === size) {
+          setRegParticipantGameUsernames(draft.regParticipantGameUsernames)
+        } else {
+          setRegParticipantGameUsernames(initialGameUsernames)
+        }
+      } else {
+        setRegParticipants(initialParticipants)
+        setRegParticipantUserIds(initialUserIds)
+        setRegParticipantStreams(initialStreams)
+        setRegParticipantGameIds(initialGameIds)
+        setRegParticipantGameUsernames(initialGameUsernames)
+        setRegTeamName('')
+        setRegStreamUrl(initialStreams[0] || '')
+        setRegPassword('')
+      }
+    } catch (e) {
+      setRegParticipants(initialParticipants)
+      setRegParticipantUserIds(initialUserIds)
+      setRegParticipantStreams(initialStreams)
+      setRegParticipantGameIds(initialGameIds)
+      setRegParticipantGameUsernames(initialGameUsernames)
+      setRegTeamName('')
+      setRegStreamUrl(initialStreams[0] || '')
+      setRegPassword('')
+    }
 
     try {
       const friendsRes = await getFriendsList()
@@ -577,6 +664,9 @@ export function LeaderboardClient({
         toast.error(res.error)
       } else {
         toast.success('¡Inscripción completada con éxito!')
+        try {
+          sessionStorage.removeItem('kronix_reg_draft_' + tournamentId)
+        } catch (e) {}
         setIsUserRegistered(true)
         setIsRegistering(false)
         router.refresh()
@@ -638,6 +728,77 @@ export function LeaderboardClient({
   const [activeTab, setActiveTab] = useState<'ranking' | 'participants' | 'matches' | 'rules' | 'statistics' | 'evidences' | 'bets'>('ranking')
   // Bets state
   const [localBalance, setLocalBalance] = useState(initialBalance)
+
+  // Render PayPal Smart Buttons for embedded registration payment
+  useEffect(() => {
+    if (!showRegPayModal || !paypalSdkLoaded || !(window as any).paypal) return
+
+    const container = document.getElementById('paypal-reg-modal-container')
+    if (container) container.innerHTML = ''
+
+    const neededUsd = Math.max(1, parseFloat((entryFee - (localBalance / (exchangeRate || 58.25))).toFixed(2)))
+
+    try {
+      ;(window as any).paypal.Buttons({
+        style: {
+          layout: 'vertical',
+          color: 'gold',
+          shape: 'rect',
+          label: 'pay',
+          height: 48,
+          tagline: false,
+          borderRadius: 12
+        },
+        createOrder: async () => {
+          try {
+            const res = await fetch('/api/paypal/create-order', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ amount: neededUsd })
+            })
+            const data = await res.json()
+            if (data.error) {
+              toast.error(data.error)
+              throw new Error(data.error)
+            }
+            return data.id
+          } catch (err: any) {
+            toast.error('Error al iniciar orden en PayPal: ' + (err.message || ''))
+            throw err
+          }
+        },
+        onApprove: async (data: any) => {
+          setIsRegPaying(true)
+          try {
+            const res = await fetch('/api/paypal/capture-order', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orderID: data.orderID })
+            })
+            const capture = await res.json()
+            if (capture.error) {
+              toast.error(`Error al capturar el pago: ${capture.error}`)
+            } else if (capture.success) {
+              const newBal = capture.balance !== undefined ? capture.balance : (localBalance + (capture.dopAmount || 0))
+              setLocalBalance(newBal)
+              setShowRegPayModal(false)
+              toast.success(`¡Pago completado con éxito! Se acreditaron ${capture.dopAmount || Math.round(neededUsd * (exchangeRate || 58.25))} K-Coins.`)
+            }
+          } catch (err: any) {
+            toast.error('Error al acreditar pago: ' + (err.message || ''))
+          } finally {
+            setIsRegPaying(false)
+          }
+        },
+        onError: (err: any) => {
+          console.error('PayPal reg error:', err)
+          toast.error('Hubo un error con la pasarela de PayPal')
+        }
+      }).render('#paypal-reg-modal-container')
+    } catch (err) {
+      console.error('Error rendering PayPal in reg modal:', err)
+    }
+  }, [showRegPayModal, paypalSdkLoaded, entryFee, localBalance, exchangeRate])
   const [localUserBets, setLocalUserBets] = useState<any[]>(userBets)
   const [betsLoading, setBetsLoading] = useState(false)
   const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null)
@@ -3318,16 +3479,17 @@ export function LeaderboardClient({
                       </div>
 
                       {isLoggedIn && localBalance < (entryFee * (exchangeRate || 58.25)) && (
-                        <div className="mt-1 p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex flex-col gap-2.5">
-                          <p className="text-[11px] text-red-400 font-semibold text-left">
-                            ⚠️ Tu Saldo: <strong>{localBalance.toFixed(2)} K-Coins</strong> (Faltan {((entryFee * (exchangeRate || 58.25)) - localBalance).toFixed(2)} K-Coins para pagar la inscripción)
+                        <div className="mt-1 p-3.5 rounded-xl bg-yellow-500/10 border border-yellow-500/25 flex flex-col gap-2.5 shadow-[0_0_15px_rgba(234,179,8,0.1)]">
+                          <p className="text-[11px] text-yellow-300 font-semibold text-left">
+                            ⚠️ Tu Saldo: <strong>{localBalance.toFixed(2)} K-Coins</strong> (Faltan {Math.max(0, (entryFee * (exchangeRate || 58.25)) - localBalance).toFixed(2)} K-Coins para pagar la inscripción)
                           </p>
-                          <Link
-                            href={`/wallet?amount=${Math.max(1, parseFloat((entryFee - (localBalance / (exchangeRate || 58.25))).toFixed(2)))}&redirect=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.pathname}?openRegister=true` : '')}`}
-                            className="text-center px-4 py-2.5 bg-gradient-to-r from-yellow-400 to-amber-500 hover:opacity-90 active:scale-[0.98] text-black text-xs font-black uppercase rounded-xl transition-all shadow-[0_0_15px_rgba(234,179,8,0.3)] flex items-center justify-center gap-2"
+                          <button
+                            type="button"
+                            onClick={() => setShowRegPayModal(true)}
+                            className="w-full py-2.5 px-4 bg-gradient-to-r from-yellow-400 to-amber-500 hover:opacity-95 active:scale-[0.98] text-black text-xs font-black uppercase rounded-xl transition-all shadow-[0_0_15px_rgba(234,179,8,0.3)] flex items-center justify-center gap-2 font-orbitron"
                           >
-                            <span>💳 Pagar Cuota de Inscripción con PayPal / Tarjeta</span>
-                          </Link>
+                            <span>💳 Pagar Cuota de Inscripción (${Math.max(1, parseFloat((entryFee - (localBalance / (exchangeRate || 58.25))).toFixed(2)))} USD)</span>
+                          </button>
                         </div>
                       )}
                     </div>
@@ -3336,17 +3498,18 @@ export function LeaderboardClient({
                   </div>
                   <div className="flex gap-3 p-6 pt-4 border-t border-white/5 bg-white/[0.01]">
                     {entryFee > 0 && isLoggedIn && localBalance < (entryFee * (exchangeRate || 58.25)) ? (
-                      <Link
-                        href={`/wallet?amount=${Math.max(1, parseFloat((entryFee - (localBalance / (exchangeRate || 58.25))).toFixed(2)))}&redirect=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.pathname}?openRegister=true` : '')}`}
-                        className="flex-1 py-3 bg-gradient-to-r from-yellow-400 to-amber-500 hover:opacity-90 active:scale-95 text-black font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(234,179,8,0.25)] flex items-center justify-center gap-2 text-center"
+                      <button
+                        type="button"
+                        onClick={() => setShowRegPayModal(true)}
+                        className="flex-1 py-3 bg-gradient-to-r from-yellow-400 to-amber-500 hover:opacity-90 active:scale-95 text-black font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(234,179,8,0.25)] flex items-center justify-center gap-2 text-center font-orbitron"
                       >
-                        <span>💳 Recargar Saldo para Inscribirse</span>
-                      </Link>
+                        <span>💳 Pagar Cuota para Inscribirse</span>
+                      </button>
                     ) : (
                       <button
                         type="submit"
                         disabled={regLoading}
-                        className="flex-1 py-3 bg-neon-cyan hover:bg-neon-cyan/95 active:scale-95 text-black font-bold text-sm uppercase tracking-wider rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(0,245,255,0.15)]"
+                        className="flex-1 py-3 bg-neon-cyan hover:bg-neon-cyan/95 active:scale-95 text-black font-bold text-sm uppercase tracking-wider rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(0,245,255,0.15)] font-orbitron"
                       >
                         {regLoading ? 'Procesando Inscripción...' : 'Enviar Inscripción'}
                       </button>
@@ -3363,7 +3526,95 @@ export function LeaderboardClient({
               </motion.div>
             </motion.div>
           )}
+
+          {/* Modal Embebido de Pago Directo PayPal */}
+          {showRegPayModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl"
+              onClick={() => { if (!isRegPaying) setShowRegPayModal(false) }}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                className="bg-[#0e0e12] border border-white/15 rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.9)] w-full max-w-2xl flex flex-col md:flex-row max-h-[90vh] my-4 relative"
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Left Col: Order Summary */}
+                <div className="md:w-5/12 bg-[#08080a] p-6 border-b md:border-b-0 md:border-r border-white/5 flex flex-col justify-between">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🛡️</span>
+                      <h3 className="font-orbitron font-black text-sm text-white uppercase tracking-wider">Pago Seguro</h3>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 space-y-2.5">
+                      <div>
+                        <p className="text-[9px] text-white/40 uppercase tracking-widest font-bold">Torneo</p>
+                        <p className="text-xs font-bold text-white leading-tight mt-0.5">{tournamentName}</p>
+                      </div>
+                      <div className="pt-2 border-t border-white/5 flex justify-between items-center text-xs">
+                        <span className="text-white/50">Monto:</span>
+                        <span className="font-orbitron font-black text-neon-cyan">${Math.max(1, parseFloat((entryFee - (localBalance / (exchangeRate || 58.25))).toFixed(2))).toFixed(2)} USD</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-white/50">Recibirás:</span>
+                        <span className="font-orbitron font-bold text-yellow-400">🪙 {Math.round(Math.max(1, parseFloat((entryFee - (localBalance / (exchangeRate || 58.25))).toFixed(2))) * (exchangeRate || 58.25))} K-Coins</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 text-[10px] text-white/40 space-y-1">
+                    <p className="flex items-center gap-1.5"><span>🔒</span> Cifrado SSL 256-bit</p>
+                    <p className="flex items-center gap-1.5"><span>⚡</span> Acreditación instantánea</p>
+                    <p className="flex items-center gap-1.5"><span>🎮</span> Retorno automático a tu inscripción</p>
+                  </div>
+                </div>
+
+                {/* Right Col: PayPal & Card Buttons */}
+                <div className="flex-1 p-6 bg-[#0c0c10] flex flex-col justify-between space-y-4">
+                  <div className="flex justify-between items-center">
+                    <p className="text-xs font-orbitron font-bold text-white uppercase tracking-wider">Elige tu método de pago</p>
+                    <button
+                      disabled={isRegPaying}
+                      onClick={() => setShowRegPayModal(false)}
+                      className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition-all text-xs disabled:opacity-30"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className="flex-1 flex flex-col justify-center min-h-[220px]">
+                    {isRegPaying ? (
+                      <div className="py-12 flex flex-col items-center justify-center space-y-3">
+                        <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin" />
+                        <p className="text-xs text-white/60 font-semibold">Procesando pago y acreditando K-Coins...</p>
+                      </div>
+                    ) : (
+                      <div id="paypal-reg-modal-container" className="w-full space-y-2">
+                        {/* PayPal Smart Payment Buttons */}
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="text-[10px] text-center text-white/30">
+                    🔒 Desarrollado y procesado de forma segura por PayPal
+                  </p>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
         </AnimatePresence>
+
+        {/* Script for PayPal SDK in Leaderboard */}
+        <Script
+          src={`https://www.paypal.com/sdk/js?client-id=${process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID}&currency=USD&enable-funding=card,paylater,venmo`}
+          onLoad={() => setPaypalSdkLoaded(true)}
+          onError={() => console.error('Failed to load PayPal SDK in Leaderboard')}
+        />
     </>
   )
 }
