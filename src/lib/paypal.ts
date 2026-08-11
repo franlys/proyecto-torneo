@@ -134,7 +134,7 @@ export async function sendPayPalPayout(email: string, amount: number) {
 
 export async function refundPayPalPayment(captureId: string, amount?: number, currency: string = 'USD') {
   const token = await getPayPalAccessToken()
-  const apiUrl = process.env.PAYPAL_API_URL || 'https://api-m.sandbox.paypal.com'
+  const apiUrl = getPayPalApiUrl()
 
   const payload: any = {}
   if (amount) {

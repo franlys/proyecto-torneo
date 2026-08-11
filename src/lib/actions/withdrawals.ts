@@ -169,9 +169,16 @@ export async function requestWithdrawalAction(
         .update({ balance: currentBalance })
         .eq('id', user.id)
 
+      let userFriendlyDetail = errorMsg
+      if (errorMsg.includes('AUTHORIZATION_ERROR')) {
+        userFriendlyDetail = 'La función de envíos automáticos (PayPal Payouts) no está activada en tu App de PayPal Live. Actívala en developer.paypal.com en las características de tu App.'
+      } else if (errorMsg.includes('INSUFFICIENT_FUNDS')) {
+        userFriendlyDetail = 'Fondos insuficientes en el balance de PayPal de la plataforma.'
+      }
+
       return {
         success: false,
-        error: `El retiro automático de PayPal falló. Tu saldo ha sido restablecido. Detalles: ${errorMsg}`
+        error: `El retiro automático falló. Tu saldo ha sido restablecido de forma segura. Motivo: ${userFriendlyDetail}`
       }
     }
   } catch (err: any) {
