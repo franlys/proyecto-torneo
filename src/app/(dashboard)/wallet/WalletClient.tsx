@@ -5,6 +5,7 @@ import Script from 'next/script'
 import { Landmark, ArrowUpRight, ArrowDownLeft, History, Loader2, CheckCircle, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { requestWithdrawalAction } from '@/lib/actions/withdrawals'
+import { calculatePayPalGrossAmount } from '@/lib/services/paypal-fee'
 
 interface WalletClientProps {
   initialBalance: number
@@ -276,16 +277,30 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                   </div>
                 </div>
 
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 space-y-2">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-white/40">Monto a Recargar:</span>
-                    <span className="font-bold text-white">${(amount || 0).toFixed(2)} USD</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs border-t border-white/[0.04] pt-2">
-                    <span className="text-white/40">K-Coins a recibir (×{exchangeRate.toFixed(2)}):</span>
-                    <span className="font-orbitron font-black text-yellow-400">🪙 {((amount || 0) * exchangeRate).toFixed(2)}</span>
-                  </div>
-                </div>
+                {(() => {
+                  const netVal = amount || 0
+                  const { grossAmount, fee } = calculatePayPalGrossAmount(netVal)
+                  return (
+                    <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 space-y-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-white/40">Monto de Recarga:</span>
+                        <span className="font-bold text-white">${netVal.toFixed(2)} USD</span>
+                      </div>
+                      <div className="flex justify-between items-center text-[11px]">
+                        <span className="text-white/40">Tarifa Pasarela (PayPal):</span>
+                        <span className="text-white/60">+${fee.toFixed(2)} USD</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs border-t border-white/[0.04] pt-2">
+                        <span className="text-white/70 font-semibold">Total a Cobrar:</span>
+                        <span className="font-orbitron font-black text-neon-cyan">${grossAmount.toFixed(2)} USD</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs border-t border-white/[0.04] pt-2">
+                        <span className="text-white/40">K-Coins a recibir (×{exchangeRate.toFixed(2)}):</span>
+                        <span className="font-orbitron font-black text-yellow-400">🪙 {(netVal * exchangeRate).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 <div className="flex justify-end">
                   <button
@@ -354,26 +369,42 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
 
                   {/* LEFT PANEL — K-Coins Summary */}
                   <div className="sm:w-64 sm:flex-shrink-0 p-6 sm:border-r border-b sm:border-b-0 border-white/[0.06] space-y-5 bg-white/[0.01] overflow-y-auto">
-                    <div>
-                      <p className="text-[10px] text-white/25 uppercase tracking-widest font-semibold mb-3">Resumen del pedido</p>
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center gap-2">
-                          <span className="text-xs text-white/50">Recarga de K-Coins</span>
-                          <span className="text-xs font-bold text-white whitespace-nowrap">${(amount || 0).toFixed(2)} USD</span>
-                        </div>
-                      </div>
-                    </div>
+                    {(() => {
+                      const netVal = amount || 0
+                      const { grossAmount, fee } = calculatePayPalGrossAmount(netVal)
+                      return (
+                        <>
+                          <div>
+                            <p className="text-[10px] text-white/25 uppercase tracking-widest font-semibold mb-3">Resumen del pedido</p>
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center gap-2">
+                                <span className="text-xs text-white/50">Recarga de K-Coins</span>
+                                <span className="text-xs font-bold text-white whitespace-nowrap">${netVal.toFixed(2)} USD</span>
+                              </div>
+                              <div className="flex justify-between items-center gap-2 text-[11px]">
+                                <span className="text-white/40">Tarifa Pasarela (PayPal)</span>
+                                <span className="text-white/60 whitespace-nowrap">+${fee.toFixed(2)} USD</span>
+                              </div>
+                              <div className="flex justify-between items-center gap-2 border-t border-white/[0.06] pt-1.5 font-bold">
+                                <span className="text-xs text-white/80">Total a Pagar</span>
+                                <span className="text-xs font-orbitron text-neon-cyan whitespace-nowrap">${grossAmount.toFixed(2)} USD</span>
+                              </div>
+                            </div>
+                          </div>
 
-                    <div className="border-t border-white/[0.06] pt-4">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-[10px] text-white/30 uppercase tracking-widest">Recibirás</span>
-                      </div>
-                      <div className="flex items-baseline gap-1">
-                        <span className="font-orbitron font-black text-yellow-400 text-2xl">{((amount || 0) * exchangeRate).toFixed(0)}</span>
-                        <span className="text-xs text-white/30">K-Coins</span>
-                      </div>
-                      <p className="text-[9px] text-white/20 mt-1">1 USD = {exchangeRate.toFixed(2)} K-Coins</p>
-                    </div>
+                          <div className="border-t border-white/[0.06] pt-4">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-[10px] text-white/30 uppercase tracking-widest">Recibirás</span>
+                            </div>
+                            <div className="flex items-baseline gap-1">
+                              <span className="font-orbitron font-black text-yellow-400 text-2xl">{(netVal * exchangeRate).toFixed(0)}</span>
+                              <span className="text-xs text-white/30">K-Coins</span>
+                            </div>
+                            <p className="text-[9px] text-white/20 mt-1">1 USD = {exchangeRate.toFixed(2)} K-Coins</p>
+                          </div>
+                        </>
+                      )
+                    })()}
 
                     {/* Trust badges */}
                     <div className="border-t border-white/[0.06] pt-4 space-y-2">

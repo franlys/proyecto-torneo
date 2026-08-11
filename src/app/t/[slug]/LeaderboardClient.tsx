@@ -21,6 +21,7 @@ import { getGameAccountForUser, upsertGameAccount, GAME_LABELS } from '@/lib/act
 import { toast } from 'sonner'
 import { NicknameModal } from '@/components/profile/NicknameModal'
 import { placePredictionAction } from '@/lib/actions/predictions'
+import { calculatePayPalGrossAmount } from '@/lib/services/paypal-fee'
 
 const orbitron = Orbitron({ subsets: ['latin'] })
 
@@ -3551,20 +3552,36 @@ export function LeaderboardClient({
                       <h3 className="font-orbitron font-black text-sm text-white uppercase tracking-wider">Pago Seguro</h3>
                     </div>
 
-                    <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 space-y-2.5">
-                      <div>
-                        <p className="text-[9px] text-white/40 uppercase tracking-widest font-bold">Torneo</p>
-                        <p className="text-xs font-bold text-white leading-tight mt-0.5">{tournamentName}</p>
-                      </div>
-                      <div className="pt-2 border-t border-white/5 flex justify-between items-center text-xs">
-                        <span className="text-white/50">Monto:</span>
-                        <span className="font-orbitron font-black text-neon-cyan">${Math.max(1, parseFloat((entryFee - (localBalance / (exchangeRate || 58.25))).toFixed(2))).toFixed(2)} USD</span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-white/50">Recibirás:</span>
-                        <span className="font-orbitron font-bold text-yellow-400">🪙 {Math.round(Math.max(1, parseFloat((entryFee - (localBalance / (exchangeRate || 58.25))).toFixed(2))) * (exchangeRate || 58.25))} K-Coins</span>
-                      </div>
-                    </div>
+                    {(() => {
+                      const netNeeded = Math.max(1, parseFloat((entryFee - (localBalance / (exchangeRate || 58.25))).toFixed(2)))
+                      const { grossAmount, fee } = calculatePayPalGrossAmount(netNeeded)
+                      return (
+                        <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 space-y-2.5">
+                          <div>
+                            <p className="text-[9px] text-white/40 uppercase tracking-widest font-bold">Torneo</p>
+                            <p className="text-xs font-bold text-white leading-tight mt-0.5">{tournamentName}</p>
+                          </div>
+                          <div className="pt-2 border-t border-white/5 space-y-1.5 text-xs">
+                            <div className="flex justify-between items-center">
+                              <span className="text-white/50">Cuota Torneo:</span>
+                              <span className="font-bold text-white">${netNeeded.toFixed(2)} USD</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[11px]">
+                              <span className="text-white/40">Tarifa Pasarela (PayPal):</span>
+                              <span className="text-white/60">+${fee.toFixed(2)} USD</span>
+                            </div>
+                            <div className="flex justify-between items-center pt-1.5 border-t border-white/5 font-bold">
+                              <span className="text-white/80">Total a Pagar:</span>
+                              <span className="font-orbitron font-black text-neon-cyan">${grossAmount.toFixed(2)} USD</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center text-xs pt-1 border-t border-white/5">
+                            <span className="text-white/50">Recibirás:</span>
+                            <span className="font-orbitron font-bold text-yellow-400">🪙 {Math.round(netNeeded * (exchangeRate || 58.25))} K-Coins</span>
+                          </div>
+                        </div>
+                      )
+                    })()}
                   </div>
 
                   <div className="pt-4 text-[10px] text-white/40 space-y-1">

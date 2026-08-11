@@ -39,20 +39,23 @@ export async function POST(req: Request) {
 
     // 3. Extract captured amount from captureData
     const captureAmountVal = captureData.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.value
-    const depositAmount = parseFloat(captureAmountVal || '0')
-    if (isNaN(depositAmount) || depositAmount <= 0) {
+    const grossDepositAmount = parseFloat(captureAmountVal || '0')
+    if (isNaN(grossDepositAmount) || grossDepositAmount <= 0) {
       return NextResponse.json({ error: 'El monto capturado de PayPal no es válido.' }, { status: 400 })
     }
 
+    const { calculateNetFromGross } = await import('@/lib/services/paypal-fee')
+    const netDepositAmount = calculateNetFromGross(grossDepositAmount)
+
     const rate = await getUsdToDopRate()
-    const dopAmount = parseFloat((depositAmount * rate).toFixed(2)) // Converted amount in DOP (K-Coins)
+    const dopAmount = parseFloat((netDepositAmount * rate).toFixed(2)) // Converted amount in DOP (K-Coins)
 
     // 4. Insert COMPLETED deposit directly in database
     const { data: deposit, error: insertDepositErr } = await adminSupabase
       .from('deposits')
       .insert({
         user_id: user.id,
-        amount: depositAmount,
+        amount: netDepositAmount,
         currency: 'USD',
         gateway: 'paypal',
         gateway_tx_id: orderID,
