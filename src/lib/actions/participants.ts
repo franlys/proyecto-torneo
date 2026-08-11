@@ -122,91 +122,128 @@ export async function deleteTeam(
 
   const adminSupabase = await createAdminClient()
 
-  // Si se proporciona una razón, notificar al capitán por correo antes de borrar los registros
-  if (reason) {
+  // Obtener datos del equipo y torneo antes de cualquier acción
+  const { data: teamData } = await adminSupabase
+    .from('teams')
+    .select('name, registration_status, amount_paid')
+    .eq('id', teamId)
+    .single()
+
+  const { data: fullTournament } = await adminSupabase
+    .from('tournaments')
+    .select('name, creator_id, collaborator_id, status')
+    .eq('id', tournamentId)
+    .single()
+
+  const { data: teamMembers } = await adminSupabase
+    .from('participants')
+    .select('display_name, user_id, is_captain')
+    .eq('team_id', teamId)
+
+  const captainPart = (teamMembers || []).find(p => p.is_captain) || (teamMembers || [])[0]
+
+  // Reembolso automático si el torneo aún no ha comenzado (status === 'pending') y hubo pago
+  const refundAmount = Number(teamData?.amount_paid || 0)
+  let refundGiven = false
+
+  if (fullTournament?.status === 'pending' && refundAmount > 0 && captainPart?.user_id) {
     try {
-      const { data: teamData } = await adminSupabase
-        .from('teams')
-        .select('name, registration_status')
-        .eq('id', teamId)
+      const { data: capProfile } = await adminSupabase
+        .from('profiles')
+        .select('balance')
+        .eq('id', captainPart.user_id)
         .single()
 
-      if (teamData) {
-        // Obtener integrantes y capitán del equipo
-        const { data: teamMembers } = await adminSupabase
-          .from('participants')
-          .select('display_name, user_id, is_captain')
-          .eq('team_id', teamId)
+      const currentCapBal = Number(capProfile?.balance || 0)
+      const newCapBal = currentCapBal + refundAmount
 
-        const captainPart = (teamMembers || []).find(p => p.is_captain) || (teamMembers || [])[0]
+      // 1. Devolver saldo al capitán
+      await adminSupabase
+        .from('profiles')
+        .update({ 
+          balance: newCapBal,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', captainPart.user_id)
 
-        let captainEmail = null
-        if (captainPart?.user_id) {
-          try {
-            const { data: authUserData } = await adminSupabase.auth.admin.getUserById(captainPart.user_id)
-            if (authUserData?.user?.email && !authUserData.user.email.endsWith('@manual.kronix.do')) {
-              captainEmail = authUserData.user.email
-            }
-          } catch (authErr) {
-            console.warn('Error fetching auth user email:', authErr)
+      // 2. Registrar transacción contable de devolución
+      await adminSupabase.from('coin_transactions').insert({
+        user_id: captainPart.user_id,
+        amount: refundAmount,
+        type: 'deposit',
+        description: `Reembolso de inscripción por remoción/cancelación antes del torneo: ${fullTournament.name}`,
+        reference_id: tournamentId,
+      })
+
+      refundGiven = true
+    } catch (refundErr) {
+      console.error('Error al emitir reembolso automático de inscripción:', refundErr)
+    }
+  }
+
+  // Notificar al capitán por correo y por la plataforma
+  if (teamData && fullTournament) {
+    try {
+      let captainEmail = null
+      if (captainPart?.user_id) {
+        try {
+          const { data: authUserData } = await adminSupabase.auth.admin.getUserById(captainPart.user_id)
+          if (authUserData?.user?.email && !authUserData.user.email.endsWith('@manual.kronix.do')) {
+            captainEmail = authUserData.user.email
           }
-
-          if (!captainEmail) {
-            const { data: capProfile } = await adminSupabase
-              .from('profiles')
-              .select('email')
-              .eq('id', captainPart.user_id)
-              .maybeSingle()
-            captainEmail = capProfile?.email
-          }
+        } catch (authErr) {
+          console.warn('Error fetching auth user email:', authErr)
         }
 
-        // Obtener torneo completo y perfil del creador
-        const { data: fullTournament } = await adminSupabase
-          .from('tournaments')
-          .select('name, creator_id, collaborator_id')
-          .eq('id', tournamentId)
-          .single()
-
-        if (fullTournament) {
-          const { data: creatorProfile } = await adminSupabase
+        if (!captainEmail) {
+          const { data: capProfile } = await adminSupabase
             .from('profiles')
-            .select('username, email, whatsapp_link, discord_link, role')
-            .eq('id', fullTournament.creator_id)
-            .single()
+            .select('email')
+            .eq('id', captainPart.user_id)
+            .maybeSingle()
+          captainEmail = capProfile?.email
+        }
+      }
 
-          if (creatorProfile && captainEmail) {
-            const { sendTeamRemovedEmail } = await import('@/lib/services/email')
+      const { data: creatorProfile } = await adminSupabase
+        .from('profiles')
+        .select('username, email, whatsapp_link, discord_link, role')
+        .eq('id', fullTournament.creator_id)
+        .single()
 
-            const isKronixOfficial = creatorProfile.role === 'SUPER_ADMIN' || creatorProfile.role === 'ADMIN'
-            const isCollaboration = !isKronixOfficial && !!fullTournament.collaborator_id
+      const refundNotice = refundGiven ? ` Se han devuelto ${refundAmount.toFixed(2)} K-Coins a tu billetera.` : ''
 
-            await sendTeamRemovedEmail({
-              email: captainEmail,
-              captainName: captainPart?.display_name || 'Capitán',
-              teamName: teamData.name,
-              tournamentName: fullTournament.name,
-              reason: reason.trim(),
-              creatorName: creatorProfile.username || 'Organizador',
-              creatorEmail: creatorProfile.email || '',
-              whatsappLink: creatorProfile.whatsapp_link,
-              discordLink: creatorProfile.discord_link,
-              isKronixOfficial,
-              isCollaboration,
-            })
-          }
+      if (creatorProfile && captainEmail) {
+        const { sendTeamRemovedEmail } = await import('@/lib/services/email')
 
-          // Crear notificación interna en la plataforma para todos los miembros del equipo con cuenta
-          for (const member of (teamMembers || [])) {
-            if (member.user_id) {
-              await adminSupabase.from('notifications').insert({
-                user_id: member.user_id,
-                title: `🚫 Expulsión del Torneo: ${fullTournament.name}`,
-                message: `Tu equipo "${teamData.name}" ha sido removido del torneo "${fullTournament.name}". Motivo: ${reason.trim() || 'Sin motivo especificado'}`,
-                is_read: false,
-              })
-            }
-          }
+        const isKronixOfficial = creatorProfile.role === 'SUPER_ADMIN' || creatorProfile.role === 'ADMIN'
+        const isCollaboration = !isKronixOfficial && !!fullTournament.collaborator_id
+
+        await sendTeamRemovedEmail({
+          email: captainEmail,
+          captainName: captainPart?.display_name || 'Capitán',
+          teamName: teamData.name,
+          tournamentName: fullTournament.name,
+          reason: `${(reason || 'Cancelación de inscripción').trim()}.${refundNotice}`,
+          creatorName: creatorProfile.username || 'Organizador',
+          creatorEmail: creatorProfile.email || '',
+          whatsappLink: creatorProfile.whatsapp_link,
+          discordLink: creatorProfile.discord_link,
+          isKronixOfficial,
+          isCollaboration,
+        }).catch(err => console.error('Email removal error:', err))
+      }
+
+      // Crear notificación interna en la plataforma para todos los miembros del equipo con cuenta
+      for (const member of (teamMembers || [])) {
+        if (member.user_id) {
+          const isCap = member.user_id === captainPart?.user_id
+          await adminSupabase.from('notifications').insert({
+            user_id: member.user_id,
+            title: `🚫 Expulsión del Torneo: ${fullTournament.name}`,
+            message: `Tu equipo "${teamData.name}" ha sido removido del torneo "${fullTournament.name}". Motivo: ${(reason || 'Cancelación de inscripción').trim()}.${isCap && refundGiven ? ` Se han reembolsado ${refundAmount.toFixed(2)} K-Coins a tu billetera.` : ''}`,
+            is_read: false,
+          })
         }
       }
     } catch (e) {

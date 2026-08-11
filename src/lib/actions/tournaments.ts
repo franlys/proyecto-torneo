@@ -1656,6 +1656,59 @@ export async function deleteTournament(
 
   // Delete tournament — using admin client to bypass creator-only RLS constraints
   const adminSupabase = await createAdminClient()
+
+  // Si el torneo aún no había empezado (status === 'pending'), reembolsar las cuotas pagadas a cada equipo
+  if (tournament.status === 'pending') {
+    try {
+      const { data: teamsWithPayments } = await adminSupabase
+        .from('teams')
+        .select(`
+          id,
+          name,
+          amount_paid,
+          participants (
+            user_id,
+            is_captain
+          )
+        `)
+        .eq('tournament_id', id)
+
+      for (const t of (teamsWithPayments || [])) {
+        const refundAmount = Number(t.amount_paid || 0)
+        if (refundAmount > 0) {
+          const cap = (t.participants || []).find((p: any) => p.is_captain) || (t.participants || [])[0]
+          if (cap?.user_id) {
+            const { data: capProfile } = await adminSupabase
+              .from('profiles')
+              .select('balance')
+              .eq('id', cap.user_id)
+              .single()
+
+            const newBal = Number(capProfile?.balance || 0) + refundAmount
+            await adminSupabase.from('profiles').update({ balance: newBal }).eq('id', cap.user_id)
+
+            await adminSupabase.from('coin_transactions').insert({
+              user_id: cap.user_id,
+              amount: refundAmount,
+              type: 'deposit',
+              description: `Reembolso de inscripción por cancelación del torneo: ${tournament.name}`,
+              reference_id: id,
+            })
+
+            await adminSupabase.from('notifications').insert({
+              user_id: cap.user_id,
+              title: `🚫 Torneo Cancelado: ${tournament.name}`,
+              message: `El torneo "${tournament.name}" ha sido cancelado antes de comenzar. Se han reembolsado ${refundAmount.toFixed(2)} K-Coins a tu billetera.`,
+              is_read: false,
+            })
+          }
+        }
+      }
+    } catch (refundBatchErr) {
+      console.error('Error procesando reembolsos por cancelación de torneo:', refundBatchErr)
+    }
+  }
+
   const { error: deleteErr } = await adminSupabase
     .from('tournaments')
     .delete()

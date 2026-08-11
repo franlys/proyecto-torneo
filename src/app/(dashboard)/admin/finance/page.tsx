@@ -55,13 +55,39 @@ export default async function AdminFinancePage() {
     .select('amount, created_at')
     .eq('status', 'completed')
 
-  // 7. Calculate calculations
+  // 7. Fetch User Bets (Apuestas)
+  const { data: userBets } = await adminSupabase
+    .from('user_bets')
+    .select('id, amount, odds, potential_payout, status, created_at')
+
+  // 8. Fetch Subscription Requests (Membresías VIP)
+  const { data: approvedSubs } = await adminSupabase
+    .from('subscription_requests')
+    .select('id, amount, created_at')
+    .eq('status', 'APPROVED')
+
+  // 9. Fetch Live Coin Transactions (Libro Diario Contable)
+  const { data: coinTransactions } = await adminSupabase
+    .from('coin_transactions')
+    .select('id, user_id, amount, type, description, reference_id, created_at, profiles:user_id(username, email)')
+    .order('created_at', { ascending: false })
+    .limit(300)
+
+  // 10. Calculations
   let tourneyNetRevenue = 0
+  let tourneyTotalRevenue = 0
+  let tourneyTotalPrizes = 0
+
   if (tournamentFinancials) {
     tournamentFinancials.forEach((f: any) => {
+      const rev = Number(f.total_revenue || 0)
+      const prizes = Number(f.total_prizes || 0)
       const remainder = Number(f.remainder || 0)
       const orgPayout = Number(f.organizer_payout || 0)
       const strPayout = Number(f.streamer_payout || 0)
+      
+      tourneyTotalRevenue += rev
+      tourneyTotalPrizes += prizes
       tourneyNetRevenue += (remainder - orgPayout - strPayout)
     })
   }
@@ -79,25 +105,42 @@ export default async function AdminFinancePage() {
     ? profiles.reduce((sum: number, p: any) => sum + parseFloat(p.balance || '0.00'), 0)
     : 0
 
+  // Bet calculations
+  const totalBetVolume = (userBets || []).reduce((acc, b) => acc + Number(b.amount || 0), 0)
+  const totalBetWonPayouts = (userBets || []).filter(b => b.status === 'won').reduce((acc, b) => acc + Number(b.potential_payout || 0), 0)
+  const betsResolvedVolume = (userBets || []).filter(b => b.status === 'won' || b.status === 'lost').reduce((acc, b) => acc + Number(b.amount || 0), 0)
+  const betsHouseNet = betsResolvedVolume - totalBetWonPayouts
+
+  // Subscriptions total
+  const totalVipRevenueUSD = (approvedSubs || []).reduce((acc, s) => acc + Number(s.amount || 0), 0)
+
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
       {/* Header */}
       <header className="text-left">
         <h1 className={`${orbitron.className} text-4xl font-black uppercase tracking-tighter mb-2`}>
-          Auditoría <span className="text-neon-cyan">Financiera</span>
+          Centro de Control <span className="text-neon-cyan">Financiero</span>
         </h1>
-        <p className="text-white/40 text-lg">
-          Supervisa ingresos, moneda en circulación y retiros de PayPal Payouts de la plataforma.
+        <p className="text-white/40 text-sm">
+          Monitorea todas las entradas, salidas, recaudación por torneos, apuestas, rifas y libro mayor contable en tiempo real.
         </p>
       </header>
 
       <FinanceClient
         tourneyNetRevenue={tourneyNetRevenue}
+        tourneyTotalRevenue={tourneyTotalRevenue}
+        tourneyTotalPrizes={tourneyTotalPrizes}
         raffleNetRevenue={raffleNetRevenue}
         totalCirculatingCoins={totalCirculatingCoins}
         withdrawals={withdrawals || []}
         completedDeposits={completedDeposits || []}
         tournamentFinancials={tournamentFinancials || []}
+        userBets={userBets || []}
+        totalBetVolume={totalBetVolume}
+        totalBetWonPayouts={totalBetWonPayouts}
+        betsHouseNet={betsHouseNet}
+        totalVipRevenueUSD={totalVipRevenueUSD}
+        coinTransactions={coinTransactions || []}
       />
     </div>
   )
