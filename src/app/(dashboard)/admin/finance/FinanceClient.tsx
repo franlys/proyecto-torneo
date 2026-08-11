@@ -300,12 +300,13 @@ export function FinanceClient({
                 <th className="py-3 px-4">Fecha</th>
                 <th className="py-3 px-4">Estado</th>
                 <th className="py-3 px-4">Detalle / Error</th>
+                <th className="py-3 px-4 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {filteredWithdrawals.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-white/30">
+                  <td colSpan={8} className="text-center py-8 text-white/30">
                     No se encontraron registros de retiros para este filtro.
                   </td>
                 </tr>
@@ -321,8 +322,56 @@ export function FinanceClient({
                     <td className="py-3.5 px-4 font-bold text-white">${Number(w.usd_amount).toFixed(2)} USD</td>
                     <td className="py-3.5 px-4 text-white/40">{formatDate(w.created_at)}</td>
                     <td className="py-3.5 px-4">{getStatusBadge(w.status)}</td>
-                    <td className="py-3.5 px-4 text-red-400/80 font-mono text-[10px] max-w-[200px] truncate" title={w.error_message || ''}>
+                    <td className="py-3.5 px-4 text-white/60 text-[10px] max-w-[180px] truncate" title={w.error_message || ''}>
                       {w.error_message || '-'}
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      {w.status === 'pending' ? (
+                        <div className="flex items-center justify-end gap-1.5">
+                          <a
+                            href="https://www.paypal.com/myaccount/transfer/homepage/buy/preview"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2.5 py-1 bg-[#0070ba]/20 hover:bg-[#0070ba]/40 border border-[#0070ba]/40 text-[#009cde] rounded-lg text-[10px] font-bold transition-all flex items-center gap-1"
+                            title={`Enviar $${w.usd_amount} USD a ${w.paypal_email}`}
+                          >
+                            <span>PayPal ↗</span>
+                          </a>
+                          <button
+                            onClick={async () => {
+                              if (!confirm(`¿Confirmas que ya enviaste $${w.usd_amount} USD a ${w.paypal_email} o deseas aprobar este retiro?`)) return
+                              const { approveWithdrawalAction } = await import('@/lib/actions/withdrawals')
+                              const res = await approveWithdrawalAction(w.id)
+                              if (res?.error) alert(res.error)
+                              else {
+                                alert('¡Retiro completado y notificado al usuario!')
+                                window.location.reload()
+                              }
+                            }}
+                            className="px-2.5 py-1 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-400 rounded-lg text-[10px] font-bold transition-all"
+                          >
+                            Aprobar ✅
+                          </button>
+                          <button
+                            onClick={async () => {
+                              const reason = prompt('Motivo del rechazo / devolución:')
+                              if (!reason) return
+                              const { rejectWithdrawalAction } = await import('@/lib/actions/withdrawals')
+                              const res = await rejectWithdrawalAction(w.id, reason)
+                              if (res?.error) alert(res.error)
+                              else {
+                                alert('Retiro rechazado. Los K-Coins han sido reembolsados al usuario.')
+                                window.location.reload()
+                              }
+                            }}
+                            className="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 rounded-lg text-[10px] font-bold transition-all"
+                          >
+                            Rechazar ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-white/20 uppercase font-bold">-</span>
+                      )}
                     </td>
                   </tr>
                 ))

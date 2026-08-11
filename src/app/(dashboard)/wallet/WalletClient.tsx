@@ -73,7 +73,7 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
         setWithdrawError(res.error)
       } else {
         setWithdrawSuccess(true)
-        alert('¡Retiro procesado y enviado con éxito a tu cuenta de PayPal!')
+        alert('¡Solicitud de retiro recibida con éxito! Tu retiro ha sido registrado y está en proceso de envío a tu correo de PayPal.')
         window.location.reload()
       }
     } catch (err: any) {

@@ -151,37 +151,169 @@ export async function requestWithdrawalAction(
       return { success: true, newBalance: temporaryBalance }
 
     } catch (payoutErr: any) {
-      console.error('PayPal Payout processing failed:', payoutErr)
+      console.warn('PayPal Automated Payout failed, keeping as pending for admin processing:', payoutErr)
       const errorMsg = payoutErr.message || 'Error en la API de PayPal'
 
-      // Mark withdrawal as failed
+      // Registrar la transacción de descuento para mantener los K-Coins reservados
+      let txType = 'withdrawal'
+      try {
+        const { error: txErr } = await adminSupabase
+          .from('coin_transactions')
+          .insert({
+            user_id: user.id,
+            amount: -parsedAmount,
+            type: txType,
+            reference_id: withdrawal.id
+          })
+        if (txErr) {
+          await adminSupabase.from('coin_transactions').insert({
+            user_id: user.id,
+            amount: -parsedAmount,
+            type: 'bet_placed',
+            reference_id: withdrawal.id
+          })
+        }
+      } catch (err) {
+        await adminSupabase.from('coin_transactions').insert({
+          user_id: user.id,
+          amount: -parsedAmount,
+          type: 'bet_placed',
+          reference_id: withdrawal.id
+        })
+      }
+
+      // Dejar la solicitud en estado 'pending' para envío manual por el administrador
       await adminSupabase
         .from('withdrawals')
         .update({
-          status: 'failed',
-          error_message: errorMsg
+          status: 'pending',
+          error_message: 'Pendiente de envío manual por el administrador'
         })
         .eq('id', withdrawal.id)
 
-      // Revert balance to original amount
-      await adminSupabase
-        .from('profiles')
-        .update({ balance: currentBalance })
-        .eq('id', user.id)
-
-      let userFriendlyDetail = errorMsg
-      if (errorMsg.includes('AUTHORIZATION_ERROR')) {
-        userFriendlyDetail = 'La función de envíos automáticos (PayPal Payouts) no está activada en tu App de PayPal Live. Actívala en developer.paypal.com en las características de tu App.'
-      } else if (errorMsg.includes('INSUFFICIENT_FUNDS')) {
-        userFriendlyDetail = 'Fondos insuficientes en el balance de PayPal de la plataforma.'
+      if (user.email) {
+        await sendTransactionReceiptEmail({
+          email: user.email,
+          username: profile.username || 'Usuario',
+          amount: -parsedAmount,
+          type: 'withdrawal',
+          referenceId: withdrawal.id,
+          balanceBefore: currentBalance,
+          balanceAfter: temporaryBalance,
+          description: `Solicitud de retiro de $${usdAmount} USD recibida. En proceso de envío a ${paypalEmail}.`
+        }).catch(err => console.error('Receipt error:', err))
       }
 
-      return {
-        success: false,
-        error: `El retiro automático falló. Tu saldo ha sido restablecido de forma segura. Motivo: ${userFriendlyDetail}`
+      revalidatePath('/wallet')
+      return { 
+        success: true, 
+        newBalance: temporaryBalance,
+        error: undefined
       }
     }
   } catch (err: any) {
     return { success: false, error: err.message || 'Ocurrió un error inesperado al procesar el retiro.' }
+  }
+}
+
+export async function approveWithdrawalAction(withdrawalId: string) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autorizado' }
+
+    const adminSupabase = await createAdminClient()
+    const { data: adminProf } = await adminSupabase.from('profiles').select('role').eq('id', user.id).single()
+    if (adminProf?.role !== 'admin') return { error: 'Permisos insuficientes' }
+
+    const { data: withdrawal, error: fetchErr } = await adminSupabase
+      .from('withdrawals')
+      .select('*, profiles:user_id(username, email)')
+      .eq('id', withdrawalId)
+      .single()
+
+    if (fetchErr || !withdrawal) return { error: 'Retiro no encontrado' }
+    if (withdrawal.status === 'completed') return { error: 'El retiro ya fue completado' }
+
+    // Actualizar estado a completado
+    await adminSupabase
+      .from('withdrawals')
+      .update({
+        status: 'completed',
+        error_message: null
+      })
+      .eq('id', withdrawalId)
+
+    // Notificar al usuario por email
+    if (withdrawal.profiles?.email) {
+      await sendTransactionReceiptEmail({
+        email: withdrawal.profiles.email,
+        username: withdrawal.profiles.username || 'Usuario',
+        amount: -Number(withdrawal.amount),
+        type: 'withdrawal',
+        referenceId: withdrawal.id,
+        balanceBefore: 0,
+        balanceAfter: 0,
+        description: `Tu retiro de $${withdrawal.usd_amount} USD a PayPal (${withdrawal.paypal_email}) ha sido completado con éxito.`
+      }).catch(() => {})
+    }
+
+    revalidatePath('/admin/finance')
+    revalidatePath('/wallet')
+    return { success: true }
+  } catch (err: any) {
+    return { error: err.message || 'Error al aprobar el retiro' }
+  }
+}
+
+export async function rejectWithdrawalAction(withdrawalId: string, reason?: string) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autorizado' }
+
+    const adminSupabase = await createAdminClient()
+    const { data: adminProf } = await adminSupabase.from('profiles').select('role').eq('id', user.id).single()
+    if (adminProf?.role !== 'admin') return { error: 'Permisos insuficientes' }
+
+    const { data: withdrawal, error: fetchErr } = await adminSupabase
+      .from('withdrawals')
+      .select('*')
+      .eq('id', withdrawalId)
+      .single()
+
+    if (fetchErr || !withdrawal) return { error: 'Retiro no encontrado' }
+    if (withdrawal.status === 'completed') return { error: 'No se puede rechazar un retiro ya completado' }
+
+    // 1. Reembolsar saldo de K-Coins al usuario
+    const { data: profile } = await adminSupabase.from('profiles').select('balance').eq('id', withdrawal.user_id).single()
+    const currentBal = Number(profile?.balance || 0)
+    const refundAmount = Number(withdrawal.amount)
+    const newBal = currentBal + refundAmount
+
+    await adminSupabase.from('profiles').update({ balance: newBal }).eq('id', withdrawal.user_id)
+
+    // 2. Registrar transacción de reembolso
+    await adminSupabase.from('coin_transactions').insert({
+      user_id: withdrawal.user_id,
+      amount: refundAmount,
+      type: 'deposit',
+      reference_id: withdrawal.id
+    })
+
+    // 3. Marcar retiro como fallido/rechazado
+    await adminSupabase
+      .from('withdrawals')
+      .update({
+        status: 'failed',
+        error_message: reason || 'Retiro rechazado por el administrador. Fondos reembolsados a tu billetera.'
+      })
+      .eq('id', withdrawalId)
+
+    revalidatePath('/admin/finance')
+    revalidatePath('/wallet')
+    return { success: true }
+  } catch (err: any) {
+    return { error: err.message || 'Error al rechazar el retiro' }
   }
 }
