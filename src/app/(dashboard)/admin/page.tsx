@@ -6,6 +6,7 @@ import { SendRemindersButton } from './SendRemindersButton'
 import { RankingManager } from './RankingManager'
 import { AdminErrorCard } from '@/components/ui/AdminErrorCard'
 import { PendingTicketsPanel } from './PendingTicketsPanel'
+import { PendingWithdrawalsPanel } from './PendingWithdrawalsPanel'
 
 export default async function AdminPage() {
   const admin = await isAdmin()
@@ -23,6 +24,7 @@ export default async function AdminPage() {
       { data: allTournaments },
       { data: activeRafflesData },
       { data: pendingTicketsData },
+      { data: pendingWithdrawalsData },
     ] = await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('tournaments').select('*', { count: 'exact', head: true }),
@@ -46,6 +48,11 @@ export default async function AdminPage() {
         .from('tickets')
         .select('id, ticket_number, buyer_name, buyer_email, buyer_phone, receipt_url, created_at, raffle_id, raffle:raffles(title)')
         .eq('payment_status', 'pending_verification')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('withdrawals')
+        .select('*, profiles:user_id(username, email)')
+        .eq('status', 'pending')
         .order('created_at', { ascending: false }),
     ])
 
@@ -150,6 +157,17 @@ export default async function AdminPage() {
             </Link>
           )}
           <Link
+            href="/admin/finance"
+            className="px-4 py-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm rounded-lg hover:bg-amber-500/20 transition-colors flex items-center gap-2"
+          >
+            <span>💸 Finanzas & Retiros</span>
+            {pendingWithdrawalsData && pendingWithdrawalsData.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-black text-[10px] font-black">
+                {pendingWithdrawalsData.length}
+              </span>
+            )}
+          </Link>
+          <Link
             href="/admin/raffles"
             className="px-4 py-2 bg-neon-purple/10 border border-neon-purple/20 text-neon-purple text-sm rounded-lg hover:bg-neon-purple/20 transition-colors"
           >
@@ -157,6 +175,9 @@ export default async function AdminPage() {
           </Link>
           <SendRemindersButton />
         </div>
+
+        {/* Pending Withdrawals Panel */}
+        <PendingWithdrawalsPanel withdrawals={pendingWithdrawalsData || []} />
 
         {/* Pending Ticket Validations */}
         <PendingTicketsPanel groups={pendingGroups} />
