@@ -485,7 +485,17 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                   <input
                     type="number"
                     value={withdrawAmount}
-                    onChange={(e) => setWithdrawAmount(Math.max(1, parseFloat(e.target.value) || 0))}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (val === '') {
+                        setWithdrawAmount('')
+                      } else {
+                        const parsed = parseFloat(val)
+                        setWithdrawAmount(isNaN(parsed) ? '' : Math.max(0, parsed))
+                      }
+                    }}
+                    placeholder="0"
+                    min="0"
                     className="w-full pl-8 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-neon-cyan"
                     required
                   />
