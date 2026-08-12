@@ -109,6 +109,18 @@ export async function placePredictionAction(input: {
     if (marketErr || !market) return { error: 'Mercado de apuestas no encontrado' }
     if (market.status !== 'open') return { error: 'Las apuestas para este mercado están cerradas' }
 
+    // Enforce 1 bet per user per market
+    const { data: existingBet } = await adminSupabase
+      .from('user_bets')
+      .select('id')
+      .eq('market_id', input.marketId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (existingBet) {
+      return { error: 'Ya has registrado una apuesta en este mercado. Solo se permite una apuesta por mercado.' }
+    }
+
     // Enforce sequential betting: locked if linked to match N > 1 and match N-1 is not completed
     if (market.match_id) {
       const { data: currentMatch } = await adminSupabase

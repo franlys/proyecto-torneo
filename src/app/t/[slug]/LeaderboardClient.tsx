@@ -2809,7 +2809,7 @@ export function LeaderboardClient({
                     </div>
 
                     {/* Multi-select guidance banner */}
-                    {isMultiSelect && isSelected && market.status === 'open' && (
+                    {isMultiSelect && isSelected && market.status === 'open' && !userBetForMarket && (
                       <div className="mx-5 mb-3 px-3.5 py-2 rounded-xl bg-neon-cyan/10 border border-neon-cyan/30 flex items-center justify-between text-xs animate-in fade-in">
                         <span className="text-neon-cyan font-bold flex items-center gap-1.5">
                           <span>🎯</span> Selecciona los <strong className="text-white">{requiredCount} equipos</strong> de tu pronóstico
@@ -2827,15 +2827,20 @@ export function LeaderboardClient({
                     {/* Options grid */}
                     <div className="px-5 pb-4 grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {opts.map(opt => {
-                        const isPickedInMulti = isSelected && selectedMultiOptionIds.includes(opt.id)
-                        const pickedIndex = isSelected ? selectedMultiOptionIds.indexOf(opt.id) : -1
-                        const isSinglePicked = isSelected && !isMultiSelect && selectedOptionId === opt.id
+                        const isPickedInMulti = isSelected && !userBetForMarket && selectedMultiOptionIds.includes(opt.id)
+                        const pickedIndex = isSelected && !userBetForMarket ? selectedMultiOptionIds.indexOf(opt.id) : -1
+                        const isSinglePicked = isSelected && !userBetForMarket && !isMultiSelect && selectedOptionId === opt.id
+                        const isBetOnThis = userBetForMarket && (userBetForMarket.selected_option_id || '').split(',').some((p: string) => {
+                          const tr = p.trim()
+                          return tr === opt.id || opt.id.startsWith(tr) || tr.startsWith(opt.id)
+                        })
 
                         return (
                           <button
                             key={opt.id}
-                            disabled={market.status !== 'open' || !isLoggedIn || isLocked || currentStatus === 'finished'}
+                            disabled={market.status !== 'open' || !isLoggedIn || isLocked || currentStatus === 'finished' || !!userBetForMarket}
                             onClick={() => {
+                              if (userBetForMarket) return
                               if (isMultiSelect) {
                                 if (selectedMarketId !== market.id) {
                                   setSelectedMarketId(market.id)
@@ -2870,16 +2875,21 @@ export function LeaderboardClient({
                             className={`py-3 px-3 rounded-xl text-left border transition-all relative ${
                               market.winning_option_id === opt.id
                                 ? 'bg-green-500/20 border-green-500/40 text-green-300'
-                                : isPickedInMulti || isSinglePicked
+                                : isBetOnThis || isPickedInMulti || isSinglePicked
                                 ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-200 ring-1 ring-yellow-500/40'
-                                : isLocked
-                                ? 'bg-white/[0.01] border-white/5 text-white/20 cursor-not-allowed'
+                                : isLocked || userBetForMarket
+                                ? 'bg-white/[0.01] border-white/5 text-white/40 cursor-default'
                                 : 'bg-white/[0.03] border-white/5 text-white/70 hover:border-yellow-500/30 hover:bg-yellow-500/5 disabled:cursor-not-allowed'
                             }`}
                           >
                             {isPickedInMulti && (
                               <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-yellow-500 text-black font-orbitron font-black text-[10px] flex items-center justify-center shadow-md">
                                 {pickedIndex + 1}
+                              </span>
+                            )}
+                            {isBetOnThis && (
+                              <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-emerald-500 text-black font-black text-[10px] flex items-center justify-center shadow-md">
+                                ✓
                               </span>
                             )}
                             <p className="font-bold text-xs leading-tight pr-4">{opt.name}</p>
@@ -2889,8 +2899,8 @@ export function LeaderboardClient({
                       })}
                     </div>
 
-                    {/* Bet form — only if open, logged in, and this market is selected */}
-                    {market.status === 'open' && isLoggedIn && isSelected && selectedOptionId && (
+                    {/* Bet form — only if open, logged in, this market is selected, and user hasn't bet yet */}
+                    {market.status === 'open' && isLoggedIn && isSelected && selectedOptionId && !userBetForMarket && (
                       <div className="px-5 pb-5 pt-1 border-t border-white/5 space-y-3 animate-in slide-in-from-top-2">
                         <div className="flex gap-3 items-center">
                           <div className="flex-1">
@@ -2957,25 +2967,32 @@ export function LeaderboardClient({
 
                     {/* Existing user bet badge */}
                     {userBetForMarket && (
-                      <div className={`mx-5 mb-4 px-4 py-2.5 rounded-xl border text-xs font-bold flex items-center justify-between ${
+                      <div className={`mx-5 mb-4 p-3.5 rounded-2xl border text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-sm ${
                         userBetForMarket.status === 'won' ? 'bg-green-500/10 border-green-500/30 text-green-300' :
                         userBetForMarket.status === 'lost' ? 'bg-red-500/10 border-red-500/30 text-red-400' :
                         userBetForMarket.status === 'refunded' ? 'bg-white/5 border-white/10 text-white/40' :
-                        'bg-yellow-500/10 border-yellow-500/20 text-yellow-300'
+                        'bg-yellow-500/10 border-yellow-500/25 text-yellow-300'
                       }`}>
-                        <span className="truncate max-w-[65%]">
-                          Tu apuesta: {
-                            (userBetForMarket.selected_option_id || '')
-                              .split(',')
-                              .map((id: string) => {
-                                const trimmed = id.trim()
-                                const found = opts.find(o => o.id === trimmed || o.id.startsWith(trimmed) || trimmed.startsWith(o.id))
-                                return found?.name || trimmed
-                              })
-                              .join(', ')
-                          }
-                        </span>
-                        <span className="shrink-0 font-orbitron">{userBetForMarket.amount} K-Coins → {parseFloat(userBetForMarket.potential_payout).toFixed(2)}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                          <span className="font-bold">
+                            Tu pronóstico: <span className="text-white font-semibold">{
+                              (userBetForMarket.selected_option_id || '')
+                                .split(',')
+                                .map((id: string) => {
+                                  const trimmed = id.trim()
+                                  const found = opts.find(o => o.id === trimmed || o.id.startsWith(trimmed) || trimmed.startsWith(o.id))
+                                  return found?.name || trimmed
+                                })
+                                .join(', ')
+                            }</span>
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 self-end sm:self-auto font-orbitron text-xs">
+                          <span className="text-white/60">{userBetForMarket.amount} K-Coins</span>
+                          <span>→</span>
+                          <span className="font-bold text-yellow-400">+{parseFloat(userBetForMarket.potential_payout).toFixed(2)} K-Coins</span>
+                        </div>
                       </div>
                     )}
                   </div>
