@@ -240,9 +240,10 @@ export async function approveWithdrawalAction(withdrawalId: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'No autorizado' }
 
+    const { isAdmin } = await import('@/lib/actions/auth-helpers')
+    if (!(await isAdmin())) return { error: 'Permisos insuficientes' }
+
     const adminSupabase = await createAdminClient()
-    const { data: adminProf } = await adminSupabase.from('profiles').select('role').eq('id', user.id).single()
-    if (adminProf?.role !== 'admin') return { error: 'Permisos insuficientes' }
 
     const { data: withdrawal, error: fetchErr } = await adminSupabase
       .from('withdrawals')
@@ -291,8 +292,8 @@ export async function rejectWithdrawalAction(withdrawalId: string, reason?: stri
     if (!user) return { error: 'No autorizado' }
 
     const adminSupabase = await createAdminClient()
-    const { data: adminProf } = await adminSupabase.from('profiles').select('role').eq('id', user.id).single()
-    if (adminProf?.role !== 'admin') return { error: 'Permisos insuficientes' }
+    const { isAdmin } = await import('@/lib/actions/auth-helpers')
+    if (!(await isAdmin())) return { error: 'Permisos insuficientes' }
 
     const { data: withdrawal, error: fetchErr } = await adminSupabase
       .from('withdrawals')
