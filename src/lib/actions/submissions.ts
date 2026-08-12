@@ -300,6 +300,17 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
   if (tourney?.max_points_limit && tourney.max_points_limit > 0) {
     const limit = Number(tourney.max_points_limit)
 
+    // Alert teams in Discord about Match Point
+    const mpTeams = standings
+      .filter(s => Number(s.totalPoints) >= limit)
+      .map(s => ({ teamId: s.teamId, teamName: s.teamName, totalPoints: Number(s.totalPoints) }))
+
+    if (mpTeams.length > 0) {
+      import('./discord-notification').then(({ broadcastMatchPointAlerts }) => {
+        broadcastMatchPointAlerts(tournamentId, mpTeams, limit).catch(err => console.error('Failed to broadcast Match Point alerts:', err))
+      }).catch(console.error)
+    }
+
     // Obtener todas las partidas ordenadas por número de partida/fecha
     const { data: allMatches } = await supabase
       .from('matches')

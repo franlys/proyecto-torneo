@@ -46,7 +46,7 @@ async function broadcastMatchTeamNotifications(
   try {
     const { data: tourney } = await supabase
       .from('tournaments')
-      .select('name, creator_id, discord_url, discord_announcement_channel_id, discord_voice_category_id')
+      .select('name, creator_id, discord_url, discord_announcement_channel_id, discord_voice_category_id, max_points_limit')
       .eq('id', tournamentId)
       .single()
 
@@ -74,6 +74,25 @@ async function broadcastMatchTeamNotifications(
       .from('teams')
       .select('id, name')
       .eq('tournament_id', tournamentId)
+
+    // Check Match Point status
+    const { data: standings } = await supabase
+      .from('team_standings')
+      .select('team_id, total_points')
+      .eq('tournament_id', tournamentId)
+
+    const limit = Number(tourney.max_points_limit || 0)
+    const matchPointTeamIds = new Set<string>()
+    const matchPointTeamNames: string[] = []
+    if (limit > 0 && standings) {
+      standings.forEach((s: any) => {
+        if (Number(s.total_points) >= limit) {
+          matchPointTeamIds.add(s.team_id)
+          const tm = teams?.find((t: any) => t.id === s.team_id)
+          if (tm) matchPointTeamNames.push(tm.name)
+        }
+      })
+    }
 
     // 2. Fetch submissions for this match
     const { data: submissions } = await supabase
@@ -116,10 +135,18 @@ async function broadcastMatchTeamNotifications(
         const hasSubmitted = submittedTeamIds.has(team.id)
 
         if (eventType === 'start') {
+          const isMyTeamInMp = matchPointTeamIds.has(team.id)
+          let extraMpNote = ''
+          if (isMyTeamInMp) {
+            extraMpNote = `\n\n👑 **¡ESTÁN EN MATCH POINT!** Si ganan esta partida (Top 1), ¡se coronan **CAMPEONES DEL TORNEO**! 🏆`
+          } else if (matchPointTeamNames.length > 0) {
+            extraMpNote = `\n\n⚠️ **ALERTA TÁCTICA:** Rivales en Match Point: ${matchPointTeamNames.map(n => `**${n}**`).join(', ')}. ¡Eviten que ganen la partida!`
+          }
+
           await sendDiscordEmbed(chId, {
             title: `🏁 ¡${matchName} EN CURSO! ⚔️`,
-            description: `¡Hola equipo **${team.name}**!\n\nLa partida está **EN JUEGO**. Conéctense a su canal de voz para coordinar.\n\n📸 Recuerden tomar captura clara de la tabla de puntuación/bajas al terminar.`,
-            color: 65280, // Green
+            description: `¡Hola equipo **${team.name}**!\n\nLa partida está **EN JUEGO**. Conéctense a su canal de voz para coordinar.\n\n📸 Recuerden tomar captura clara de la tabla de puntuación/bajas al terminar.${extraMpNote}`,
+            color: isMyTeamInMp ? 16753920 : 65280,
             timestamp: new Date().toISOString(),
           })
         } else if (eventType === 'evidence_open') {
@@ -161,10 +188,15 @@ async function broadcastMatchTeamNotifications(
     // 5. Send public announcement if announcement channel exists
     if (tourney.discord_announcement_channel_id) {
       if (eventType === 'start') {
+        let mpPublicNote = ''
+        if (matchPointTeamNames.length > 0) {
+          mpPublicNote = `\n\n🚨 **EQUIPOS EN MATCH POINT (Eligibles para Campeón):**\n${matchPointTeamNames.map(n => `👑 **${n}**`).join(', ')}`
+        }
+
         await sendDiscordEmbed(tourney.discord_announcement_channel_id, {
           title: `🏁 ¡${matchName} EN CURSO! ⚔️`,
-          description: `La partida del torneo **${tourney.name}** ha comenzado oficialmente. ¡Mucho éxito a todos los escuadrones!`,
-          color: 65280,
+          description: `La partida del torneo **${tourney.name}** ha comenzado oficialmente. ¡Mucho éxito a todos los escuadrones!${mpPublicNote}`,
+          color: matchPointTeamNames.length > 0 ? 16753920 : 65280,
           timestamp: new Date().toISOString(),
         })
       } else if (eventType === 'evidence_open') {
