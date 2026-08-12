@@ -181,18 +181,144 @@ export async function createDiscordCategory(guildId: string, name: string) {
 }
 
 /**
- * Crea un canal de voz privado dentro de una categoría, restringiendo acceso y permitiendo bypass.
- * @param guildId ID del servidor de Discord
- * @param name Nombre del canal de voz
- * @param parentId ID de la categoría padre
- * @param teamDiscordIds Array de IDs de Discord de los miembros del equipo que pueden entrar
+ * Obtiene todos los roles de un servidor de Discord.
+ */
+export async function getGuildRoles(guildId: string): Promise<{ success: true; data: any[] } | { error: string }> {
+  const cleanGuildId = extractDiscordGuildId(guildId) || guildId
+  try {
+    const response = await fetch(`${DISCORD_API_URL}/guilds/${cleanGuildId}/roles`, {
+      method: 'GET',
+      headers: getHeaders(),
+    })
+    if (!response.ok) {
+      const errText = await response.text()
+      return { error: errText }
+    }
+    const data = await response.json()
+    return { success: true, data }
+  } catch (err: any) {
+    return { error: err.message || err }
+  }
+}
+
+/**
+ * Crea un rol en el servidor de Discord.
+ */
+export async function createGuildRole(
+  guildId: string,
+  name: string,
+  color: number = 0,
+  hoist: boolean = false
+): Promise<{ success: true; id: string; role: any } | { error: string }> {
+  const cleanGuildId = extractDiscordGuildId(guildId) || guildId
+  try {
+    const response = await fetch(`${DISCORD_API_URL}/guilds/${cleanGuildId}/roles`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        name,
+        color,
+        hoist,
+        mentionable: true,
+      }),
+    })
+    if (!response.ok) {
+      const errText = await response.text()
+      return { error: errText }
+    }
+    const data = await response.json()
+    return { success: true, id: data.id, role: data }
+  } catch (err: any) {
+    return { error: err.message || err }
+  }
+}
+
+/**
+ * Obtiene o crea el rol de un equipo específico en Discord.
+ */
+export async function createOrGetTeamRole(guildId: string, teamName: string): Promise<{ success: true; roleId: string } | { error: string }> {
+  const cleanGuildId = extractDiscordGuildId(guildId) || guildId
+  const roleName = `⚔️ ${teamName}`.trim()
+
+  const rolesRes = await getGuildRoles(cleanGuildId)
+  if ('success' in rolesRes && rolesRes.success && Array.isArray(rolesRes.data)) {
+    const existing = rolesRes.data.find(
+      (r: any) => r.name.toLowerCase() === roleName.toLowerCase() || r.name.toLowerCase() === teamName.toLowerCase()
+    )
+    if (existing) {
+      return { success: true, roleId: existing.id }
+    }
+  }
+
+  // Generate a vivid color for the team role
+  const teamColors = [0x00f5ff, 0xa855f7, 0xef4444, 0xf59e0b, 0x10b981, 0x3b82f6]
+  const randomColor = teamColors[Math.floor(Math.random() * teamColors.length)]
+
+  const createRes = await createGuildRole(cleanGuildId, roleName, randomColor, false)
+  if ('success' in createRes && createRes.success && createRes.id) {
+    return { success: true, roleId: createRes.id }
+  }
+  return { error: 'error' in createRes ? createRes.error : 'No se pudo crear el rol' }
+}
+
+/**
+ * Obtiene o crea el rol especial de Staff / Streamer de Kronix con acceso a todos los canales.
+ */
+export async function createOrGetStaffRole(guildId: string): Promise<{ success: true; roleId: string } | { error: string }> {
+  const cleanGuildId = extractDiscordGuildId(guildId) || guildId
+  const staffRoleName = `🛡️ Staff Kronix`
+
+  const rolesRes = await getGuildRoles(cleanGuildId)
+  if ('success' in rolesRes && rolesRes.success && Array.isArray(rolesRes.data)) {
+    const existing = rolesRes.data.find((r: any) => r.name.toLowerCase().includes('staff') || r.name.toLowerCase().includes('admin'))
+    if (existing) {
+      return { success: true, roleId: existing.id }
+    }
+  }
+
+  const createRes = await createGuildRole(cleanGuildId, staffRoleName, 0xffd700, true)
+  if ('success' in createRes && createRes.success && createRes.id) {
+    return { success: true, roleId: createRes.id }
+  }
+  return { error: 'error' in createRes ? createRes.error : 'No se pudo crear rol de staff' }
+}
+
+/**
+ * Asigna un rol de Discord a un miembro del servidor.
+ */
+export async function assignDiscordRoleToMember(
+  guildId: string,
+  discordUserId: string,
+  roleId: string
+): Promise<{ success: true } | { error: string }> {
+  const cleanGuildId = extractDiscordGuildId(guildId) || guildId
+  try {
+    const response = await fetch(`${DISCORD_API_URL}/guilds/${cleanGuildId}/members/${discordUserId}/roles/${roleId}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+    })
+    if (!response.ok) {
+      const errText = await response.text()
+      console.warn(`[Discord Service] Error asignando rol ${roleId} a usuario ${discordUserId}:`, errText)
+      return { error: errText }
+    }
+    return { success: true }
+  } catch (err: any) {
+    return { error: err.message || err }
+  }
+}
+
+/**
+ * Crea un canal de voz privado dentro de una categoría, restringiendo acceso con roles.
  */
 export async function createPrivateVoiceChannel(
   guildId: string,
   name: string,
   parentId: string,
   teamDiscordIds: string[] = [],
-  userLimit: number = 0
+  userLimit: number = 0,
+  teamRoleId?: string | null,
+  staffRoleId?: string | null
 ) {
   const cleanGuildId = extractDiscordGuildId(guildId) || guildId
   try {
@@ -206,25 +332,51 @@ export async function createPrivateVoiceChannel(
       body.user_limit = userLimit
     }
 
-    // Explicitly allow team members who linked their Discord
-    if (teamDiscordIds && teamDiscordIds.length > 0) {
-      const permissionOverwrites: any[] = []
+    const permissionOverwrites: any[] = [
+      // 1. Bloquear acceso para @everyone (oculto)
+      {
+        id: cleanGuildId,
+        type: 0, // ROLE
+        allow: '0',
+        deny: '1024', // VIEW_CHANNEL (1<<10)
+      },
+    ]
 
+    // 2. Permitir acceso al Rol del Equipo (Ver, Conectar y Hablar)
+    if (teamRoleId) {
+      permissionOverwrites.push({
+        id: teamRoleId,
+        type: 0, // ROLE
+        allow: '1049600', // VIEW_CHANNEL (1024) + CONNECT (1048576) + SPEAK (2097152)
+        deny: '0',
+      })
+    }
+
+    // 3. Permitir acceso al Rol de Staff / Streamer
+    if (staffRoleId) {
+      permissionOverwrites.push({
+        id: staffRoleId,
+        type: 0, // ROLE
+        allow: '1049600',
+        deny: '0',
+      })
+    }
+
+    // 4. Permitir miembros directos que hayan vinculado su Discord
+    if (teamDiscordIds && teamDiscordIds.length > 0) {
       teamDiscordIds.forEach((discordUserId) => {
         if (discordUserId) {
           permissionOverwrites.push({
             id: discordUserId,
             type: 1, // MEMBER
-            allow: '1049600', // VIEW_CHANNEL (1<<10) + CONNECT (1<<20)
+            allow: '1049600',
             deny: '0',
           })
         }
       })
-
-      if (permissionOverwrites.length > 0) {
-        body.permission_overwrites = permissionOverwrites
-      }
     }
+
+    body.permission_overwrites = permissionOverwrites
 
     const response = await fetch(`${DISCORD_API_URL}/guilds/${cleanGuildId}/channels`, {
       method: 'POST',
@@ -237,7 +389,7 @@ export async function createPrivateVoiceChannel(
       let errJson: any = null
       try { errJson = JSON.parse(errText) } catch {}
       const errMsg = parseDiscordError(response.status, errJson, errText)
-      console.error('[Discord Service] Error al crear canal de voz:', errMsg)
+      console.error('[Discord Service] Error al crear canal de voz privado:', errMsg)
       return { error: errMsg }
     }
     const data = await response.json()
@@ -249,13 +401,15 @@ export async function createPrivateVoiceChannel(
 }
 
 /**
- * Crea un canal de texto para el equipo dentro de una categoría.
+ * Crea un canal de texto para el equipo dentro de una categoría, restringido por roles.
  */
 export async function createPrivateTextChannel(
   guildId: string,
   name: string,
   parentId: string,
-  teamDiscordIds: string[] = []
+  teamDiscordIds: string[] = [],
+  teamRoleId?: string | null,
+  staffRoleId?: string | null
 ) {
   const cleanGuildId = extractDiscordGuildId(guildId) || guildId
   const sanitizedName = name
@@ -273,25 +427,51 @@ export async function createPrivateTextChannel(
       parent_id: parentId,
     }
 
-    // Explicitly allow team members who linked their Discord
-    if (teamDiscordIds && teamDiscordIds.length > 0) {
-      const permissionOverwrites: any[] = []
+    const permissionOverwrites: any[] = [
+      // 1. Bloquear acceso para @everyone
+      {
+        id: cleanGuildId,
+        type: 0, // ROLE
+        allow: '0',
+        deny: '1024', // VIEW_CHANNEL
+      },
+    ]
 
+    // 2. Permitir acceso al Rol del Equipo
+    if (teamRoleId) {
+      permissionOverwrites.push({
+        id: teamRoleId,
+        type: 0, // ROLE
+        allow: '68608', // VIEW_CHANNEL (1024) + SEND_MESSAGES (2048) + READ_MESSAGE_HISTORY (65536)
+        deny: '0',
+      })
+    }
+
+    // 3. Permitir acceso al Rol de Staff
+    if (staffRoleId) {
+      permissionOverwrites.push({
+        id: staffRoleId,
+        type: 0, // ROLE
+        allow: '68608',
+        deny: '0',
+      })
+    }
+
+    // 4. Permitir miembros directos
+    if (teamDiscordIds && teamDiscordIds.length > 0) {
       teamDiscordIds.forEach((discordUserId) => {
         if (discordUserId) {
           permissionOverwrites.push({
             id: discordUserId,
             type: 1, // MEMBER
-            allow: '68608', // VIEW_CHANNEL (1024) + SEND_MESSAGES (2048) + READ_MESSAGE_HISTORY (65536)
+            allow: '68608',
             deny: '0',
           })
         }
       })
-
-      if (permissionOverwrites.length > 0) {
-        body.permission_overwrites = permissionOverwrites
-      }
     }
+
+    body.permission_overwrites = permissionOverwrites
 
     const response = await fetch(`${DISCORD_API_URL}/guilds/${cleanGuildId}/channels`, {
       method: 'POST',

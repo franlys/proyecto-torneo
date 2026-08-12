@@ -278,6 +278,57 @@ export function TeamPortalClient({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
 
+      {/* Discord Channels & Team Communications */}
+      {discordGuildId && (
+        <div className="p-4 rounded-2xl bg-[#0b0e14] border border-neon-cyan/20 shadow-[0_0_25px_rgba(0,245,255,0.08)] space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-[#5865F2]/20 border border-[#5865F2]/40 flex items-center justify-center text-base shrink-0">
+                🎧
+              </div>
+              <div className="min-w-0">
+                <h4 className="text-xs font-bold text-white font-orbitron uppercase tracking-wider truncate">
+                  Comunicaciones Oficiales
+                </h4>
+                <p className="text-[10px] text-white/50 truncate">
+                  Rol asignado: <span className="text-neon-cyan font-bold">@{team.name}</span> 🔒
+                </p>
+              </div>
+            </div>
+            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-orbitron shrink-0">
+              Canales Privados
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+            {team.discord_voice_channel_id && (
+              <a
+                href={`https://discord.com/channels/${discordGuildId}/${team.discord_voice_channel_id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-[#5865F2]/20 hover:bg-[#5865F2]/40 border border-[#5865F2]/40 text-white font-bold text-xs transition-all group shadow-sm"
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>🔊 Entrar a Voz de {team.name}</span>
+              </a>
+            )}
+            {tournament.discord_announcement_channel_id && (
+              <a
+                href={`https://discord.com/channels/${discordGuildId}/${tournament.discord_announcement_channel_id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white font-semibold text-xs transition-all"
+              >
+                <span>📢 Avisos del Torneo</span>
+              </a>
+            )}
+          </div>
+          <p className="text-[9px] text-center text-white/30 italic">
+            🔒 Salas privadas protegidas. Solo los integrantes de tu equipo y el Staff Oficial de Kronix pueden ingresar.
+          </p>
+        </div>
+      )}
+
       {/* Match Selection */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>

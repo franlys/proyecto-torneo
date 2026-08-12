@@ -127,7 +127,21 @@ export default async function TeamPortalPage({
             }
           }
 
-          // 3. Obtener Discord IDs de los integrantes del equipo (si están vinculados)
+          // 3. Crear o Resolver Rol del Equipo y Rol de Staff
+          let teamRoleId: string | null = null
+          let staffRoleId: string | null = null
+
+          const { createOrGetTeamRole, createOrGetStaffRole, assignDiscordRoleToMember } = await import('@/lib/services/discord')
+          const teamRoleRes = await createOrGetTeamRole(discordGuildId, team.name)
+          if ('roleId' in teamRoleRes) {
+            teamRoleId = teamRoleRes.roleId
+          }
+          const staffRoleRes = await createOrGetStaffRole(discordGuildId)
+          if ('roleId' in staffRoleRes) {
+            staffRoleId = staffRoleRes.roleId
+          }
+
+          // 4. Obtener Discord IDs de los integrantes del equipo (si están vinculados)
           const teamUserIds = (participants || []).map((p: any) => p.user_id).filter(Boolean) as string[]
           let teamDiscordIds: string[] = []
           if (teamUserIds.length > 0) {
@@ -144,17 +158,24 @@ export default async function TeamPortalPage({
             }
           }
 
+          // 5. Asignar rol del equipo automáticamente a los miembros con Discord vinculado
+          if (teamRoleId && teamDiscordIds.length > 0) {
+            for (const dUserId of teamDiscordIds) {
+              assignDiscordRoleToMember(discordGuildId, dUserId, teamRoleId).catch(() => {})
+            }
+          }
+
           const voiceChannelName = `🔊 ${team.name}`
           const textChannelName = `chat-${team.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'equipo'}`
 
           const modeLimits: Record<string, number> = { solo: 1, duo: 2, trio: 3, squad: 4, solos: 1, duos: 2, trios: 3, squads: 4 }
           const userLimit = modeLimits[tournament.mode?.toLowerCase()] || 0
 
-          // 4. Asegurar Canal de Voz del Equipo
+          // 6. Asegurar Canal de Voz del Equipo (Privado con Rol de Equipo y Staff)
           let voiceId = team.discord_voice_channel_id
           const voiceExists = guildChannels.some((c: any) => c.parent_id === categoryId && c.type === 2 && (c.id === voiceId || c.name === voiceChannelName || c.name === team.name))
           if (!voiceExists) {
-            const voiceRes = await createPrivateVoiceChannel(discordGuildId, voiceChannelName, categoryId, teamDiscordIds, userLimit)
+            const voiceRes = await createPrivateVoiceChannel(discordGuildId, voiceChannelName, categoryId, teamDiscordIds, userLimit, teamRoleId, staffRoleId)
             if (voiceRes.success && voiceRes.id) {
               voiceId = voiceRes.id
               team.discord_voice_channel_id = voiceId
@@ -162,14 +183,14 @@ export default async function TeamPortalPage({
             }
           }
 
-          // 5. Asegurar Canal de Texto del Equipo
+          // 7. Asegurar Canal de Texto del Equipo (Privado con Rol de Equipo y Staff)
           const textExists = guildChannels.some((c: any) => c.parent_id === categoryId && c.type === 0 && (c.name === textChannelName || c.name.includes(team.name.toLowerCase())))
           if (!textExists) {
-            const textRes = await createPrivateTextChannel(discordGuildId, team.name, categoryId, teamDiscordIds)
+            const textRes = await createPrivateTextChannel(discordGuildId, team.name, categoryId, teamDiscordIds, teamRoleId, staffRoleId)
             if (textRes.success && textRes.id) {
               await sendDiscordEmbed(textRes.id, {
                 title: `🎮 Sala Oficial: ${team.name}`,
-                description: `¡Hola equipo **${team.name}**!\n\nEste es su canal de comunicaciones oficial para el torneo.\n\n📌 **Aquí recibirán:**\n• 🏁 Avisos de inicio y fin de cada ronda.\n• 📸 Recordatorios de carga de evidencia.\n• ⚠️ Notificaciones de Match Point o sanciones.\n\n🔊 **Voz:** Únanse al canal de voz de su equipo para coordinar durante la partida.`,
+                description: `¡Hola equipo **${team.name}**!\n\nEste es su canal de comunicaciones oficial y privado para el torneo.\n\n📌 **Aquí recibirán:**\n• 🏁 Avisos de inicio y fin de cada ronda.\n• 📸 Recordatorios de carga de evidencia.\n• ⚠️ Notificaciones de Match Point o sanciones.\n\n🔒 **Seguridad:** Solo los miembros con el rol **@${team.name}** y el **Staff Oficial** tienen acceso a esta sala.`,
                 color: 5793266,
                 timestamp: new Date().toISOString(),
               })
