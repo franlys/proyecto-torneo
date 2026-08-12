@@ -9,7 +9,6 @@ import { recalculateStandings } from '@/lib/actions/submissions'
 import { getAdBanners } from '@/lib/actions/federation'
 import { getUsdToDopRate } from '@/lib/services/exchange-rate'
 
-import { TournamentNavbar } from '@/components/navigation/TournamentNavbar'
 
 export default async function PublicLeaderboardPage({
   params,
@@ -322,16 +321,7 @@ export default async function PublicLeaderboardPage({
 
   return (
     <div className="min-h-screen bg-transparent text-white font-inter">
-      <TournamentNavbar
-        user={authUser}
-        profile={userProfile}
-        tournamentName={tournament.name}
-        tournamentSlug={normalizedSlug}
-        balance={userBalance}
-      />
-      <main className="pt-16">
-        {leaderboardContent}
-      </main>
+      {leaderboardContent}
     </div>
   )
 }
