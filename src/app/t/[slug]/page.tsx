@@ -6,12 +6,10 @@ import { unstable_noStore as noStore } from 'next/cache'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { LeaderboardClient } from './LeaderboardClient'
 import { recalculateStandings } from '@/lib/actions/submissions'
-import { ArenaPromoBanner } from '@/components/promo/ArenaPromoBanner'
 import { getAdBanners } from '@/lib/actions/federation'
 import { getUsdToDopRate } from '@/lib/services/exchange-rate'
 
-import { Navbar } from '@/components/navigation/Navbar'
-import DashboardShell from '@/app/(dashboard)/DashboardShell'
+import { TournamentNavbar } from '@/components/navigation/TournamentNavbar'
 
 export default async function PublicLeaderboardPage({
   params,
@@ -269,9 +267,6 @@ export default async function PublicLeaderboardPage({
 
   const leaderboardContent = (
     <div className="min-h-screen bg-transparent text-white font-inter">
-      {tournament.arena_betting_enabled && (
-        <ArenaPromoBanner tournamentSlug={slug} />
-      )}
       <LeaderboardClient 
         tournamentId={tournament.id}
         betMarkets={betMarkets || []}
@@ -327,8 +322,14 @@ export default async function PublicLeaderboardPage({
 
   return (
     <div className="min-h-screen bg-transparent text-white font-inter">
-      <Navbar user={authUser} profile={userProfile} />
-      <main className="pt-20">
+      <TournamentNavbar
+        user={authUser}
+        profile={userProfile}
+        tournamentName={tournament.name}
+        tournamentSlug={normalizedSlug}
+        balance={userBalance}
+      />
+      <main className="pt-16">
         {leaderboardContent}
       </main>
     </div>
