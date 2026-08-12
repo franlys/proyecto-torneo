@@ -67,12 +67,13 @@ export function TournamentBetsClient({ tournament, matches, betMarkets: initialB
     return list
   }, [matches])
 
-  const handleAutofillTeams = (defaultOdds = 1.8) => {
+  const handleAutofillTeams = (defaultOdds: number | React.MouseEvent = 1.8) => {
+    const odds = typeof defaultOdds === 'number' ? defaultOdds : 1.8
     if (confirmedTeams.length === 0) {
       toast.error('No hay equipos confirmados para este torneo')
       return
     }
-    setOptions(confirmedTeams.map(t => ({ id: crypto.randomUUID(), name: t.name, odds: defaultOdds })))
+    setOptions(confirmedTeams.map(t => ({ id: crypto.randomUUID(), name: t.name, odds })))
     toast.success(`${confirmedTeams.length} equipos cargados`)
   }
 

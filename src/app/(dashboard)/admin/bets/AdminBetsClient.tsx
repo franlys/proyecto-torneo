@@ -62,12 +62,13 @@ export function AdminBetsClient({ tournaments, matches, betMarkets: initialBetMa
     [betMarkets, filterTournament]
   )
 
-  const handleAutofillTeams = (defaultOdds = 1.8) => {
+  const handleAutofillTeams = (defaultOdds: number | React.MouseEvent = 1.8) => {
+    const odds = typeof defaultOdds === 'number' ? defaultOdds : 1.8
     if (teamsForTournament.length === 0) {
       toast.error('No hay equipos confirmados para este torneo')
       return
     }
-    setOptions(teamsForTournament.map(t => ({ id: crypto.randomUUID(), name: t.name, odds: defaultOdds })))
+    setOptions(teamsForTournament.map(t => ({ id: crypto.randomUUID(), name: t.name, odds })))
     toast.success(`${teamsForTournament.length} equipos cargados`)
   }
 
