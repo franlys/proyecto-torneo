@@ -4,7 +4,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getUsdToDopRate } from '@/lib/services/exchange-rate'
 import { sendPayPalPayout } from '@/lib/paypal'
 import { revalidatePath } from 'next/cache'
-import { sendTransactionReceiptEmail, sendAdminWithdrawalAlertEmail } from '@/lib/services/email'
+import { sendTransactionReceiptEmail, sendAdminWithdrawalAlertEmail, sendWithdrawalCompletedUserEmail } from '@/lib/services/email'
 
 export async function requestWithdrawalAction(
   amount: number,
@@ -149,19 +149,18 @@ export async function requestWithdrawalAction(
           })
       }
 
-      // Send email receipt
-      if (user.email) {
-        await sendTransactionReceiptEmail({
-          email: user.email,
-          username: profile.username || 'Usuario',
-          amount: -parsedAmount,
-          type: 'withdrawal',
-          referenceId: withdrawal.id,
-          balanceBefore: currentBalance,
-          balanceAfter: temporaryBalance,
-          description: `Retiro de fondos aprobado y enviado a la cuenta PayPal ${paypalEmail}`
+      // Send email receipt to user
+      const targetUserEmail = user.email || paypalEmail.trim()
+      if (targetUserEmail) {
+        await sendWithdrawalCompletedUserEmail({
+          userEmail: targetUserEmail,
+          username: profile.username || 'Competidor',
+          amountCoins: parsedAmount,
+          amountUsd: usdAmount,
+          paypalEmail: paypalEmail.trim(),
+          withdrawalId: withdrawal.id,
         }).catch(err => {
-          console.error('Error sending withdrawal receipt email:', err)
+          console.error('Error sending withdrawal completed email:', err)
         })
       }
 
@@ -263,18 +262,19 @@ export async function approveWithdrawalAction(withdrawalId: string) {
       })
       .eq('id', withdrawalId)
 
-    // Notificar al usuario por email
-    if (withdrawal.profiles?.email) {
-      await sendTransactionReceiptEmail({
-        email: withdrawal.profiles.email,
-        username: withdrawal.profiles.username || 'Usuario',
-        amount: -Number(withdrawal.amount),
-        type: 'withdrawal',
-        referenceId: withdrawal.id,
-        balanceBefore: 0,
-        balanceAfter: 0,
-        description: `Tu retiro de $${withdrawal.usd_amount} USD a PayPal (${withdrawal.paypal_email}) ha sido completado con éxito.`
-      }).catch(() => {})
+    // Notificar al usuario por email de retiro completado
+    const recipientEmail = withdrawal.profiles?.email || withdrawal.paypal_email
+    if (recipientEmail) {
+      sendWithdrawalCompletedUserEmail({
+        userEmail: recipientEmail,
+        username: withdrawal.profiles?.username || 'Competidor',
+        amountCoins: Number(withdrawal.amount),
+        amountUsd: Number(withdrawal.usd_amount),
+        paypalEmail: withdrawal.paypal_email,
+        withdrawalId: withdrawal.id,
+      }).catch(err => {
+        console.error('Error sending withdrawal completed email to user:', err)
+      })
     }
 
     revalidatePath('/admin/finance')

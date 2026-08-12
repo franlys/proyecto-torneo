@@ -1123,5 +1123,109 @@ export async function sendAdminWithdrawalAlertEmail({
   }
 }
 
+interface WithdrawalCompletedUserEmailParams {
+  userEmail: string
+  username: string
+  amountCoins: number
+  amountUsd: number
+  paypalEmail: string
+  withdrawalId: string
+}
+
+export async function sendWithdrawalCompletedUserEmail({
+  userEmail,
+  username,
+  amountCoins,
+  amountUsd,
+  paypalEmail,
+  withdrawalId,
+}: WithdrawalCompletedUserEmailParams) {
+  if (!resend) {
+    console.warn('RESEND_API_KEY no configurado. Saltando envío de comprobante de retiro completado.')
+    return { success: false, error: 'RESEND_API_KEY no configurado' }
+  }
+
+  try {
+    const dateStr = new Date().toLocaleDateString('es-DO', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+
+    const html = `
+      <div style="background-color: #0b0d12; color: #ffffff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 32px; border-radius: 16px; max-width: 520px; margin: auto; border: 1px solid rgba(16, 185, 129, 0.2); box-shadow: 0 12px 40px rgba(0,0,0,0.6);">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <div style="display: inline-block; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 50px; padding: 6px 18px; margin-bottom: 12px;">
+            <span style="color: #10b981; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px;">✓ RETIRO COMPLETADO Y DEPOSITADO</span>
+          </div>
+          <h1 style="color: #00f5ff; font-size: 24px; font-weight: 900; letter-spacing: 1.5px; margin: 0; text-transform: uppercase;">KRONIX E-SPORTS</h1>
+          <p style="color: rgba(255,255,255,0.4); font-size: 12px; margin-top: 6px;">¡Tu dinero ha sido transferido a tu cuenta de PayPal!</p>
+        </div>
+
+        <div style="background-color: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); padding: 22px; border-radius: 14px; margin-bottom: 24px;">
+          <p style="margin: 0 0 16px 0; font-size: 14px; color: rgba(255,255,255,0.85);">
+            Hola <strong>${username || 'Competidor'}</strong>,
+          </p>
+          <p style="margin: 0 0 20px 0; font-size: 13px; color: rgba(255,255,255,0.65); line-height: 1.6;">
+            Nos complace informarte que tu solicitud de retiro ha sido <strong>procesada y pagada con éxito</strong>. Los fondos correspondientes ya fueron transferidos a tu cuenta de PayPal.
+          </p>
+
+          <div style="background: rgba(16, 185, 129, 0.05); border: 1px dashed rgba(16, 185, 129, 0.35); padding: 18px; border-radius: 12px; text-align: center; margin-bottom: 22px;">
+            <span style="font-size: 11px; color: rgba(16, 185, 129, 0.8); text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 4px;">Total Depositado</span>
+            <span style="font-size: 34px; font-weight: 900; color: #10b981; font-family: monospace;">$${amountUsd.toFixed(2)} USD</span>
+            <span style="font-size: 12px; color: #facc15; font-weight: bold; display: block; margin-top: 4px;">🪙 ${amountCoins.toLocaleString('es-DO')} K-Coins</span>
+          </div>
+
+          <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+              <td style="padding: 10px 0; color: rgba(255,255,255,0.4);">Estado:</td>
+              <td style="padding: 10px 0; font-weight: bold; text-align: right; color: #10b981;">✓ Pagado / Depositado</td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+              <td style="padding: 10px 0; color: rgba(255,255,255,0.4);">Cuenta PayPal receptora:</td>
+              <td style="padding: 10px 0; font-weight: bold; font-family: monospace; text-align: right; color: #38bdf8;">${paypalEmail}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+              <td style="padding: 10px 0; color: rgba(255,255,255,0.4);">Fecha de Transferencia:</td>
+              <td style="padding: 10px 0; text-align: right; color: rgba(255,255,255,0.8);">${dateStr}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; color: rgba(255,255,255,0.4);">ID de Referencia Kronix:</td>
+              <td style="padding: 10px 0; font-family: monospace; font-size: 11px; text-align: right; color: rgba(255,255,255,0.45);">${withdrawalId}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 24px;">
+          <a href="https://www.kronix.do/wallet" style="background: linear-gradient(90deg, #10b981 0%, #00f5ff 100%); color: #0b0d12; text-decoration: none; padding: 13px 28px; border-radius: 10px; font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
+            Ir a mi Billetera Kronix 🪙
+          </a>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 20px 0;" />
+        <p style="color: rgba(255,255,255,0.3); font-size: 11px; text-align: center; line-height: 1.5; margin: 0;">
+          Gracias por competir y confiar en la plataforma Kronix E-sports.<br/>
+          Si tienes alguna pregunta sobre tu transferencia, contáctanos a soporte@kronix.do.
+        </p>
+      </div>
+    `
+
+    const { data, error } = await resend.emails.send({
+      from: 'Kronix E-sports <no-reply@kronix.do>',
+      to: userEmail,
+      subject: `💸 ¡Retiro Completado! Tu pago de $${amountUsd.toFixed(2)} USD ha sido enviado a tu PayPal`,
+      html,
+    })
+
+    if (error) throw error
+    return { success: true, data }
+  } catch (err: any) {
+    console.error('Error al enviar correo de retiro completado al usuario:', err)
+    return { success: false, error: err.message }
+  }
+}
+
 
 
