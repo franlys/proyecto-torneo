@@ -1139,14 +1139,14 @@ export async function finishTournament(
       }
     }
 
-    // 4. Auto-resolve tournament-wide betting markets
+    // 4. Auto-resolve tournament-wide betting markets (both open and closed pre-tournament markets)
     try {
       const { data: tournamentMarkets } = await adminSupabase
         .from('bet_markets')
         .select('*')
         .eq('tournament_id', id)
         .is('match_id', null)
-        .eq('status', 'open')
+        .in('status', ['open', 'closed'])
 
       if (tournamentMarkets && tournamentMarkets.length > 0) {
         // Fetch the champion team
@@ -1156,6 +1156,24 @@ export async function finishTournament(
           .eq('tournament_id', id)
           .eq('rank', 1)
           .single()
+
+        // Fetch Top 5 and Top 3 standings
+        const { data: topStandings } = await adminSupabase
+          .from('team_standings')
+          .select('rank, team_id, teams(name)')
+          .eq('tournament_id', id)
+          .lte('rank', 5)
+          .order('rank', { ascending: true })
+
+        const top5TeamNames = (topStandings || []).map((s: any) => {
+          const rawTeam = s.teams
+          return (Array.isArray(rawTeam) ? rawTeam[0]?.name : rawTeam?.name)?.toLowerCase().trim()
+        }).filter(Boolean)
+
+        const top3TeamNames = (topStandings || []).filter((s: any) => s.rank <= 3).map((s: any) => {
+          const rawTeam = s.teams
+          return (Array.isArray(rawTeam) ? rawTeam[0]?.name : rawTeam?.name)?.toLowerCase().trim()
+        }).filter(Boolean)
 
         // Fetch the team with the most kills
         const { data: killsSum } = await adminSupabase
@@ -1184,25 +1202,31 @@ export async function finishTournament(
         })
 
         for (const market of tournamentMarkets) {
-          let winningOptionId: string | null = null
           const opts = market.options as any[]
+          const winningOptionIds: string[] = []
 
           if (market.market_type === 'winner' && championStanding?.teams) {
             const rawTeam = championStanding.teams as any
             const champName = (Array.isArray(rawTeam) ? rawTeam[0]?.name : rawTeam?.name) || ''
             const opt = opts.find(o => o.name.toLowerCase().trim() === champName.toLowerCase().trim())
-            if (opt) winningOptionId = opt.id
+            if (opt) winningOptionIds.push(opt.id)
+          } else if (market.market_type === 'top_5') {
+            const winningOpts = opts.filter(o => top5TeamNames.includes(o.name.toLowerCase().trim()))
+            winningOptionIds.push(...winningOpts.map(o => o.id))
+          } else if (market.market_type === 'top_3') {
+            const winningOpts = opts.filter(o => top3TeamNames.includes(o.name.toLowerCase().trim()))
+            winningOptionIds.push(...winningOpts.map(o => o.id))
           } else if (market.market_type === 'most_kills' && maxKillsTeamName) {
             const opt = opts.find(o => o.name.toLowerCase().trim() === maxKillsTeamName.toLowerCase().trim())
-            if (opt) winningOptionId = opt.id
+            if (opt) winningOptionIds.push(opt.id)
           }
 
-          if (winningOptionId) {
+          if (winningOptionIds.length > 0) {
             await adminSupabase
               .from('bet_markets')
               .update({
                 status: 'resolved',
-                winning_option_id: winningOptionId
+                winning_option_id: winningOptionIds[0]
               })
               .eq('id', market.id)
 
@@ -1214,7 +1238,7 @@ export async function finishTournament(
 
             if (bets && bets.length > 0) {
               for (const bet of bets) {
-                const isWinner = bet.selected_option_id === winningOptionId
+                const isWinner = winningOptionIds.includes(bet.selected_option_id)
                 const status = isWinner ? 'won' : 'lost'
 
                 await adminSupabase
@@ -1226,11 +1250,12 @@ export async function finishTournament(
                   const winAmount = parseFloat(bet.potential_payout)
                   const { data: userProfile } = await adminSupabase
                     .from('profiles')
-                    .select('balance')
+                    .select('balance, email, username')
                     .eq('id', bet.user_id)
                     .single()
 
-                  const newBal = parseFloat((Number(userProfile?.balance || 0) + winAmount).toFixed(2))
+                  const currentBal = Number(userProfile?.balance || 0)
+                  const newBal = parseFloat((currentBal + winAmount).toFixed(2))
                   await adminSupabase
                     .from('profiles')
                     .update({ balance: newBal })
@@ -1242,6 +1267,20 @@ export async function finishTournament(
                     type: 'bet_won',
                     reference_id: bet.id
                   })
+
+                  if (userProfile?.email) {
+                    const { sendTransactionReceiptEmail } = await import('@/lib/services/email')
+                    sendTransactionReceiptEmail({
+                      email: userProfile.email,
+                      username: userProfile.username || 'Competidor',
+                      amount: winAmount,
+                      type: 'deposit',
+                      referenceId: bet.id,
+                      balanceBefore: currentBal,
+                      balanceAfter: newBal,
+                      description: `Ganancia por predicción en torneo: "${market.question || market.title || 'Torneo General'}"`
+                    }).catch(e => console.error('Error sending bet win email:', e))
+                  }
                 }
               }
             }

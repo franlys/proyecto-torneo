@@ -406,7 +406,7 @@ export async function autoResolveMatchMarketsAction(matchId: string) {
 
     for (const market of markets) {
       const options = market.options as { id: string; name: string; odds: number }[]
-      let winningOptionId: string | null = null
+      const winningOptionIds: string[] = []
 
       if (market.market_type === 'winner') {
         // Winner = submission with rank = 1 (lowest rank wins)
@@ -424,7 +424,29 @@ export async function autoResolveMatchMarketsAction(matchId: string) {
               opt.name.toLowerCase().includes(winnerTeam.name.toLowerCase()) ||
               winnerTeam.name.toLowerCase().includes(opt.name.toLowerCase())
             )
-            if (matched) winningOptionId = matched.id
+            if (matched) winningOptionIds.push(matched.id)
+          }
+        }
+      } else if (market.market_type === 'top_5' || market.market_type === 'top_3') {
+        // Top 5 or Top 3 finishers in match
+        const threshold = market.market_type === 'top_3' ? 3 : 5
+        const topSubs = submissions.filter((s: any) => s.rank != null && s.rank <= threshold)
+        const teamIds = topSubs.map((s: any) => s.team_id)
+        if (teamIds.length > 0) {
+          const { data: topTeams } = await adminSupabase
+            .from('teams')
+            .select('name')
+            .in('id', teamIds)
+          if (topTeams) {
+            for (const t of topTeams) {
+              const matched = options.find(opt =>
+                opt.name.toLowerCase().includes(t.name.toLowerCase()) ||
+                t.name.toLowerCase().includes(opt.name.toLowerCase())
+              )
+              if (matched && !winningOptionIds.includes(matched.id)) {
+                winningOptionIds.push(matched.id)
+              }
+            }
           }
         }
       } else if (market.market_type === 'most_kills') {
@@ -442,17 +464,17 @@ export async function autoResolveMatchMarketsAction(matchId: string) {
               opt.name.toLowerCase().includes(topTeam.name.toLowerCase()) ||
               topTeam.name.toLowerCase().includes(opt.name.toLowerCase())
             )
-            if (matched) winningOptionId = matched.id
+            if (matched) winningOptionIds.push(matched.id)
           }
         }
       }
 
-      if (!winningOptionId) continue
+      if (winningOptionIds.length === 0) continue
 
       // Close and resolve the market
       await adminSupabase.from('bet_markets').update({
         status: 'resolved',
-        winning_option_id: winningOptionId,
+        winning_option_id: winningOptionIds[0],
       }).eq('id', market.id)
 
       // Pay out winners
@@ -463,7 +485,7 @@ export async function autoResolveMatchMarketsAction(matchId: string) {
         .eq('status', 'pending')
 
       for (const bet of (bets || [])) {
-        const isWinner = bet.selected_option_id === winningOptionId
+        const isWinner = winningOptionIds.includes(bet.selected_option_id)
         const status = isWinner ? 'won' : 'lost'
         await adminSupabase.from('user_bets').update({ status }).eq('id', bet.id)
 

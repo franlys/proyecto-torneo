@@ -228,6 +228,37 @@ export async function updateMatch(
       .eq('tournament_id', tournamentId)
       .neq('id', matchId)
 
+    // If activating Match 1, close pre-tournament general markets and Match 1 markets.
+    // If activating Match N > 1, close Match N markets.
+    try {
+      const { createAdminClient } = await import('@/lib/supabase/server')
+      const adminSupabase = await createAdminClient()
+      const { data: matchData } = await adminSupabase
+        .from('matches')
+        .select('match_number')
+        .eq('id', matchId)
+        .single()
+
+      if (matchData?.match_number === 1) {
+        // Al iniciar la Partida 1, cerrar apuestas generales pre-torneo y de la Partida 1
+        await adminSupabase
+          .from('bet_markets')
+          .update({ status: 'closed' })
+          .eq('tournament_id', tournamentId)
+          .eq('status', 'open')
+          .or(`match_id.is.null,match_id.eq.${matchId}`)
+      } else if (matchData?.match_number && matchData.match_number > 1) {
+        // Al iniciar la Partida N, cerrar las apuestas de esa partida
+        await adminSupabase
+          .from('bet_markets')
+          .update({ status: 'closed' })
+          .eq('match_id', matchId)
+          .eq('status', 'open')
+      }
+    } catch (betCloseErr) {
+      console.error('Error auto-closing bet markets on match start:', betCloseErr)
+    }
+
     // Notify all participants in this tournament that the match is active
     try {
       const { data: tourney } = await supabase
@@ -266,6 +297,16 @@ export async function updateMatch(
     .eq('tournament_id', tournamentId)
 
   if (error) return { error: error.message }
+
+  // Si la partida se marca como completada, auto-resolver mercados asociados a esta partida
+  if (data.isCompleted === true) {
+    try {
+      const { autoResolveMatchMarketsAction } = await import('@/lib/actions/predictions')
+      await autoResolveMatchMarketsAction(matchId)
+    } catch (resolveErr) {
+      console.error('Error auto-resolving match bet markets:', resolveErr)
+    }
+  }
 
   // Push updated match to AC mirror
   const { data: updatedMatch } = await supabase
