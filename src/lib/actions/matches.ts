@@ -46,11 +46,11 @@ async function broadcastMatchTeamNotifications(
   try {
     const { data: tourney } = await supabase
       .from('tournaments')
-      .select('name, creator_id, discord_url, discord_announcement_channel_id, discord_voice_category_id, max_points_limit')
+      .select('name, status, creator_id, discord_url, discord_announcement_channel_id, discord_voice_category_id, max_points_limit')
       .eq('id', tournamentId)
       .single()
 
-    if (!tourney) return
+    if (!tourney || tourney.status !== 'active') return
 
     const { resolveDiscordGuildId, getGuildChannels, sendDiscordEmbed } = await import('@/lib/services/discord')
 

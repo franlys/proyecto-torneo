@@ -21,11 +21,11 @@ export async function notifySubmissionToDiscord(submissionId: string) {
     // 2. Get tournament details
     const { data: tournament } = await adminSupabase
       .from('tournaments')
-      .select('id, name, creator_id, discord_url, discord_integration_enabled, discord_announcement_channel_id, discord_voice_category_id')
+      .select('id, name, status, creator_id, discord_url, discord_integration_enabled, discord_announcement_channel_id, discord_voice_category_id')
       .eq('id', sub.tournament_id)
       .single()
 
-    if (!tournament) return
+    if (!tournament || tournament.status !== 'active') return
 
     // 3. Get match details
     const { data: match } = await adminSupabase
@@ -157,11 +157,11 @@ export async function broadcastMatchPointAlerts(
 
     const { data: tournament } = await adminSupabase
       .from('tournaments')
-      .select('id, name, creator_id, discord_url, discord_integration_enabled, discord_announcement_channel_id, discord_voice_category_id')
+      .select('id, name, status, creator_id, discord_url, discord_integration_enabled, discord_announcement_channel_id, discord_voice_category_id')
       .eq('id', tournamentId)
       .single()
 
-    if (!tournament || matchPointTeams.length === 0) return
+    if (!tournament || tournament.status !== 'active' || matchPointTeams.length === 0) return
 
     // Resolve Discord guild ID
     let guildId: string | null = null

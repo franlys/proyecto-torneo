@@ -1077,19 +1077,24 @@ export function LeaderboardClient({
                     opacity: { duration: 0.2 },
                     layout: { duration: 0.6 }
                   }}
-                  className={`border-b border-white/5 hover:bg-white/[0.04] transition-colors cursor-pointer group ${
-                    expandedTeamId === s.teamId ? 'bg-white/[0.03]' : ''
+                  className={`border-b border-white/5 transition-colors cursor-pointer group ${
+                    status === 'finished' && idx === 0 
+                      ? 'bg-yellow-500/[0.08] hover:bg-yellow-500/[0.12] border-yellow-500/30' 
+                      : expandedTeamId === s.teamId 
+                        ? 'bg-white/[0.03]' 
+                        : 'hover:bg-white/[0.04]'
                   }`}
                   onClick={() => setExpandedTeamId(expandedTeamId === s.teamId ? null : s.teamId)}
                 >
                   <td className="px-3 sm:px-6 py-4 sm:py-6">
                     <div className="flex items-center justify-center gap-1 sm:gap-2">
                        <div className="flex flex-col items-center">
-                          <span className={`font-orbitron font-black text-base sm:text-2xl ${
-                            (idx + 1) === 1 ? 'text-gold drop-shadow-[0_0_10px_rgba(255,215,0,0.3)]' : 
+                          <span className={`font-orbitron font-black text-base sm:text-2xl flex items-center gap-1 ${
+                            (idx + 1) === 1 ? 'text-gold drop-shadow-[0_0_12px_rgba(255,215,0,0.5)]' : 
                             (idx + 1) === 2 ? 'text-gray-300' : 
                             (idx + 1) === 3 ? 'text-orange-400' : 'text-white/40'
                           }`}>
+                            {status === 'finished' && idx === 0 && <span className="text-sm sm:text-lg">👑</span>}
                             {idx + 1}
                           </span>
                           <div className="flex items-center gap-1 mt-1 h-3">
@@ -1138,15 +1143,39 @@ export function LeaderboardClient({
                          )}
                       </div>
                       <div className="flex-1">
-                         <div className="flex items-center gap-3 flex-wrap">
-                            <span className="font-orbitron font-black text-sm sm:text-xl tracking-tight text-white group-hover:text-neon-cyan transition-colors">{s.teamName}</span>
-                            {s.streams && s.streams.length > 0 && (
+                         <div className="flex items-center gap-2.5 flex-wrap">
+                            <span className={`font-orbitron font-black text-sm sm:text-xl tracking-tight transition-colors ${status === 'finished' && idx === 0 ? 'text-yellow-300 group-hover:text-yellow-200' : 'text-white group-hover:text-neon-cyan'}`}>
+                              {s.teamName}
+                            </span>
+
+                            {/* Finished Podium Badges */}
+                            {status === 'finished' && idx === 0 && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full border uppercase tracking-wider bg-yellow-500/20 text-yellow-300 border-yellow-400/50 shadow-[0_0_12px_rgba(234,179,8,0.4)] flex items-center gap-1">
+                                  <span>🏆</span> CAMPEÓN
+                                </span>
+                              </div>
+                            )}
+                            {status === 'finished' && idx === 1 && (
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider bg-slate-400/20 text-slate-300 border-slate-400/30">
+                                🥈 2DO LUGAR
+                              </span>
+                            )}
+                            {status === 'finished' && idx === 2 && (
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider bg-amber-700/20 text-amber-400 border-amber-600/30">
+                                🥉 3ER LUGAR
+                              </span>
+                            )}
+
+                            {/* Live Stream Badge - only while tournament is active */}
+                            {status === 'active' && s.streams && s.streams.length > 0 && (
                               <div className="flex items-center gap-1 text-[8px] bg-red-500/20 text-red-500 font-bold px-1.5 py-0.5 rounded border border-red-500/30 uppercase tracking-tighter">
                                  LIVE
                               </div>
                             )}
-                            {/* Badge Match Point */}
-                            {maxPointsLimit && maxPointsLimit > 0 && s.totalPoints >= maxPointsLimit && (
+
+                            {/* Badge Match Point - only while tournament is active */}
+                            {status === 'active' && maxPointsLimit && maxPointsLimit > 0 && s.totalPoints >= maxPointsLimit && (
                               <div className="flex items-center gap-1 animate-pulse">
                                 <span className="text-[9px] font-black px-2 py-0.5 rounded-full border uppercase tracking-wider bg-orange-500/20 text-orange-400 border-orange-500/40 shadow-[0_0_8px_rgba(249,115,22,0.4)]">
                                   🎯 MATCH POINT
