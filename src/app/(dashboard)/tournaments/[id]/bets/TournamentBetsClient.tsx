@@ -41,7 +41,7 @@ export function TournamentBetsClient({ tournament, matches, betMarkets: initialB
 
   // Create form state
   const [selectedMatchId, setSelectedMatchId] = useState('')
-  const [marketType, setMarketType] = useState<'winner' | 'most_kills' | 'custom'>('winner')
+  const [marketType, setMarketType] = useState<'winner' | 'top_5' | 'top_3' | 'most_kills' | 'custom'>('winner')
   const [question, setQuestion] = useState('')
   const [options, setOptions] = useState<{ id: string; name: string; odds: number }[]>([
     { id: crypto.randomUUID(), name: '', odds: 1.8 },
@@ -67,12 +67,12 @@ export function TournamentBetsClient({ tournament, matches, betMarkets: initialB
     return list
   }, [matches])
 
-  const handleAutofillTeams = () => {
+  const handleAutofillTeams = (defaultOdds = 1.8) => {
     if (confirmedTeams.length === 0) {
       toast.error('No hay equipos confirmados para este torneo')
       return
     }
-    setOptions(confirmedTeams.map(t => ({ id: crypto.randomUUID(), name: t.name, odds: 1.8 })))
+    setOptions(confirmedTeams.map(t => ({ id: crypto.randomUUID(), name: t.name, odds: defaultOdds })))
     toast.success(`${confirmedTeams.length} equipos cargados`)
   }
 
@@ -88,14 +88,13 @@ export function TournamentBetsClient({ tournament, matches, betMarkets: initialB
     setOptions(prev => prev.map(o => o.id === id ? { ...o, [field]: field === 'odds' ? parseFloat(value) || 0 : value } : o))
   }
 
-  const applyPreset = (presetType: 'winner_match' | 'kills_match' | 'winner_tournament' | 'kills_tournament') => {
+  const applyPreset = (presetType: 'winner_match' | 'top5_match' | 'kills_match' | 'winner_tournament' | 'top5_tournament' | 'top3_tournament' | 'kills_tournament') => {
     const match = matches.find(m => m.id === selectedMatchId)
     
     if (confirmedTeams.length === 0) {
       toast.error('No hay equipos confirmados para este torneo para auto-completar')
       return
     }
-    const teamOptions = confirmedTeams.map(t => ({ id: crypto.randomUUID(), name: t.name, odds: 1.8 }))
 
     if (presetType === 'winner_match') {
       if (!selectedMatchId) {
@@ -104,7 +103,15 @@ export function TournamentBetsClient({ tournament, matches, betMarkets: initialB
       }
       setMarketType('winner')
       setQuestion(`¿Qué equipo ganará la partida "${match?.name}"?`)
-      setOptions(teamOptions)
+      setOptions(confirmedTeams.map(t => ({ id: crypto.randomUUID(), name: t.name, odds: 2.2 })))
+    } else if (presetType === 'top5_match') {
+      if (!selectedMatchId) {
+        toast.error('Selecciona una partida para esta plantilla')
+        return
+      }
+      setMarketType('top_5')
+      setQuestion(`¿Qué equipo quedará en el Top 5 de la partida "${match?.name}"?`)
+      setOptions(confirmedTeams.map(t => ({ id: crypto.randomUUID(), name: t.name, odds: 1.9 })))
     } else if (presetType === 'kills_match') {
       if (!selectedMatchId) {
         toast.error('Selecciona una partida para esta plantilla')
@@ -112,17 +119,27 @@ export function TournamentBetsClient({ tournament, matches, betMarkets: initialB
       }
       setMarketType('most_kills')
       setQuestion(`¿Qué equipo tendrá más bajas (kills) en la partida "${match?.name}"?`)
-      setOptions(teamOptions)
+      setOptions(confirmedTeams.map(t => ({ id: crypto.randomUUID(), name: t.name, odds: 2.5 })))
     } else if (presetType === 'winner_tournament') {
       setMarketType('winner')
       setSelectedMatchId('')
       setQuestion(`¿Qué equipo se coronará campeón del torneo "${tournament.name}"?`)
-      setOptions(teamOptions)
+      setOptions(confirmedTeams.map(t => ({ id: crypto.randomUUID(), name: t.name, odds: 3.5 })))
+    } else if (presetType === 'top5_tournament') {
+      setMarketType('top_5')
+      setSelectedMatchId('')
+      setQuestion(`¿Qué equipo logrará clasificar en el Top 5 general del torneo "${tournament.name}"?`)
+      setOptions(confirmedTeams.map(t => ({ id: crypto.randomUUID(), name: t.name, odds: 2.2 })))
+    } else if (presetType === 'top3_tournament') {
+      setMarketType('top_3')
+      setSelectedMatchId('')
+      setQuestion(`¿Qué equipo subirá al Podio (Top 3) general del torneo "${tournament.name}"?`)
+      setOptions(confirmedTeams.map(t => ({ id: crypto.randomUUID(), name: t.name, odds: 2.8 })))
     } else if (presetType === 'kills_tournament') {
       setMarketType('most_kills')
       setSelectedMatchId('')
       setQuestion(`¿Qué equipo acumulará más bajas (kills) en todo el torneo "${tournament.name}"?`)
-      setOptions(teamOptions)
+      setOptions(confirmedTeams.map(t => ({ id: crypto.randomUUID(), name: t.name, odds: 3.0 })))
     }
     toast.success('Plantilla cargada con éxito')
   }
@@ -398,36 +415,50 @@ export function TournamentBetsClient({ tournament, matches, betMarkets: initialB
               {/* Plantillas Rápidas */}
               <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl space-y-3">
                 <p className="text-[10px] text-white/50 uppercase tracking-widest font-black text-left">Plantillas Predeterminadas (Auto-Completado)</p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <button
                     type="button"
-                    onClick={() => applyPreset('winner_match')}
-                    disabled={!selectedMatchId}
-                    className="p-2.5 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 border border-yellow-500/20 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                    onClick={() => applyPreset('top5_tournament')}
+                    className="p-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all"
                   >
-                    🏆 Ganador de Partida
+                    🎖️ Top 5 General
                   </button>
                   <button
                     type="button"
-                    onClick={() => applyPreset('kills_match')}
-                    disabled={!selectedMatchId}
-                    className="p-2.5 bg-neon-cyan/10 hover:bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/20 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                    onClick={() => applyPreset('top3_tournament')}
+                    className="p-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all"
                   >
-                    💀 Más Kills de Partida
+                    🥉 Podio (Top 3)
                   </button>
                   <button
                     type="button"
                     onClick={() => applyPreset('winner_tournament')}
                     className="p-2.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all"
                   >
-                    👑 Campeón de Torneo
+                    👑 Campeón Torneo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset('top5_match')}
+                    disabled={!selectedMatchId}
+                    className="p-2.5 bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/20 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    🎯 Top 5 Partida
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset('winner_match')}
+                    disabled={!selectedMatchId}
+                    className="p-2.5 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 border border-yellow-500/20 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    🏆 Ganador Partida
                   </button>
                   <button
                     type="button"
                     onClick={() => applyPreset('kills_tournament')}
                     className="p-2.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all"
                   >
-                    🔫 Más Kills del Torneo
+                    🔫 Más Kills Torneo
                   </button>
                 </div>
               </div>
@@ -435,15 +466,15 @@ export function TournamentBetsClient({ tournament, matches, betMarkets: initialB
               {/* Market type */}
               <div>
                 <label className="block text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Tipo de Mercado *</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['winner', 'most_kills', 'custom'] as const).map(type => (
+                <div className="grid grid-cols-5 gap-2">
+                  {(['winner', 'top_5', 'top_3', 'most_kills', 'custom'] as const).map(type => (
                     <button
                       key={type}
                       type="button"
                       onClick={() => setMarketType(type)}
-                      className={`py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all ${marketType === type ? 'bg-neon-cyan/10 border-neon-cyan/50 text-neon-cyan' : 'bg-white/[0.03] border-white/5 text-white/40 hover:text-white/70'}`}
+                      className={`py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider border transition-all ${marketType === type ? 'bg-neon-cyan/10 border-neon-cyan/50 text-neon-cyan' : 'bg-white/[0.03] border-white/5 text-white/40 hover:text-white/70'}`}
                     >
-                      {type === 'winner' ? '🏆 Ganador' : type === 'most_kills' ? '💀 + Kills' : '✏️ Custom'}
+                      {type === 'winner' ? '🏆 Ganador' : type === 'top_5' ? '🎖️ Top 5' : type === 'top_3' ? '🥉 Top 3' : type === 'most_kills' ? '💀 Kills' : '✏️ Custom'}
                     </button>
                   ))}
                 </div>
