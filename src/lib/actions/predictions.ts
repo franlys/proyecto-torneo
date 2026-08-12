@@ -132,10 +132,22 @@ export async function placePredictionAction(input: {
     }
 
     // Find option and lock the odds
-    const option = (market.options as any[]).find((opt) => opt.id === input.selectedOptionId)
-    if (!option) return { error: 'Opción de apuesta seleccionada inválida' }
+    const allOptions = (market.options as any[]) || []
+    const pickedOptionIds = input.selectedOptionId.split(',').map(s => s.trim()).filter(Boolean)
+    
+    let odds = 1.8
+    if (pickedOptionIds.length === 1) {
+      const option = allOptions.find((opt) => opt.id === pickedOptionIds[0])
+      if (!option) return { error: 'Opción de apuesta seleccionada inválida' }
+      odds = parseFloat(option.odds) || 1.8
+    } else {
+      // Multi-option selection (e.g. Top 5 or Top 3 combo pick)
+      const matchedOptions = allOptions.filter(opt => pickedOptionIds.includes(opt.id))
+      if (matchedOptions.length === 0) return { error: 'Opciones de apuesta seleccionadas inválidas' }
+      const avgOdd = matchedOptions.reduce((acc, opt) => acc + (parseFloat(opt.odds) || 1.8), 0) / matchedOptions.length
+      odds = Number((avgOdd * (market.market_type === 'top_5' ? 2.5 : 2.0)).toFixed(2))
+    }
 
-    const odds = parseFloat(option.odds)
     const potentialPayout = amount * odds
 
     // Fetch user profile balance
@@ -485,7 +497,8 @@ export async function autoResolveMatchMarketsAction(matchId: string) {
         .eq('status', 'pending')
 
       for (const bet of (bets || [])) {
-        const isWinner = winningOptionIds.includes(bet.selected_option_id)
+        const pickedIds = (bet.selected_option_id || '').split(',').map((id: string) => id.trim()).filter(Boolean)
+        const isWinner = pickedIds.length > 0 && pickedIds.every((id: string) => winningOptionIds.includes(id))
         const status = isWinner ? 'won' : 'lost'
         await adminSupabase.from('user_bets').update({ status }).eq('id', bet.id)
 

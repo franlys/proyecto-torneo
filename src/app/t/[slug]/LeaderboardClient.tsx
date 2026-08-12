@@ -812,6 +812,7 @@ export function LeaderboardClient({
   const [betsLoading, setBetsLoading] = useState(false)
   const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null)
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null)
+  const [selectedMultiOptionIds, setSelectedMultiOptionIds] = useState<string[]>([])
   const [betAmount, setBetAmount] = useState<string>('')
   const [selectedMatchFilter, setSelectedMatchFilter] = useState('all')
 
@@ -2739,9 +2740,27 @@ export function LeaderboardClient({
                 const opts = market.options as { id: string; name: string; odds: number }[]
                 const isSelected = selectedMarketId === market.id
                 const userBetForMarket = localUserBets.find((b: any) => b.market_id === market.id)
-                const potentialWin = betAmount && selectedOptionId
-                  ? (parseFloat(betAmount) * (opts.find(o => o.id === selectedOptionId)?.odds || 1)).toFixed(2)
-                  : null
+
+                const isMultiSelect = market.market_type === 'top_5' || market.market_type === 'top_3'
+                const requiredCount = market.market_type === 'top_5' ? 5 : (market.market_type === 'top_3' ? 3 : 1)
+
+                // Calculate potential win
+                const potentialWin = (() => {
+                  if (!betAmount || !selectedOptionId) return null
+                  const amountNum = parseFloat(betAmount)
+                  if (isNaN(amountNum) || amountNum <= 0) return null
+
+                  if (isMultiSelect) {
+                    const picked = opts.filter(o => selectedMultiOptionIds.includes(o.id))
+                    if (picked.length === 0) return null
+                    const avgOdd = picked.reduce((acc, o) => acc + (parseFloat(o.odds as any) || 1.8), 0) / picked.length
+                    const comboMultiplier = Number((avgOdd * (market.market_type === 'top_5' ? 2.5 : 2.0)).toFixed(2))
+                    return (amountNum * comboMultiplier).toFixed(2)
+                  } else {
+                    const singleOpt = opts.find(o => o.id === selectedOptionId)
+                    return (amountNum * (singleOpt?.odds || 1)).toFixed(2)
+                  }
+                })()
 
                 // Sequential Lock Calculation
                 const isLocked = (() => {
@@ -2769,7 +2788,7 @@ export function LeaderboardClient({
                         <p className="font-semibold text-white text-sm leading-snug">{market.question}</p>
                         <div className="flex flex-wrap items-center gap-2 mt-0.5">
                           <p className="text-white/30 text-[10px] uppercase tracking-widest">
-                            {market.market_type === 'winner' ? '🏆 Ganador' : market.market_type === 'most_kills' ? '💀 Más Kills' : '✏️ Custom'}
+                            {market.market_type === 'winner' ? '🏆 Ganador' : market.market_type === 'top_5' ? '🎖️ Top 5 (5 Equipos)' : market.market_type === 'top_3' ? '🥉 Top 3 (3 Equipos)' : market.market_type === 'most_kills' ? '💀 Más Kills' : '✏️ Custom'}
                           </p>
                           {isLocked && (
                             <span className="text-yellow-500/60 text-[9px] font-semibold uppercase tracking-wider bg-yellow-500/5 px-2 py-0.5 rounded border border-yellow-500/10">
@@ -2789,35 +2808,90 @@ export function LeaderboardClient({
                       </span>
                     </div>
 
+                    {/* Multi-select guidance banner */}
+                    {isMultiSelect && isSelected && market.status === 'open' && (
+                      <div className="mx-5 mb-3 px-3.5 py-2 rounded-xl bg-neon-cyan/10 border border-neon-cyan/30 flex items-center justify-between text-xs animate-in fade-in">
+                        <span className="text-neon-cyan font-bold flex items-center gap-1.5">
+                          <span>🎯</span> Selecciona los <strong className="text-white">{requiredCount} equipos</strong> de tu pronóstico
+                        </span>
+                        <span className={`font-orbitron font-black text-xs px-2.5 py-0.5 rounded-lg border ${
+                          selectedMultiOptionIds.length === requiredCount
+                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 animate-pulse'
+                            : 'bg-black/50 text-white/80 border-white/10'
+                        }`}>
+                          {selectedMultiOptionIds.length} / {requiredCount}
+                        </span>
+                      </div>
+                    )}
+
                     {/* Options grid */}
                     <div className="px-5 pb-4 grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {opts.map(opt => (
-                        <button
-                          key={opt.id}
-                          disabled={market.status !== 'open' || !isLoggedIn || isLocked || currentStatus === 'finished'}
-                          onClick={() => {
-                            setSelectedMarketId(market.id)
-                            setSelectedOptionId(opt.id)
-                          }}
-                          className={`py-3 px-3 rounded-xl text-left border transition-all ${
-                            market.winning_option_id === opt.id
-                              ? 'bg-green-500/20 border-green-500/40 text-green-300'
-                              : isSelected && selectedOptionId === opt.id
-                              ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-200'
-                              : isLocked
-                              ? 'bg-white/[0.01] border-white/5 text-white/20 cursor-not-allowed'
-                              : 'bg-white/[0.03] border-white/5 text-white/70 hover:border-yellow-500/30 hover:bg-yellow-500/5 disabled:cursor-not-allowed'
-                          }`}
-                        >
-                          <p className="font-bold text-xs leading-tight">{opt.name}</p>
-                          <p className="font-orbitron font-black text-sm mt-1 text-yellow-400">{opt.odds}x</p>
-                        </button>
-                      ))}
+                      {opts.map(opt => {
+                        const isPickedInMulti = isSelected && selectedMultiOptionIds.includes(opt.id)
+                        const pickedIndex = isSelected ? selectedMultiOptionIds.indexOf(opt.id) : -1
+                        const isSinglePicked = isSelected && !isMultiSelect && selectedOptionId === opt.id
+
+                        return (
+                          <button
+                            key={opt.id}
+                            disabled={market.status !== 'open' || !isLoggedIn || isLocked || currentStatus === 'finished'}
+                            onClick={() => {
+                              if (isMultiSelect) {
+                                if (selectedMarketId !== market.id) {
+                                  setSelectedMarketId(market.id)
+                                  setSelectedMultiOptionIds([opt.id])
+                                  if (requiredCount === 1) setSelectedOptionId(opt.id)
+                                  else setSelectedOptionId(null)
+                                } else {
+                                  let nextList = [...selectedMultiOptionIds]
+                                  if (nextList.includes(opt.id)) {
+                                    nextList = nextList.filter(id => id !== opt.id)
+                                  } else {
+                                    if (nextList.length < requiredCount) {
+                                      nextList.push(opt.id)
+                                    } else {
+                                      toast.info(`Ya has seleccionado los ${requiredCount} equipos`)
+                                      return
+                                    }
+                                  }
+                                  setSelectedMultiOptionIds(nextList)
+                                  if (nextList.length === requiredCount) {
+                                    setSelectedOptionId(nextList.join(','))
+                                  } else {
+                                    setSelectedOptionId(null)
+                                  }
+                                }
+                              } else {
+                                setSelectedMarketId(market.id)
+                                setSelectedOptionId(opt.id)
+                                setSelectedMultiOptionIds([])
+                              }
+                            }}
+                            className={`py-3 px-3 rounded-xl text-left border transition-all relative ${
+                              market.winning_option_id === opt.id
+                                ? 'bg-green-500/20 border-green-500/40 text-green-300'
+                                : isPickedInMulti || isSinglePicked
+                                ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-200 ring-1 ring-yellow-500/40'
+                                : isLocked
+                                ? 'bg-white/[0.01] border-white/5 text-white/20 cursor-not-allowed'
+                                : 'bg-white/[0.03] border-white/5 text-white/70 hover:border-yellow-500/30 hover:bg-yellow-500/5 disabled:cursor-not-allowed'
+                            }`}
+                          >
+                            {isPickedInMulti && (
+                              <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-yellow-500 text-black font-orbitron font-black text-[10px] flex items-center justify-center shadow-md">
+                                {pickedIndex + 1}
+                              </span>
+                            )}
+                            <p className="font-bold text-xs leading-tight pr-4">{opt.name}</p>
+                            <p className="font-orbitron font-black text-sm mt-1 text-yellow-400">{opt.odds}x</p>
+                          </button>
+                        )
+                      })}
                     </div>
 
                     {/* Bet form — only if open, logged in, and this market is selected */}
                     {market.status === 'open' && isLoggedIn && isSelected && selectedOptionId && (
-                      <div className="px-5 pb-5 pt-1 border-t border-white/5 space-y-3">
+                      <div className="px-5 pb-5 pt-1 border-t border-white/5 space-y-3 animate-in slide-in-from-top-2">
                         <div className="flex gap-3 items-center">
                           <div className="flex-1">
                             <label className="text-[10px] text-white/30 uppercase tracking-widest font-bold block mb-1.5">Monto (K-Coins)</label>
@@ -2858,6 +2932,7 @@ export function LeaderboardClient({
                                 setLocalUserBets(prev => [res.bet, ...prev])
                                 setSelectedMarketId(null)
                                 setSelectedOptionId(null)
+                                setSelectedMultiOptionIds([])
                                 setBetAmount('')
                               }
                             } finally {
@@ -2888,8 +2963,15 @@ export function LeaderboardClient({
                         userBetForMarket.status === 'refunded' ? 'bg-white/5 border-white/10 text-white/40' :
                         'bg-yellow-500/10 border-yellow-500/20 text-yellow-300'
                       }`}>
-                        <span>Tu apuesta: {opts.find(o => o.id === userBetForMarket.selected_option_id)?.name}</span>
-                        <span>{userBetForMarket.amount} K-Coins → {parseFloat(userBetForMarket.potential_payout).toFixed(2)}</span>
+                        <span className="truncate max-w-[65%]">
+                          Tu apuesta: {
+                            (userBetForMarket.selected_option_id || '')
+                              .split(',')
+                              .map((id: string) => opts.find(o => o.id === id.trim())?.name || id.trim())
+                              .join(', ')
+                          }
+                        </span>
+                        <span className="shrink-0 font-orbitron">{userBetForMarket.amount} K-Coins → {parseFloat(userBetForMarket.potential_payout).toFixed(2)}</span>
                       </div>
                     )}
                   </div>
