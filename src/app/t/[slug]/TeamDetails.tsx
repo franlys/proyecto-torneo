@@ -417,9 +417,11 @@ export function TeamDetails({
                   alt={selectedPlayer.displayName}
                   animate={{ y: [0, -6, 0] }}
                   transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                  className="rounded-2xl"
                   style={{
-                    width: '170px', height: '250px', objectFit: 'contain',
-                    filter: `drop-shadow(0 0 20px rgba(${rgbColor}, 0.7)) drop-shadow(0 10px 40px rgba(0,0,0,0.95))`,
+                    width: '160px', height: '220px', objectFit: 'cover',
+                    border: `1px solid rgba(${rgbColor}, 0.3)`,
+                    filter: `drop-shadow(0 0 20px rgba(${rgbColor}, 0.6)) drop-shadow(0 10px 30px rgba(0,0,0,0.9))`,
                     position: 'relative', zIndex: 2,
                   }}
                 />
@@ -430,6 +432,7 @@ export function TeamDetails({
                   style={{
                     position: 'relative', zIndex: 2, width: '150px', height: '210px',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '5rem',
+                    borderRadius: '16px',
                     background: `linear-gradient(135deg, rgba(${rgbColor}, 0.1), rgba(0,0,0,0.4))`,
                     border: `1px solid rgba(${rgbColor}, 0.2)`,
                   }}

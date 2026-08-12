@@ -65,7 +65,7 @@ export default async function PublicLeaderboardPage({
   // Fetch only confirmed teams with their participants (for the positions and Participants tab)
   const { data: allTeams } = await supabase
     .from('teams')
-    .select('id, name, avatar_url, stream_url, registration_status, amount_paid, participants(id, team_id, user_id, display_name, is_captain, stream_url, total_kills, kd_ratio, avg_kills, classification_rank, br_avg_placement, color)')
+    .select('id, name, avatar_url, stream_url, registration_status, amount_paid, participants(id, team_id, user_id, display_name, is_captain, stream_url, total_kills, kd_ratio, avg_kills, classification_rank, br_avg_placement, color, avatar_url, profiles(id, username, avatar_url))')
     .eq('tournament_id', tournament.id)
     .in('registration_status', ['confirmed', 'approved_to_pay'])
     .order('created_at', { ascending: true })
@@ -126,20 +126,24 @@ export default async function PublicLeaderboardPage({
     streamUrl: t.stream_url,
     registrationStatus: t.registration_status,
     amountPaid: Number(t.amount_paid) || 0,
-    participants: (t.participants || []).map((p: any) => ({
-      id: p.id,
-      displayName: p.display_name,
-      isCaptain: p.is_captain,
-      streamUrl: p.stream_url,
-      avatarUrl: p.avatar_url ?? undefined,
-      totalKills: p.total_kills || 0,
-      kdRatio:            p.kd_ratio            ?? undefined,
-      avgKills:           p.avg_kills            ?? undefined,
-      classificationRank: p.classification_rank  ?? undefined,
-      brAvgPlacement:     p.br_avg_placement      ?? undefined,
-      color:              p.color                 ?? undefined,
-      userId:             p.user_id,
-    })),
+    participants: (t.participants || []).map((p: any) => {
+      const profileAvatar = Array.isArray(p.profiles) ? p.profiles[0]?.avatar_url : p.profiles?.avatar_url
+      const finalAvatar = p.avatar_url || profileAvatar || undefined
+      return {
+        id: p.id,
+        displayName: p.display_name,
+        isCaptain: p.is_captain,
+        streamUrl: p.stream_url,
+        avatarUrl: finalAvatar,
+        totalKills: p.total_kills || 0,
+        kdRatio:            p.kd_ratio            ?? undefined,
+        avgKills:           p.avg_kills            ?? undefined,
+        classificationRank: p.classification_rank  ?? undefined,
+        brAvgPlacement:     p.br_avg_placement      ?? undefined,
+        color:              p.color                 ?? undefined,
+        userId:             p.user_id,
+      }
+    }),
   }))
 
   const theme = Array.isArray(tournament.leaderboard_themes)
@@ -214,16 +218,21 @@ export default async function PublicLeaderboardPage({
 
   // Flatten and map participants for LeaderboardClient
   const allParticipants = allTeams?.flatMap(t => 
-    (t.participants || []).map((p: any) => ({
-      id: p.id,
-      tournamentId: tournament.id,
-      teamId: p.team_id,
-      displayName: p.display_name,
-      isCaptain: p.is_captain,
-      streamUrl: p.stream_url,
-      totalKills: p.total_kills || 0,
-      userId: p.user_id
-    }))
+    (t.participants || []).map((p: any) => {
+      const profileAvatar = Array.isArray(p.profiles) ? p.profiles[0]?.avatar_url : p.profiles?.avatar_url
+      const finalAvatar = p.avatar_url || profileAvatar || undefined
+      return {
+        id: p.id,
+        tournamentId: tournament.id,
+        teamId: p.team_id,
+        displayName: p.display_name,
+        isCaptain: p.is_captain,
+        streamUrl: p.stream_url,
+        avatarUrl: finalAvatar,
+        totalKills: p.total_kills || 0,
+        userId: p.user_id
+      }
+    })
   ) || []
 
   // Fetch active advertising placements
