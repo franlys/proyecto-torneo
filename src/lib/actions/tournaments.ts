@@ -478,7 +478,7 @@ export async function activateTournament(
   // Verify ownership
   const { data: tournament, error: fetchErr } = await supabase
     .from('tournaments')
-    .select('status, creator_id, collaborator_id, format, kill_race_time_limit_minutes, name, discord_integration_enabled, discord_announcement_channel_id, discord_url')
+    .select('status, creator_id, collaborator_id, format, mode, kill_race_time_limit_minutes, name, discord_integration_enabled, discord_announcement_channel_id, discord_url')
     .eq('id', id)
     .single()
 
@@ -583,12 +583,15 @@ export async function activateTournament(
               const voiceChannelName = `🔊 ${team.name}`
               const textChannelName = `chat-${team.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'equipo'}`
 
+              const modeLimits: Record<string, number> = { solo: 1, duo: 2, trio: 3, squad: 4, solos: 1, duos: 2, trios: 3, squads: 4 }
+              const userLimit = modeLimits[tournament.mode?.toLowerCase()] || 0
+
               let voiceId = team.discord_voice_channel_id
               const existingVoice = existingInCategory.find((c: any) => c.type === 2 && (c.id === voiceId || c.name === voiceChannelName))
               if (existingVoice) {
                 voiceId = existingVoice.id
               } else {
-                const voiceRes = await createPrivateVoiceChannel(guildId, voiceChannelName, categoryId, teamDiscordIds)
+                const voiceRes = await createPrivateVoiceChannel(guildId, voiceChannelName, categoryId, teamDiscordIds, userLimit)
                 if (voiceRes.success && voiceRes.id) voiceId = voiceRes.id
               }
 
@@ -2002,7 +2005,7 @@ export async function syncTournamentDiscordChannels(
   // 1. Fetch tournament
   const { data: tournament, error: fetchErr } = await supabase
     .from('tournaments')
-    .select('id, name, slug, creator_id, collaborator_id, discord_integration_enabled, discord_announcement_channel_id, discord_voice_category_id, discord_url')
+    .select('id, name, slug, mode, creator_id, collaborator_id, discord_integration_enabled, discord_announcement_channel_id, discord_voice_category_id, discord_url')
     .eq('id', tournamentId)
     .single()
 
@@ -2155,12 +2158,15 @@ export async function syncTournamentDiscordChannels(
       const voiceChannelName = `🔊 ${team.name}`
       const textChannelName = `chat-${team.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'equipo'}`
 
+      const modeLimits: Record<string, number> = { solo: 1, duo: 2, trio: 3, squad: 4, solos: 1, duos: 2, trios: 3, squads: 4 }
+      const userLimit = modeLimits[tournament.mode?.toLowerCase()] || 0
+
       let voiceId = team.discord_voice_channel_id
       const existingVoice = existingInCategory.find((c: any) => c.type === 2 && (c.id === voiceId || c.name === voiceChannelName || c.name === team.name))
       if (existingVoice) {
         voiceId = existingVoice.id
       } else {
-        const voiceRes = await createPrivateVoiceChannel(cleanGuildId, voiceChannelName, categoryId, teamDiscordIds)
+        const voiceRes = await createPrivateVoiceChannel(cleanGuildId, voiceChannelName, categoryId, teamDiscordIds, userLimit)
         if (voiceRes.success && voiceRes.id) voiceId = voiceRes.id
       }
 

@@ -191,7 +191,8 @@ export async function createPrivateVoiceChannel(
   guildId: string,
   name: string,
   parentId: string,
-  teamDiscordIds: string[]
+  teamDiscordIds: string[] = [],
+  userLimit: number = 0
 ) {
   const cleanGuildId = extractDiscordGuildId(guildId) || guildId
   try {
@@ -201,16 +202,13 @@ export async function createPrivateVoiceChannel(
       parent_id: parentId,
     }
 
-    // Only apply restrictive permission overwrites if specific team Discord IDs are provided
+    if (userLimit > 0) {
+      body.user_limit = userLimit
+    }
+
+    // Explicitly allow team members who linked their Discord
     if (teamDiscordIds && teamDiscordIds.length > 0) {
-      const permissionOverwrites: any[] = [
-        {
-          id: cleanGuildId,
-          type: 0, // ROLE @everyone
-          allow: '0',
-          deny: '1048576', // Deny CONNECT (1 << 20)
-        },
-      ]
+      const permissionOverwrites: any[] = []
 
       teamDiscordIds.forEach((discordUserId) => {
         if (discordUserId) {
@@ -223,7 +221,9 @@ export async function createPrivateVoiceChannel(
         }
       })
 
-      body.permission_overwrites = permissionOverwrites
+      if (permissionOverwrites.length > 0) {
+        body.permission_overwrites = permissionOverwrites
+      }
     }
 
     const response = await fetch(`${DISCORD_API_URL}/guilds/${cleanGuildId}/channels`, {
@@ -255,7 +255,7 @@ export async function createPrivateTextChannel(
   guildId: string,
   name: string,
   parentId: string,
-  teamDiscordIds: string[]
+  teamDiscordIds: string[] = []
 ) {
   const cleanGuildId = extractDiscordGuildId(guildId) || guildId
   const sanitizedName = name
@@ -273,16 +273,9 @@ export async function createPrivateTextChannel(
       parent_id: parentId,
     }
 
-    // Only apply restrictive permission overwrites if specific team Discord IDs are provided
+    // Explicitly allow team members who linked their Discord
     if (teamDiscordIds && teamDiscordIds.length > 0) {
-      const permissionOverwrites: any[] = [
-        {
-          id: cleanGuildId,
-          type: 0, // ROLE @everyone
-          allow: '0',
-          deny: '1024', // Deny VIEW_CHANNEL (1<<10)
-        },
-      ]
+      const permissionOverwrites: any[] = []
 
       teamDiscordIds.forEach((discordUserId) => {
         if (discordUserId) {
@@ -295,7 +288,9 @@ export async function createPrivateTextChannel(
         }
       })
 
-      body.permission_overwrites = permissionOverwrites
+      if (permissionOverwrites.length > 0) {
+        body.permission_overwrites = permissionOverwrites
+      }
     }
 
     const response = await fetch(`${DISCORD_API_URL}/guilds/${cleanGuildId}/channels`, {
