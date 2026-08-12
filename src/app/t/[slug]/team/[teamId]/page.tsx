@@ -17,7 +17,7 @@ export default async function TeamPortalPage({
   // Fetch the tournament
   const { data: tournament, error: tErr } = await supabase
     .from('tournaments')
-    .select('id, name, status, kill_rate_enabled, pot_top_enabled, discipline, clash_royale_tag, creator_id, discord_integration_enabled, discord_url, discord_announcement_channel_id')
+    .select('id, name, mode, status, kill_rate_enabled, pot_top_enabled, discipline, clash_royale_tag, creator_id, discord_integration_enabled, discord_url, discord_announcement_channel_id, discord_voice_category_id')
     .eq('slug', normalizedSlug)
     .single()
 
@@ -75,6 +75,110 @@ export default async function TeamPortalPage({
         const { grantDiscordChannelAccess } = await import('@/lib/services/discord')
         grantDiscordChannelAccess(team.discord_voice_channel_id, userDiscordId, 'voice').catch(() => {})
       }
+    }
+  }
+
+  // On-demand Progressive Discord Channel Provisioning:
+  // Si el torneo tiene integración con Discord, verificar y crear salas del equipo de forma progresiva
+  if (discordGuildId && (tournament.discord_integration_enabled || tournament.discord_url)) {
+    try {
+      const { 
+        getGuildChannels, 
+        createDiscordCategory, 
+        createGuildTextChannel, 
+        createPrivateVoiceChannel, 
+        createPrivateTextChannel,
+        sendDiscordEmbed 
+      } = await import('@/lib/services/discord')
+
+      const channelsRes = await getGuildChannels(discordGuildId)
+      if (channelsRes.success && Array.isArray(channelsRes.data)) {
+        const guildChannels = channelsRes.data
+
+        // 1. Asegurar Categoría del Torneo
+        let categoryId = tournament.discord_voice_category_id
+        const categoryExists = categoryId ? guildChannels.some((c: any) => c.id === categoryId && c.type === 4) : false
+
+        if (!categoryExists) {
+          const categoryRes = await createDiscordCategory(discordGuildId, `🏆 TORNEO: ${tournament.name.toUpperCase()}`)
+          if (categoryRes.success && categoryRes.id) {
+            categoryId = categoryRes.id
+            tournament.discord_voice_category_id = categoryId
+            await supabase.from('tournaments').update({ discord_voice_category_id: categoryId }).eq('id', tournament.id)
+          }
+        }
+
+        if (categoryId) {
+          // 2. Asegurar Canal de Anuncios Oficial
+          let announcementId = tournament.discord_announcement_channel_id
+          const annExists = guildChannels.some((c: any) => c.parent_id === categoryId && (c.id === announcementId || c.name === '📢-anuncios-torneo' || c.name.includes('anuncio')))
+          if (!annExists) {
+            const annRes = await createGuildTextChannel(discordGuildId, '📢-anuncios-torneo', categoryId, `Canal oficial de anuncios de ${tournament.name}`)
+            if (annRes.success && annRes.id) {
+              announcementId = annRes.id
+              tournament.discord_announcement_channel_id = announcementId
+              await supabase.from('tournaments').update({ discord_announcement_channel_id: announcementId }).eq('id', tournament.id)
+              await sendDiscordEmbed(annRes.id, {
+                title: `📢 ¡Canal Oficial de Anuncios — ${tournament.name}!`,
+                description: `¡Bienvenidos competidores!\n\nEn este canal se publicarán avisos de partida, horarios y recordatorios de evidencias en vivo.`,
+                color: 62909,
+                timestamp: new Date().toISOString(),
+              })
+            }
+          }
+
+          // 3. Obtener Discord IDs de los integrantes del equipo (si están vinculados)
+          const teamUserIds = (participants || []).map((p: any) => p.user_id).filter(Boolean) as string[]
+          let teamDiscordIds: string[] = []
+          if (teamUserIds.length > 0) {
+            const adminSupabase = await createAdminClient()
+            const { data: identities } = await adminSupabase
+              .schema('auth')
+              .from('identities')
+              .select('user_id, provider_id')
+              .eq('provider', 'discord')
+              .in('user_id', teamUserIds)
+
+            if (identities) {
+              teamDiscordIds = identities.map((i) => i.provider_id).filter(Boolean)
+            }
+          }
+
+          const voiceChannelName = `🔊 ${team.name}`
+          const textChannelName = `chat-${team.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'equipo'}`
+
+          const modeLimits: Record<string, number> = { solo: 1, duo: 2, trio: 3, squad: 4, solos: 1, duos: 2, trios: 3, squads: 4 }
+          const userLimit = modeLimits[tournament.mode?.toLowerCase()] || 0
+
+          // 4. Asegurar Canal de Voz del Equipo
+          let voiceId = team.discord_voice_channel_id
+          const voiceExists = guildChannels.some((c: any) => c.parent_id === categoryId && c.type === 2 && (c.id === voiceId || c.name === voiceChannelName || c.name === team.name))
+          if (!voiceExists) {
+            const voiceRes = await createPrivateVoiceChannel(discordGuildId, voiceChannelName, categoryId, teamDiscordIds, userLimit)
+            if (voiceRes.success && voiceRes.id) {
+              voiceId = voiceRes.id
+              team.discord_voice_channel_id = voiceId
+              await supabase.from('teams').update({ discord_voice_channel_id: voiceId }).eq('id', team.id)
+            }
+          }
+
+          // 5. Asegurar Canal de Texto del Equipo
+          const textExists = guildChannels.some((c: any) => c.parent_id === categoryId && c.type === 0 && (c.name === textChannelName || c.name.includes(team.name.toLowerCase())))
+          if (!textExists) {
+            const textRes = await createPrivateTextChannel(discordGuildId, team.name, categoryId, teamDiscordIds)
+            if (textRes.success && textRes.id) {
+              await sendDiscordEmbed(textRes.id, {
+                title: `🎮 Sala Oficial: ${team.name}`,
+                description: `¡Hola equipo **${team.name}**!\n\nEste es su canal de comunicaciones oficial para el torneo.\n\n📌 **Aquí recibirán:**\n• 🏁 Avisos de inicio y fin de cada ronda.\n• 📸 Recordatorios de carga de evidencia.\n• ⚠️ Notificaciones de Match Point o sanciones.\n\n🔊 **Voz:** Únanse al canal de voz de su equipo para coordinar durante la partida.`,
+                color: 5793266,
+                timestamp: new Date().toISOString(),
+              })
+            }
+          }
+        }
+      }
+    } catch (onDemandErr) {
+      console.error('[On-Demand Discord Provisioning] Error:', onDemandErr)
     }
   }
 
