@@ -2967,7 +2967,11 @@ export function LeaderboardClient({
                           Tu apuesta: {
                             (userBetForMarket.selected_option_id || '')
                               .split(',')
-                              .map((id: string) => opts.find(o => o.id === id.trim())?.name || id.trim())
+                              .map((id: string) => {
+                                const trimmed = id.trim()
+                                const found = opts.find(o => o.id === trimmed || o.id.startsWith(trimmed) || trimmed.startsWith(o.id))
+                                return found?.name || trimmed
+                              })
                               .join(', ')
                           }
                         </span>
@@ -2990,12 +2994,20 @@ export function LeaderboardClient({
                 {localUserBets.map((bet: any) => {
                   const market = betMarkets.find((m: any) => m.id === bet.market_id)
                   const opts = market?.options as { id: string; name: string; odds: number }[] || []
-                  const chosenOpt = opts.find(o => o.id === bet.selected_option_id)
+                  const chosenNames = (bet.selected_option_id || '')
+                    .split(',')
+                    .map((id: string) => {
+                      const trimmed = id.trim()
+                      const found = opts.find(o => o.id === trimmed || o.id.startsWith(trimmed) || trimmed.startsWith(o.id))
+                      return found?.name || trimmed
+                    })
+                    .join(', ')
+
                   return (
                     <div key={bet.id} className="px-5 py-3 flex items-center justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <p className="text-white/80 text-xs font-semibold truncate">{market?.question}</p>
-                        <p className="text-white/40 text-[10px] mt-0.5">Aposté a: <b className="text-white/60">{chosenOpt?.name || '—'}</b></p>
+                        <p className="text-white/40 text-[10px] mt-0.5">Aposté a: <b className="text-white/60">{chosenNames || '—'}</b></p>
                       </div>
                       <div className="text-right shrink-0">
                         <p className="font-mono font-bold text-sm text-white">{parseFloat(bet.amount).toFixed(0)} K-Coins</p>

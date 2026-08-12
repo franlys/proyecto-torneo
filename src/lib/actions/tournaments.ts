@@ -1239,7 +1239,9 @@ export async function finishTournament(
             if (bets && bets.length > 0) {
               for (const bet of bets) {
                 const pickedIds = (bet.selected_option_id || '').split(',').map((id: string) => id.trim()).filter(Boolean)
-                const isWinner = pickedIds.length > 0 && pickedIds.every((id: string) => winningOptionIds.includes(id))
+                const isWinner = pickedIds.length > 0 && pickedIds.every((pId: string) =>
+                  winningOptionIds.some(wId => wId === pId || wId.startsWith(pId) || pId.startsWith(wId))
+                )
                 const status = isWinner ? 'won' : 'lost'
 
                 await adminSupabase

@@ -174,12 +174,16 @@ export async function placePredictionAction(input: {
 
     if (balanceErr) return { error: 'Error al procesar el cobro de la apuesta' }
 
+    const storedOptionId = pickedOptionIds.length > 1
+      ? pickedOptionIds.map(id => id.length > 8 ? id.substring(0, 8) : id).join(',')
+      : input.selectedOptionId
+
     const { data: bet, error: betErr } = await adminSupabase
       .from('user_bets')
       .insert({
         market_id: input.marketId,
         user_id: user.id,
-        selected_option_id: input.selectedOptionId,
+        selected_option_id: storedOptionId,
         amount,
         odds,
         potential_payout: potentialPayout,
@@ -191,7 +195,8 @@ export async function placePredictionAction(input: {
     if (betErr) {
       // Rollback balance update in case of insert error
       await adminSupabase.from('profiles').update({ balance: currentBalance }).eq('id', user.id)
-      return { error: 'Error al registrar la apuesta' }
+      console.error('[placePredictionAction] betErr:', betErr)
+      return { error: `Error al registrar la apuesta: ${betErr.message || ''}` }
     }
 
     // Write coin transaction audit log
@@ -498,7 +503,9 @@ export async function autoResolveMatchMarketsAction(matchId: string) {
 
       for (const bet of (bets || [])) {
         const pickedIds = (bet.selected_option_id || '').split(',').map((id: string) => id.trim()).filter(Boolean)
-        const isWinner = pickedIds.length > 0 && pickedIds.every((id: string) => winningOptionIds.includes(id))
+        const isWinner = pickedIds.length > 0 && pickedIds.every((pId: string) =>
+          winningOptionIds.some(wId => wId === pId || wId.startsWith(pId) || pId.startsWith(wId))
+        )
         const status = isWinner ? 'won' : 'lost'
         await adminSupabase.from('user_bets').update({ status }).eq('id', bet.id)
 
