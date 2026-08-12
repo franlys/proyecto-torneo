@@ -425,7 +425,7 @@ export async function autoResolveMatchMarketsAction(matchId: string) {
     // Fetch approved submissions for this match
     const { data: submissions } = await adminSupabase
       .from('submissions')
-      .select('id, team_id, rank, kill_count, player_kills, participant_id')
+      .select('id, team_id, rank, kill_count, player_kills')
       .eq('match_id', matchId)
       .eq('status', 'approved')
 
