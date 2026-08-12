@@ -301,8 +301,8 @@ export function FinanceClient({
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-white/10 pb-4">
+      {/* Navigation Tabs — Horizontally scrollable on split/mobile screens */}
+      <div className="flex items-center gap-2 border-b border-white/10 pb-3 overflow-x-auto no-scrollbar flex-nowrap scroll-smooth">
         {[
           { id: 'overview', label: '📊 Resumen & Gráficos' },
           { id: 'withdrawals', label: `💸 Retiros PayPal (${pendingWithdrawals.length > 0 ? `⚠️ ${pendingWithdrawals.length}` : withdrawals.length})` },
@@ -313,9 +313,9 @@ export function FinanceClient({
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap shrink-0 ${
               activeTab === tab.id
-                ? 'bg-neon-cyan text-black shadow-lg shadow-neon-cyan/20'
+                ? 'bg-neon-cyan text-black shadow-lg shadow-neon-cyan/20 scale-[1.02]'
                 : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10'
             }`}
           >
@@ -328,7 +328,7 @@ export function FinanceClient({
       {activeTab === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Chart */}
-          <div className="lg:col-span-2 p-6 rounded-2xl bg-dark-card border border-white/5 space-y-4">
+          <div className="lg:col-span-2 p-4 sm:p-6 rounded-2xl bg-dark-card border border-white/5 space-y-4">
             <h3 className="text-sm font-bold uppercase tracking-wider text-white">Flujo Mensual de Fondos (USD)</h3>
             <div className="h-[280px] w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -358,7 +358,7 @@ export function FinanceClient({
           </div>
 
           {/* Quick Metrics Breakdown */}
-          <div className="p-6 rounded-2xl bg-dark-card border border-white/5 space-y-4 flex flex-col justify-between">
+          <div className="p-4 sm:p-6 rounded-2xl bg-dark-card border border-white/5 space-y-4 flex flex-col justify-between">
             <h3 className="text-sm font-bold uppercase tracking-wider text-white">Resumen de Circulación</h3>
             
             <div className="space-y-3">
@@ -390,7 +390,7 @@ export function FinanceClient({
 
       {/* TAB 2: WITHDRAWALS */}
       {activeTab === 'withdrawals' && (
-        <div className="p-6 rounded-2xl bg-dark-card border border-white/5 space-y-6">
+        <div className="p-4 sm:p-6 rounded-2xl bg-dark-card border border-white/5 space-y-6">
           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
             <div>
               <h3 className="text-sm font-bold uppercase tracking-wider text-white">Historial y Gestión de Retiros</h3>
@@ -398,12 +398,12 @@ export function FinanceClient({
             </div>
             
             {/* Filters */}
-            <div className="flex gap-2 bg-black/40 p-1 rounded-xl border border-white/5 self-start">
+            <div className="flex gap-1.5 bg-black/40 p-1 rounded-xl border border-white/5 self-start overflow-x-auto no-scrollbar max-w-full">
               {['all', 'pending', 'completed', 'failed'].map((filter) => (
                 <button
                   key={filter}
                   onClick={() => setStatusFilter(filter as any)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all whitespace-nowrap shrink-0 ${
                     statusFilter === filter
                       ? 'bg-white/10 text-white shadow-sm'
                       : 'text-white/40 hover:text-white/60'
@@ -415,7 +415,8 @@ export function FinanceClient({
             </div>
           </div>
 
-          <div className="overflow-x-auto w-full">
+          {/* Desktop Table View (lg+) */}
+          <div className="hidden lg:block overflow-x-auto w-full">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-white/5 text-white/40 font-bold uppercase tracking-wider">
@@ -491,18 +492,91 @@ export function FinanceClient({
               </tbody>
             </table>
           </div>
+
+          {/* Mobile & Split-Screen Cards View (<lg) */}
+          <div className="lg:hidden space-y-3">
+            {filteredWithdrawals.length === 0 ? (
+              <div className="text-center py-8 text-white/30 text-xs">
+                No se encontraron registros de retiros para este filtro.
+              </div>
+            ) : (
+              filteredWithdrawals.map((w) => (
+                <div key={w.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-3 shadow-md">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h4 className="text-xs font-bold text-white">{w.profiles?.username || 'Usuario'}</h4>
+                      <p className="text-[10px] text-white/40">{w.profiles?.email || '-'}</p>
+                    </div>
+                    <div>
+                      {w.status === 'completed' && <span className="px-2 py-0.5 bg-green-500/10 border border-green-500/20 text-green-400 rounded-full font-bold text-[10px]">Completado</span>}
+                      {w.status === 'pending' && <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-full font-bold text-[10px]">Pendiente</span>}
+                      {w.status === 'failed' && <span className="px-2 py-0.5 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full font-bold text-[10px]">Rechazado</span>}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 p-2.5 rounded-lg bg-black/30 border border-white/5 text-xs">
+                    <div>
+                      <span className="text-[10px] text-white/40 block uppercase font-bold">Monto a Enviar</span>
+                      <span className="font-bold text-white text-sm">${Number(w.usd_amount).toFixed(2)} USD</span>
+                      <span className="text-[10px] text-yellow-400 block font-orbitron">🪙 {Number(w.amount).toFixed(2)} K-Coins</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-white/40 block uppercase font-bold">Fecha Solicitud</span>
+                      <span className="text-[11px] text-white/70">{formatDate(w.created_at)}</span>
+                    </div>
+                  </div>
+
+                  <div className="text-xs bg-white/[0.01] p-2.5 rounded-lg border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <span className="text-[10px] text-white/40 uppercase font-bold">Cuenta PayPal:</span>
+                    <span className="font-mono text-white/90 text-[11px] select-all break-all">{w.paypal_email}</span>
+                  </div>
+
+                  {w.status === 'pending' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                      <a
+                        href="https://www.paypal.com/myaccount/transfer/homepage/buy/preview"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="py-2 px-3 bg-[#0070ba]/20 hover:bg-[#0070ba]/30 border border-[#0070ba]/40 text-[#009cde] rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <span>Pagar en PayPal</span>
+                        <ExternalLink size={12} />
+                      </a>
+                      <button
+                        disabled={loadingActionId === w.id}
+                        onClick={() => handleApproveWithdrawal(w)}
+                        className="py-2 px-3 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-400 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                      >
+                        {loadingActionId === w.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={14} />}
+                        <span>Aprobar</span>
+                      </button>
+                      <button
+                        disabled={loadingActionId === w.id}
+                        onClick={() => handleRejectWithdrawal(w)}
+                        className="py-2 px-3 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                      >
+                        <X size={14} />
+                        <span>Rechazar</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
 
       {/* TAB 3: TOURNAMENTS */}
       {activeTab === 'tournaments' && (
-        <div className="p-6 rounded-2xl bg-dark-card border border-white/5 space-y-6">
+        <div className="p-4 sm:p-6 rounded-2xl bg-dark-card border border-white/5 space-y-6">
           <div>
             <h3 className="text-sm font-bold uppercase tracking-wider text-white">Desglose Económico de Torneos</h3>
             <p className="text-xs text-white/40 mt-1">Recaudación por cuotas de inscripción, premios y comisiones</p>
           </div>
 
-          <div className="overflow-x-auto w-full">
+          {/* Desktop Table View */}
+          <div className="hidden lg:block overflow-x-auto w-full">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-white/5 text-white/40 font-bold uppercase tracking-wider">
@@ -510,7 +584,7 @@ export function FinanceClient({
                   <th className="py-3 px-4">Recaudado</th>
                   <th className="py-3 px-4">Premios Podio</th>
                   <th className="py-3 px-4">Premio MVP</th>
-                  <th className="py-3 px-4">Payout Organizador</th>
+                  <th className="py-3 px-4">Payout Org</th>
                   <th className="py-3 px-4">Payout Streamer</th>
                   <th className="py-3 px-4 text-right">Comisión Kronix</th>
                 </tr>
@@ -548,12 +622,58 @@ export function FinanceClient({
               </tbody>
             </table>
           </div>
+
+          {/* Mobile & Split Cards View */}
+          <div className="lg:hidden space-y-3">
+            {tournamentFinancials.length === 0 ? (
+              <div className="text-center py-8 text-white/30 text-xs">
+                No hay reportes de torneos finalizados aún.
+              </div>
+            ) : (
+              tournamentFinancials.map((f: any) => {
+                const rev = Number(f.total_revenue || 0)
+                const prizes = Number(f.total_prizes || 0)
+                const mvp = Number(f.mvp_prize || 0)
+                const remainder = Number(f.remainder || 0)
+                const orgPayout = Number(f.organizer_payout || 0)
+                const strPayout = Number(f.streamer_payout || 0)
+                const platformCut = remainder - orgPayout - strPayout
+
+                return (
+                  <div key={f.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <h4 className="text-xs font-bold text-white">{f.tournaments?.name || 'Torneo'}</h4>
+                      <span className="text-xs font-bold text-neon-cyan font-orbitron">+${platformCut.toFixed(2)} USD</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[11px] p-2.5 bg-black/30 rounded-lg border border-white/5">
+                      <div>
+                        <span className="text-white/40 block">Recaudado:</span>
+                        <span className="font-mono text-white font-bold">${rev.toFixed(2)} USD</span>
+                      </div>
+                      <div>
+                        <span className="text-white/40 block">Premios Podio:</span>
+                        <span className="font-mono text-yellow-400 font-bold">${prizes.toFixed(2)} USD</span>
+                      </div>
+                      <div>
+                        <span className="text-white/40 block">Premio MVP:</span>
+                        <span className="font-mono text-amber-400 font-bold">${mvp.toFixed(2)} USD</span>
+                      </div>
+                      <div>
+                        <span className="text-white/40 block">Ganancia Kronix:</span>
+                        <span className="font-mono text-neon-cyan font-bold">+${platformCut.toFixed(2)} USD</span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
         </div>
       )}
 
       {/* TAB 4: BETS */}
       {activeTab === 'bets' && (
-        <div className="p-6 rounded-2xl bg-dark-card border border-white/5 space-y-6">
+        <div className="p-4 sm:p-6 rounded-2xl bg-dark-card border border-white/5 space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
               <span className="text-[10px] text-white/40 uppercase font-bold block">Volumen Total Apostado</span>
@@ -571,7 +691,8 @@ export function FinanceClient({
             </div>
           </div>
 
-          <div className="overflow-x-auto w-full">
+          {/* Desktop Table View */}
+          <div className="hidden lg:block overflow-x-auto w-full">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-white/5 text-white/40 font-bold uppercase tracking-wider">
@@ -607,12 +728,36 @@ export function FinanceClient({
               </tbody>
             </table>
           </div>
+
+          {/* Mobile & Split Cards View */}
+          <div className="lg:hidden space-y-3">
+            {userBets.length === 0 ? (
+              <div className="text-center py-8 text-white/30 text-xs">
+                No hay apuestas registradas en el sistema.
+              </div>
+            ) : (
+              userBets.slice(0, 30).map((b: any) => (
+                <div key={b.id} className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between gap-3 text-xs">
+                  <div>
+                    <span className="font-bold text-purple-400 font-orbitron block">🪙 {Number(b.amount).toFixed(2)} K-Coins</span>
+                    <span className="text-[10px] text-white/40">{formatDate(b.created_at)} • Cuota x{Number(b.odds).toFixed(2)}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-mono text-yellow-400 block font-bold">🪙 {Number(b.potential_payout).toFixed(2)}</span>
+                    {b.status === 'won' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-500/10 text-green-400 inline-block">Ganada</span>}
+                    {b.status === 'lost' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400 inline-block">Perdida</span>}
+                    {b.status === 'pending' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 inline-block">En Juego</span>}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
 
       {/* TAB 5: GENERAL LEDGER */}
       {activeTab === 'ledger' && (
-        <div className="p-6 rounded-2xl bg-dark-card border border-white/5 space-y-6">
+        <div className="p-4 sm:p-6 rounded-2xl bg-dark-card border border-white/5 space-y-6">
           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
             <div>
               <h3 className="text-sm font-bold uppercase tracking-wider text-white">Libro Diario Contable</h3>
@@ -633,20 +778,20 @@ export function FinanceClient({
           </div>
 
           {/* Type Filters */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar flex-nowrap pb-1">
             {[
               { id: 'all', label: 'Todos' },
-              { id: 'deposits', label: 'Depósitos / Recargas' },
+              { id: 'deposits', label: 'Depósitos' },
               { id: 'withdrawals', label: 'Retiros' },
-              { id: 'tournaments', label: 'Inscripciones Torneos' },
-              { id: 'prizes', label: 'Premios Pagados' },
+              { id: 'tournaments', label: 'Torneos' },
+              { id: 'prizes', label: 'Premios' },
               { id: 'bets', label: 'Apuestas' },
               { id: 'refunds', label: 'Reembolsos' },
             ].map((f) => (
               <button
                 key={f.id}
                 onClick={() => setTxFilter(f.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                   txFilter === f.id
                     ? 'bg-neon-cyan/20 border border-neon-cyan text-neon-cyan'
                     : 'bg-white/5 border border-white/5 text-white/40 hover:text-white'
@@ -657,8 +802,8 @@ export function FinanceClient({
             ))}
           </div>
 
-          {/* Transactions Table */}
-          <div className="overflow-x-auto w-full">
+          {/* Desktop Table View */}
+          <div className="hidden lg:block overflow-x-auto w-full">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-white/5 text-white/40 font-bold uppercase tracking-wider">
@@ -702,6 +847,40 @@ export function FinanceClient({
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile & Split Cards View */}
+          <div className="lg:hidden space-y-2.5">
+            {filteredTransactions.length === 0 ? (
+              <div className="text-center py-8 text-white/30 text-xs">
+                No se encontraron transacciones con los filtros seleccionados.
+              </div>
+            ) : (
+              filteredTransactions.map((tx) => {
+                const isPositive = Number(tx.amount) > 0
+                const userProf = Array.isArray(tx.profiles) ? tx.profiles[0] : tx.profiles
+                const username = userProf?.username || 'Usuario'
+                return (
+                  <div key={tx.id} className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {getTxTypeBadge(tx.type)}
+                        <span className="font-bold text-white">{username}</span>
+                      </div>
+                      <span className={`font-bold font-orbitron ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                        {isPositive ? `+${Number(tx.amount).toFixed(2)}` : Number(tx.amount).toFixed(2)}
+                      </span>
+                    </div>
+                    {tx.description && (
+                      <p className="text-[11px] text-white/60 leading-snug">{tx.description}</p>
+                    )}
+                    <div className="text-[10px] text-white/30 text-right">
+                      {formatDate(tx.created_at)}
+                    </div>
+                  </div>
+                )
+              })
+            )}
           </div>
         </div>
       )}

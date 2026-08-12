@@ -433,9 +433,9 @@ export default function DashboardShell({
 
   return (
     <div className="min-h-screen bg-dark-bg flex">
-      {/* Desktop Sidebar — hidden on mobile */}
-      <aside className="hidden lg:flex w-60 shrink-0 bg-dark-card border-r border-white/5 flex-col h-screen sticky top-0 overflow-y-auto">
-        <div className="px-6 py-5 border-b border-white/5">
+      {/* Desktop & Split-screen Sidebar — visible on md and up */}
+      <aside className="hidden md:flex md:w-56 lg:w-60 shrink-0 bg-dark-card border-r border-white/5 flex-col h-screen sticky top-0 overflow-y-auto z-30">
+        <div className="px-5 lg:px-6 py-5 border-b border-white/5">
           <Link href="/tournaments" className="flex items-center gap-2.5 group">
             <img 
               src="/logo.png" 
@@ -452,8 +452,8 @@ export default function DashboardShell({
         <SidebarFooter />
       </aside>
 
-      {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-dark-card/95 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-4 py-3">
+      {/* Mobile Header (under md) */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-dark-card/95 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-4 py-3">
         <Link href="/tournaments" className="flex items-center gap-2 group">
           <img 
             src="/logo.png" 
@@ -498,7 +498,7 @@ export default function DashboardShell({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+              className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
               onClick={() => setDrawerOpen(false)}
             />
             {/* Drawer panel */}
@@ -508,7 +508,7 @@ export default function DashboardShell({
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="lg:hidden fixed top-0 left-0 bottom-0 z-50 w-72 bg-dark-card border-r border-white/5 flex flex-col overflow-y-auto"
+              className="md:hidden fixed top-0 left-0 bottom-0 z-50 w-72 bg-dark-card border-r border-white/5 flex flex-col overflow-y-auto"
             >
               <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between">
                 <Link href="/tournaments" onClick={() => setDrawerOpen(false)}>
@@ -519,7 +519,7 @@ export default function DashboardShell({
                   onClick={() => setDrawerOpen(false)}
                   className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -532,7 +532,7 @@ export default function DashboardShell({
       </AnimatePresence>
 
       {/* Main content — padding top on mobile for the fixed header */}
-      <main className="flex-1 overflow-auto pt-[52px] lg:pt-0">
+      <main className="flex-1 min-w-0 overflow-x-hidden overflow-y-auto pt-[52px] md:pt-0">
         {missingGameAccountInfo && (
           <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-left">
             <div className="flex items-center gap-2.5">

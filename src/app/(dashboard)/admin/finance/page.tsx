@@ -115,13 +115,13 @@ export default async function AdminFinancePage() {
   const totalVipRevenueUSD = (approvedSubs || []).reduce((acc, s) => acc + Number(s.amount || 0), 0)
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 sm:space-y-8">
       {/* Header */}
       <header className="text-left">
-        <h1 className={`${orbitron.className} text-4xl font-black uppercase tracking-tighter mb-2`}>
+        <h1 className={`${orbitron.className} text-2xl sm:text-4xl font-black uppercase tracking-tighter mb-2`}>
           Centro de Control <span className="text-neon-cyan">Financiero</span>
         </h1>
-        <p className="text-white/40 text-sm">
+        <p className="text-white/40 text-xs sm:text-sm">
           Monitorea todas las entradas, salidas, recaudación por torneos, apuestas, rifas y libro mayor contable en tiempo real.
         </p>
       </header>
