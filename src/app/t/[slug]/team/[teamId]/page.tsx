@@ -17,29 +17,24 @@ export default async function TeamPortalPage({
   // Fetch the tournament
   const { data: tournament, error: tErr } = await supabase
     .from('tournaments')
-    .select('id, name, status, kill_rate_enabled, pot_top_enabled, discipline, clash_royale_tag, creator_id, discord_integration_enabled, discord_url')
+    .select('id, name, status, kill_rate_enabled, pot_top_enabled, discipline, clash_royale_tag, creator_id, discord_integration_enabled, discord_url, discord_announcement_channel_id')
     .eq('slug', normalizedSlug)
     .single()
 
   if (tErr || !tournament) notFound()
 
-  // Fetch discord_guild_id from the tournament creator's profile
-  let discordGuildId: string | null = null
-  if (tournament.creator_id) {
+  // Resolve discord_guild_id cleanly
+  const { resolveDiscordGuildId } = await import('@/lib/services/discord')
+  let discordGuildId: string | null = await resolveDiscordGuildId(tournament.discord_url)
+  if (!discordGuildId && tournament.creator_id) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('discord_guild_id')
       .eq('id', tournament.creator_id)
       .single()
     if (profile?.discord_guild_id) {
-      discordGuildId = profile.discord_guild_id
+      discordGuildId = await resolveDiscordGuildId(profile.discord_guild_id)
     }
-  }
-
-  // Fallback: extract guild ID if tournament.discord_url is a channel/guild URL
-  if (!discordGuildId && tournament.discord_url) {
-    const { extractDiscordGuildId } = await import('@/lib/services/discord')
-    discordGuildId = extractDiscordGuildId(tournament.discord_url)
   }
 
   // Fetch the team
@@ -76,14 +71,9 @@ export default async function TeamPortalPage({
       userHasDiscord = true
       const userDiscordId = identities.provider_id
       const isTeamMember = (participants || []).some((p: any) => p.user_id === user.id)
-      if (isTeamMember) {
+      if (isTeamMember && team.discord_voice_channel_id) {
         const { grantDiscordChannelAccess } = await import('@/lib/services/discord')
-        if (team.discord_voice_channel_id) {
-          grantDiscordChannelAccess(team.discord_voice_channel_id, userDiscordId, 'voice').catch(() => {})
-        }
-        if (team.discord_text_channel_id) {
-          grantDiscordChannelAccess(team.discord_text_channel_id, userDiscordId, 'text').catch(() => {})
-        }
+        grantDiscordChannelAccess(team.discord_voice_channel_id, userDiscordId, 'voice').catch(() => {})
       }
     }
   }
@@ -125,8 +115,8 @@ export default async function TeamPortalPage({
             </div>
           </div>
 
-          {/* Hub de Discord para el Equipo (Siempre visible para coordinar) */}
-          {(team.discord_voice_channel_id || team.discord_text_channel_id || tournament.discord_url) && (
+          {/* Hub de Discord para el Equipo (Canal directo exclusivo para participantes) */}
+          {(team.discord_voice_channel_id || tournament.discord_announcement_channel_id) && discordGuildId && (
             <div className="mb-6 bg-[#5865F2]/10 border border-[#5865F2]/25 rounded-2xl p-4 space-y-3 shadow-[0_0_20px_rgba(88,101,242,0.12)] animate-in fade-in duration-300">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-[#5865F2]/20 border border-[#5865F2]/40 flex items-center justify-center text-white shrink-0">
@@ -135,15 +125,15 @@ export default async function TeamPortalPage({
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-xs font-orbitron font-bold text-white uppercase tracking-wider">Discord de la Partida</h4>
+                  <h4 className="text-xs font-orbitron font-bold text-white uppercase tracking-wider">Discord Oficial del Torneo</h4>
                   <p className="text-[10px] text-white/50 leading-tight">
-                    Canales oficiales y salas privadas de tu equipo
+                    Acceso directo y exclusivo para tu equipo
                   </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                {team.discord_voice_channel_id && discordGuildId && (
+                {team.discord_voice_channel_id && (
                   <a 
                     href={`https://discord.com/channels/${discordGuildId}/${team.discord_voice_channel_id}`}
                     target="_blank"
@@ -151,31 +141,18 @@ export default async function TeamPortalPage({
                     className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#5865F2] hover:bg-[#4752C4] text-white font-orbitron font-bold text-[11px] uppercase tracking-wider transition-all shadow-[0_4px_12px_rgba(88,101,242,0.35)] active:scale-[0.98]"
                   >
                     <span>🔊</span>
-                    <span>Voz de Equipo</span>
+                    <span>Entrar a Voz ({team.name})</span>
                   </a>
                 )}
-                {team.discord_text_channel_id && discordGuildId && (
+                {tournament.discord_announcement_channel_id && (
                   <a 
-                    href={`https://discord.com/channels/${discordGuildId}/${team.discord_text_channel_id}`}
+                    href={`https://discord.com/channels/${discordGuildId}/${tournament.discord_announcement_channel_id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-neon-purple/20 hover:bg-neon-purple/30 border border-neon-purple/40 text-white font-orbitron font-bold text-[11px] uppercase tracking-wider transition-all"
+                    className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-neon-cyan/20 hover:bg-neon-cyan/30 border border-neon-cyan/40 text-neon-cyan font-orbitron font-bold text-[11px] uppercase tracking-wider transition-all"
                   >
-                    <span>💬</span>
-                    <span>Chat de Equipo</span>
-                  </a>
-                )}
-                {tournament.discord_url && (
-                  <a 
-                    href={tournament.discord_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-orbitron font-bold text-[11px] uppercase tracking-wider transition-all ${
-                      team.discord_voice_channel_id && team.discord_text_channel_id ? 'sm:col-span-2' : ''
-                    }`}
-                  >
-                    <span>🌐</span>
-                    <span>Servidor Discord</span>
+                    <span>📢</span>
+                    <span>Canal de Anuncios</span>
                   </a>
                 )}
               </div>
