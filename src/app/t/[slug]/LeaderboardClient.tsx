@@ -2834,6 +2834,9 @@ export function LeaderboardClient({
                           const tr = p.trim()
                           return tr === opt.id || opt.id.startsWith(tr) || tr.startsWith(opt.id)
                         })
+                        const isWinningOption = market.status === 'resolved' && (
+                          market.winning_option_id === opt.id || (market.winning_option_id || '').includes(opt.id)
+                        )
 
                         return (
                           <button
@@ -2873,25 +2876,47 @@ export function LeaderboardClient({
                               }
                             }}
                             className={`py-3 px-3 rounded-xl text-left border transition-all relative ${
-                              market.winning_option_id === opt.id
-                                ? 'bg-green-500/20 border-green-500/40 text-green-300'
-                                : isBetOnThis || isPickedInMulti || isSinglePicked
+                              isWinningOption
+                                ? 'bg-green-500/20 border-green-500/60 text-green-300 ring-1 ring-green-500/40'
+                                : market.status === 'resolved' && isBetOnThis
+                                ? 'bg-red-500/10 border-red-500/30 text-white/50'
+                                : market.status !== 'resolved' && isBetOnThis
                                 ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-200 ring-1 ring-yellow-500/40'
-                                : isLocked || userBetForMarket
-                                ? 'bg-white/[0.01] border-white/5 text-white/40 cursor-default'
+                                : isPickedInMulti || isSinglePicked
+                                ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-200 ring-1 ring-yellow-500/40'
+                                : isLocked || userBetForMarket || market.status === 'resolved'
+                                ? 'bg-white/[0.01] border-white/5 text-white/30 cursor-default'
                                 : 'bg-white/[0.03] border-white/5 text-white/70 hover:border-yellow-500/30 hover:bg-yellow-500/5 disabled:cursor-not-allowed'
                             }`}
                           >
+                            {/* Multi combo number */}
                             {isPickedInMulti && (
                               <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-yellow-500 text-black font-orbitron font-black text-[10px] flex items-center justify-center shadow-md">
                                 {pickedIndex + 1}
                               </span>
                             )}
-                            {isBetOnThis && (
-                              <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-emerald-500 text-black font-black text-[10px] flex items-center justify-center shadow-md">
-                                ✓
+
+                            {/* Winning option trophy badge */}
+                            {isWinningOption && (
+                              <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-emerald-500 text-black font-black text-[9px] uppercase tracking-wider flex items-center gap-1 shadow-md">
+                                🏆 Ganador
                               </span>
                             )}
+
+                            {/* User bet indicator on unsettled markets */}
+                            {!isWinningOption && isBetOnThis && market.status !== 'resolved' && (
+                              <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-yellow-500 text-black font-bold text-[9px] uppercase tracking-wider shadow-md">
+                                Tu Elección
+                              </span>
+                            )}
+
+                            {/* User bet indicator on resolved markets when not winner */}
+                            {!isWinningOption && isBetOnThis && market.status === 'resolved' && (
+                              <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-red-500/30 border border-red-500/40 text-red-300 font-bold text-[9px] uppercase tracking-wider">
+                                Tu Elección
+                              </span>
+                            )}
+
                             <p className="font-bold text-xs leading-tight pr-4">{opt.name}</p>
                             <p className="font-orbitron font-black text-sm mt-1 text-yellow-400">{opt.odds}x</p>
                           </button>
@@ -2968,15 +2993,24 @@ export function LeaderboardClient({
                     {/* Existing user bet badge */}
                     {userBetForMarket && (
                       <div className={`mx-5 mb-4 p-3.5 rounded-2xl border text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-sm ${
-                        userBetForMarket.status === 'won' ? 'bg-green-500/10 border-green-500/30 text-green-300' :
-                        userBetForMarket.status === 'lost' ? 'bg-red-500/10 border-red-500/30 text-red-400' :
+                        userBetForMarket.status === 'won' ? 'bg-green-500/15 border-green-500/40 text-green-300' :
+                        userBetForMarket.status === 'lost' ? 'bg-red-500/15 border-red-500/40 text-red-300' :
                         userBetForMarket.status === 'refunded' ? 'bg-white/5 border-white/10 text-white/40' :
                         'bg-yellow-500/10 border-yellow-500/25 text-yellow-300'
                       }`}>
-                        <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <div className="flex items-center gap-2.5">
+                          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                            userBetForMarket.status === 'won' ? 'bg-emerald-400 animate-pulse' :
+                            userBetForMarket.status === 'lost' ? 'bg-red-400' :
+                            userBetForMarket.status === 'refunded' ? 'bg-white/40' :
+                            'bg-yellow-400 animate-pulse'
+                          }`} />
                           <span className="font-bold">
-                            Tu pronóstico: <span className="text-white font-semibold">{
+                            {userBetForMarket.status === 'won' ? '🏆 ¡Apuesta Ganada! Pronóstico: ' :
+                             userBetForMarket.status === 'lost' ? '❌ Pronóstico no acertado: ' :
+                             userBetForMarket.status === 'refunded' ? '↩️ Apuesta Reembolsada: ' :
+                             '🎯 Tu pronóstico activo: '}
+                            <span className="text-white font-semibold">{
                               (userBetForMarket.selected_option_id || '')
                                 .split(',')
                                 .map((id: string) => {
@@ -2991,7 +3025,13 @@ export function LeaderboardClient({
                         <div className="flex items-center gap-2 self-end sm:self-auto font-orbitron text-xs">
                           <span className="text-white/60">{userBetForMarket.amount} K-Coins</span>
                           <span>→</span>
-                          <span className="font-bold text-yellow-400">+{parseFloat(userBetForMarket.potential_payout).toFixed(2)} K-Coins</span>
+                          {userBetForMarket.status === 'won' ? (
+                            <span className="font-black text-emerald-400">+{parseFloat(userBetForMarket.potential_payout).toFixed(2)} K-Coins 🎉</span>
+                          ) : userBetForMarket.status === 'lost' ? (
+                            <span className="font-black text-red-400">0.00 K-Coins</span>
+                          ) : (
+                            <span className="font-bold text-yellow-400">+{parseFloat(userBetForMarket.potential_payout).toFixed(2)} K-Coins</span>
+                          )}
                         </div>
                       </div>
                     )}

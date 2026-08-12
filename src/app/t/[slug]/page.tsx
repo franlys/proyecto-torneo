@@ -325,22 +325,9 @@ export default async function PublicLeaderboardPage({
     </div>
   )
 
-  if (authUser && userProfile) {
-    return (
-      <DashboardShell
-        userRole={(userProfile?.role as any) ?? 'USER'}
-        username={userProfile?.username ?? null}
-        avatarUrl={userProfile?.avatar_url ?? null}
-        balance={userBalance}
-      >
-        {leaderboardContent}
-      </DashboardShell>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-transparent text-white font-inter">
-      <Navbar user={null} profile={null} />
+      <Navbar user={authUser} profile={userProfile} />
       <main className="pt-20">
         {leaderboardContent}
       </main>
