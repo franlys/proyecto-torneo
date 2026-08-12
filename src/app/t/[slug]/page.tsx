@@ -11,6 +11,7 @@ import { getAdBanners } from '@/lib/actions/federation'
 import { getUsdToDopRate } from '@/lib/services/exchange-rate'
 
 import { Navbar } from '@/components/navigation/Navbar'
+import DashboardShell from '@/app/(dashboard)/DashboardShell'
 
 export default async function PublicLeaderboardPage({
   params,
@@ -266,14 +267,12 @@ export default async function PublicLeaderboardPage({
 
   const exchangeRate = await getUsdToDopRate()
 
-  return (
+  const leaderboardContent = (
     <div className="min-h-screen bg-transparent text-white font-inter">
-      <Navbar user={authUser} profile={userProfile} />
-      <main className="pt-20">
-        {tournament.arena_betting_enabled && (
-          <ArenaPromoBanner tournamentSlug={slug} />
-        )}
-        <LeaderboardClient 
+      {tournament.arena_betting_enabled && (
+        <ArenaPromoBanner tournamentSlug={slug} />
+      )}
+      <LeaderboardClient 
         tournamentId={tournament.id}
         betMarkets={betMarkets || []}
         initialBalance={userBalance}
@@ -323,6 +322,27 @@ export default async function PublicLeaderboardPage({
         arenaBettingEnabled={!!tournament.arena_betting_enabled}
         exchangeRate={exchangeRate}
       />
+    </div>
+  )
+
+  if (authUser && userProfile) {
+    return (
+      <DashboardShell
+        userRole={(userProfile?.role as any) ?? 'USER'}
+        username={userProfile?.username ?? null}
+        avatarUrl={userProfile?.avatar_url ?? null}
+        balance={userBalance}
+      >
+        {leaderboardContent}
+      </DashboardShell>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-transparent text-white font-inter">
+      <Navbar user={null} profile={null} />
+      <main className="pt-20">
+        {leaderboardContent}
       </main>
     </div>
   )
