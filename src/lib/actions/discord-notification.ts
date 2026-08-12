@@ -1,106 +1,147 @@
 'use server'
 
-import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { sendDiscordEmbed } from '@/lib/services/discord'
+import { createAdminClient } from '@/lib/supabase/server'
+import { sendDiscordEmbed, resolveDiscordGuildId, getGuildChannels } from '@/lib/services/discord'
 
 export async function notifySubmissionToDiscord(submissionId: string) {
-  const supabase = await createClient()
-
   try {
+    const adminSupabase = await createAdminClient()
+
     // 1. Get submission, team name, and match details
-    const { data: sub } = await supabase
+    const { data: sub, error: subErr } = await adminSupabase
       .from('submissions')
-      .select('id, match_id, tournament_id, kill_count, rank, team_id, teams(name)')
+      .select('id, match_id, tournament_id, kill_count, rank, team_id, teams(id, name)')
       .eq('id', submissionId)
       .single()
 
-    if (!sub) return
+    if (subErr || !sub) return
 
-    const teamName = (sub.teams as any)?.name || 'Equipo Desconocido'
+    const teamName = (sub.teams as any)?.name || 'Equipo'
 
     // 2. Get tournament details
-    const { data: tournament } = await supabase
+    const { data: tournament } = await adminSupabase
       .from('tournaments')
-      .select('name, discord_integration_enabled, discord_announcement_channel_id, total_matches')
+      .select('id, name, creator_id, discord_url, discord_integration_enabled, discord_announcement_channel_id, discord_voice_category_id')
       .eq('id', sub.tournament_id)
       .single()
 
-    if (!tournament || !tournament.discord_integration_enabled || !tournament.discord_announcement_channel_id) {
-      return
-    }
+    if (!tournament) return
 
-    // 3. Get match sequence number
-    const { data: allMatches } = await supabase
+    // 3. Get match details
+    const { data: match } = await adminSupabase
       .from('matches')
-      .select('id')
-      .eq('tournament_id', sub.tournament_id)
-      .order('created_at', { ascending: true })
+      .select('id, name, match_number')
+      .eq('id', sub.match_id)
+      .single()
 
-    const matchIndex = (allMatches || []).findIndex((m: any) => m.id === sub.match_id)
-    const matchNumber = matchIndex !== -1 ? matchIndex + 1 : 'Desconocida'
+    const matchName = match?.name || (match?.match_number ? `Encuentro ${match.match_number}` : 'Partida')
 
-    // 4. Get all teams in tournament
-    const { data: allTeams } = await supabase
-      .from('teams')
-      .select('id, name')
-      .eq('tournament_id', sub.tournament_id)
+    // 4. Resolve Discord guild ID
+    let guildId: string | null = null
+    if (tournament.discord_url) {
+      guildId = await resolveDiscordGuildId(tournament.discord_url)
+    }
+    if (!guildId && tournament.creator_id) {
+      const { data: prof } = await adminSupabase
+        .from('profiles')
+        .select('discord_guild_id')
+        .eq('id', tournament.creator_id)
+        .single()
+      if (prof?.discord_guild_id) {
+        guildId = prof.discord_guild_id
+      }
+    }
 
-    const totalTeamsCount = allTeams?.length || 0
+    // 5. Query Discord category text channels to find team's private channel
+    let textChannels: any[] = []
+    if (guildId && tournament.discord_voice_category_id) {
+      const channelsRes = await getGuildChannels(guildId)
+      if (channelsRes.success && Array.isArray(channelsRes.data)) {
+        textChannels = channelsRes.data.filter((c: any) => c.type === 0 && c.parent_id === tournament.discord_voice_category_id)
+      }
+    }
 
-    // 5. Get submissions for this match
-    const { data: matchSubs } = await supabase
-      .from('submissions')
-      .select('team_id')
-      .eq('match_id', sub.match_id)
+    const sanitized = teamName
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9_-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
 
-    const submittedTeamIds = new Set((matchSubs || []).map((s: any) => s.team_id))
-    const submittedCount = submittedTeamIds.size
+    const target = `chat-${sanitized}`
+    const teamChannel = textChannels.find((c: any) => c.name === target || c.name.includes(sanitized) || sanitized.includes(c.name.replace(/^chat-/, '')))
 
-    // Determine pending teams
-    const pendingTeams = (allTeams || []).filter((t: any) => !submittedTeamIds.has(t.id))
-    const pendingNames = pendingTeams.map((t: any) => t.name)
+    // 6. Send confirmation message directly into the team's Discord channel
+    if (teamChannel) {
+      await sendDiscordEmbed(teamChannel.id, {
+        title: `✅ ¡EVIDENCIA RECIBIDA! - ${matchName} 📸`,
+        description: `¡Hola equipo **${teamName}**!\n\nSu evidencia para **${matchName}** ha sido **recibida y registrada exitosamente** en la plataforma.\n\n• **Bajas reportadas:** ${sub.kill_count} Kills\n• **Posición obtenida:** ${sub.rank ? `#${sub.rank}` : 'Registrada'}\n• **Estado:** En cola de revisión y cómputo.\n\n¡Gracias por reportar a tiempo!`,
+        color: 65280, // Green
+        timestamp: new Date().toISOString()
+      })
+    }
 
-    // 6. Build the Discord Embed message
-    const embed: any = {
-      title: `📸 Evidencia Recibida - ${teamName}`,
-      description: `El equipo **${teamName}** ha enviado sus reportes para la **Partida ${matchNumber}** del torneo **${tournament.name}**.`,
-      color: 5814783, // Purple color
-      fields: [
-        {
-          name: 'Kills Reportadas',
-          value: `${sub.kill_count} Kills`,
-          inline: true
-        },
-        {
-          name: 'Posición Obtenida',
-          value: sub.rank ? `#${sub.rank}` : 'No especificado',
-          inline: true
-        },
-        {
-          name: 'Avance de Reportes de la Sala',
-          value: `${submittedCount} / ${totalTeamsCount} Equipos`,
+    // 7. If public announcement channel exists, post room progress embed
+    if (tournament.discord_announcement_channel_id) {
+      const { data: allTeams } = await adminSupabase
+        .from('teams')
+        .select('id, name')
+        .eq('tournament_id', sub.tournament_id)
+
+      const totalTeamsCount = allTeams?.length || 0
+
+      const { data: matchSubs } = await adminSupabase
+        .from('submissions')
+        .select('team_id')
+        .eq('match_id', sub.match_id)
+
+      const submittedTeamIds = new Set((matchSubs || []).map((s: any) => s.team_id))
+      const submittedCount = submittedTeamIds.size
+      const pendingTeams = (allTeams || []).filter((t: any) => !submittedTeamIds.has(t.id))
+      const pendingNames = pendingTeams.map((t: any) => t.name)
+
+      const announcementEmbed: any = {
+        title: `📸 Evidencia Recibida - ${teamName}`,
+        description: `El equipo **${teamName}** ha enviado sus reportes para **${matchName}** del torneo **${tournament.name}**.`,
+        color: 5814783,
+        fields: [
+          {
+            name: 'Kills Reportadas',
+            value: `${sub.kill_count} Kills`,
+            inline: true
+          },
+          {
+            name: 'Posición Obtenida',
+            value: sub.rank ? `#${sub.rank}` : 'No especificado',
+            inline: true
+          },
+          {
+            name: 'Avance de Reportes',
+            value: `${submittedCount} / ${totalTeamsCount} Equipos`,
+            inline: false
+          }
+        ],
+        timestamp: new Date().toISOString()
+      }
+
+      if (pendingNames.length > 0) {
+        announcementEmbed.fields.push({
+          name: `Equipos Pendientes (${pendingNames.length})`,
+          value: pendingNames.join(', '),
           inline: false
-        }
-      ],
-      timestamp: new Date().toISOString()
-    }
+        })
+      } else {
+        announcementEmbed.fields.push({
+          name: 'Estado de la Partida',
+          value: `✅ **¡Todos los equipos han enviado sus evidencias!**\nLos administradores ya pueden procesar la partida.`,
+          inline: false
+        })
+        announcementEmbed.color = 3066993
+      }
 
-    if (pendingNames.length > 0) {
-      embed.fields.push({
-        name: `Equipos Pendientes (${pendingNames.length})`,
-        value: pendingNames.join(', '),
-        inline: false
-      })
-    } else {
-      embed.fields.push({
-        name: 'Estado de la Partida',
-        value: `✅ **¡Todos los equipos han enviado sus evidencias!**\nLos administradores ya pueden iniciar la siguiente partida.`,
-        inline: false
-      })
-      embed.color = 3066993 // Green color
+      await sendDiscordEmbed(tournament.discord_announcement_channel_id, announcementEmbed)
     }
-
-    await sendDiscordEmbed(tournament.discord_announcement_channel_id, embed)
   } catch (error) {
     console.error('[Discord Notification] Error sending submission notice:', error)
   }
