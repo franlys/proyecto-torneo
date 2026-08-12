@@ -10,6 +10,8 @@ import { ArenaPromoBanner } from '@/components/promo/ArenaPromoBanner'
 import { getAdBanners } from '@/lib/actions/federation'
 import { getUsdToDopRate } from '@/lib/services/exchange-rate'
 
+import { Navbar } from '@/components/navigation/Navbar'
+
 export default async function PublicLeaderboardPage({
   params,
 }: {
@@ -243,12 +245,15 @@ export default async function PublicLeaderboardPage({
   let userBalance = 0.00
   let userBets: any[] = []
 
+  let userProfile = null
+
   if (authUser) {
     const { data: profile } = await userSupabase
       .from('profiles')
-      .select('balance')
+      .select('*')
       .eq('id', authUser.id)
       .single()
+    userProfile = profile
     userBalance = profile?.balance ? parseFloat(profile.balance as any) : 0.00
 
     const { data: bets } = await userSupabase
@@ -262,11 +267,13 @@ export default async function PublicLeaderboardPage({
   const exchangeRate = await getUsdToDopRate()
 
   return (
-    <main className="min-h-screen bg-transparent text-white font-inter">
-      {tournament.arena_betting_enabled && (
-        <ArenaPromoBanner tournamentSlug={slug} />
-      )}
-      <LeaderboardClient 
+    <div className="min-h-screen bg-transparent text-white font-inter">
+      <Navbar user={authUser} profile={userProfile} />
+      <main className="pt-20">
+        {tournament.arena_betting_enabled && (
+          <ArenaPromoBanner tournamentSlug={slug} />
+        )}
+        <LeaderboardClient 
         tournamentId={tournament.id}
         betMarkets={betMarkets || []}
         initialBalance={userBalance}
@@ -316,6 +323,7 @@ export default async function PublicLeaderboardPage({
         arenaBettingEnabled={!!tournament.arena_betting_enabled}
         exchangeRate={exchangeRate}
       />
-    </main>
+      </main>
+    </div>
   )
 }
