@@ -2124,10 +2124,14 @@ export async function syncTournamentDiscordChannels(
   }
 
   // 5. Fetch teams and configure team voice/chat channels
-  const { data: teams } = await adminSupabase
+  const { data: teams, error: teamsError } = await adminSupabase
     .from('teams')
-    .select('id, name, discord_voice_channel_id, discord_text_channel_id')
+    .select('id, name, discord_voice_channel_id')
     .eq('tournament_id', tournamentId)
+
+  if (teamsError) {
+    console.error('[Discord Sync] Error al obtener equipos del torneo:', teamsError)
+  }
 
   let createdCount = 0
   if (teams && teams.length > 0) {
@@ -2170,32 +2174,24 @@ export async function syncTournamentDiscordChannels(
         if (voiceRes.success && voiceRes.id) voiceId = voiceRes.id
       }
 
-      let textId = team.discord_text_channel_id
-      const existingText = existingInCategory.find((c: any) => c.type === 0 && (c.id === textId || c.name === textChannelName || c.name.includes(team.name.toLowerCase())))
-      if (existingText) {
-        textId = existingText.id
-      } else {
+      const existingText = existingInCategory.find((c: any) => c.type === 0 && (c.name === textChannelName || c.name.includes(team.name.toLowerCase())))
+      if (!existingText) {
         const textRes = await createPrivateTextChannel(cleanGuildId, team.name, categoryId, teamDiscordIds)
         if (textRes.success && textRes.id) {
-          textId = textRes.id
           await sendDiscordEmbed(textRes.id, {
             title: `🎮 Sala Oficial: ${team.name}`,
-            description: `¡Hola equipo **${team.name}**!\n\nEste es su canal de comunicaciones privado para el torneo.\n\n📌 **Aquí recibirán:**\n• 🏁 Avisos de inicio y fin de cada ronda.\n• 📸 Recordatorios de carga de evidencia.\n• ⚠️ Notificaciones de Match Point o sanciones.\n\n🔊 **Voz:** Únanse al canal de voz de su equipo para coordinar durante la partida.`,
+            description: `¡Hola equipo **${team.name}**!\n\nEste es su canal de comunicaciones oficial para el torneo.\n\n📌 **Aquí recibirán:**\n• 🏁 Avisos de inicio y fin de cada ronda.\n• 📸 Recordatorios de carga de evidencia.\n• ⚠️ Notificaciones de Match Point o sanciones.\n\n🔊 **Voz:** Únanse al canal de voz de su equipo para coordinar durante la partida.`,
             color: 5793266,
             timestamp: new Date().toISOString(),
           })
         }
       }
 
-      const updatePayload: any = {}
-      if (voiceId) updatePayload.discord_voice_channel_id = voiceId
-      if (textId) updatePayload.discord_text_channel_id = textId
-
-      if (Object.keys(updatePayload).length > 0) {
+      if (voiceId) {
         createdCount++
         await adminSupabase
           .from('teams')
-          .update(updatePayload)
+          .update({ discord_voice_channel_id: voiceId })
           .eq('id', team.id)
       }
     }
