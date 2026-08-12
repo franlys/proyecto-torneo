@@ -249,10 +249,10 @@ export async function resolvePredictionMarketAction(marketId: string, winningOpt
       if (isWinner) {
         const winAmount = parseFloat(bet.potential_payout)
 
-        // Fetch user's current balance
+        // Fetch user's current balance and email
         const { data: userProfile } = await adminSupabase
           .from('profiles')
-          .select('balance')
+          .select('balance, email, username')
           .eq('id', bet.user_id)
           .single()
 
@@ -273,6 +273,21 @@ export async function resolvePredictionMarketAction(marketId: string, winningOpt
             type: 'bet_won',
             reference_id: bet.id
           })
+
+          // Enviar recibo por email
+          if (userProfile.email) {
+            const { sendTransactionReceiptEmail } = await import('@/lib/services/email')
+            sendTransactionReceiptEmail({
+              email: userProfile.email,
+              username: userProfile.username || 'Competidor',
+              amount: winAmount,
+              type: 'deposit',
+              referenceId: bet.id,
+              balanceBefore: currentBalance,
+              balanceAfter: newBalance,
+              description: `Ganancia por predicción acertada en: "${market.title}"`
+            }).catch(e => console.error('Error sending bet win email:', e))
+          }
         }
       }
     }
@@ -455,9 +470,10 @@ export async function autoResolveMatchMarketsAction(matchId: string) {
         if (isWinner) {
           const winAmount = parseFloat(bet.potential_payout)
           const { data: userProfile } = await adminSupabase
-            .from('profiles').select('balance').eq('id', bet.user_id).single()
+            .from('profiles').select('balance, email, username').eq('id', bet.user_id).single()
           if (userProfile) {
-            const newBalance = parseFloat(userProfile.balance || '0.00') + winAmount
+            const currentBalance = parseFloat(userProfile.balance || '0.00')
+            const newBalance = currentBalance + winAmount
             await adminSupabase.from('profiles').update({ balance: newBalance }).eq('id', bet.user_id)
             await adminSupabase.from('coin_transactions').insert({
               user_id: bet.user_id,
@@ -465,6 +481,20 @@ export async function autoResolveMatchMarketsAction(matchId: string) {
               type: 'bet_won',
               reference_id: bet.id,
             })
+
+            if (userProfile.email) {
+              const { sendTransactionReceiptEmail } = await import('@/lib/services/email')
+              sendTransactionReceiptEmail({
+                email: userProfile.email,
+                username: userProfile.username || 'Competidor',
+                amount: winAmount,
+                type: 'deposit',
+                referenceId: bet.id,
+                balanceBefore: currentBalance,
+                balanceAfter: newBalance,
+                description: `Ganancia por predicción en torneo: "${market.title}"`
+              }).catch(e => console.error('Error sending auto-resolve bet win email:', e))
+            }
           }
         }
       }

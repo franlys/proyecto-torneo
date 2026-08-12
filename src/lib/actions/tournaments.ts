@@ -478,7 +478,7 @@ export async function activateTournament(
   // Verify ownership
   const { data: tournament, error: fetchErr } = await supabase
     .from('tournaments')
-    .select('status, creator_id, collaborator_id, format, mode, kill_race_time_limit_minutes, name, discord_integration_enabled, discord_announcement_channel_id, discord_url')
+    .select('status, creator_id, collaborator_id, format, mode, kill_race_time_limit_minutes, name, slug, discord_integration_enabled, discord_announcement_channel_id, discord_url')
     .eq('id', id)
     .single()
 
@@ -641,45 +641,58 @@ export async function activateTournament(
     }
   }
 
-  // Enviar notificaciones in-app y simulación de correos electrónicos
+  // Enviar notificaciones in-app y correos electrónicos reales a todos los competidores
   try {
-    const { data: participants } = await supabase
+    const adminSupabase = await createAdminClient()
+    const { data: participants } = await adminSupabase
       .from('participants')
-      .select('display_name, user_id')
+      .select('id, display_name, user_id, team_id, teams:team_id(id, name)')
       .eq('tournament_id', id)
       .not('user_id', 'is', null)
 
     if (participants && participants.length > 0) {
-      const adminSupabase = await createAdminClient()
       const userIds = Array.from(new Set(participants.map(p => p.user_id).filter(Boolean)))
 
       if (userIds.length > 0) {
         // 1. Insertar notificaciones in-app
         const notificationsToInsert = userIds.map(uId => ({
           user_id: uId,
-          title: `¡El torneo ${tournament.name} ha comenzado!`,
-          message: `El torneo '${tournament.name}' al que te inscribiste ha iniciado oficialmente. ¡Buena suerte!`,
+          title: `¡El torneo ${tournament.name} ha comenzado! 🏁`,
+          message: `El torneo '${tournament.name}' al que te inscribiste ha iniciado oficialmente. Las salas de juego y subida de evidencias están habilitadas.`,
           is_read: false
         }))
 
         await adminSupabase.from('notifications').insert(notificationsToInsert)
 
-        // 2. Consultar emails de auth y simular correos por consola
-        const { data: authUsers } = await adminSupabase
-          .schema('auth')
-          .from('users')
-          .select('id, email')
+        // 2. Consultar emails de los usuarios
+        const { data: profiles } = await adminSupabase
+          .from('profiles')
+          .select('id, email, username')
           .in('id', userIds)
 
-        if (authUsers) {
-          authUsers.forEach(u => {
-            console.log(`\n================================================================================`);
-            console.log(`[EMAIL ENVIADO - SIMULACIÓN]`);
-            console.log(`Destinatario: ${u.email}`);
-            console.log(`Asunto: ¡El torneo "${tournament.name}" ha comenzado!`);
-            console.log(`Mensaje: Hola, el torneo al que te inscribiste ya está activo. ¡Buena suerte en la arena!`);
-            console.log(`================================================================================\n`);
-          })
+        const profileMap = new Map((profiles || []).map(pr => [pr.id, pr]))
+        const { sendTournamentStartedEmail } = await import('@/lib/services/email')
+
+        // 3. Enviar correo oficial a cada participante registrado
+        for (const p of participants as any[]) {
+          const userProf = p.user_id ? profileMap.get(p.user_id) : null
+          const email = userProf?.email
+          if (email) {
+            const teamName = p.teams?.name || 'Tu Equipo'
+            const teamId = p.team_id || p.teams?.id
+            const portalUrl = tournament.slug && teamId 
+              ? `https://www.kronix.do/t/${tournament.slug}/team/${teamId}`
+              : `https://www.kronix.do/t/${tournament.slug || id}`
+
+            sendTournamentStartedEmail({
+              email,
+              username: userProf?.username || p.display_name || 'Competidor',
+              tournamentName: tournament.name,
+              teamName,
+              portalUrl,
+              tournamentSlug: tournament.slug,
+            }).catch(err => console.error('[Tournament Activation] Error sending tournament start email:', err))
+          }
         }
       }
     }
@@ -1019,7 +1032,7 @@ export async function finishTournament(
             for (const part of participants) {
               const userId = part.user_id
               if (userId) {
-                const { data: pProfile } = await adminSupabase.from('profiles').select('balance').eq('id', userId).single()
+                const { data: pProfile } = await adminSupabase.from('profiles').select('balance, email, username').eq('id', userId).single()
                 const newBal = parseFloat((Number(pProfile?.balance || 0) + splitPrizeKCoins).toFixed(2))
                 await adminSupabase.from('profiles').update({ balance: newBal }).eq('id', userId)
                 await adminSupabase.from('coin_transactions').insert({
@@ -1033,6 +1046,18 @@ export async function finishTournament(
                   title: '¡Premio de Podio! 🏆',
                   message: `¡Felicidades! Has ganado ${splitPrizeKCoins.toLocaleString('es-ES')} K-Coins (equivalente a $${splitPrizeUsd.toFixed(2)} USD) por obtener el lugar #${rank} con tu equipo "${teamName}" en el torneo "${tournament.name}".`
                 })
+
+                if (pProfile?.email) {
+                  const { sendTournamentPrizeEmail } = await import('@/lib/services/email')
+                  sendTournamentPrizeEmail({
+                    email: pProfile.email,
+                    username: pProfile.username || 'Competidor',
+                    tournamentName: tournament.name,
+                    prizeTitle: `Podio #${rank} Lugar 🏆 (${teamName})`,
+                    amountCoins: splitPrizeKCoins,
+                    amountUsd: splitPrizeUsd,
+                  }).catch(e => console.error('Error sending podium prize email:', e))
+                }
               }
             }
           }
@@ -1085,7 +1110,7 @@ export async function finishTournament(
       if (mvpUserId) {
         const mvpPrizeUsd = Number(t.prize_mvp)
         const mvpPrizeKCoins = parseFloat((mvpPrizeUsd * rate).toFixed(2))
-        const { data: mvpProfile } = await adminSupabase.from('profiles').select('balance').eq('id', mvpUserId).single()
+        const { data: mvpProfile } = await adminSupabase.from('profiles').select('balance, email, username').eq('id', mvpUserId).single()
         const newBal = parseFloat((Number(mvpProfile?.balance || 0) + mvpPrizeKCoins).toFixed(2))
         await adminSupabase.from('profiles').update({ balance: newBal }).eq('id', mvpUserId)
         await adminSupabase.from('coin_transactions').insert({
@@ -1099,6 +1124,18 @@ export async function finishTournament(
           title: '¡Elegido MVP! ⭐',
           message: `¡Felicidades! Has sido galardonado como el MVP del torneo "${tournament.name}" y recibiste ${mvpPrizeKCoins.toLocaleString('es-ES')} K-Coins (equivalente a $${mvpPrizeUsd.toFixed(2)} USD).`
         })
+
+        if (mvpProfile?.email) {
+          const { sendTournamentPrizeEmail } = await import('@/lib/services/email')
+          sendTournamentPrizeEmail({
+            email: mvpProfile.email,
+            username: mvpProfile.username || 'Competidor',
+            tournamentName: tournament.name,
+            prizeTitle: `MVP del Torneo ⭐`,
+            amountCoins: mvpPrizeKCoins,
+            amountUsd: mvpPrizeUsd,
+          }).catch(e => console.error('Error sending MVP prize email:', e))
+        }
       }
     }
 

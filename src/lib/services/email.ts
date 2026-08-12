@@ -1227,5 +1227,186 @@ export async function sendWithdrawalCompletedUserEmail({
   }
 }
 
+interface TournamentStartedEmailParams {
+  email: string
+  username: string
+  tournamentName: string
+  teamName: string
+  portalUrl: string
+  tournamentSlug?: string
+}
+
+export async function sendTournamentStartedEmail({
+  email,
+  username,
+  tournamentName,
+  teamName,
+  portalUrl,
+  tournamentSlug,
+}: TournamentStartedEmailParams) {
+  if (!resend) {
+    console.warn('RESEND_API_KEY no configurado. Saltando envío de inicio de torneo.')
+    return { success: false, error: 'RESEND_API_KEY no configurado' }
+  }
+
+  try {
+    const html = `
+      <div style="background-color: #0b0d12; color: #ffffff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 32px; border-radius: 16px; max-width: 520px; margin: auto; border: 1px solid rgba(0, 245, 255, 0.25); box-shadow: 0 12px 40px rgba(0,0,0,0.6);">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <div style="display: inline-block; background: rgba(0, 245, 255, 0.12); border: 1px solid rgba(0, 245, 255, 0.35); border-radius: 50px; padding: 6px 18px; margin-bottom: 12px;">
+            <span style="color: #00f5ff; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px;">🏁 ¡TORNEO EN VIVO!</span>
+          </div>
+          <h1 style="color: #00f5ff; font-size: 24px; font-weight: 900; letter-spacing: 1.5px; margin: 0; text-transform: uppercase;">KRONIX E-SPORTS</h1>
+          <p style="color: rgba(255,255,255,0.4); font-size: 12px; margin-top: 6px;">¡La competencia oficial ha comenzado!</p>
+        </div>
+
+        <div style="background-color: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); padding: 22px; border-radius: 14px; margin-bottom: 24px;">
+          <p style="margin: 0 0 16px 0; font-size: 14px; color: rgba(255,255,255,0.85);">
+            ¡Hola competidor <strong>${username}</strong>!
+          </p>
+          <p style="margin: 0 0 20px 0; font-size: 13px; color: rgba(255,255,255,0.65); line-height: 1.6;">
+            El torneo <strong>"${tournamentName}"</strong> acaba de ser activado e iniciado. Tu equipo <strong>"${teamName}"</strong> ya puede acceder a su portal de partida, comunicarse con su escuadra y reportar sus partidas.
+          </p>
+
+          <div style="background: rgba(0, 245, 255, 0.04); border: 1px dashed rgba(0, 245, 255, 0.3); padding: 18px; border-radius: 12px; text-align: center; margin-bottom: 22px;">
+            <span style="font-size: 11px; color: rgba(0, 245, 255, 0.7); text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 4px;">Tu Equipo</span>
+            <span style="font-size: 24px; font-weight: 900; color: #ffffff; text-transform: uppercase;">🎮 ${teamName}</span>
+          </div>
+
+          <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+              <td style="padding: 10px 0; color: rgba(255,255,255,0.4);">Torneo:</td>
+              <td style="padding: 10px 0; font-weight: bold; text-align: right; color: #00f5ff;">${tournamentName}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+              <td style="padding: 10px 0; color: rgba(255,255,255,0.4);">Estado:</td>
+              <td style="padding: 10px 0; font-weight: bold; text-align: right; color: #10b981;">🟢 EN VIVO / ACTIVO</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; color: rgba(255,255,255,0.4);">Instrucciones:</td>
+              <td style="padding: 10px 0; text-align: right; color: rgba(255,255,255,0.8);">Sube tus evidencias o consulta tu puntuación en vivo.</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 24px;">
+          <a href="${portalUrl}" style="background: linear-gradient(90deg, #00f5ff 0%, #b026ff 100%); color: #000000; text-decoration: none; padding: 13px 28px; border-radius: 10px; font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; box-shadow: 0 4px 15px rgba(0, 245, 255, 0.3);">
+            Entrar a la Arena de Partida 🚀
+          </a>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 20px 0;" />
+        <p style="color: rgba(255,255,255,0.3); font-size: 11px; text-align: center; line-height: 1.5; margin: 0;">
+          ¡Buena suerte a todos los competidores! Recuerda seguir el código de juego limpio de Kronix E-sports.
+        </p>
+      </div>
+    `
+
+    const { data, error } = await resend.emails.send({
+      from: 'Kronix E-sports <no-reply@kronix.do>',
+      to: email,
+      subject: `🏁 ¡El Torneo ${tournamentName} ha comenzado! Entra a tu sala de juego`,
+      html,
+    })
+
+    if (error) throw error
+    return { success: true, data }
+  } catch (err: any) {
+    console.error('Error al enviar correo de torneo iniciado:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+interface TournamentPrizeEmailParams {
+  email: string
+  username: string
+  tournamentName: string
+  prizeTitle: string
+  amountCoins: number
+  amountUsd: number
+}
+
+export async function sendTournamentPrizeEmail({
+  email,
+  username,
+  tournamentName,
+  prizeTitle,
+  amountCoins,
+  amountUsd,
+}: TournamentPrizeEmailParams) {
+  if (!resend) {
+    console.warn('RESEND_API_KEY no configurado.')
+    return { success: false }
+  }
+
+  try {
+    const html = `
+      <div style="background-color: #0b0d12; color: #ffffff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 32px; border-radius: 16px; max-width: 520px; margin: auto; border: 1px solid rgba(250, 204, 21, 0.3); box-shadow: 0 12px 40px rgba(0,0,0,0.6);">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <div style="display: inline-block; background: rgba(250, 204, 21, 0.15); border: 1px solid rgba(250, 204, 21, 0.4); border-radius: 50px; padding: 6px 18px; margin-bottom: 12px;">
+            <span style="color: #facc15; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px;">🏆 PREMIO ACREDITADO</span>
+          </div>
+          <h1 style="color: #00f5ff; font-size: 24px; font-weight: 900; letter-spacing: 1.5px; margin: 0; text-transform: uppercase;">KRONIX E-SPORTS</h1>
+          <p style="color: rgba(255,255,255,0.4); font-size: 12px; margin-top: 6px;">¡Felicitaciones por tu desempeño en la arena!</p>
+        </div>
+
+        <div style="background-color: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); padding: 22px; border-radius: 14px; margin-bottom: 24px;">
+          <p style="margin: 0 0 16px 0; font-size: 14px; color: rgba(255,255,255,0.85);">
+            ¡Felicitaciones <strong>${username}</strong>!
+          </p>
+          <p style="margin: 0 0 20px 0; font-size: 13px; color: rgba(255,255,255,0.65); line-height: 1.6;">
+            Has sido galardonado en el torneo <strong>"${tournamentName}"</strong> por <strong>${prizeTitle}</strong>. Tu premio económico ha sido acreditado en tu billetera Kronix.
+          </p>
+
+          <div style="background: rgba(250, 204, 21, 0.05); border: 1px dashed rgba(250, 204, 21, 0.35); padding: 18px; border-radius: 12px; text-align: center; margin-bottom: 22px;">
+            <span style="font-size: 11px; color: rgba(250, 204, 21, 0.8); text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 4px;">Premio Ganado</span>
+            <span style="font-size: 34px; font-weight: 900; color: #facc15; font-family: monospace;">🪙 ${amountCoins.toLocaleString('es-DO')} K-Coins</span>
+            <span style="font-size: 13px; color: #10b981; font-weight: bold; display: block; margin-top: 4px;">≈ $${amountUsd.toFixed(2)} USD</span>
+          </div>
+
+          <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+              <td style="padding: 10px 0; color: rgba(255,255,255,0.4);">Torneo:</td>
+              <td style="padding: 10px 0; font-weight: bold; text-align: right; color: #ffffff;">${tournamentName}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+              <td style="padding: 10px 0; color: rgba(255,255,255,0.4);">Reconocimiento:</td>
+              <td style="padding: 10px 0; font-weight: bold; text-align: right; color: #facc15;">${prizeTitle}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; color: rgba(255,255,255,0.4);">Disponibilidad:</td>
+              <td style="padding: 10px 0; text-align: right; color: #10b981;">Disponible para retiro o apuestas</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 24px;">
+          <a href="https://www.kronix.do/wallet" style="background: linear-gradient(90deg, #facc15 0%, #00f5ff 100%); color: #000000; text-decoration: none; padding: 13px 28px; border-radius: 10px; font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; box-shadow: 0 4px 15px rgba(250, 204, 21, 0.3);">
+            Ver Mi Saldo en Billetera 🪙
+          </a>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 20px 0;" />
+        <p style="color: rgba(255,255,255,0.3); font-size: 11px; text-align: center; line-height: 1.5; margin: 0;">
+          Gracias por competir en Kronix E-sports. ¡Sigue demostrando tu nivel!
+        </p>
+      </div>
+    `
+
+    const { data, error } = await resend.emails.send({
+      from: 'Kronix E-sports <no-reply@kronix.do>',
+      to: email,
+      subject: `🏆 ¡Premio Ganado en ${tournamentName}! Has recibido ${amountCoins.toLocaleString('es-DO')} K-Coins`,
+      html,
+    })
+
+    if (error) throw error
+    return { success: true, data }
+  } catch (err: any) {
+    console.error('Error al enviar correo de premio de torneo:', err)
+    return { success: false, error: err.message }
+  }
+}
+
 
 
