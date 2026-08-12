@@ -752,3 +752,196 @@ export async function uploadAvatar(
 
   return { url: urlWithBust }
 }
+
+export interface PlayerCareerProfile {
+  displayName: string
+  username?: string | null
+  avatarUrl?: string | null
+  totalTournaments: number
+  firstPlaces: number
+  podiumsCount: number
+  top5Count: number
+  totalKills: number
+  avgKillsPerTournament: number
+  winRate: number
+  federationPoints?: number
+  federationRank?: number
+  dominantDiscipline?: string
+  tournamentsHistory: {
+    id: string
+    name: string
+    discipline: string
+    date: string
+    teamName: string
+    rank: number | null
+    kills: number
+    status: string
+  }[]
+}
+
+export async function getParticipantCareerStatsAction(input: {
+  userId?: string | null
+  displayName?: string
+}): Promise<{ success: true; data: PlayerCareerProfile } | { error: string }> {
+  try {
+    const adminSupabase = await createAdminClient()
+    const displayName = input.displayName?.trim() || ''
+    const userId = input.userId
+
+    if (!userId && !displayName) {
+      return { error: 'Se requiere ID de usuario o nombre de competidor' }
+    }
+
+    // 1. Fetch all participations of this player across all tournaments
+    let query = adminSupabase
+      .from('participants')
+      .select(`
+        id,
+        user_id,
+        display_name,
+        avatar_url,
+        total_kills,
+        team_id,
+        tournament_id,
+        tournaments:tournament_id(id, name, discipline, status, created_at),
+        teams:team_id(id, name, avatar_url)
+      `)
+
+    if (userId) {
+      query = query.or(`user_id.eq.${userId},display_name.ilike.${displayName || '---'}`)
+    } else if (displayName) {
+      query = query.ilike('display_name', displayName)
+    }
+
+    const { data: participations, error: pErr } = await query
+
+    if (pErr) throw pErr
+
+    // 2. Fetch avatar and profile info
+    let profileAvatar: string | null = null
+    let profileUsername: string | null = null
+    if (userId) {
+      const { data: prof } = await adminSupabase
+        .from('profiles')
+        .select('avatar_url, username')
+        .eq('id', userId)
+        .maybeSingle()
+      if (prof) {
+        profileAvatar = prof.avatar_url
+        profileUsername = prof.username
+      }
+    }
+
+    // 3. Fetch federation stats if available
+    const { data: fedStats } = await adminSupabase
+      .from('player_national_stats')
+      .select('*')
+      .or(displayName ? `display_name.ilike.${displayName}` : 'id.is.null')
+      .maybeSingle()
+
+    // 4. Fetch standings for each tournament participation
+    const tourneyIds = Array.from(new Set((participations || []).map((p: any) => p.tournament_id).filter(Boolean)))
+    const teamIds = Array.from(new Set((participations || []).map((p: any) => p.team_id).filter(Boolean)))
+
+    let standingsMap = new Map<string, number>()
+    if (tourneyIds.length > 0 && teamIds.length > 0) {
+      const { data: standings } = await adminSupabase
+        .from('team_standings')
+        .select('tournament_id, team_id, rank')
+        .in('tournament_id', tourneyIds)
+        .in('team_id', teamIds)
+
+      if (standings) {
+        standings.forEach(s => {
+          standingsMap.set(`${s.tournament_id}_${s.team_id}`, s.rank)
+        })
+      }
+    }
+
+    // 5. Aggregate metrics
+    let totalKills = 0
+    let firstPlaces = 0
+    let podiumsCount = 0
+    let top5Count = 0
+    const historyMap = new Map<string, PlayerCareerProfile['tournamentsHistory'][0]>()
+    const disciplineCounts: Record<string, number> = {}
+
+    for (const p of (participations || [])) {
+      const t = p.tournaments as any
+      if (!t) continue
+
+      const kills = Number(p.total_kills || 0)
+      totalKills += kills
+
+      const rank = standingsMap.get(`${p.tournament_id}_${p.team_id}`) ?? null
+      if (rank === 1) firstPlaces++
+      if (rank && rank <= 3) podiumsCount++
+      if (rank && rank <= 5) top5Count++
+
+      if (t.discipline) {
+        disciplineCounts[t.discipline] = (disciplineCounts[t.discipline] || 0) + 1
+      }
+
+      if (!historyMap.has(t.id)) {
+        historyMap.set(t.id, {
+          id: t.id,
+          name: t.name || 'Torneo',
+          discipline: t.discipline || 'Desconocido',
+          date: t.created_at,
+          teamName: (p.teams as any)?.name || p.display_name || 'Equipo',
+          rank,
+          kills,
+          status: t.status || 'finished'
+        })
+      } else {
+        const existing = historyMap.get(t.id)!
+        existing.kills += kills
+      }
+    }
+
+    // Consider federation stats if platform participations are newly seeded
+    if (fedStats) {
+      podiumsCount = Math.max(podiumsCount, fedStats.podiums_count || 0)
+    }
+
+    const tournamentsHistory = Array.from(historyMap.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    const totalTournaments = Math.max(tournamentsHistory.length, fedStats?.tournaments_played || 0)
+    const avgKills = totalTournaments > 0 ? parseFloat((totalKills / totalTournaments).toFixed(1)) : totalKills
+    const winRate = totalTournaments > 0 
+      ? parseFloat(((firstPlaces / totalTournaments) * 100).toFixed(1))
+      : (fedStats?.win_rate ? Number(fedStats.win_rate) : 0)
+
+    // Dominant discipline
+    let dominantDiscipline = fedStats?.discipline || 'General'
+    let maxDiscCount = -1
+    Object.entries(disciplineCounts).forEach(([d, count]) => {
+      if (count > maxDiscCount) {
+        maxDiscCount = count
+        dominantDiscipline = d
+      }
+    })
+
+    return {
+      success: true,
+      data: {
+        displayName: displayName || profileUsername || 'Competidor',
+        username: profileUsername || displayName,
+        avatarUrl: profileAvatar || (participations && participations[0]?.avatar_url) || null,
+        totalTournaments,
+        firstPlaces,
+        podiumsCount,
+        top5Count,
+        totalKills,
+        avgKillsPerTournament: avgKills,
+        winRate,
+        federationPoints: fedStats?.points,
+        dominantDiscipline,
+        tournamentsHistory
+      }
+    }
+  } catch (err: any) {
+    console.error('Error in getParticipantCareerStatsAction:', err)
+    return { error: err.message || 'Error al obtener historial de competidor' }
+  }
+}
+

@@ -22,6 +22,7 @@ import { toast } from 'sonner'
 import { NicknameModal } from '@/components/profile/NicknameModal'
 import { placePredictionAction } from '@/lib/actions/predictions'
 import { calculatePayPalGrossAmount } from '@/lib/services/paypal-fee'
+import { ParticipantProfileModal } from '@/components/tournaments/ParticipantProfileModal'
 
 const orbitron = Orbitron({ subsets: ['latin'] })
 
@@ -729,6 +730,13 @@ export function LeaderboardClient({
   const [activeTab, setActiveTab] = useState<'ranking' | 'participants' | 'matches' | 'rules' | 'statistics' | 'evidences' | 'bets'>('ranking')
   // Bets state
   const [localBalance, setLocalBalance] = useState(initialBalance)
+  const [selectedParticipantForProfile, setSelectedParticipantForProfile] = useState<{
+    id: string
+    displayName: string
+    userId?: string | null
+    avatarUrl?: string | null
+    teamName?: string | null
+  } | null>(null)
 
   // Render PayPal Smart Buttons for embedded registration payment
   useEffect(() => {
@@ -2370,20 +2378,33 @@ export function LeaderboardClient({
                       const hasStats = p.kdRatio != null || p.avgKills != null || p.classificationRank || p.brAvgPlacement != null
                       const pStream = p.streamUrl || (p.isCaptain ? team.streamUrl : null)
                       return (
-                      <div key={p.id} className="bg-white/[0.03] border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-colors">
+                      <div 
+                        key={p.id} 
+                        onClick={() => setSelectedParticipantForProfile({
+                          id: p.id,
+                          displayName: p.displayName,
+                          userId: p.userId || p.user_id,
+                          avatarUrl: p.avatarUrl,
+                          teamName: team.name
+                        })}
+                        className="bg-white/[0.03] border border-white/5 hover:border-neon-cyan/40 hover:bg-white/[0.06] rounded-xl overflow-hidden transition-all cursor-pointer group shadow-sm flex flex-col justify-between"
+                      >
                         <div className="flex items-center gap-3 px-3 py-2.5">
                           {p.avatarUrl ? (
-                            <img src={p.avatarUrl} alt="" className="w-9 h-9 rounded-lg object-contain shrink-0" style={{ background: 'transparent' }} />
+                            <img src={p.avatarUrl} alt="" className="w-9 h-9 rounded-lg object-contain shrink-0 group-hover:scale-105 transition-transform" style={{ background: 'transparent' }} />
                           ) : (
                             <div className={`w-2 h-2 rounded-full shrink-0 ${pStream ? 'bg-red-500 animate-pulse' : 'bg-white/20'}`} />
                           )}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
-                              <span className="text-sm text-white/80 truncate">{p.displayName}</span>
+                              <span className="text-sm text-white/80 group-hover:text-white font-medium truncate transition-colors">{p.displayName}</span>
                               {p.isCaptain && <span className="text-[9px] font-bold text-neon-cyan uppercase tracking-wider border border-neon-cyan/30 px-1 py-0.5 rounded shrink-0">Cap</span>}
                             </div>
+                            <span className="text-[9px] text-neon-cyan/70 group-hover:text-neon-cyan flex items-center gap-1 font-orbitron transition-colors mt-0.5">
+                              <span>📊</span> Ver Expediente & Copas
+                            </span>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                             {isShooter && (
                               <div className="text-right">
                                 <span className="text-xs font-orbitron font-bold text-white block leading-none">{calculatedKillsLookup[p.id] || 0}</span>
@@ -3613,6 +3634,13 @@ export function LeaderboardClient({
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Participant Career Profile & Cups History Modal */}
+        <ParticipantProfileModal
+          isOpen={!!selectedParticipantForProfile}
+          onClose={() => setSelectedParticipantForProfile(null)}
+          participant={selectedParticipantForProfile}
+        />
 
         {/* Script for PayPal SDK in Leaderboard */}
         <Script
