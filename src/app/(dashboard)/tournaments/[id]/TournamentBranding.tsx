@@ -81,18 +81,18 @@ export function TournamentBranding({ id, initialLogoUrl, tournamentName, initial
   }
 
   return (
-    <div className="mb-8 p-6 bg-dark-card border border-neon-purple/20 rounded-2xl shadow-lg shadow-neon-purple/5">
-      <div className="flex flex-col md:flex-row items-center gap-6">
+    <div className="mb-8 p-4 sm:p-6 bg-dark-card border border-neon-purple/20 rounded-2xl shadow-lg shadow-neon-purple/5">
+      <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
         <div 
           onClick={() => fileInputRef.current?.click()}
-          className="relative w-32 h-32 rounded-xl bg-white/5 border border-white/10 overflow-hidden cursor-pointer hover:border-neon-purple/50 transition-all flex items-center justify-center group"
+          className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-xl bg-white/5 border border-white/10 overflow-hidden cursor-pointer hover:border-neon-purple/50 transition-all flex items-center justify-center group shrink-0"
         >
           {logoUrl ? (
             <img src={getOptimizedImageUrl(logoUrl, 250, 250)} alt={tournamentName} className="w-full h-full object-contain p-2" />
           ) : (
             <div className="text-center p-4">
-              <span className="text-3xl mb-2 block grayscale opacity-30">🏆</span>
-              <span className="text-[10px] text-white/30 uppercase font-black">Sin Logo</span>
+              <span className="text-2xl sm:text-3xl mb-1.5 block grayscale opacity-30">🏆</span>
+              <span className="text-[9px] sm:text-[10px] text-white/30 uppercase font-black">Sin Logo</span>
             </div>
           )}
           
@@ -111,19 +111,19 @@ export function TournamentBranding({ id, initialLogoUrl, tournamentName, initial
           )}
         </div>
 
-        <div className="flex-1 text-center md:text-left">
-          <h2 className="text-lg font-orbitron font-black text-white uppercase tracking-tighter mb-2">
+        <div className="flex-1 text-center sm:text-left min-w-0">
+          <h2 className="text-base sm:text-lg font-orbitron font-black text-white uppercase tracking-tighter mb-2">
             Identidad del Torneo
           </h2>
-          <p className="text-sm text-white/40 mb-4 max-w-lg">
+          <p className="text-xs sm:text-sm text-white/40 mb-4 max-w-lg">
             Sustituye el nombre escrito del torneo por un logo personalizado en el leaderboard público. 
             Se recomienda usar imágenes cuadradas o rectangulares en formato PNG transparente.
           </p>
-          <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 sm:gap-3">
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              className="px-5 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-neon-purple/50 rounded-lg text-xs font-bold text-white transition-all uppercase tracking-widest"
+              className="px-4 sm:px-5 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-neon-purple/50 rounded-lg text-xs font-bold text-white transition-all uppercase tracking-widest"
             >
               {logoUrl ? 'Cambiar Logo de Marca' : 'Subir Logo de Marca'}
             </button>
@@ -131,7 +131,7 @@ export function TournamentBranding({ id, initialLogoUrl, tournamentName, initial
               <button
                 onClick={handleDeleteLogo}
                 disabled={uploading}
-                className="px-5 py-2 bg-red-500/10 hover:bg-red-500/25 border border-red-500/20 hover:border-red-500/50 rounded-lg text-xs font-bold text-red-400 transition-all uppercase tracking-widest"
+                className="px-4 sm:px-5 py-2 bg-red-500/10 hover:bg-red-500/25 border border-red-500/20 hover:border-red-500/50 rounded-lg text-xs font-bold text-red-400 transition-all uppercase tracking-widest"
               >
                 Eliminar Logo
               </button>

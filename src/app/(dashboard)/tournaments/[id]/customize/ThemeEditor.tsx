@@ -97,20 +97,20 @@ export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
       {/* Settings Form */}
-      <div className="bg-dark-card border border-white/5 rounded-2xl p-6 shadow-xl">
+      <div className="bg-dark-card border border-white/5 rounded-2xl p-4 sm:p-6 shadow-xl">
         <form onSubmit={handleSave} className="space-y-6">
           {/* Color Primario */}
           <div>
             <label className="block text-sm text-white/70 mb-3 font-medium">Color Principal (Acentos)</label>
-            <div className="flex flex-wrap gap-3 mb-4">
+            <div className="flex flex-wrap gap-2.5 sm:gap-3 mb-4">
               {PRESET_COLORS.map(c => (
                 <button
                   key={c.value}
                   type="button"
                   onClick={() => setPrimaryColor(c.value)}
-                  className={`w-10 h-10 rounded-full border-2 transition-transform hover:scale-110 ${primaryColor === c.value ? 'border-white scale-110 shadow-lg' : 'border-transparent'}`}
+                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 transition-transform hover:scale-110 ${primaryColor === c.value ? 'border-white scale-110 shadow-lg' : 'border-transparent'}`}
                   style={{ backgroundColor: c.value, boxShadow: primaryColor === c.value ? `0 0 15px ${c.value}80` : 'none' }}
                   title={c.label}
                 />
@@ -121,13 +121,13 @@ export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId
                 type="color" 
                 value={primaryColor} 
                 onChange={(e) => setPrimaryColor(e.target.value)}
-                className="w-10 h-10 rounded bg-transparent cursor-pointer"
+                className="w-10 h-10 rounded bg-transparent cursor-pointer shrink-0"
               />
               <input 
                 type="text" 
                 value={primaryColor} 
                 onChange={(e) => setPrimaryColor(e.target.value)}
-                className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-white/30 outline-none uppercase font-mono"
+                className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-white/30 outline-none uppercase font-mono w-32"
               />
             </div>
           </div>
@@ -137,19 +137,19 @@ export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId
             <label className="block text-sm text-white/70 mb-2 font-medium">
               Fondo Principal (PC / Horizontal - 16:9)
             </label>
-            <div className="flex gap-2 mb-4">
+            <div className="flex flex-col sm:flex-row gap-2 mb-4">
               <input 
                 type="text" 
                 placeholder="URL o sube una imagen/video (.mp4, .jpg...)"
                 value={backgroundValue} 
                 onChange={(e) => setBackgroundValue(e.target.value)}
-                className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-white/30 outline-none"
+                className="flex-1 min-w-0 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-white/30 outline-none"
               />
               <button
                 type="button"
                 onClick={() => pcInputRef.current?.click()}
                 disabled={uploadingPc}
-                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-neon-cyan/50 rounded-lg text-xs font-bold text-white transition-all uppercase tracking-wider shrink-0 flex items-center justify-center min-w-[100px]"
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-neon-cyan/50 rounded-lg text-xs font-bold text-white transition-all uppercase tracking-wider shrink-0 flex items-center justify-center min-w-[90px]"
               >
                 {uploadingPc ? 'Subiendo...' : 'Subir'}
               </button>
@@ -165,19 +165,19 @@ export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId
             <label className="block text-sm text-white/70 mb-2 font-medium">
               Fondo para Móviles (Vertical - 9:16)
             </label>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input 
                 type="text" 
                 placeholder="URL o sube una imagen/video (.mp4, .jpg...)"
                 value={backgroundMobileValue} 
                 onChange={(e) => setBackgroundMobileValue(e.target.value)}
-                className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-white/30 outline-none"
+                className="flex-1 min-w-0 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-white/30 outline-none"
               />
               <button
                 type="button"
                 onClick={() => mobileInputRef.current?.click()}
                 disabled={uploadingMobile}
-                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-neon-cyan/50 rounded-lg text-xs font-bold text-white transition-all uppercase tracking-wider shrink-0 flex items-center justify-center min-w-[100px]"
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-neon-cyan/50 rounded-lg text-xs font-bold text-white transition-all uppercase tracking-wider shrink-0 flex items-center justify-center min-w-[90px]"
               >
                 {uploadingMobile ? 'Subiendo...' : 'Subir'}
               </button>
@@ -225,19 +225,19 @@ export function ThemeEditor({ tournamentId, initialTheme, slug }: { tournamentId
           {/* Logo */}
           <div className="pt-4 border-t border-white/5">
             <label className="block text-sm text-white/70 mb-2 font-medium">Logo del Torneo (URL)</label>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input 
                 type="text" 
                 placeholder="https://ejemplo.com/logo.png"
                 value={logoUrl} 
                 onChange={(e) => setLogoUrl(e.target.value)}
-                className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-white/30 outline-none"
+                className="flex-1 min-w-0 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-white/30 outline-none"
               />
               <button
                 type="button"
                 onClick={() => logoInputRef.current?.click()}
                 disabled={uploadingLogo}
-                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-neon-cyan/50 rounded-lg text-xs font-bold text-white transition-all uppercase tracking-wider shrink-0 flex items-center justify-center min-w-[100px]"
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-neon-cyan/50 rounded-lg text-xs font-bold text-white transition-all uppercase tracking-wider shrink-0 flex items-center justify-center min-w-[90px]"
               >
                 {uploadingLogo ? 'Subiendo...' : 'Subir'}
               </button>

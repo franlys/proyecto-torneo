@@ -30,6 +30,7 @@ export default async function TournamentDashboardLayout({
     { name: 'Participantes', path: `/tournaments/${params.id}/participants` },
     { name: 'Partidas', path: `/tournaments/${params.id}/matches` },
     { name: 'Evidencias', path: `/tournaments/${params.id}/submissions` },
+    { name: 'Personalizar', path: `/tournaments/${params.id}/customize` },
     { name: 'Códigos', path: `/tournaments/${params.id}/codes` },
   ]
 
@@ -38,26 +39,26 @@ export default async function TournamentDashboardLayout({
   }
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-left">
+    <div className="space-y-6 max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-6 text-left">
       {/* Tournament Dashboard Control Panel Header */}
-      <div className="bg-[#0f0f1b]/60 backdrop-blur-xl border border-white/5 rounded-3xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden shadow-2xl">
-        <div className="space-y-1.5 z-10">
+      <div className="bg-[#0f0f1b]/80 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6 relative overflow-visible shadow-2xl">
+        <div className="space-y-1.5 shrink-0">
           <Link
             href="/tournaments"
-            className="text-[10px] font-bold text-white/30 hover:text-white/60 uppercase tracking-widest transition-colors inline-flex items-center gap-1.5"
+            className="text-[10px] font-bold text-white/40 hover:text-neon-cyan uppercase tracking-widest transition-colors inline-flex items-center gap-1.5"
           >
             ← Volver a Mis Torneos
           </Link>
-          <h1 className="font-orbitron text-xl md:text-2xl font-black text-white uppercase tracking-tight">
+          <h1 className="font-orbitron text-xl sm:text-2xl font-black text-white uppercase tracking-tight truncate max-w-[320px] sm:max-w-md">
             {tournament.name}
           </h1>
-          <p className="text-[10px] text-white/20 uppercase tracking-widest font-semibold">
+          <p className="text-[10px] text-white/30 uppercase tracking-widest font-semibold">
             Panel de Control del Organizador
           </p>
         </div>
 
         {/* Tab navigation bar */}
-        <div className="z-10">
+        <div className="w-full lg:w-auto overflow-hidden">
           <TabLinks tabs={tabs} />
         </div>
       </div>
