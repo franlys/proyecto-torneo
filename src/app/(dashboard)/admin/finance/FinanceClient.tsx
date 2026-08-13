@@ -18,7 +18,9 @@ import {
   ExternalLink,
   Check,
   X,
-  Loader2
+  Loader2,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import {
   AreaChart,
@@ -96,6 +98,77 @@ export function FinanceClient({
   const [txFilter, setTxFilter] = useState<string>('all')
   const [txSearch, setTxSearch] = useState<string>('')
   const [loadingActionId, setLoadingActionId] = useState<string | null>(null)
+
+  const [selectedTournamentId, setSelectedTournamentId] = useState<string>('all')
+  const [collapsedTournaments, setCollapsedTournaments] = useState<Record<string, boolean>>({})
+
+  // Extracted tournaments list from bets
+  const tournamentsList = useMemo(() => {
+    const list: { id: string; name: string }[] = []
+    const seen = new Set<string>()
+    userBets.forEach((b: any) => {
+      const tourney = b.bet_markets?.tournaments
+      if (tourney && tourney.id && !seen.has(tourney.id)) {
+        seen.add(tourney.id)
+        list.push({ id: tourney.id, name: tourney.name })
+      }
+    })
+    return list.sort((a, b) => a.name.localeCompare(b.name))
+  }, [userBets])
+
+  // Grouped bets by tournament
+  const groupedBets = useMemo(() => {
+    const groups: Record<string, {
+      tournamentId: string;
+      tournamentName: string;
+      bets: any[];
+      volume: number;
+      wonPayouts: number;
+      net: number;
+    }> = {}
+
+    userBets.forEach((b: any) => {
+      const tourney = b.bet_markets?.tournaments
+      const tId = tourney?.id || 'unknown'
+      const tName = tourney?.name || 'Otros / Sin Torneo'
+
+      if (selectedTournamentId !== 'all' && tId !== selectedTournamentId) {
+        return
+      }
+
+      if (!groups[tId]) {
+        groups[tId] = {
+          tournamentId: tId,
+          tournamentName: tName,
+          bets: [],
+          volume: 0,
+          wonPayouts: 0,
+          net: 0
+        }
+      }
+
+      groups[tId].bets.push(b)
+      groups[tId].volume += Number(b.amount || 0)
+      if (b.status === 'won') {
+        groups[tId].wonPayouts += Number(b.potential_payout || 0)
+      }
+      if (b.status === 'won' || b.status === 'lost') {
+        groups[tId].net += Number(b.amount || 0)
+        if (b.status === 'won') {
+          groups[tId].net -= Number(b.potential_payout || 0)
+        }
+      }
+    })
+
+    return Object.values(groups).sort((a, b) => b.volume - a.volume)
+  }, [userBets, selectedTournamentId])
+
+  const toggleTournamentCollapse = (tournamentId: string) => {
+    setCollapsedTournaments(prev => ({
+      ...prev,
+      [tournamentId]: !prev[tournamentId]
+    }))
+  }
 
   // Calculations
   const completedWithdrawals = withdrawals.filter(w => w.status === 'completed')
@@ -691,65 +764,149 @@ export function FinanceClient({
             </div>
           </div>
 
-          {/* Desktop Table View */}
-          <div className="hidden lg:block overflow-x-auto w-full">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-white/5 text-white/40 font-bold uppercase tracking-wider">
-                  <th className="py-3 px-4">Fecha</th>
-                  <th className="py-3 px-4">Monto Apostado</th>
-                  <th className="py-3 px-4">Cuota (Odds)</th>
-                  <th className="py-3 px-4">Retorno Potencial</th>
-                  <th className="py-3 px-4 text-right">Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {userBets.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="text-center py-8 text-white/30">
-                      No hay apuestas registradas en el sistema.
-                    </td>
-                  </tr>
-                ) : (
-                  userBets.slice(0, 50).map((b: any) => (
-                    <tr key={b.id} className="border-b border-white/[0.02] hover:bg-white/[0.01] transition-colors">
-                      <td className="py-3.5 px-4 text-white/40">{formatDate(b.created_at)}</td>
-                      <td className="py-3.5 px-4 font-bold font-orbitron text-purple-400">🪙 {Number(b.amount).toFixed(2)}</td>
-                      <td className="py-3.5 px-4 font-mono text-white/80">x{Number(b.odds).toFixed(2)}</td>
-                      <td className="py-3.5 px-4 font-mono text-yellow-400">🪙 {Number(b.potential_payout).toFixed(2)}</td>
-                      <td className="py-3.5 px-4 text-right">
-                        {b.status === 'won' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-500/10 text-green-400">Ganada</span>}
-                        {b.status === 'lost' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400">Perdida</span>}
-                        {b.status === 'pending' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400">En Juego</span>}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+          {/* Tournament Filter */}
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 rounded-xl">
+            <div>
+              <span className="text-xs font-bold text-white/80 uppercase tracking-wider block">Filtrar por Torneo</span>
+              <span className="text-[10px] text-white/40">Visualiza únicamente las apuestas correspondientes al torneo seleccionado</span>
+            </div>
+            <div className="relative min-w-[240px]">
+              <select
+                value={selectedTournamentId}
+                onChange={(e) => setSelectedTournamentId(e.target.value)}
+                className="w-full bg-black/60 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-neon-cyan transition-all appearance-none cursor-pointer pr-10"
+              >
+                <option value="all">🏆 Todos los Torneos</option>
+                {tournamentsList.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    🎮 {t.name}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-white/40 text-[10px]">
+                ▼
+              </div>
+            </div>
           </div>
 
-          {/* Mobile & Split Cards View */}
-          <div className="lg:hidden space-y-3">
-            {userBets.length === 0 ? (
-              <div className="text-center py-8 text-white/30 text-xs">
-                No hay apuestas registradas en el sistema.
+          {/* Collapsible Tournament Groups */}
+          <div className="space-y-4">
+            {groupedBets.length === 0 ? (
+              <div className="text-center py-12 text-white/30 text-xs border border-white/5 rounded-2xl bg-white/[0.01]">
+                No hay apuestas registradas para los filtros seleccionados.
               </div>
             ) : (
-              userBets.slice(0, 30).map((b: any) => (
-                <div key={b.id} className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between gap-3 text-xs">
-                  <div>
-                    <span className="font-bold text-purple-400 font-orbitron block">🪙 {Number(b.amount).toFixed(2)} K-Coins</span>
-                    <span className="text-[10px] text-white/40">{formatDate(b.created_at)} • Cuota x{Number(b.odds).toFixed(2)}</span>
+              groupedBets.map((group) => {
+                const isCollapsed = collapsedTournaments[group.tournamentId] ?? false
+                return (
+                  <div key={group.tournamentId} className="border border-white/5 rounded-2xl overflow-hidden bg-white/[0.01]">
+                    {/* Header Bar */}
+                    <div
+                      onClick={() => toggleTournamentCollapse(group.tournamentId)}
+                      className="flex items-center justify-between p-4 bg-white/[0.02] border-b border-white/5 hover:bg-white/[0.04] transition-colors cursor-pointer select-none"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg">🏆</span>
+                        <div>
+                          <span className="font-bold text-white tracking-wide block text-xs sm:text-sm">{group.tournamentName}</span>
+                          <span className="text-[10px] text-white/40 uppercase font-bold">
+                            {group.bets.length} Apuestas
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-4">
+                        <div className="hidden sm:flex items-center gap-4 text-xs font-mono">
+                          <div className="text-right">
+                            <span className="text-[9px] text-white/40 uppercase font-bold tracking-wider block">Volumen</span>
+                            <span className="text-white font-bold">🪙 {group.volume.toFixed(2)}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[9px] text-white/40 uppercase font-bold tracking-wider block">Retornos</span>
+                            <span className="text-yellow-400 font-bold">🪙 {group.wonPayouts.toFixed(2)}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[9px] text-white/40 uppercase font-bold tracking-wider block">Neta</span>
+                            <span className={group.net >= 0 ? 'text-neon-cyan font-bold' : 'text-red-400 font-bold'}>
+                              🪙 {group.net.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="text-white/40 shrink-0">
+                          {isCollapsed ? (
+                            <ChevronDown size={16} className="text-white/60 hover:text-white transition-colors" />
+                          ) : (
+                            <ChevronUp size={16} className="text-white/60 hover:text-white transition-colors" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Table View inside group */}
+                    {!isCollapsed && (
+                      <div className="p-2 sm:p-4">
+                        {/* Desktop Table View */}
+                        <div className="hidden lg:block overflow-x-auto w-full">
+                          <table className="w-full text-left text-xs border-collapse">
+                            <thead>
+                              <tr className="border-b border-white/5 text-white/40 font-bold uppercase tracking-wider">
+                                <th className="py-2.5 px-4">Fecha</th>
+                                <th className="py-2.5 px-4">Mercado / Pregunta</th>
+                                <th className="py-2.5 px-4">Monto</th>
+                                <th className="py-2.5 px-4">Cuota</th>
+                                <th className="py-2.5 px-4">Retorno</th>
+                                <th className="py-2.5 px-4 text-right">Estado</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {group.bets.map((b: any) => (
+                                <tr key={b.id} className="border-b border-white/[0.01] hover:bg-white/[0.01] transition-colors">
+                                  <td className="py-3 px-4 text-white/40">{formatDate(b.created_at)}</td>
+                                  <td className="py-3 px-4 text-white/80 font-medium max-w-xs truncate" title={b.bet_markets?.question}>
+                                    {b.bet_markets?.question || 'Pregunta General'}
+                                  </td>
+                                  <td className="py-3 px-4 font-bold font-orbitron text-purple-400">🪙 {Number(b.amount).toFixed(2)}</td>
+                                  <td className="py-3 px-4 font-mono text-white/80">x{Number(b.odds).toFixed(2)}</td>
+                                  <td className="py-3 px-4 font-mono text-yellow-400">🪙 {Number(b.potential_payout).toFixed(2)}</td>
+                                  <td className="py-3 px-4 text-right">
+                                    {b.status === 'won' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-500/10 text-green-400">Ganada</span>}
+                                    {b.status === 'lost' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400">Perdida</span>}
+                                    {b.status === 'pending' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400">En Juego</span>}
+                                    {b.status === 'refunded' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-500/10 text-gray-400">Reembolsada</span>}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Mobile View */}
+                        <div className="lg:hidden space-y-2.5">
+                          {group.bets.map((b: any) => (
+                            <div key={b.id} className="p-3 rounded-xl bg-white/[0.01] border border-white/5 flex items-center justify-between gap-3 text-xs">
+                              <div className="min-w-0 flex-1">
+                                <span className="font-bold text-purple-400 font-orbitron block">🪙 {Number(b.amount).toFixed(2)} K-Coins</span>
+                                <span className="text-[10px] text-white/60 block truncate" title={b.bet_markets?.question}>
+                                  {b.bet_markets?.question || 'Pregunta General'}
+                                </span>
+                                <span className="text-[9px] text-white/30">{formatDate(b.created_at)} • Cuota x{Number(b.odds).toFixed(2)}</span>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <span className="font-mono text-yellow-400 block font-bold">🪙 {Number(b.potential_payout).toFixed(2)}</span>
+                                {b.status === 'won' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-500/10 text-green-400 inline-block">Ganada</span>}
+                                {b.status === 'lost' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400 inline-block">Perdida</span>}
+                                {b.status === 'pending' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 inline-block">En Juego</span>}
+                                {b.status === 'refunded' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-500/10 text-gray-400 inline-block">Reembolsada</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="text-right">
-                    <span className="font-mono text-yellow-400 block font-bold">🪙 {Number(b.potential_payout).toFixed(2)}</span>
-                    {b.status === 'won' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-500/10 text-green-400 inline-block">Ganada</span>}
-                    {b.status === 'lost' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400 inline-block">Perdida</span>}
-                    {b.status === 'pending' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 inline-block">En Juego</span>}
-                  </div>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
         </div>

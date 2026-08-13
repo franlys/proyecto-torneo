@@ -58,7 +58,7 @@ export default async function AdminFinancePage() {
   // 7. Fetch User Bets (Apuestas)
   const { data: userBets } = await adminSupabase
     .from('user_bets')
-    .select('id, amount, odds, potential_payout, status, created_at')
+    .select('id, amount, odds, potential_payout, status, created_at, bet_markets(id, question, tournament_id, tournaments(id, name))')
 
   // 8. Fetch Subscription Requests (Membresías VIP)
   const { data: approvedSubs } = await adminSupabase
