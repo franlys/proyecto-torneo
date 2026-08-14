@@ -52,6 +52,15 @@ async function broadcastMatchTeamNotifications(
 
     if (!tourney || tourney.status !== 'active') return
 
+    // Query match map_name (lobby code)
+    const { data: matchObj } = await supabase
+      .from('matches')
+      .select('map_name')
+      .eq('id', matchId)
+      .single()
+
+    const matchCode = matchObj?.map_name || null
+
     const { resolveDiscordGuildId, getGuildChannels, sendDiscordEmbed } = await import('@/lib/services/discord')
 
     let guildId: string | null = null
@@ -143,9 +152,14 @@ async function broadcastMatchTeamNotifications(
             extraMpNote = `\n\n⚠️ **ALERTA TÁCTICA:** Rivales en Match Point: ${matchPointTeamNames.map(n => `**${n}**`).join(', ')}. ¡Eviten que ganen la partida!`
           }
 
+          let codeSection = ''
+          if (matchCode) {
+            codeSection = `\n\n🔑 **CÓDIGO DE PARTIDA:** \`${matchCode}\`\n*Usa este código para unirte a la sala privada.*`
+          }
+
           await sendDiscordEmbed(chId, {
             title: `🏁 ¡${matchName} EN CURSO! ⚔️`,
-            description: `¡Hola equipo **${team.name}**!\n\nLa partida está **EN JUEGO**. Conéctense a su canal de voz para coordinar.\n\n📸 Recuerden tomar captura clara de la tabla de puntuación/bajas al terminar.${extraMpNote}`,
+            description: `¡Hola equipo **${team.name}**!\n\nLa partida está **EN JUEGO**. Conéctense a su canal de voz para coordinar.${codeSection}\n\n📸 Recuerden tomar captura clara de la tabla de puntuación/bajas al terminar.${extraMpNote}`,
             color: isMyTeamInMp ? 16753920 : 65280,
             timestamp: new Date().toISOString(),
           })

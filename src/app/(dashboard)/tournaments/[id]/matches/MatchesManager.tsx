@@ -267,10 +267,10 @@ export function MatchesManager({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[10px] text-white/30 uppercase tracking-[0.2em] font-black ml-1">
-                        Mapa
+                        Código de Partida
                       </label>
                       <input
-                        placeholder="Ej. Erangel, Miramar..."
+                        placeholder="Ej. KRONIX-123, 58291..."
                         className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/50 transition-all outline-none"
                         defaultValue={encounter.mapName}
                         onBlur={(e) => handleUpdate(encounter.id, { mapName: e.target.value })}
@@ -308,7 +308,7 @@ export function MatchesManager({
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <input
-                                placeholder="Mapa (opcional)"
+                                placeholder="Código de Partida (opcional)"
                                 className="bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:border-neon-purple/50 focus:ring-1 focus:ring-neon-purple/50 transition-all outline-none"
                                 defaultValue={round.mapName}
                                 onBlur={(e) => handleUpdate(round.id, { mapName: e.target.value })}

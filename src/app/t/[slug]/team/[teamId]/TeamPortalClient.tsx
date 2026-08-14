@@ -343,7 +343,7 @@ export function TeamPortalClient({
             <option value="">Seleccionar...</option>
             {parentMatches.map(m => (
               <option key={m.id} value={m.id}>
-                {m.name || `Encuentro ${m.match_number}`}
+                {m.name || `Encuentro ${m.match_number}`} {m.map_name ? `(Código: ${m.map_name})` : ''}
               </option>
             ))}
           </select>
@@ -376,7 +376,7 @@ export function TeamPortalClient({
             <option value="">Seleccionar ronda...</option>
             {availableRounds.map(r => (
               <option key={r.id} value={r.id}>
-                {r.name} {r.map_name ? `(${r.map_name})` : ''}
+                {r.name} {r.map_name ? `(Código: ${r.map_name})` : ''}
               </option>
             ))}
           </select>
