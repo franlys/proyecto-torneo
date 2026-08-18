@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import Script from 'next/script'
-import { Landmark, ArrowUpRight, ArrowDownLeft, History, Loader2, CheckCircle, X } from 'lucide-react'
+import { Landmark, ArrowUpRight, ArrowDownLeft, History, Loader2, CheckCircle, X, Coins, Trophy } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { requestWithdrawalAction } from '@/lib/actions/withdrawals'
 import { calculatePayPalGrossAmount } from '@/lib/services/paypal-fee'
@@ -189,14 +189,32 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
       {/* Wallet Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Balance Card */}
-        <div className="p-6 rounded-2xl bg-gradient-to-br from-dark-card to-[#121217] border border-white/5 space-y-4 text-left">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-widest text-white/30">Mi Balance</span>
-            <span className="text-xl">🪙</span>
+        <div className="relative p-6 rounded-2xl bg-gradient-to-br from-[#0d0f15] to-[#161922] border border-white/10 shadow-[0_0_30px_rgba(0,245,255,0.03)] overflow-hidden flex flex-col justify-between min-h-[160px] group text-left">
+          <div className="absolute -right-10 -bottom-10 w-32 h-32 bg-neon-cyan/5 rounded-full blur-2xl group-hover:bg-neon-cyan/15 transition-colors" />
+          <div className="absolute -left-10 -top-10 w-24 h-24 bg-neon-purple/5 rounded-full blur-xl" />
+
+          <div className="flex items-center justify-between relative z-10">
+            <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Billetera de Kronix</span>
+            <div className="w-8 h-8 rounded-xl bg-neon-cyan/10 border border-neon-cyan/20 flex items-center justify-center">
+              <Coins className="w-4 h-4 text-neon-cyan animate-pulse" />
+            </div>
           </div>
-          <div className="space-y-1">
-            <h2 className="text-3xl font-orbitron font-black text-white">{(initialBalance || 0).toFixed(2)}</h2>
-            <p className="text-xs text-neon-cyan uppercase font-bold tracking-widest font-orbitron">K-Coins Disponibles</p>
+
+          <div className="space-y-1 relative z-10 mt-6">
+            <span className="text-[9px] uppercase tracking-widest text-white/30 font-bold">K-Coins Disponibles</span>
+            <div className="flex items-baseline gap-2">
+              <h2 className="text-3xl font-orbitron font-black text-white tracking-tight">
+                {(initialBalance || 0).toFixed(2)}
+              </h2>
+              <span className="text-neon-cyan font-bold text-[10px] uppercase font-orbitron">KC</span>
+            </div>
+          </div>
+
+          <div className="text-[9px] text-white/30 mt-4 border-t border-white/5 pt-3 relative z-10 flex justify-between">
+            <span>Equivalente:</span>
+            <span className="font-bold text-white/60">
+              ${((initialBalance || 0) / exchangeRate).toFixed(2)} USD
+            </span>
           </div>
         </div>
 
@@ -296,7 +314,10 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                       </div>
                       <div className="flex justify-between items-center text-xs border-t border-white/[0.04] pt-2">
                         <span className="text-white/40">K-Coins a recibir (×{exchangeRate.toFixed(2)}):</span>
-                        <span className="font-orbitron font-black text-yellow-400">🪙 {(netVal * exchangeRate).toFixed(2)}</span>
+                        <span className="font-orbitron font-black text-yellow-400 flex items-center gap-1.5">
+                          <Coins className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
+                          {(netVal * exchangeRate).toFixed(2)}
+                        </span>
                       </div>
                     </div>
                   )
@@ -481,7 +502,7 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
               <div className="space-y-2">
                 <label className="text-[10px] text-white/40 uppercase tracking-widest font-semibold block">Monto a Retirar (K-Coins)</label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-xs">🪙</span>
+                  <Coins className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 w-3.5 h-3.5 shrink-0" />
                   <input
                     type="number"
                     value={withdrawAmount}
@@ -525,8 +546,11 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
             <div className="flex justify-between items-center bg-white/5 p-4 rounded-xl border border-white/5">
               <div>
                 <span className="text-[10px] text-white/40 uppercase block">Resumen del Retiro (Tasa: 1 USD = {exchangeRate.toFixed(2)} DOP)</span>
-                <span className="text-sm font-bold text-white">
-                  🪙 {(withdrawAmount || 0).toFixed(2)} K-Coins &rarr; $ {((withdrawAmount || 0) / exchangeRate).toFixed(2)} USD
+                <span className="text-sm font-bold text-white flex items-center gap-1.5 mt-1">
+                  <Coins className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
+                  <span>{(withdrawAmount || 0).toFixed(2)} K-Coins</span>
+                  <span className="text-white/30 font-normal">&rarr;</span>
+                  <span className="text-neon-cyan">${((withdrawAmount || 0) / exchangeRate).toFixed(2)} USD</span>
                 </span>
               </div>
               <button
@@ -699,7 +723,10 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                   
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-white/45">Monto Acreditado:</span>
-                    <span className="font-orbitron font-bold text-yellow-400">🪙 {(purchasedCoins || 0).toFixed(2)} K-Coins</span>
+                    <span className="font-orbitron font-bold text-yellow-400 flex items-center gap-1.5">
+                      <Coins className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
+                      <span>{(purchasedCoins || 0).toFixed(2)} K-Coins</span>
+                    </span>
                   </div>
 
                   <div className="flex justify-between items-center text-xs border-t border-white/[0.03] pt-2">

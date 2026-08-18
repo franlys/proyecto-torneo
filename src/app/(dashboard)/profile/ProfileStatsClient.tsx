@@ -8,6 +8,27 @@ import { getFriendsList, searchUsersForFriends, sendFriendRequest, removeFriend 
 import { toast } from 'sonner'
 import { SubscriptionUpload } from './SubscriptionUpload'
 import { GameAccountsSection } from '@/components/profile/GameAccountsSection'
+import { 
+  Trophy, 
+  Settings, 
+  Users, 
+  Award, 
+  Activity, 
+  Ticket, 
+  User, 
+  Coins, 
+  Calendar,
+  Lock,
+  Mail,
+  Gamepad2,
+  Share2,
+  Trash2,
+  UserMinus,
+  Check,
+  UserPlus,
+  Flame,
+  TrendingUp
+} from 'lucide-react'
 
 interface ProfileStatsClientProps {
   profile: any
@@ -23,15 +44,15 @@ interface ProfileStatsClientProps {
 }
 
 const GAME_NAMES: Record<string, string> = {
-  warzone: 'Call of Duty: Warzone 🪂',
-  clash_royale: 'Clash Royale 👑',
-  fortnite: 'Fortnite ⛏️',
-  free_fire: 'Free Fire 🔥',
-  call_of_duty_mobile: 'Call of Duty Mobile 🔫',
-  street_fighter_6: 'Street Fighter 6 👊',
-  super_smash_bros_ultimate: 'Super Smash Bros Ultimate 💥',
-  league_of_legends: 'League of Legends 🏆',
-  valorant: 'Valorant 🎯',
+  warzone: 'Call of Duty: Warzone',
+  clash_royale: 'Clash Royale',
+  fortnite: 'Fortnite',
+  free_fire: 'Free Fire',
+  call_of_duty_mobile: 'Call of Duty Mobile',
+  street_fighter_6: 'Street Fighter 6',
+  super_smash_bros_ultimate: 'Super Smash Bros Ultimate',
+  league_of_legends: 'League of Legends',
+  valorant: 'Valorant',
 }
 
 function TournamentCountdown({ startDate }: { startDate: string }) {
@@ -212,7 +233,7 @@ export function ProfileStatsClient({
   const roleLabel = (isStaff && (profile?.role === 'USER' || !profile?.role))
     ? { label: 'Colaborador Staff', color: 'text-orange-400 border-orange-500/30 bg-orange-500/10' }
     : ((({
-        SUPER_ADMIN: { label: 'Super Admin 👑', color: 'text-yellow-300 border-yellow-500/30 bg-yellow-500/10' },
+        SUPER_ADMIN: { label: 'Super Admin', color: 'text-yellow-300 border-yellow-500/30 bg-yellow-500/10' },
         ADMIN: { label: 'Administrador', color: 'text-neon-cyan border-neon-cyan/30 bg-neon-cyan/10' },
         KRONIX_STAFF: { label: 'Staff', color: 'text-orange-400 border-orange-500/30 bg-orange-500/10' },
         STREAMER: { label: 'Streamer', color: 'text-neon-purple border-neon-purple/30 bg-neon-purple/10' },
@@ -360,6 +381,43 @@ export function ProfileStatsClient({
     })
   }, [participations])
 
+  const calculatedStats = useMemo(() => {
+    const totalTournaments = participations.length
+    let podiums = 0
+    let totalKills = 0
+    let top5 = 0
+
+    participations.forEach(p => {
+      const standing = p.teams?.team_standings?.[0] || p.teams?.team_standings
+      const rank = standing?.rank
+      if (rank) {
+        if (rank === 1 || rank === 2 || rank === 3) {
+          podiums++
+        }
+        if (rank <= 5) {
+          top5++
+        }
+      }
+      totalKills += p.total_kills || 0
+    })
+
+    const winRate = totalTournaments > 0 ? Math.round((participations.filter(p => {
+      const standing = p.teams?.team_standings?.[0] || p.teams?.team_standings
+      return standing?.rank === 1
+    }).length / totalTournaments) * 100) : 0
+    
+    const avgKills = totalTournaments > 0 ? (totalKills / totalTournaments).toFixed(1) : '0'
+
+    return {
+      totalTournaments,
+      podiums,
+      totalKills,
+      avgKills,
+      winRate,
+      top5
+    }
+  }, [participations])
+
   return (
     <div className="space-y-6">
       {/* Account Info Card */}
@@ -430,83 +488,44 @@ export function ProfileStatsClient({
         )}
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-white/5 overflow-x-auto scrollbar-hide">
-        <button
-          onClick={() => setActiveTab('inicio')}
-          className={`flex-1 min-w-[80px] py-3 text-xs uppercase font-bold tracking-widest transition-colors border-b-2 ${
-            activeTab === 'inicio'
-              ? 'text-neon-cyan border-neon-cyan font-black'
-              : 'text-white/40 border-transparent hover:text-white/60'
-          }`}
-        >
-          Inicio
-        </button>
-        <button
-          onClick={() => setActiveTab('profile')}
-          className={`flex-1 min-w-[80px] py-3 text-xs uppercase font-bold tracking-widest transition-colors border-b-2 ${
-            activeTab === 'profile'
-              ? 'text-neon-cyan border-neon-cyan font-black'
-              : 'text-white/40 border-transparent hover:text-white/60'
-          }`}
-        >
-          Ajustes
-        </button>
-        <button
-          onClick={() => setActiveTab('friends')}
-          className={`flex-1 min-w-[80px] py-3 text-xs uppercase font-bold tracking-widest transition-colors border-b-2 ${
-            activeTab === 'friends'
-              ? 'text-neon-cyan border-neon-cyan font-black'
-              : 'text-white/40 border-transparent hover:text-white/60'
-          }`}
-        >
-          Amigos
-        </button>
-        <button
-          onClick={() => setActiveTab('history')}
-          className={`flex-1 min-w-[120px] py-3 text-xs uppercase font-bold tracking-widest transition-colors border-b-2 ${
-            activeTab === 'history'
-              ? 'text-neon-cyan border-neon-cyan font-black'
-              : 'text-white/40 border-transparent hover:text-white/60'
-          }`}
-        >
-          Mis Torneos ({participations.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('badges')}
-          className={`flex-1 min-w-[110px] py-3 text-xs uppercase font-bold tracking-widest transition-colors border-b-2 ${
-            activeTab === 'badges'
-              ? 'text-neon-cyan border-neon-cyan font-black'
-              : 'text-white/40 border-transparent hover:text-white/60'
-          }`}
-        >
-          Medallero ({badges.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('stats')}
-          className={`flex-1 min-w-[100px] py-3 text-xs uppercase font-bold tracking-widest transition-colors border-b-2 ${
-            activeTab === 'stats'
-              ? 'text-neon-cyan border-neon-cyan font-black'
-              : 'text-white/40 border-transparent hover:text-white/60'
-          }`}
-        >
-          Desempeño
-        </button>
-        <button
-          onClick={() => setActiveTab('sorteos')}
-          className={`flex-1 min-w-[110px] py-3 text-xs uppercase font-bold tracking-widest transition-colors border-b-2 ${
-            activeTab === 'sorteos'
-              ? 'text-neon-cyan border-neon-cyan font-black'
-              : 'text-white/40 border-transparent hover:text-white/60'
-          }`}
-        >
-          🎟️ Mis Boletos ({tickets.length})
-        </button>
+      {/* Apple-style Segmented Control Horizontal Navigation */}
+      <div className="bg-[#0d0d0f]/60 backdrop-blur-md border border-white/5 p-1 rounded-2xl flex gap-1 overflow-x-auto no-scrollbar select-none sticky top-[52px] md:top-0 z-20 shadow-md">
+        {[
+          { id: 'inicio', label: 'Inicio', icon: User },
+          { id: 'profile', label: 'Ajustes', icon: Settings },
+          { id: 'friends', label: 'Amigos', icon: Users },
+          { id: 'history', label: 'Mis Torneos', count: participations.length, icon: Trophy },
+          { id: 'badges', label: 'Medallero', count: badges.length, icon: Award },
+          { id: 'stats', label: 'Desempeño', icon: Activity },
+          { id: 'sorteos', label: 'Mis Boletos', count: tickets.length, icon: Ticket },
+        ].map((tab) => {
+          const Icon = tab.icon
+          const active = activeTab === tab.id
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap border ${
+                active
+                  ? 'bg-white/5 text-neon-cyan border-white/10 shadow-sm'
+                  : 'text-white/50 hover:text-white border-transparent hover:bg-white/[0.02]'
+              }`}
+            >
+              <Icon size={14} className={`shrink-0 ${active ? 'text-neon-cyan animate-pulse' : 'text-white/30'}`} />
+              <span>{tab.label}</span>
+              {tab.count !== undefined && (
+                <span className={`text-[9px] font-orbitron px-1.5 py-0.5 rounded-full font-bold ${active ? 'bg-neon-cyan/20 text-neon-cyan' : 'bg-white/5 text-white/30'}`}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          )
+        })}
       </div>
 
       {/* Tab Contents */}
       <div className="space-y-6">
-        {activeTab === 'sorteos' && (
+          {activeTab === 'sorteos' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center border-b border-white/5 pb-4">
               <div>
@@ -523,7 +542,7 @@ export function ProfileStatsClient({
 
             {tickets.length === 0 ? (
               <div className="p-12 text-center rounded-2xl bg-white/[0.005] border border-white/5 border-dashed space-y-4">
-                <span className="text-3xl block">🎟️</span>
+                <Ticket className="w-10 h-10 text-white/20 mx-auto animate-pulse" />
                 <p className="text-white/30 text-xs">No has adquirido boletos en ningún sorteo actualmente.</p>
               </div>
             ) : (
@@ -603,7 +622,7 @@ export function ProfileStatsClient({
                             <div>
                               {isWinner ? (
                                 <span className="px-2 py-0.5 rounded-full bg-gold/10 border border-gold/20 text-gold text-[8px] font-orbitron font-bold uppercase tracking-widest animate-bounce flex items-center gap-1">
-                                  🏆 Ganador
+                                  <Trophy className="w-3 h-3 text-gold inline" /> Ganador
                                 </span>
                               ) : (
                                 <span className="text-[8px] text-white/20 uppercase tracking-widest block font-orbitron">
@@ -629,7 +648,7 @@ export function ProfileStatsClient({
               {/* Torneos Inscritos widget */}
               <div className="bg-[#0d0d0f] border border-white/5 rounded-2xl p-6">
                 <h3 className="text-white font-orbitron font-bold text-sm uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <span>🏆</span> Torneos Inscritos
+                  <Trophy className="w-4 h-4 text-neon-cyan" /> Torneos Inscritos
                 </h3>
                 
                 {(() => {
@@ -661,8 +680,8 @@ export function ProfileStatsClient({
                         return (
                           <div key={p.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl bg-white/[0.01] border border-white/5 hover:border-white/10 transition-all gap-4">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center text-lg">
-                                🏆
+                              <div className="w-10 h-10 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center">
+                                <Trophy className="w-4 h-4 text-white/50" />
                               </div>
                               <div>
                                 <h4 className="text-xs font-bold text-white font-orbitron">{t?.name}</h4>
@@ -692,7 +711,7 @@ export function ProfileStatsClient({
               {/* Sorteos Participando widget */}
               <div className="bg-[#0d0d0f] border border-white/5 rounded-2xl p-6">
                 <h3 className="text-white font-orbitron font-bold text-sm uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <span>🎟️</span> Sorteos Participando
+                  <Ticket className="w-4 h-4 text-neon-cyan" /> Sorteos Participando
                 </h3>
                 
                 {tickets.length === 0 ? (
@@ -733,7 +752,9 @@ export function ProfileStatsClient({
                               {rp.prize_image ? (
                                 <img src={rp.prize_image} alt={rp.title} className="w-full h-full object-cover" />
                               ) : (
-                                <div className="w-full h-full flex items-center justify-center text-xs">🎟️</div>
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Ticket className="w-4 h-4 text-white/40" />
+                                </div>
                               )}
                             </div>
                             <div>
@@ -767,7 +788,8 @@ export function ProfileStatsClient({
               {/* Top Skills / Discipline Rankings widget */}
               <div className="bg-[#0d0d0f] border border-white/5 rounded-2xl p-6">
                 <h3 className="text-white font-orbitron font-bold text-sm uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <span>⚡</span> Mis Estadísticas y Skills
+                  <Activity className="w-4 h-4 text-neon-cyan shrink-0" />
+                  <span>Mis Estadísticas y Skills</span>
                 </h3>
                 
                 {rankings.length === 0 ? (
@@ -845,7 +867,8 @@ export function ProfileStatsClient({
               <div className="bg-[#0d0d0f] border border-white/5 rounded-2xl p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-white font-orbitron font-bold text-sm uppercase tracking-wider flex items-center gap-2">
-                    <span>🎖️</span> Medallas Ganadas
+                    <Award className="w-4 h-4 text-neon-cyan" />
+                    <span>Medallas Ganadas</span>
                   </h3>
                   <button 
                     onClick={() => setActiveTab('badges')}
@@ -862,8 +885,12 @@ export function ProfileStatsClient({
                 ) : (
                   <div className="grid grid-cols-4 gap-2">
                     {badges.slice(0, 8).map(b => (
-                      <div key={b.id} className="aspect-square rounded-lg bg-black/40 border border-white/10 flex items-center justify-center text-lg" title={b.name}>
-                        🏆
+                      <div key={b.id} className="aspect-square rounded-lg bg-black/40 border border-white/10 flex items-center justify-center p-1.5 overflow-hidden transition-all hover:border-white/20" title={b.name}>
+                        {b.badge_url ? (
+                          <img src={b.badge_url} alt={b.name} className="w-full h-full object-contain drop-shadow-[0_0_5px_rgba(0,245,255,0.2)]" />
+                        ) : (
+                          <Trophy className="w-4 h-4 text-yellow-400/80" />
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1118,7 +1145,7 @@ export function ProfileStatsClient({
                           {friend.avatar_url ? (
                             <img src={friend.avatar_url} alt={friend.username} className="w-full h-full object-cover" />
                           ) : (
-                            <span className="text-sm">👤</span>
+                            <User className="w-4 h-4 text-white/30" />
                           )}
                         </div>
                         <div className="min-w-0">
@@ -1199,8 +1226,8 @@ export function ProfileStatsClient({
                             {isUpcoming ? (
                               <span className="text-neon-cyan/50 text-[10px] uppercase font-bold tracking-widest">Inscrito</span>
                             ) : rank ? (
-                              <span className={rank === 1 ? 'text-gold' : rank === 2 ? 'text-white/90' : rank === 3 ? 'text-orange-400' : 'text-white/40'}>
-                                #{rank} {rank === 1 ? '🏆' : ''}
+                              <span className={`inline-flex items-center gap-1 ${rank === 1 ? 'text-gold' : rank === 2 ? 'text-white/95' : rank === 3 ? 'text-orange-400' : 'text-white/40'}`}>
+                                #{rank} {rank === 1 && <Trophy size={12} className="inline text-gold shrink-0" />}
                               </span>
                             ) : (
                               <span className="text-white/20">En juego</span>
@@ -1253,7 +1280,30 @@ export function ProfileStatsClient({
         )}
 
         {activeTab === 'stats' && (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-fade-in">
+            {/* Historical Stats Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {[
+                { label: 'Copas Jugadas', value: calculatedStats.totalTournaments, color: 'text-yellow-450', icon: Trophy, bg: 'bg-yellow-500/5 border-yellow-500/15' },
+                { label: 'Podios (Top 3)', value: calculatedStats.podiums, color: 'text-neon-cyan', icon: Award, bg: 'bg-neon-cyan/5 border-neon-cyan/15' },
+                { label: 'Kills Históricas', value: calculatedStats.totalKills, color: 'text-red-400', icon: Activity, bg: 'bg-red-500/5 border-red-500/15' },
+                { label: 'Promedio Kills', value: calculatedStats.avgKills, color: 'text-orange-400', icon: Flame, bg: 'bg-orange-500/5 border-orange-500/15' },
+                { label: 'Win Rate', value: `${calculatedStats.winRate}%`, color: 'text-green-400', icon: TrendingUp, bg: 'bg-green-500/5 border-green-500/15' },
+                { label: 'Llegadas Top 5', value: calculatedStats.top5, color: 'text-purple-400', icon: Trophy, bg: 'bg-purple-500/5 border-purple-500/15' },
+              ].map((stat, i) => {
+                const Icon = stat.icon
+                return (
+                  <div key={i} className={`bg-[#0d0d0f]/60 border rounded-2xl p-5 flex flex-col justify-between ${stat.bg}`}>
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="text-[10px] text-white/50 uppercase tracking-widest font-black line-clamp-1">{stat.label}</span>
+                      <Icon className={`w-4 h-4 shrink-0 ${stat.color}`} />
+                    </div>
+                    <p className={`text-2xl font-black font-orbitron mt-2.5 ${stat.color}`}>{stat.value}</p>
+                  </div>
+                )
+              })}
+            </div>
+
             {/* Resumen de Promedios por Juego */}
             <div className="bg-[#0d0d0f] border border-white/5 rounded-2xl p-6 space-y-4">
               <h3 className="text-white font-orbitron font-bold text-sm uppercase tracking-wider">
@@ -1405,6 +1455,6 @@ export function ProfileStatsClient({
           </div>
         )}
       </div>
-    </div>
+      </div>
   )
 }

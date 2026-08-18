@@ -1,15 +1,74 @@
 'use client'
 
-import { useState } from 'react'
-import { AppNotification, markNotificationReadAction, markAllNotificationsReadAction } from '@/lib/actions/notifications'
+import { useState, useEffect } from 'react'
+import { AppNotification, markNotificationReadAction, markAllNotificationsReadAction, getMyNotificationsAction } from '@/lib/actions/notifications'
 import { Bell, Check, Trash2, Eye, ShieldAlert, Trophy, Swords, Calendar } from 'lucide-react'
 import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 export function NotificationsClient({ initialNotifications }: { initialNotifications: AppNotification[] }) {
   const [notifications, setNotifications] = useState<AppNotification[]>(initialNotifications)
   const [markingAll, setMarkingAll] = useState(false)
-
+  const router = useRouter()
   const unreadCount = notifications.filter(n => !n.is_read).length
+
+  useEffect(() => {
+    const supabase = createClient()
+    
+    const fetchLatestNotifications = async () => {
+      const res = await getMyNotificationsAction()
+      if (res.success && res.data) {
+        setNotifications(res.data)
+      }
+    }
+
+    const channel = supabase
+      .channel('notifications_inbox_client')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications'
+        },
+        () => {
+          fetchLatestNotifications()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
+
+  const getDestinationUrl = (title: string, message: string) => {
+    const t = (title + ' ' + message).toLowerCase()
+    if (t.includes('cartera') || t.includes('retiro') || t.includes('recarga') || t.includes('saldo') || t.includes('k-coin') || t.includes('paypal')) {
+      return '/wallet'
+    }
+    if (t.includes('vip') || t.includes('suscripción') || t.includes('suscripcion')) {
+      return '/subscription'
+    }
+    if (t.includes('perfil') || t.includes('credenciales') || t.includes('game id') || t.includes('vincular')) {
+      return '/profile'
+    }
+    if (t.includes('torneo') || t.includes('inscrito') || t.includes('inscripción') || t.includes('inscripcion') || t.includes('partida') || t.includes('lobby') || t.includes('encuentro') || t.includes('ronda')) {
+      return '/profile'
+    }
+    return null
+  }
+
+  const handleNotificationClick = async (n: AppNotification) => {
+    if (!n.is_read) {
+      await handleMarkRead(n.id)
+    }
+    const url = getDestinationUrl(n.title, n.message)
+    if (url) {
+      router.push(url)
+    }
+  }
 
   const handleMarkRead = async (id: string) => {
     const original = [...notifications]
@@ -108,7 +167,7 @@ export function NotificationsClient({ initialNotifications }: { initialNotificat
           notifications.map((n) => (
             <div
               key={n.id}
-              onClick={() => !n.is_read && handleMarkRead(n.id)}
+              onClick={() => handleNotificationClick(n)}
               className={`p-4 rounded-xl border transition-all text-left flex items-start justify-between gap-4 cursor-pointer relative group ${
                 n.is_read
                   ? 'bg-dark-card/40 border-white/[0.02] opacity-60 hover:opacity-80'

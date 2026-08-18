@@ -11,6 +11,7 @@ import type { TeamStanding, Participant, Match, Submission, ScoringRule } from '
 import { MatchRecap } from './MatchRecap'
 import { TeamDetails } from './TeamDetails'
 import { NumberTicker } from '@/components/ui/NumberTicker'
+import { getRankFromPoints } from '@/lib/rankings'
 
 import { AdPlacement } from '@/components/federation/AdPlacement'
 import type { AdBanner } from '@/lib/actions/federation'
@@ -1446,7 +1447,7 @@ export function LeaderboardClient({
         .eq('tournament_id', tournamentId),
       supabase
         .from('teams')
-        .select('id, name, avatar_url, stream_url, amount_paid, registration_status, participants(id, team_id, user_id, display_name, avatar_url, stream_url, is_captain, total_kills, kd_ratio, avg_kills, classification_rank, br_avg_placement, color)')
+        .select('id, name, avatar_url, stream_url, amount_paid, registration_status, participants(id, team_id, user_id, display_name, avatar_url, stream_url, is_captain, total_kills, kd_ratio, avg_kills, classification_rank, br_avg_placement, color, profiles(avatar_url))')
         .eq('tournament_id', tournamentId)
         .order('created_at', { ascending: true }),
       supabase
@@ -1504,21 +1505,28 @@ export function LeaderboardClient({
       streamUrl: t.stream_url,
       registrationStatus: t.registration_status,
       amountPaid: Number(t.amount_paid) || 0,
-      participants: (t.participants || []).map((p: any) => ({
-        id: p.id,
-        teamId: p.team_id,
-        displayName: p.display_name,
-        avatarUrl: p.avatar_url,
-        streamUrl: p.stream_url,
-        isCaptain: p.is_captain,
-        totalKills: Number(p.total_kills || 0),
-        kdRatio:            p.kd_ratio            ?? undefined,
-        avgKills:           p.avg_kills            ?? undefined,
-        classificationRank: p.classification_rank  ?? undefined,
-        brAvgPlacement:     p.br_avg_placement      ?? undefined,
-        color:              p.color                 ?? undefined,
-        userId:             p.user_id,
-      }))
+      participants: (t.participants || []).map((p: any) => {
+        const userRankings = p.profiles?.user_discipline_rankings || []
+        const activeRank = userRankings.find((r: any) => r.discipline === discipline)
+        const dynamicRankName = activeRank ? getRankFromPoints(Number(activeRank.points)).name : undefined
+
+        return {
+          id: p.id,
+          teamId: p.team_id,
+          displayName: p.display_name,
+          // Use linked profile avatar as primary source; fall back to manually set participant avatar
+          avatarUrl: p.profiles?.avatar_url || p.avatar_url,
+          streamUrl: p.stream_url,
+          isCaptain: p.is_captain,
+          totalKills: Number(p.total_kills || 0),
+          kdRatio:            p.kd_ratio            ?? undefined,
+          avgKills:           p.avg_kills            ?? undefined,
+          classificationRank: dynamicRankName || p.classification_rank || undefined,
+          brAvgPlacement:     p.br_avg_placement      ?? undefined,
+          color:              p.color                 ?? undefined,
+          userId:             p.user_id,
+        }
+      })
     }))
 
     // 4. Cáculo Dinámico de Posiciones (Single Source of Truth)

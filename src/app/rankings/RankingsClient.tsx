@@ -5,25 +5,72 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Orbitron } from 'next/font/google'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts'
 import { getPlayerDetails } from '@/lib/actions/profile'
+import { Trophy, Award, Activity, Flame, TrendingUp, Coins, Gamepad2, Users, Calendar, X, Crown } from 'lucide-react'
+import { RankBadge } from '@/components/ui/RankBadge'
 
 const orbitron = Orbitron({ subsets: ['latin'] })
 
 interface RankingsClientProps {
   communityRankings: any[]
   nationalRankings: any[]
+  disciplinesWithTournaments: string[]
 }
 
 const GAME_NAMES: Record<string, string> = {
-  warzone: 'Call of Duty: Warzone 🪂',
-  clash_royale: 'Clash Royale 👑',
-  fortnite: 'Fortnite ⛏️',
-  free_fire: 'Free Fire 🔥',
-  call_of_duty_mobile: 'Call of Duty Mobile 🔫',
-  street_fighter_6: 'Street Fighter 6 👊',
-  super_smash_bros_ultimate: 'Super Smash Bros Ultimate 💥',
-  league_of_legends: 'League of Legends 🏆',
-  valorant: 'Valorant 🎯',
+  warzone: 'Call of Duty: Warzone',
+  clash_royale: 'Clash Royale',
+  fortnite: 'Fortnite',
+  free_fire: 'Free Fire',
+  call_of_duty_mobile: 'Call of Duty Mobile',
+  street_fighter_6: 'Street Fighter 6',
+  super_smash_bros_ultimate: 'Super Smash Bros Ultimate',
+  league_of_legends: 'League of Legends',
+  valorant: 'Valorant',
 }
+
+const getRankBadge = (rank: number | null) => {
+  if (rank === 1) {
+    return (
+      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 font-orbitron uppercase">
+        1º Lugar (Campeón)
+      </span>
+    )
+  }
+  if (rank === 2) {
+    return (
+      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-300/10 border border-slate-300/30 text-slate-300 font-orbitron uppercase">
+        2º Lugar
+      </span>
+    )
+  }
+  if (rank === 3) {
+    return (
+      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-700/10 border border-amber-700/30 text-amber-600 font-orbitron uppercase">
+        3º Lugar
+      </span>
+    )
+  }
+  if (rank && rank <= 5) {
+    return (
+      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 font-orbitron uppercase">
+        Top 5 (#{rank})
+      </span>
+    )
+  }
+  if (rank) {
+    return (
+      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/5 border border-white/10 text-white/50 font-orbitron">
+        #{rank} Lugar
+      </span>
+    )
+  }
+  return (
+    <span className="px-2 py-0.5 rounded-full text-[10px] text-white/30 italic">
+      En progreso
+    </span>
+  )
+}
+
 
 const DISCIPLINES = [
   { value: 'warzone', label: 'Warzone' },
@@ -37,7 +84,7 @@ const DISCIPLINES = [
   { value: 'valorant', label: 'Valorant' },
 ]
 
-export function RankingsClient({ communityRankings, nationalRankings }: RankingsClientProps) {
+export function RankingsClient({ communityRankings, nationalRankings, disciplinesWithTournaments }: RankingsClientProps) {
   const [rankingType, setRankingType] = useState<'community' | 'national'>('community')
   const [selectedDiscipline, setSelectedDiscipline] = useState('clash_royale')
   const [searchQuery, setSearchQuery] = useState('')
@@ -45,24 +92,25 @@ export function RankingsClient({ communityRankings, nationalRankings }: Rankings
   const [playerDetails, setPlayerDetails] = useState<any | null>(null)
   const [loadingDetails, setLoadingDetails] = useState(false)
 
-  // Enforce correct selected discipline when switching ranking type
-  useEffect(() => {
+  // Filter visible disciplines tab list to only show categories with tournaments
+  const visibleDisciplines = useMemo(() => {
+    let list = DISCIPLINES
     if (rankingType === 'national') {
       const allowed = ['clash_royale', 'street_fighter_6', 'super_smash_bros_ultimate', 'free_fire', 'fortnite', 'call_of_duty_mobile']
-      if (!allowed.includes(selectedDiscipline)) {
-        setSelectedDiscipline('clash_royale')
+      list = DISCIPLINES.filter(d => allowed.includes(d.value))
+    }
+    return list.filter(d => disciplinesWithTournaments.includes(d.value))
+  }, [rankingType, disciplinesWithTournaments])
+
+  // Enforce correct selected discipline when switching ranking type or when visible list updates
+  useEffect(() => {
+    if (visibleDisciplines.length > 0) {
+      const isSelectedVisible = visibleDisciplines.some(d => d.value === selectedDiscipline)
+      if (!isSelectedVisible) {
+        setSelectedDiscipline(visibleDisciplines[0].value)
       }
     }
-  }, [rankingType, selectedDiscipline])
-
-  // Filter visible disciplines tab list
-  const visibleDisciplines = useMemo(() => {
-    if (rankingType === 'national') {
-      const allowed = ['clash_royale', 'street_fighter_6', 'super_smash_bros_ultimate', 'free_fire', 'fortnite', 'call_of_duty_mobile']
-      return DISCIPLINES.filter(d => allowed.includes(d.value))
-    }
-    return DISCIPLINES
-  }, [rankingType])
+  }, [visibleDisciplines, selectedDiscipline])
 
   // Filter rankings by discipline and search query
   const filteredRankings = useMemo(() => {
@@ -80,6 +128,69 @@ export function RankingsClient({ communityRankings, nationalRankings }: Rankings
         rank: index + 1,
       }))
   }, [rankingType, communityRankings, nationalRankings, selectedDiscipline, searchQuery])
+
+  const topThree = useMemo(() => {
+    return filteredRankings.slice(0, 3)
+  }, [filteredRankings])
+
+  const remainingRankings = useMemo(() => {
+    return filteredRankings.slice(3)
+  }, [filteredRankings])
+
+  const listToRender = useMemo(() => {
+    return (searchQuery === '') ? remainingRankings : filteredRankings
+  }, [searchQuery, filteredRankings, remainingRankings])
+  const stats = useMemo(() => {
+    if (!playerDetails) return null
+    const totalTournaments = playerDetails.nationalPlayer 
+      ? (playerDetails.tournamentsPlayed || 0)
+      : (playerDetails.participations?.length || 0)
+    
+    let podiums = 0
+    let totalKills = 0
+    let top5 = 0
+    let winRate = 0
+
+    if (playerDetails.nationalPlayer) {
+      podiums = playerDetails.podiumsCount || 0
+      winRate = playerDetails.winRate || 0
+    }
+
+    if (playerDetails.participations) {
+      playerDetails.participations.forEach((p: any) => {
+        const standing = p.teams?.team_standings?.[0] || p.teams?.team_standings
+        const rank = standing?.rank
+        if (rank) {
+          if (rank === 1 || rank === 2 || rank === 3) {
+            podiums++
+          }
+          if (rank <= 5) {
+            top5++
+          }
+        }
+        totalKills += p.total_kills || p.teams?.team_standings?.[0]?.total_kills || 0
+      })
+      
+      if (totalTournaments > 0 && !playerDetails.nationalPlayer) {
+        winRate = Math.round((playerDetails.participations.filter((p: any) => {
+          const standing = p.teams?.team_standings?.[0] || p.teams?.team_standings
+          return standing?.rank === 1
+        }).length / totalTournaments) * 100)
+      }
+    }
+
+    const avgKills = totalTournaments > 0 ? (totalKills / totalTournaments).toFixed(1) : '0'
+
+    return {
+      totalTournaments,
+      podiums,
+      totalKills,
+      avgKills,
+      winRate,
+      top5,
+      mvpCount: playerDetails.mvpCount || 0
+    }
+  }, [playerDetails])
 
   // Handle clicking on a player to view details
   const handlePlayerClick = async (player: any) => {
@@ -189,35 +300,160 @@ export function RankingsClient({ communityRankings, nationalRankings }: Rankings
         </div>
       </div>
 
+      {/* Podium Layout */}
+      {searchQuery === '' && topThree.length > 0 && (
+        <div className="grid grid-cols-3 gap-4 items-end max-w-2xl mx-auto py-8 select-none">
+          {/* 2nd Place */}
+          {topThree[1] ? (
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              onClick={() => handlePlayerClick(topThree[1])}
+              className="flex flex-col items-center cursor-pointer group"
+            >
+              <div className="relative mb-3">
+                <div className="w-16 h-16 rounded-2xl border-2 border-slate-400/30 overflow-hidden shadow-[0_0_15px_rgba(200,200,200,0.05)] group-hover:border-neon-cyan transition-colors shrink-0">
+                  {(topThree[1].profiles?.avatar_url || topThree[1].avatar_url) ? (
+                    <img src={topThree[1].profiles?.avatar_url || topThree[1].avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-black/40 flex items-center justify-center font-orbitron font-bold text-lg text-slate-400">
+                      {rankingType === 'community' ? (topThree[1].profiles?.username?.[0] || '?').toUpperCase() : (topThree[1].display_name?.[0] || '?').toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div className="absolute -bottom-1 -right-1 bg-slate-400 text-black text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center font-orbitron">
+                  2
+                </div>
+              </div>
+              <span className="text-xs font-bold text-white/80 group-hover:text-neon-cyan transition-colors truncate max-w-[100px] block">
+                {rankingType === 'community' ? topThree[1].profiles?.username : topThree[1].display_name}
+              </span>
+              <div className="mt-1">
+                <RankBadge points={Number(topThree[1].points)} size="sm" />
+              </div>
+              <span className="text-[10px] font-orbitron font-black text-neon-cyan mt-1">
+                {Number(topThree[1].points).toFixed(1)} pts
+              </span>
+              <div className="w-full bg-white/[0.02] border-t border-x border-white/5 rounded-t-xl h-12 mt-3 flex items-center justify-center shadow-inner">
+                <span className="text-white/20 font-orbitron font-bold text-xs">II</span>
+              </div>
+            </motion.div>
+          ) : (
+            <div className="h-1" />
+          )}
+
+          {/* 1st Place */}
+          {topThree[0] ? (
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              onClick={() => handlePlayerClick(topThree[0])}
+              className="flex flex-col items-center cursor-pointer group z-10"
+            >
+              <div className="relative mb-3">
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-yellow-400 animate-bounce">
+                  <Crown className="w-5 h-5 text-yellow-450 fill-yellow-400/10 shrink-0" />
+                </div>
+                <div className="w-20 h-20 rounded-2xl border-2 border-gold overflow-hidden shadow-[0_0_25px_rgba(226,194,34,0.15)] group-hover:border-neon-cyan transition-colors shrink-0">
+                  {(topThree[0].profiles?.avatar_url || topThree[0].avatar_url) ? (
+                    <img src={topThree[0].profiles?.avatar_url || topThree[0].avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-black/40 flex items-center justify-center font-orbitron font-bold text-2xl text-gold">
+                      {rankingType === 'community' ? (topThree[0].profiles?.username?.[0] || '?').toUpperCase() : (topThree[0].display_name?.[0] || '?').toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div className="absolute -bottom-1 -right-1 bg-gold text-black text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center font-orbitron">
+                  1
+                </div>
+              </div>
+              <span className="text-sm font-black text-white group-hover:text-neon-cyan transition-colors truncate max-w-[120px] block">
+                {rankingType === 'community' ? topThree[0].profiles?.username : topThree[0].display_name}
+              </span>
+              <div className="mt-1">
+                <RankBadge points={Number(topThree[0].points)} size="md" />
+              </div>
+              <span className="text-xs font-orbitron font-black text-neon-cyan mt-1">
+                {Number(topThree[0].points).toFixed(1)} pts
+              </span>
+              <div className="w-full bg-gradient-to-b from-white/[0.04] to-transparent border-t border-x border-neon-cyan/20 rounded-t-xl h-20 mt-3 flex items-center justify-center shadow-lg">
+                <span className="text-gold font-orbitron font-bold text-base">I</span>
+              </div>
+            </motion.div>
+          ) : (
+            <div className="h-1" />
+          )}
+
+          {/* 3rd Place */}
+          {topThree[2] ? (
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              onClick={() => handlePlayerClick(topThree[2])}
+              className="flex flex-col items-center cursor-pointer group"
+            >
+              <div className="relative mb-3">
+                <div className="w-16 h-16 rounded-2xl border-2 border-[#CD7F32]/60 overflow-hidden shadow-[0_0_15px_rgba(205,127,50,0.1)] group-hover:border-neon-cyan transition-colors shrink-0">
+                  {(topThree[2].profiles?.avatar_url || topThree[2].avatar_url) ? (
+                    <img src={topThree[2].profiles?.avatar_url || topThree[2].avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-black/40 flex items-center justify-center font-orbitron font-bold text-lg text-[#CD7F32]">
+                      {rankingType === 'community' ? (topThree[2].profiles?.username?.[0] || '?').toUpperCase() : (topThree[2].display_name?.[0] || '?').toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div className="absolute -bottom-1 -right-1 bg-[#CD7F32] text-black text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center font-orbitron">
+                  3
+                </div>
+              </div>
+              <span className="text-xs font-bold text-white/80 group-hover:text-neon-cyan transition-colors truncate max-w-[100px] block">
+                {rankingType === 'community' ? topThree[2].profiles?.username : topThree[2].display_name}
+              </span>
+              <div className="mt-1">
+                <RankBadge points={Number(topThree[2].points)} size="sm" />
+              </div>
+              <span className="text-[10px] font-orbitron font-black text-neon-cyan mt-1">
+                {Number(topThree[2].points).toFixed(1)} pts
+              </span>
+              <div className="w-full bg-white/[0.02] border-t border-x border-white/5 rounded-t-xl h-8 mt-3 flex items-center justify-center shadow-inner">
+                <span className="text-white/20 font-orbitron font-bold text-xs">III</span>
+              </div>
+            </motion.div>
+          ) : (
+            <div className="h-1" />
+          )}
+        </div>
+      )}
+
       {/* Leaderboard Table */}
-      <div className="bg-[#0d0d0f] border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
-        {filteredRankings.length === 0 ? (
-          <div className="text-center py-20 text-white/30 text-sm">
-            Aún no hay puntuaciones en esta disciplina.
-          </div>
-        ) : (
+      {filteredRankings.length === 0 ? (
+        <div className="bg-[#0d0d0f] border border-white/5 rounded-2xl overflow-hidden shadow-2xl text-center py-20 text-white/30 text-sm">
+          Aún no hay puntuaciones en esta disciplina.
+        </div>
+      ) : listToRender.length > 0 ? (
+        <div className="bg-[#0d0d0f] border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm border-collapse">
-              <thead>
-                <tr className="text-white/40 text-[10px] uppercase font-black tracking-widest border-b border-white/5 bg-white/[0.01]">
-                  <th className="px-6 py-5 text-center w-20">Rank</th>
-                  <th className="px-6 py-5">Jugador</th>
-                  {rankingType === 'national' && (
-                    <>
-                      <th className="px-6 py-5 text-center">Torneos</th>
-                      <th className="px-6 py-5 text-center">Podios</th>
-                      <th className="px-6 py-5 text-center">Win Rate</th>
-                    </>
-                  )}
-                  <th className="px-6 py-5 text-right">Puntos</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {filteredRankings.map((r) => (
-                  <tr
-                    key={r.id}
-                    onClick={() => handlePlayerClick(r)}
-                    className="hover:bg-white/[0.02] cursor-pointer transition-colors group"
+                <thead>
+                  <tr className="text-white/40 text-[10px] uppercase font-black tracking-widest border-b border-white/5 bg-white/[0.01]">
+                    <th className="px-6 py-5 text-center w-20">Rank</th>
+                    <th className="px-6 py-5">Jugador</th>
+                    {rankingType === 'national' && (
+                      <>
+                        <th className="px-6 py-5 text-center">Torneos</th>
+                        <th className="px-6 py-5 text-center">Podios</th>
+                        <th className="px-6 py-5 text-center">Win Rate</th>
+                      </>
+                    )}
+                    <th className="px-6 py-5 text-right">Puntos</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {listToRender.map((r) => (
+                    <tr
+                      key={r.id}
+                      onClick={() => handlePlayerClick(r)}
+                      className="hover:bg-white/[0.02] cursor-pointer transition-colors group"
                   >
                     <td className="px-6 py-5 text-center font-orbitron font-black text-base">
                       <span className={r.rank === 1 ? 'text-gold' : r.rank === 2 ? 'text-white/80' : r.rank === 3 ? 'text-orange-400' : 'text-white/30'}>
@@ -226,16 +462,21 @@ export function RankingsClient({ communityRankings, nationalRankings }: Rankings
                     </td>
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center font-bold text-xs uppercase text-white/40">
-                          {rankingType === 'community'
-                            ? (r.profiles?.username?.[0] || '?')
-                            : (r.display_name?.[0] || '?')}
+                        <div className="w-8 h-8 rounded-lg border border-white/10 overflow-hidden shrink-0 bg-white/5">
+                          {(r.profiles?.avatar_url || r.avatar_url) ? (
+                            <img src={r.profiles?.avatar_url || r.avatar_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center font-bold text-xs uppercase text-white/40">
+                              {rankingType === 'community' ? (r.profiles?.username?.[0] || '?').toUpperCase() : (r.display_name?.[0] || '?').toUpperCase()}
+                            </div>
+                          )}
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-bold text-white group-hover:text-neon-cyan transition-colors">
                               {rankingType === 'community' ? r.profiles?.username : r.display_name}
                             </span>
+                            <RankBadge points={Number(r.points)} size="sm" />
                             {rankingType === 'national' && r.is_national_selected && (
                               <span className="text-[8px] bg-neon-cyan/15 text-neon-cyan px-1.5 py-0.5 rounded font-black uppercase tracking-wider">
                                 Selección Nacional 🇩🇴
@@ -263,38 +504,54 @@ export function RankingsClient({ communityRankings, nationalRankings }: Rankings
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </div>
+      ) : null}
 
       {/* Player Detail Modal */}
       <AnimatePresence>
         {selectedPlayer && (
-          <Fragment>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.7 }}
+              animate={{ opacity: 0.8 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedPlayer(null)}
-              className="fixed inset-0 bg-black z-50 cursor-pointer"
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm cursor-pointer"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed inset-y-12 inset-x-6 md:inset-x-auto md:right-12 md:w-[500px] bg-[#0d0d0f] border border-white/5 rounded-3xl p-6 shadow-2xl z-50 overflow-y-auto space-y-6 scrollbar-none"
+              className="w-full max-w-xl bg-[#0d0d0f] border border-white/10 rounded-3xl p-6 shadow-2xl relative z-10 max-h-[85vh] overflow-y-auto space-y-6 scrollbar-none"
             >
               {/* Modal Header */}
               <div className="flex justify-between items-start">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-neon-cyan/10 border border-neon-cyan/20 flex items-center justify-center font-bold font-orbitron text-xl text-neon-cyan shrink-0">
-                    {rankingType === 'community'
-                      ? (selectedPlayer.profiles?.username?.[0] || '?')
-                      : (selectedPlayer.display_name?.[0] || '?')}
-                  </div>
+                  {/* Avatar with photo if available */}
+                  {(() => {
+                    const avatarSrc = playerDetails?.avatarUrl || selectedPlayer.profiles?.avatar_url || null
+                    const initials = rankingType === 'community'
+                      ? (selectedPlayer.profiles?.username?.[0] || '?').toUpperCase()
+                      : (selectedPlayer.display_name?.[0] || '?').toUpperCase()
+                    return avatarSrc ? (
+                      <img
+                        src={avatarSrc}
+                        alt="Avatar"
+                        className="w-14 h-14 rounded-2xl object-cover border-2 border-neon-cyan/40 shadow-lg shadow-neon-cyan/10 shrink-0"
+                      />
+                    ) : (
+                      <div className="w-14 h-14 rounded-2xl bg-neon-cyan/10 border border-neon-cyan/20 flex items-center justify-center font-bold font-orbitron text-xl text-neon-cyan shrink-0">
+                        {initials}
+                      </div>
+                    )
+                  })()}
                   <div>
-                    <h3 className="text-white font-orbitron font-bold text-lg uppercase tracking-wider">
-                      {rankingType === 'community' ? selectedPlayer.profiles?.username : selectedPlayer.display_name}
-                    </h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-white font-orbitron font-bold text-lg uppercase tracking-wider">
+                        {rankingType === 'community' ? selectedPlayer.profiles?.username : selectedPlayer.display_name}
+                      </h3>
+                      <RankBadge points={Number(selectedPlayer.points)} size="md" />
+                    </div>
                     <p className="text-white/40 text-xs">Top #{selectedPlayer.rank} en {GAME_NAMES[selectedDiscipline]}</p>
                   </div>
                 </div>
@@ -302,7 +559,7 @@ export function RankingsClient({ communityRankings, nationalRankings }: Rankings
                   onClick={() => setSelectedPlayer(null)}
                   className="w-8 h-8 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-white/40 hover:text-white"
                 >
-                  ✕
+                  <X size={16} />
                 </button>
               </div>
 
@@ -313,42 +570,100 @@ export function RankingsClient({ communityRankings, nationalRankings }: Rankings
               ) : (
                 playerDetails && (
                   <div className="space-y-6">
-                    {/* Stats Highlights */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4">
-                        <p className="text-white/40 text-[9px] uppercase tracking-widest font-bold">Puntos Totales</p>
-                        <p className="text-2xl font-black font-orbitron text-neon-cyan mt-1">
-                          {Number(selectedPlayer.points).toFixed(1)}
-                        </p>
-                      </div>
-                      <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4">
-                        <p className="text-white/40 text-[9px] uppercase tracking-widest font-bold">Torneos Jugados</p>
-                        <p className="text-2xl font-black font-orbitron text-white mt-1">
-                          {playerDetails.nationalPlayer ? playerDetails.tournamentsPlayed : (playerDetails.participations?.length || 0)}
-                        </p>
-                      </div>
-                    </div>
-
-                    {playerDetails.nationalPlayer ? (
-                      <div className="space-y-6">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4">
-                            <p className="text-white/40 text-[9px] uppercase tracking-widest font-bold">Podios Logrados</p>
-                            <p className="text-2xl font-black font-orbitron text-yellow-500 mt-1">
-                              {playerDetails.podiumsCount}
-                            </p>
+                    {stats && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {/* Copas Jugadas */}
+                        <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+                          <div className="flex items-center justify-between text-white/40">
+                            <span className="text-[10px] font-bold uppercase tracking-wider">Copas Jugadas</span>
+                            <Trophy size={14} className="text-yellow-500" />
                           </div>
-                          <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4">
-                            <p className="text-white/40 text-[9px] uppercase tracking-widest font-bold">Porcentaje de Victoria</p>
-                            <p className="text-2xl font-black font-orbitron text-purple-400 mt-1">
-                              {playerDetails.winRate}%
-                            </p>
+                          <div className="text-xl font-black font-orbitron text-white">
+                            {stats.totalTournaments}
                           </div>
+                          <p className="text-[10px] text-white/45">Torneos registrados</p>
                         </div>
 
+                        {/* Podios (Top 3) */}
+                        <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+                          <div className="flex items-center justify-between text-white/40">
+                            <span className="text-[10px] font-bold uppercase tracking-wider">Podios (Top 3)</span>
+                            <Award size={14} className="text-neon-cyan" />
+                          </div>
+                          <div className="text-xl font-black font-orbitron text-neon-cyan">
+                            {stats.podiums}
+                          </div>
+                          <p className="text-[10px] text-white/45">1º, 2º y 3º lugares</p>
+                        </div>
+
+                        {/* Kills Históricas */}
+                        <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+                          <div className="flex items-center justify-between text-white/40">
+                            <span className="text-[10px] font-bold uppercase tracking-wider">Bajas Totales</span>
+                            <Activity size={14} className="text-red-400" />
+                          </div>
+                          <div className="text-xl font-black font-orbitron text-red-400">
+                            {stats.totalKills}
+                          </div>
+                          <p className="text-[10px] text-white/45">Bajas acumuladas</p>
+                        </div>
+
+                        {/* Promedio Bajas */}
+                        <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+                          <div className="flex items-center justify-between text-white/40">
+                            <span className="text-[10px] font-bold uppercase tracking-wider">Promedio Bajas</span>
+                            <Flame size={14} className="text-orange-400" />
+                          </div>
+                          <div className="text-xl font-black font-orbitron text-white">
+                            {stats.avgKills}
+                          </div>
+                          <p className="text-[10px] text-white/45">Kills / torneo</p>
+                        </div>
+
+                        {/* Win Rate */}
+                        <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+                          <div className="flex items-center justify-between text-white/40">
+                            <span className="text-[10px] font-bold uppercase tracking-wider">Win Rate</span>
+                            <TrendingUp size={14} className="text-green-400" />
+                          </div>
+                          <div className="text-xl font-black font-orbitron text-green-400">
+                            {stats.winRate}%
+                          </div>
+                          <p className="text-[10px] text-white/45">% de victorias #1</p>
+                        </div>
+
+                        {/* Llegadas Top 5 */}
+                        <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-1">
+                          <div className="flex items-center justify-between text-white/40">
+                            <span className="text-[10px] font-bold uppercase tracking-wider">Top 5</span>
+                            <Award size={14} className="text-purple-400" />
+                          </div>
+                          <div className="text-xl font-black font-orbitron text-purple-400">
+                            {stats.top5}
+                          </div>
+                          <p className="text-[10px] text-white/45">Clasificaciones altas</p>
+                        </div>
+
+                        {/* MVPs Ganados */}
+                        <div className="p-3.5 rounded-xl bg-gradient-to-br from-amber-500/10 to-transparent border border-amber-500/20 space-y-1 col-span-2 sm:col-span-2">
+                          <div className="flex items-center justify-between text-white/40">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">MVPs Ganados</span>
+                            <Crown size={14} className="text-amber-400 fill-amber-400/10 animate-pulse" />
+                          </div>
+                          <div className="text-xl font-black font-orbitron text-amber-405">
+                            {stats.mvpCount}
+                          </div>
+                          <p className="text-[10px] text-amber-500/80">Galardonado al mejor jugador</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* National Player Details */}
+                    {playerDetails.nationalPlayer && (
+                      <div className="space-y-4">
                         {playerDetails.realName && (
                           <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4">
-                            <p className="text-white/40 text-[9px] uppercase tracking-widest font-bold">Nombre Real</p>
+                            <p className="text-white/45 text-[9px] uppercase tracking-widest font-bold">Nombre Real</p>
                             <p className="text-sm font-semibold text-white mt-1">
                               {playerDetails.realName}
                             </p>
@@ -364,27 +679,30 @@ export function RankingsClient({ communityRankings, nationalRankings }: Rankings
 
                         {(playerDetails.socialTwitch || playerDetails.socialTwitter) && (
                           <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 space-y-2">
-                            <p className="text-white/40 text-[9px] uppercase tracking-widest font-bold">Redes Sociales</p>
+                            <p className="text-white/45 text-[9px] uppercase tracking-widest font-bold">Redes Sociales</p>
                             <div className="flex gap-4">
                               {playerDetails.socialTwitch && (
                                 <a href={playerDetails.socialTwitch} target="_blank" rel="noreferrer" className="text-xs text-neon-cyan hover:underline">
-                                  💜 Twitch
+                                  Twitch
                                 </a>
                               )}
                               {playerDetails.socialTwitter && (
                                 <a href={playerDetails.socialTwitter} target="_blank" rel="noreferrer" className="text-xs text-neon-cyan hover:underline">
-                                  🐦 Twitter / X
+                                  Twitter / X
                                 </a>
                               )}
                             </div>
                           </div>
                         )}
                       </div>
-                    ) : (
+                    )}
+
+                    {/* Charts & Historial Section */}
+                    {!playerDetails.nationalPlayer && (
                       <>
                         {/* Chart 1: Points progression */}
                         {chartData.length >= 2 && (
-                          <div className="bg-white/[0.01] border border-white/5 rounded-2xl p-4">
+                          <div className="bg-[#0d0d0f] border border-white/5 rounded-2xl p-4">
                             <h4 className="text-white font-orbitron text-xs uppercase tracking-wider mb-3">Evolución de Puntos</h4>
                             <div className="h-40 w-full">
                               <ResponsiveContainer width="100%" height="100%">
@@ -408,7 +726,7 @@ export function RankingsClient({ communityRankings, nationalRankings }: Rankings
 
                         {/* Chart 2: Placement distribution */}
                         {playerDetails.participations?.length > 0 && (
-                          <div className="bg-white/[0.01] border border-white/5 rounded-2xl p-4">
+                          <div className="bg-[#0d0d0f] border border-white/5 rounded-2xl p-4">
                             <h4 className="text-white font-orbitron text-xs uppercase tracking-wider mb-3">Distribución de Posiciones</h4>
                             <div className="h-40 w-full">
                               <ResponsiveContainer width="100%" height="100%">
@@ -440,7 +758,10 @@ export function RankingsClient({ communityRankings, nationalRankings }: Rankings
                         {/* Badges Cabinet */}
                         {playerDetails.badges && playerDetails.badges.length > 0 && (
                           <div className="space-y-3">
-                            <h4 className="text-white font-orbitron text-xs uppercase tracking-wider">Góndola de Medallas</h4>
+                            <h4 className="text-white font-orbitron text-xs uppercase tracking-wider flex items-center gap-2">
+                              <Award className="w-4 h-4 text-neon-cyan shrink-0" />
+                              <span>Góndola de Medallas</span>
+                            </h4>
                             <div className="grid grid-cols-3 gap-3">
                               {playerDetails.badges.map((b: any) => (
                                 <div
@@ -455,12 +776,15 @@ export function RankingsClient({ communityRankings, nationalRankings }: Rankings
                           </div>
                         )}
 
-                        {/* Recent Tournaments History */}
+                        {/* Recent Tournaments History - Expediente style */}
                         {playerDetails.participations && playerDetails.participations.length > 0 && (
                           <div className="space-y-3">
-                            <h4 className="text-white font-orbitron text-xs uppercase tracking-wider">Últimas Participaciones</h4>
+                            <h4 className="text-white font-orbitron text-xs uppercase tracking-wider flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-neon-cyan shrink-0" />
+                              <span>Historial de Copas & Torneos Anteriores</span>
+                            </h4>
                             <div className="space-y-2">
-                              {playerDetails.participations.slice(0, 3).map((p: any) => {
+                              {playerDetails.participations.map((p: any) => {
                                 const standing = p.teams?.team_standings?.[0] || p.teams?.team_standings
                                 const rank = standing?.rank
                                 return (
@@ -469,10 +793,14 @@ export function RankingsClient({ communityRankings, nationalRankings }: Rankings
                                       <p className="text-xs text-white font-bold">{p.tournaments?.name}</p>
                                       <p className="text-[9px] text-white/30 uppercase mt-0.5">{GAME_NAMES[p.tournaments?.discipline] || p.tournaments?.discipline}</p>
                                     </div>
-                                    <div className="text-right">
-                                      <span className={`text-xs font-black font-orbitron ${rank === 1 ? 'text-gold' : rank === 2 ? 'text-white/80' : rank === 3 ? 'text-orange-400' : 'text-white/30'}`}>
-                                        #{rank || '?'}
-                                      </span>
+                                    <div className="flex items-center gap-2">
+                                      {getRankBadge(rank)}
+                                      {(p.total_kills || p.teams?.team_standings?.[0]?.total_kills) !== undefined && (
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 border border-red-500/20 text-red-400 font-orbitron flex items-center gap-1">
+                                          <Flame size={10} />
+                                          {p.total_kills || p.teams?.team_standings?.[0]?.total_kills} Kills
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
                                 )
@@ -486,7 +814,7 @@ export function RankingsClient({ communityRankings, nationalRankings }: Rankings
                 )
               )}
             </motion.div>
-          </Fragment>
+          </div>
         )}
       </AnimatePresence>
     </div>

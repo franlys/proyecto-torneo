@@ -5,18 +5,20 @@ import Link from 'next/link'
 import { signOut } from '@/lib/actions/auth'
 import { motion, AnimatePresence } from 'framer-motion'
 import { updateTeammateGameCredentials, GAME_LABELS } from '@/lib/actions/game-accounts'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, User, Bell, X, Check, Calendar, ChevronRight, Coins } from 'lucide-react'
 import { toast } from 'sonner'
-import { getMyNotificationsAction } from '@/lib/actions/notifications'
-import { usePathname } from 'next/navigation'
+import { getMyNotificationsAction, markNotificationReadAction, markAllNotificationsReadAction } from '@/lib/actions/notifications'
+import { usePathname, useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { updateProfile } from '@/lib/actions/profile'
 
 const ROLE_BADGE: Record<string, { label: string; color: string }> = {
-  SUPER_ADMIN: { label: '⭐ Super Admin', color: 'text-yellow-300' },
-  ADMIN:       { label: '⚡ Admin',       color: 'text-neon-cyan' },
-  KRONIX_STAFF:{ label: '🔧 Staff',       color: 'text-orange-300' },
-  FEDERATION:  { label: '🏛 Federación',  color: 'text-green-400' },
-  STREAMER:    { label: '🎮 Streamer',    color: 'text-purple-400' },
-  USER:        { label: '👤 Usuario',     color: 'text-white/40' },
+  SUPER_ADMIN: { label: 'Super Admin', color: 'text-yellow-300' },
+  ADMIN:       { label: 'Admin',       color: 'text-neon-cyan' },
+  KRONIX_STAFF:{ label: 'Staff',       color: 'text-orange-300' },
+  FEDERATION:  { label: 'Federación',  color: 'text-green-400' },
+  STREAMER:    { label: 'Streamer',    color: 'text-purple-400' },
+  USER:        { label: 'Usuario',     color: 'text-white/40' },
 }
 
 export default function DashboardShell({
@@ -48,25 +50,135 @@ export default function DashboardShell({
   const [modalError, setModalError] = useState('')
 
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0)
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [showNotificationsDrawer, setShowNotificationsDrawer] = useState(false)
+  const router = useRouter()
+
+  const handleMarkRead = async (id: string) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
+    setUnreadNotificationsCount(prev => Math.max(0, prev - 1))
+    await markNotificationReadAction(id)
+  }
+
+  const handleMarkAllRead = async () => {
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+    setUnreadNotificationsCount(0)
+    await markAllNotificationsReadAction()
+  }
+
+  const getDestinationUrl = (title: string, message: string) => {
+    const t = (title + ' ' + message).toLowerCase()
+    if (t.includes('cartera') || t.includes('retiro') || t.includes('recarga') || t.includes('saldo') || t.includes('k-coin') || t.includes('paypal')) {
+      return '/wallet'
+    }
+    if (t.includes('vip') || t.includes('suscripción') || t.includes('suscripcion')) {
+      return '/subscription'
+    }
+    if (t.includes('perfil') || t.includes('credenciales') || t.includes('game id') || t.includes('vincular')) {
+      return '/profile'
+    }
+    if (t.includes('torneo') || t.includes('inscrito') || t.includes('inscripción') || t.includes('inscripcion') || t.includes('partida') || t.includes('lobby') || t.includes('encuentro') || t.includes('ronda')) {
+      return '/profile'
+    }
+    return null
+  }
+
+  const handleNotificationClick = async (n: any) => {
+    if (!n.is_read) {
+      await handleMarkRead(n.id)
+    }
+    setShowNotificationsDrawer(false)
+    const url = getDestinationUrl(n.title, n.message)
+    if (url) {
+      router.push(url)
+    }
+  }
+
+  // Force Nickname states
+  const [forceNickname, setForceNickname] = useState(false)
+  const [nicknameInput, setNicknameInput] = useState('')
+  const [nicknameLoading, setNicknameLoading] = useState(false)
+  const [nicknameError, setNicknameError] = useState('')
+
+  useEffect(() => {
+    const name = username || ''
+    if (!name.trim() || name === 'null' || name.toLowerCase() === 'usuario sin nickname') {
+      setForceNickname(true)
+    } else {
+      setForceNickname(false)
+    }
+  }, [username])
+
+  const handleSetNickname = async () => {
+    if (nicknameInput.trim().length < 3) {
+      setNicknameError('El nickname debe tener al menos 3 caracteres.')
+      return
+    }
+    if (nicknameInput.trim().length > 16) {
+      setNicknameError('El nickname no puede superar los 16 caracteres.')
+      return
+    }
+    setNicknameLoading(true)
+    setNicknameError('')
+
+    try {
+      const formData = new FormData()
+      formData.append('username', nicknameInput.trim())
+      const res = await updateProfile(formData)
+
+      if (res && 'error' in res && res.error) {
+        setNicknameError(res.error)
+      } else {
+        toast.success('¡Nickname establecido con éxito!')
+        setForceNickname(false)
+        window.location.reload()
+      }
+    } catch (err: any) {
+      setNicknameError(err.message || 'Ocurrió un error inesperado.')
+    } finally {
+      setNicknameLoading(false)
+    }
+  }
 
   // Close drawer on route change
   useEffect(() => {
     setDrawerOpen(false)
   }, [pathname])
 
-  useEffect(() => {
-    async function loadNotifCount() {
-      const res = await getMyNotificationsAction()
-      if (res.success && res.data) {
-        const count = res.data.filter(n => !n.is_read).length
-        setUnreadNotificationsCount(count)
-      }
+  const loadNotifications = async () => {
+    const res = await getMyNotificationsAction()
+    if (res.success && res.data) {
+      setNotifications(res.data)
+      setUnreadNotificationsCount(res.data.filter(n => !n.is_read).length)
     }
-    loadNotifCount()
+  }
+
+  useEffect(() => {
+    loadNotifications()
+
+    // Realtime subscription
+    const supabase = createClient()
+    const channel = supabase
+      .channel('notifications_dashboard_shell')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications'
+        },
+        () => {
+          loadNotifications()
+        }
+      )
+      .subscribe()
     
-    // Refresh count every 30 seconds
-    const interval = setInterval(loadNotifCount, 30000)
-    return () => clearInterval(interval)
+    // Refresh count every 30 seconds as fallback
+    const interval = setInterval(loadNotifications, 30000)
+    return () => {
+      clearInterval(interval)
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   const NavLinks = () => (
@@ -82,10 +194,13 @@ export default function DashboardShell({
         Mi Inicio
       </Link>
 
-      <Link
-        href="/notifications"
-        onClick={() => setDrawerOpen(false)}
-        className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+      <button
+        onClick={(e) => {
+          e.preventDefault()
+          setShowNotificationsDrawer(true)
+          setDrawerOpen(false)
+        }}
+        className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors text-left"
       >
         <div className="flex items-center gap-3">
           <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -98,7 +213,7 @@ export default function DashboardShell({
             {unreadNotificationsCount}
           </span>
         )}
-      </Link>
+      </button>
 
       {(userRole !== 'USER' || isStaff) && (
         <>
@@ -241,7 +356,7 @@ export default function DashboardShell({
         <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
         </svg>
-        🪙 Mi Billetera (K-Coins)
+        Mi Billetera (K-Coins)
       </Link>
       {(userRole === 'STREAMER' || userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && (
         <Link
@@ -396,8 +511,8 @@ export default function DashboardShell({
             className="w-8 h-8 rounded-lg object-cover border border-white/10 shrink-0"
           />
         ) : (
-          <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0 text-sm">
-            👤
+          <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+            <User className="w-4 h-4 text-white/40" />
           </div>
         )}
         <div className="min-w-0">
@@ -405,10 +520,11 @@ export default function DashboardShell({
             {username || 'Mi Perfil'}
           </p>
           <p className={`text-[10px] font-semibold ${isStaff && userRole === 'USER' ? 'text-orange-300' : (ROLE_BADGE[userRole]?.color ?? 'text-white/40')}`}>
-            {isStaff && userRole === 'USER' ? '🔧 Staff Colaborador' : (ROLE_BADGE[userRole]?.label ?? userRole)}
+            {isStaff && userRole === 'USER' ? 'Staff Colaborador' : (ROLE_BADGE[userRole]?.label ?? userRole)}
           </p>
-          <p className="text-[10px] font-orbitron font-bold text-neon-cyan mt-1 flex items-center gap-1">
-            <span>🪙</span> {balance.toFixed(2)} K-Coins
+          <p className="text-[10px] font-orbitron font-bold text-neon-cyan mt-1 flex items-center gap-1.5">
+            <Coins className="w-3 h-3 text-neon-cyan shrink-0" />
+            <span>{balance.toFixed(2)} K-Coins</span>
           </p>
         </div>
       </Link>
@@ -464,8 +580,8 @@ export default function DashboardShell({
         </Link>
         <div className="flex items-center gap-2">
           {/* Bell Icon for Mobile */}
-          <Link
-            href="/notifications"
+          <button
+            onClick={() => setShowNotificationsDrawer(true)}
             className="relative p-2 text-white/60 hover:text-white transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -474,7 +590,7 @@ export default function DashboardShell({
             {unreadNotificationsCount > 0 && (
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
             )}
-          </Link>
+          </button>
 
           <button
             onClick={() => setDrawerOpen(true)}
@@ -664,6 +780,152 @@ export default function DashboardShell({
                     </button>
                   </div>
                 </form>
+              </motion.div>
+            </div>
+          )}
+
+          {/* Mandatory Nickname Modal */}
+          {forceNickname && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md p-4">
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="w-full max-w-md bg-[#0d0d0f] border border-white/10 rounded-3xl p-6 space-y-6 shadow-[0_0_50px_rgba(0,180,216,0.15)] text-center"
+              >
+                <div className="w-16 h-16 rounded-2xl bg-neon-cyan/10 border border-neon-cyan/20 flex items-center justify-center mx-auto">
+                  <User className="w-8 h-8 text-neon-cyan animate-pulse" />
+                </div>
+
+                <div className="space-y-2">
+                  <h2 className="text-white font-orbitron font-black text-lg uppercase tracking-wider">Elige tu Nickname Oficial</h2>
+                  <p className="text-white/50 text-xs leading-relaxed">
+                    Para participar en torneos, realizar apuestas y usar tu billetera de K-Coins, necesitas establecer un nombre de usuario oficial en Kronix.
+                  </p>
+                </div>
+
+                <div className="space-y-4 text-left">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-bold text-white/40 tracking-wider">Nickname (Nombre en pantalla)</label>
+                    <input
+                      type="text"
+                      value={nicknameInput}
+                      onChange={(e) => setNicknameInput(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
+                      placeholder="Ej. alex_gladiator"
+                      disabled={nicknameLoading}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-neon-cyan transition-colors"
+                    />
+                    <span className="text-[9px] text-white/30 block">
+                      Solo se permiten letras, números y guión bajo (_). Mínimo 3 caracteres, máximo 16.
+                    </span>
+                  </div>
+
+                  {nicknameError && (
+                    <p className="text-red-400 text-xs font-semibold">{nicknameError}</p>
+                  )}
+
+                  <button
+                    onClick={handleSetNickname}
+                    disabled={nicknameLoading || nicknameInput.trim().length < 3}
+                    className="w-full py-3 bg-neon-cyan hover:bg-neon-cyan/95 text-black font-black text-[11px] uppercase tracking-wider rounded-xl transition-all disabled:opacity-30 disabled:pointer-events-none active:scale-[0.98] shadow-[0_0_20px_rgba(0,180,216,0.2)]"
+                  >
+                    {nicknameLoading ? 'Guardando Nickname...' : 'Guardar y Comenzar'}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+
+          {/* Notifications Drawer */}
+          {showNotificationsDrawer && (
+            <div className="fixed inset-0 z-[110] flex justify-end">
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.6 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowNotificationsDrawer(false)}
+                className="absolute inset-0 bg-black backdrop-blur-sm cursor-pointer"
+              />
+              {/* Panel */}
+              <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', stiffness: 350, damping: 35 }}
+                className="relative w-full max-w-[450px] bg-[#0d0d0f] border-l border-white/5 h-full flex flex-col shadow-2xl overflow-hidden"
+              >
+                {/* Header */}
+                <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-neon-cyan" />
+                    <h3 className="text-white font-orbitron font-black text-sm uppercase tracking-wider">Centro de Alertas</h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {unreadNotificationsCount > 0 && (
+                      <button
+                        onClick={handleMarkAllRead}
+                        className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white text-[9px] font-black uppercase tracking-wider rounded-lg transition-colors border border-white/5 flex items-center gap-1.5"
+                      >
+                        <Check className="w-3 h-3" />
+                        Leídas
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setShowNotificationsDrawer(false)}
+                      className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors border border-transparent hover:border-white/5"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Notifications List */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-none">
+                  {notifications.length === 0 ? (
+                    <div className="text-center py-20 text-white/30 text-xs border border-dashed border-white/5 rounded-2xl bg-white/[0.005]">
+                      Sin notificaciones.
+                    </div>
+                  ) : (
+                    notifications.map((n) => {
+                      const isRead = n.is_read
+                      return (
+                        <div
+                          key={n.id}
+                          onClick={() => handleNotificationClick(n)}
+                          className={`p-4 rounded-2xl border transition-all text-left cursor-pointer flex gap-3.5 relative group ${
+                            isRead
+                              ? 'bg-white/[0.002] border-white/5 hover:bg-white/[0.01]'
+                              : 'bg-neon-cyan/5 border-neon-cyan/15 hover:bg-neon-cyan/[0.08] shadow-[0_0_15px_rgba(0,245,255,0.02)]'
+                          }`}
+                        >
+                          {!isRead && (
+                            <span className="absolute top-4 right-4 w-2 h-2 bg-neon-cyan rounded-full animate-pulse" />
+                          )}
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border mt-0.5 ${
+                            isRead ? 'bg-white/5 border-white/5 text-white/30' : 'bg-neon-cyan/10 border-neon-cyan/20 text-neon-cyan'
+                          }`}>
+                            <Bell className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className={`text-xs font-black uppercase tracking-wider ${isRead ? 'text-white/60' : 'text-white'}`}>
+                              {n.title}
+                            </h4>
+                            <p className={`text-[11px] leading-relaxed mt-1 ${isRead ? 'text-white/40' : 'text-white/60'}`}>
+                              {n.message}
+                            </p>
+                            <div className="flex items-center gap-1.5 mt-2.5 text-[9px] text-white/20 font-bold uppercase">
+                              <Calendar className="w-3 h-3 text-white/10" />
+                              <span>
+                                {new Date(n.created_at).toLocaleDateString('es', { day: 'numeric', month: 'short' })} a las {new Date(n.created_at).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
               </motion.div>
             </div>
           )}

@@ -1,24 +1,7 @@
 'use client'
 
 import type { Participant } from '@/types'
-
-const RANK_COLORS: Record<string, string> = {
-  bronce: '#cd7f32',
-  plata:  '#c0c0c0',
-  oro:    '#fbbf24',
-  platino:'#67e8f9',
-  diamante:'#a78bfa',
-  master: '#f472b6',
-  predator:'#ef4444',
-}
-
-function rankColor(rank: string): string {
-  const key = rank.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-  for (const [k, v] of Object.entries(RANK_COLORS)) {
-    if (key.includes(k)) return v
-  }
-  return '#ffffff'
-}
+import { getRankColor } from '@/lib/rankings'
 
 interface Team {
   id: string
@@ -124,7 +107,7 @@ export function PlayerStats({ teams }: { teams: Team[] }) {
                         {p.classificationRank && (
                           <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '0.4rem', textAlign: 'center', gridColumn: p.brAvgPlacement == null ? 'span 2' : undefined }}>
                             <p style={{ fontSize: '0.5rem', color: 'rgba(255,255,255,0.3)', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.1em' }}>RANGO</p>
-                            <p style={{ fontSize: '0.7rem', fontFamily: 'Orbitron, sans-serif', color: rankColor(p.classificationRank), fontWeight: 900 }}>{p.classificationRank}</p>
+                            <p style={{ fontSize: '0.7rem', fontFamily: 'Orbitron, sans-serif', color: getRankColor(p.classificationRank), fontWeight: 900 }}>{p.classificationRank}</p>
                           </div>
                         )}
                         {p.brAvgPlacement != null && (

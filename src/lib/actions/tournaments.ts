@@ -1065,9 +1065,9 @@ export async function finishTournament(
       }
     }
 
-    // 3. Distribuir Premio MVP
+    // 3. Determinar y Registrar MVP
     let finalMvpParticipantId = mvpParticipantId
-    if (!finalMvpParticipantId && Number(t.prize_mvp) > 0) {
+    if (!finalMvpParticipantId) {
       const { data: subs } = await adminSupabase
         .from('submissions')
         .select('player_kills')
@@ -1099,7 +1099,7 @@ export async function finishTournament(
       }
     }
 
-    if (finalMvpParticipantId && Number(t.prize_mvp) > 0) {
+    if (finalMvpParticipantId) {
       const { data: mvpPart } = await adminSupabase
         .from('participants')
         .select('user_id')
@@ -1108,33 +1108,42 @@ export async function finishTournament(
 
       const mvpUserId = mvpPart?.user_id
       if (mvpUserId) {
-        const mvpPrizeUsd = Number(t.prize_mvp)
-        const mvpPrizeKCoins = parseFloat((mvpPrizeUsd * rate).toFixed(2))
-        const { data: mvpProfile } = await adminSupabase.from('profiles').select('balance, email, username').eq('id', mvpUserId).single()
-        const newBal = parseFloat((Number(mvpProfile?.balance || 0) + mvpPrizeKCoins).toFixed(2))
-        await adminSupabase.from('profiles').update({ balance: newBal }).eq('id', mvpUserId)
-        await adminSupabase.from('coin_transactions').insert({
-          user_id: mvpUserId,
-          amount: mvpPrizeKCoins,
-          type: 'bet_won',
-          reference_id: id
-        })
-        await adminSupabase.from('notifications').insert({
-          user_id: mvpUserId,
-          title: '¡Elegido MVP! ⭐',
-          message: `¡Felicidades! Has sido galardonado como el MVP del torneo "${tournament.name}" y recibiste ${mvpPrizeKCoins.toLocaleString('es-ES')} K-Coins (equivalente a $${mvpPrizeUsd.toFixed(2)} USD).`
-        })
+        // Save MVP user ID in the tournaments table
+        await adminSupabase
+          .from('tournaments')
+          .update({ mvp_user_id: mvpUserId })
+          .eq('id', id)
 
-        if (mvpProfile?.email) {
-          const { sendTournamentPrizeEmail } = await import('@/lib/services/email')
-          sendTournamentPrizeEmail({
-            email: mvpProfile.email,
-            username: mvpProfile.username || 'Competidor',
-            tournamentName: tournament.name,
-            prizeTitle: `MVP del Torneo ⭐`,
-            amountCoins: mvpPrizeKCoins,
-            amountUsd: mvpPrizeUsd,
-          }).catch(e => console.error('Error sending MVP prize email:', e))
+        // Distribute prize if configured
+        if (Number(t.prize_mvp) > 0) {
+          const mvpPrizeUsd = Number(t.prize_mvp)
+          const mvpPrizeKCoins = parseFloat((mvpPrizeUsd * rate).toFixed(2))
+          const { data: mvpProfile } = await adminSupabase.from('profiles').select('balance, email, username').eq('id', mvpUserId).single()
+          const newBal = parseFloat((Number(mvpProfile?.balance || 0) + mvpPrizeKCoins).toFixed(2))
+          await adminSupabase.from('profiles').update({ balance: newBal }).eq('id', mvpUserId)
+          await adminSupabase.from('coin_transactions').insert({
+            user_id: mvpUserId,
+            amount: mvpPrizeKCoins,
+            type: 'bet_won',
+            reference_id: id
+          })
+          await adminSupabase.from('notifications').insert({
+            user_id: mvpUserId,
+            title: '¡Elegido MVP! ⭐',
+            message: `¡Felicidades! Has sido galardonado como el MVP del torneo "${tournament.name}" y recibiste ${mvpPrizeKCoins.toLocaleString('es-ES')} K-Coins (equivalente a $${mvpPrizeUsd.toFixed(2)} USD).`
+          })
+
+          if (mvpProfile?.email) {
+            const { sendTournamentPrizeEmail } = await import('@/lib/services/email')
+            sendTournamentPrizeEmail({
+              email: mvpProfile.email,
+              username: mvpProfile.username || 'Competidor',
+              tournamentName: tournament.name,
+              prizeTitle: `MVP del Torneo ⭐`,
+              amountCoins: mvpPrizeKCoins,
+              amountUsd: mvpPrizeUsd,
+            }).catch(e => console.error('Error sending MVP prize email:', e))
+          }
         }
       }
     }
@@ -1477,52 +1486,95 @@ export async function finishTournament(
         for (const p of participants) {
           if (!p.user_id) continue
 
-          // A. Insert history record for time-series charts
-          await adminSupabase.from('user_points_history').insert({
-            user_id: p.user_id,
-            tournament_id: id,
-            discipline: tournament.discipline || 'warzone',
-            points_awarded: pointsToAward,
-            rank_achieved: rank
-          })
-
-          // B. Update/Upsert aggregate points
-          const { data: existingRank } = await adminSupabase
-            .from('user_discipline_rankings')
-            .select('points')
+          // A. Check if we've already processed points for this user+tournament to avoid double-counting on re-finalization
+          const { data: existingHistory } = await adminSupabase
+            .from('user_points_history')
+            .select('id, points_awarded')
             .eq('user_id', p.user_id)
-            .eq('discipline', tournament.discipline || 'warzone')
+            .eq('tournament_id', id)
             .maybeSingle()
 
-          if (existingRank) {
+          const previousPoints = existingHistory ? Number(existingHistory.points_awarded) : 0
+          const pointsDelta = pointsToAward - previousPoints
+
+          if (existingHistory) {
+            // Update the existing history record with the new points value (in case rank changed)
             await adminSupabase
+              .from('user_points_history')
+              .update({ points_awarded: pointsToAward, rank_achieved: rank })
+              .eq('id', existingHistory.id)
+          } else {
+            // First time finalizing — insert history record for time-series charts
+            await adminSupabase.from('user_points_history').insert({
+              user_id: p.user_id,
+              tournament_id: id,
+              discipline: tournament.discipline || 'warzone',
+              points_awarded: pointsToAward,
+              rank_achieved: rank
+            })
+          }
+
+          // B. Update/Upsert aggregate points — only apply the delta to avoid double-counting
+          if (pointsDelta !== 0) {
+            const { data: existingRank } = await adminSupabase
               .from('user_discipline_rankings')
-              .update({
-                points: Number(existingRank.points) + pointsToAward,
-                updated_at: new Date().toISOString()
-              })
+              .select('points')
               .eq('user_id', p.user_id)
               .eq('discipline', tournament.discipline || 'warzone')
-          } else {
-            await adminSupabase
-              .from('user_discipline_rankings')
-              .insert({
-                user_id: p.user_id,
-                discipline: tournament.discipline || 'warzone',
-                points: pointsToAward,
-                updated_at: new Date().toISOString()
-              })
+              .maybeSingle()
+
+            if (existingRank) {
+              await adminSupabase
+                .from('user_discipline_rankings')
+                .update({
+                  points: Math.max(0, Number(existingRank.points) + pointsDelta),
+                  updated_at: new Date().toISOString()
+                })
+                .eq('user_id', p.user_id)
+                .eq('discipline', tournament.discipline || 'warzone')
+            } else {
+              await adminSupabase
+                .from('user_discipline_rankings')
+                .insert({
+                  user_id: p.user_id,
+                  discipline: tournament.discipline || 'warzone',
+                  points: pointsToAward,
+                  updated_at: new Date().toISOString()
+                })
+            }
           }
 
           // C. Award badge if tournament has a badge_url and user finished in top 3
+          // Use upsert with (user_id, tournament_id) conflict key to prevent duplicates on re-finalization
           if (tournament.badge_url && rank <= 3) {
-            await adminSupabase.from('user_badges').insert({
-              user_id: p.user_id,
-              tournament_id: id,
-              badge_url: tournament.badge_url,
-              name: `${tournament.name} - Top ${rank}`,
-              rank_achieved: rank
-            })
+            // Check if badge already exists for this user+tournament
+            const { data: existingBadge } = await adminSupabase
+              .from('user_badges')
+              .select('id')
+              .eq('user_id', p.user_id)
+              .eq('tournament_id', id)
+              .maybeSingle()
+
+            if (existingBadge) {
+              // Update existing badge in case name/rank changed (e.g. standings corrected)
+              await adminSupabase
+                .from('user_badges')
+                .update({
+                  badge_url: tournament.badge_url,
+                  name: `${tournament.name} - Top ${rank}`,
+                  rank_achieved: rank
+                })
+                .eq('id', existingBadge.id)
+            } else {
+              // First time awarding — insert the badge
+              await adminSupabase.from('user_badges').insert({
+                user_id: p.user_id,
+                tournament_id: id,
+                badge_url: tournament.badge_url,
+                name: `${tournament.name} - Top ${rank}`,
+                rank_achieved: rank
+              })
+            }
           }
         }
       }

@@ -16,6 +16,8 @@ import {
 import { motion, AnimatePresence, animate } from 'framer-motion'
 import { Match, Submission, ScoringRule, Participant } from '@/types'
 import { contributeToTeamFeeAction } from '@/lib/actions/team-payments'
+import { getPlayerDetails } from '@/lib/actions/profile'
+import { RankBadge } from '@/components/ui/RankBadge'
 
 function AnimatedNumber({ value, decimals = 0 }: { value: number; decimals?: number }) {
   const [display, setDisplay] = useState(0)
@@ -65,6 +67,8 @@ export function TeamDetails({
 }: TeamDetailsProps) {
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
   const [isMounted, setIsMounted] = useState(false)
+  const [generalStats, setGeneralStats] = useState<{ totalTournaments: number; podiums: number; totalKills: number; winRate: number } | null>(null)
+  const [loadingGeneralStats, setLoadingGeneralStats] = useState(false)
 
   // Payment states
   const [showPaymentModal, setShowPaymentModal] = useState(false)
@@ -117,6 +121,41 @@ export function TeamDetails({
       setSelectedPlayerId(teamParticipants[0].id)
     }
   }, [isMounted, tournamentMode, teamParticipants])
+
+  // Fetch general platform stats when a linked player is selected
+  useEffect(() => {
+    const player = teamParticipants.find(p => p.id === selectedPlayerId)
+    if (!player?.userId) {
+      setGeneralStats(null)
+      return
+    }
+    let cancelled = false
+    setLoadingGeneralStats(true)
+    setGeneralStats(null)
+    getPlayerDetails(player.userId).then(details => {
+      if (cancelled) return
+      const participations = details.participations || []
+      const totalTournaments = participations.length
+      let podiums = 0
+      let totalKills = 0
+      participations.forEach((p: any) => {
+        const standing = p.teams?.team_standings?.[0] || p.teams?.team_standings
+        const r = standing?.rank
+        if (r && r <= 3) podiums++
+        totalKills += p.total_kills || standing?.total_kills || 0
+      })
+      const wins = participations.filter((p: any) => {
+        const standing = p.teams?.team_standings?.[0] || p.teams?.team_standings
+        return standing?.rank === 1
+      }).length
+      const winRate = totalTournaments > 0 ? Math.round((wins / totalTournaments) * 100) : 0
+      setGeneralStats({ totalTournaments, podiums, totalKills, winRate })
+      setLoadingGeneralStats(false)
+    }).catch(() => {
+      if (!cancelled) setLoadingGeneralStats(false)
+    })
+    return () => { cancelled = true }
+  }, [selectedPlayerId, teamParticipants])
 
   const selectedPlayer = useMemo(
     () => teamParticipants.find(p => p.id === selectedPlayerId),
@@ -431,12 +470,17 @@ export function TeamDetails({
                   transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
                   style={{
                     position: 'relative', zIndex: 2, width: '150px', height: '210px',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '5rem',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                     borderRadius: '16px',
-                    background: `linear-gradient(135deg, rgba(${rgbColor}, 0.1), rgba(0,0,0,0.4))`,
-                    border: `1px solid rgba(${rgbColor}, 0.2)`,
+                    background: `linear-gradient(135deg, rgba(${rgbColor}, 0.08), rgba(0,0,0,0.5))`,
+                    border: `1px solid rgba(${rgbColor}, 0.15)`,
                   }}
-                >👤</motion.div>
+                >
+                  <svg viewBox="0 0 24 24" fill="none" style={{ width: '70px', height: '70px', opacity: 0.15 }}>
+                    <circle cx="12" cy="8" r="4" fill="currentColor" style={{ color: playerColor }} />
+                    <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" fill="currentColor" style={{ color: playerColor }} />
+                  </svg>
+                </motion.div>
               )}
             </motion.div>
 
@@ -456,6 +500,9 @@ export function TeamDetails({
                     fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.25em',
                     padding: '3px 10px', clipPath: 'polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%)',
                   }}>▲ CAPITÁN</span>
+                )}
+                {selectedPlayer.classificationRank && (
+                  <RankBadge rankName={selectedPlayer.classificationRank} size="md" />
                 )}
                 <span style={{ fontSize: '0.45rem', color: 'rgba(255,255,255,0.2)', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.2em' }}>
                   ID:{selectedPlayer.id.slice(0, 8).toUpperCase()}
@@ -491,77 +538,118 @@ export function TeamDetails({
                 }}
               />
 
-              {/* Live tournament stats */}
+              {/* Live tournament stats - clearly highlighted card */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.32 }}
-                className="flex gap-5 mb-4"
+                className="mb-4 bg-gradient-to-r from-neon-cyan/5 via-white/[0.01] to-transparent border-l-2 border-neon-cyan p-4 rounded-r-xl"
               >
-                {(discipline === 'clash_royale' ? [
-                  { label: 'COPAS', value: totalPoints, dec: 0, color: playerColor },
-                  { label: 'POSICIÓN', value: rank, prefix: '#', dec: 0, color: playerColor },
-                ] : ['street_fighter_6', 'super_smash_bros_ultimate', 'league_of_legends', 'valorant'].includes(discipline) ? [
-                  { label: 'PUNTOS', value: chartData.length > 0 ? chartData[chartData.length - 1].points : 0, dec: 0, color: playerColor },
-                  { label: 'PARTIDAS', value: teamSubmissions.length, dec: 0, color: playerColor },
-                ] : [
-                  { label: 'KD TORNEO', value: Number(kd), dec: 2, color: playerColor },
-                  { label: 'BAJAS CONF.', value: calculatedPlayerKillsMap[selectedPlayer.id] || 0, dec: 0, color: playerColor },
-                ]).map(s => (
-                  <div key={s.label}>
-                    <p style={{ fontSize: '0.45rem', color: 'rgba(255,255,255,0.25)', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.2em', marginBottom: '2px' }}>{s.label}</p>
-                    <p style={{ fontSize: '2rem', fontFamily: 'Orbitron, sans-serif', fontWeight: 900, color: s.color, lineHeight: 1, textShadow: `0 0 20px ${s.color}66` }}>
-                      {s.prefix || ''}<AnimatedNumber value={s.value} decimals={s.dec} />
-                    </p>
-                  </div>
-                ))}
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="bg-neon-cyan/15 text-neon-cyan border border-neon-cyan/30 text-[8px] sm:text-[9px] px-2 py-0.5 rounded font-black tracking-widest uppercase font-orbitron">
+                    Evento En Vivo
+                  </span>
+                  <span className="text-[9px] sm:text-[10px] text-white/50 font-orbitron font-bold uppercase tracking-wider">
+                    Estadísticas del Torneo
+                  </span>
+                </div>
+                <div className="flex gap-6 sm:gap-10">
+                  {(discipline === 'clash_royale' ? [
+                    { label: 'COPAS', value: totalPoints, dec: 0, color: playerColor },
+                    { label: 'POSICIÓN', value: rank, prefix: '#', dec: 0, color: playerColor },
+                  ] : ['street_fighter_6', 'super_smash_bros_ultimate', 'league_of_legends', 'valorant'].includes(discipline) ? [
+                    { label: 'PUNTOS', value: chartData.length > 0 ? chartData[chartData.length - 1].points : 0, dec: 0, color: playerColor },
+                    { label: 'PARTIDAS', value: teamSubmissions.length, dec: 0, color: playerColor },
+                  ] : [
+                    { label: 'K/D TORNEO', value: Number(kd), dec: 2, color: playerColor },
+                    { label: 'BAJAS CONF.', value: calculatedPlayerKillsMap[selectedPlayer.id] || 0, dec: 0, color: playerColor },
+                    { label: 'PARTIDAS', value: teamSubmissions.length, dec: 0, color: `rgba(${rgbColor}, 0.6)` },
+                  ]).map(s => (
+                    <div key={s.label}>
+                      <p style={{ fontSize: '0.45rem', color: 'rgba(255,255,255,0.3)', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.15em', marginBottom: '2px' }}>{s.label}</p>
+                      <p 
+                        className="text-2xl sm:text-3xl font-black font-orbitron"
+                        style={{ color: s.color, lineHeight: 1, textShadow: `0 0 20px ${s.color}44` }}
+                      >
+                        {s.prefix || ''}<AnimatedNumber value={s.value} decimals={s.dec} />
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </motion.div>
 
-              {/* Pre-tournament stats */}
-              {!['clash_royale', 'street_fighter_6', 'super_smash_bros_ultimate', 'league_of_legends', 'valorant'].includes(discipline) && (selectedPlayer.kdRatio != null || selectedPlayer.avgKills != null || selectedPlayer.classificationRank || selectedPlayer.brAvgPlacement != null) && (
-                <div>
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.38 }}
-                    style={{ fontSize: '0.45rem', color: `rgba(${rgbColor}, 0.4)`, fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.25em', marginBottom: '0.5rem' }}
-                  >◆ HISTORIAL DE COMBATE</motion.p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {[
-                      selectedPlayer.kdRatio != null && { label: 'K/D PROM.', value: Number(selectedPlayer.kdRatio).toFixed(2), color: playerColor, bar: Math.min(Number(selectedPlayer.kdRatio) / 5, 1) },
-                      selectedPlayer.avgKills != null && { label: 'BAJAS/PARTIDA', value: Number(selectedPlayer.avgKills).toFixed(1), color: playerColor, bar: Math.min(Number(selectedPlayer.avgKills) / 15, 1) },
-                      selectedPlayer.classificationRank && { label: 'RANGO MÁX', value: selectedPlayer.classificationRank, color: playerColor },
-                      selectedPlayer.brAvgPlacement != null && { label: 'PUESTO MEDIO', value: `#${Number(selectedPlayer.brAvgPlacement).toFixed(0)}`, color: playerColor, bar: 1 - Math.min(Number(selectedPlayer.brAvgPlacement) / 100, 1) }
-                    ].filter(Boolean).map((s: any, i) => (
-                      <motion.div
-                        key={s.label}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.42 + i * 0.07 }}
-                        style={{
-                          background: `linear-gradient(135deg, rgba(${rgbColor}, 0.06), rgba(0,0,0,0.4))`,
-                          border: `1px solid rgba(${rgbColor}, 0.15)`,
-                          borderLeft: `2px solid ${s.color}`,
+
+              {/* General platform stats - separate box */}
+              {selectedPlayer.userId && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.38 }}
+                  className="bg-black/30 border border-white/5 p-4 rounded-xl"
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="bg-white/5 text-white/40 border border-white/10 text-[8px] sm:text-[9px] px-2 py-0.5 rounded font-black tracking-widest uppercase font-orbitron">
+                      Historial General
+                    </span>
+                    <span className="text-[9px] sm:text-[10px] text-white/30 font-orbitron font-bold uppercase tracking-wider">
+                      Trayectoria Kronix
+                    </span>
+                  </div>
+                  {loadingGeneralStats ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[0,1,2,3].map(i => (
+                        <div key={i} style={{
+                          background: `rgba(${rgbColor}, 0.03)`,
+                          border: `1px solid rgba(${rgbColor}, 0.08)`,
+                          borderLeft: `2px solid rgba(${rgbColor}, 0.2)`,
                           padding: '0.6rem 0.75rem',
                           clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%)',
-                        }}
-                      >
-                        <p style={{ fontSize: '0.42rem', color: 'rgba(255,255,255,0.25)', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.15em', marginBottom: '3px' }}>{s.label}</p>
-                        <p style={{ fontSize: '1.15rem', fontFamily: 'Orbitron, sans-serif', fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.value}</p>
-                        {s.bar != null && (
-                          <div style={{ marginTop: '5px', height: '3px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${s.bar * 100}%` }}
-                              transition={{ duration: 1.2, delay: 0.55 + i * 0.07, ease: [0.16, 1, 0.3, 1] }}
-                              style={{ height: '100%', background: `linear-gradient(90deg, ${s.color}, ${s.color}aa)` }}
-                            />
-                          </div>
-                        )}
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
+                        }}>
+                          <div style={{ height: '6px', width: '50%', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', marginBottom: '6px' }} />
+                          <div style={{ height: '18px', width: '70%', background: 'rgba(255,255,255,0.04)', borderRadius: '3px' }} />
+                        </div>
+                      ))}
+                    </div>
+                  ) : generalStats ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { label: 'TORNEOS', value: String(generalStats.totalTournaments), bar: null },
+                        { label: 'PODIOS', value: String(generalStats.podiums), bar: generalStats.totalTournaments > 0 ? generalStats.podiums / generalStats.totalTournaments : 0 },
+                        { label: 'TOTAL BAJAS', value: String(generalStats.totalKills), bar: null },
+                        { label: 'WIN RATE', value: `${generalStats.winRate}%`, bar: generalStats.winRate / 100 },
+                      ].map((s, i) => (
+                        <motion.div
+                          key={s.label}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.42 + i * 0.07 }}
+                          style={{
+                            background: `linear-gradient(135deg, rgba(${rgbColor}, 0.04), rgba(0,0,0,0.4))`,
+                            border: `1px solid rgba(${rgbColor}, 0.1)`,
+                            borderLeft: `2px solid rgba(${rgbColor}, 0.4)`,
+                            padding: '0.6rem 0.75rem',
+                            clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%)',
+                          }}
+                        >
+                          <p style={{ fontSize: '0.42rem', color: 'rgba(255,255,255,0.2)', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.15em', marginBottom: '3px' }}>{s.label}</p>
+                          <p style={{ fontSize: '1.1rem', fontFamily: 'Orbitron, sans-serif', fontWeight: 900, color: `rgba(${rgbColor}, 0.7)`, lineHeight: 1 }}>{s.value}</p>
+                          {s.bar != null && (
+                            <div style={{ marginTop: '5px', height: '2px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${s.bar * 100}%` }}
+                                transition={{ duration: 1.2, delay: 0.55 + i * 0.07, ease: [0.16, 1, 0.3, 1] }}
+                                style={{ height: '100%', background: `linear-gradient(90deg, rgba(${rgbColor}, 0.5), rgba(${rgbColor}, 0.2))` }}
+                              />
+                            </div>
+                          )}
+                        </motion.div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: '0.42rem', color: 'rgba(255,255,255,0.15)', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.2em' }}>Sin historial en la plataforma</p>
+                  )}
+                </motion.div>
               )}
             </div>
           </div>

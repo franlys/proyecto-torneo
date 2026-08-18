@@ -24,7 +24,8 @@ export default async function RankingsPage() {
       points,
       user_id,
       profiles (
-        username
+        username,
+        avatar_url
       )
     `)
     .order('points', { ascending: false })
@@ -34,6 +35,13 @@ export default async function RankingsPage() {
     .from('player_national_stats')
     .select('*')
     .order('points', { ascending: false })
+
+  // 3. Fetch tournaments to identify which disciplines have tournaments created
+  const { data: tournamentsList } = await supabase
+    .from('tournaments')
+    .select('discipline')
+
+  const disciplinesWithTournaments = Array.from(new Set((tournamentsList || []).map(t => t.discipline)))
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white selection:bg-neon-cyan/30 pb-20">
@@ -54,6 +62,7 @@ export default async function RankingsPage() {
         <RankingsClient 
           communityRankings={communityRankings || []} 
           nationalRankings={nationalRankings || []} 
+          disciplinesWithTournaments={disciplinesWithTournaments}
         />
       </main>
     </div>

@@ -91,10 +91,10 @@ export default async function ProfilePage({
   const defaultTab = searchParams?.tab === 'ajustes' ? 'profile' : searchParams?.tab === 'sorteos' ? 'sorteos' : 'inicio'
 
   return (
-    <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
+    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white font-orbitron">
-          {searchParams?.tab === 'ajustes' ? 'Ajustes de Cuenta' : searchParams?.tab === 'sorteos' ? 'Mis Sorteos' : `¡Hola, ${profile?.username || 'Gamer'}! 👋`}
+          {searchParams?.tab === 'ajustes' ? 'Ajustes de Cuenta' : searchParams?.tab === 'sorteos' ? 'Mis Sorteos' : `¡Hola, ${profile?.username || 'Gamer'}!`}
         </h1>
         <p className="text-white/40 text-sm mt-1">
           {searchParams?.tab === 'ajustes'

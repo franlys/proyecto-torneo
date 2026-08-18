@@ -8,6 +8,7 @@ import { LeaderboardClient } from './LeaderboardClient'
 import { recalculateStandings } from '@/lib/actions/submissions'
 import { getAdBanners } from '@/lib/actions/federation'
 import { getUsdToDopRate } from '@/lib/services/exchange-rate'
+import { getRankFromPoints } from '@/lib/rankings'
 
 
 export default async function PublicLeaderboardPage({
@@ -65,7 +66,7 @@ export default async function PublicLeaderboardPage({
   // Fetch only confirmed teams with their participants (for the positions and Participants tab)
   const { data: allTeams } = await supabase
     .from('teams')
-    .select('id, name, avatar_url, stream_url, registration_status, amount_paid, participants(id, team_id, user_id, display_name, is_captain, stream_url, total_kills, kd_ratio, avg_kills, classification_rank, br_avg_placement, color, avatar_url, profiles(id, username, avatar_url))')
+    .select('id, name, avatar_url, stream_url, registration_status, amount_paid, participants(id, team_id, user_id, display_name, is_captain, stream_url, total_kills, kd_ratio, avg_kills, classification_rank, br_avg_placement, color, avatar_url, profiles(id, username, avatar_url, user_discipline_rankings(points, discipline)))')
     .eq('tournament_id', tournament.id)
     .in('registration_status', ['confirmed', 'approved_to_pay'])
     .order('created_at', { ascending: true })
@@ -129,6 +130,13 @@ export default async function PublicLeaderboardPage({
     participants: (t.participants || []).map((p: any) => {
       const profileAvatar = Array.isArray(p.profiles) ? p.profiles[0]?.avatar_url : p.profiles?.avatar_url
       const finalAvatar = p.avatar_url || profileAvatar || undefined
+      
+      // Calculate dynamic rank if linked profile rankings are present
+      const profileData = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles
+      const rankings = profileData?.user_discipline_rankings || []
+      const activeRank = rankings.find((r: any) => r.discipline === tournament.discipline)
+      const dynamicRankName = activeRank ? getRankFromPoints(Number(activeRank.points)).name : undefined
+
       return {
         id: p.id,
         displayName: p.display_name,
@@ -138,7 +146,7 @@ export default async function PublicLeaderboardPage({
         totalKills: p.total_kills || 0,
         kdRatio:            p.kd_ratio            ?? undefined,
         avgKills:           p.avg_kills            ?? undefined,
-        classificationRank: p.classification_rank  ?? undefined,
+        classificationRank: dynamicRankName || p.classification_rank || undefined,
         brAvgPlacement:     p.br_avg_placement      ?? undefined,
         color:              p.color                 ?? undefined,
         userId:             p.user_id,

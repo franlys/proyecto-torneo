@@ -609,3 +609,33 @@ Ejecutar el SQL de la migración `20240419000000` en el SQL Editor de Supabase S
 1. **Smoke Test**: Verificar el flujo "Registro -> Pago -> Aprobación" en entorno de staging.
 2. **SEO**: Optimizar los meta-tags de la nueva Landing Page para captar streamers interesados.
 3. **Analytics**: Implementar seguimiento de cuántos usuarios saltan de PT a AC vía los banners patrocinados.
+
+---
+
+## [2026-08-18] — Sistema Híbrido de Rangos, Decaimiento de Puntos y MVP Histórico
+
+### Tareas Completadas
+
+- **Sistema de Rangos Unificado**:
+  - Implementado helper [`rankings.ts`](file:///C:/Users/elmae/Proyecto-torneos/src/lib/rankings.ts) con la escala competitiva (Elite, High AM, AM, Low AM, High Detry, Detry, Low Detry) y mapeo automático de colores.
+  - Creado el componente premium [`RankBadge.tsx`](file:///C:/Users/elmae/Proyecto-torneos/src/components/ui/RankBadge.tsx) con diseño táctico, iconos temáticos personalizados y brillos reactivos de neon (glow) basados en el puntaje.
+
+- **Cálculo y Visualización de Rango Dinámico**:
+  - Actualizadas las consultas en [`page.tsx`](file:///C:/Users/elmae/Proyecto-torneos/src/app/t/[slug]/page.tsx) y [`LeaderboardClient.tsx`](file:///C:/Users/elmae/Proyecto-torneos/src/app/t/[slug]/LeaderboardClient.tsx) para realizar la unión (`join`) con los puntos de la disciplina activa en tiempo real.
+  - Integrado el nuevo badge de rango dinámico con fallback manual en el podio (1º, 2º y 3º puesto), la tabla general de posiciones, la tarjeta de detalles del equipo ([`TeamDetails.tsx`](file:///C:/Users/elmae/Proyecto-torneos/src/app/t/[slug]/TeamDetails.tsx)) y la tabla de ránkings públicos ([`RankingsClient.tsx`](file:///C:/Users/elmae/Proyecto-torneos/src/app/rankings/RankingsClient.tsx)).
+
+- **Decaimiento por Inactividad (Decay)**:
+  - Nueva migración [`20260818000000_rankings_decay.sql`](file:///C:/Users/elmae/Proyecto-torneos/supabase/migrations/20260818000000_rankings_decay.sql) que añade la columna `last_decay_at` y libera la obligatoriedad de `tournament_id` en el historial de puntos.
+  - Creada la función SQL `public.apply_rankings_decay()` que deduce un 10% de los puntos semanales a los jugadores inactivos por más de 30 días, registrando la pérdida de forma negativa en su trayectoria.
+  - Creada API Route [`route.ts`](file:///C:/Users/elmae/Proyecto-torneos/src/app/api/cron/decay/route.ts) protegida para disparar el proceso vía Cron semanal/diario.
+
+- **Contador Histórico de MVPs**:
+  - Nueva migración [`20260818000100_add_mvp_user_id.sql`](file:///C:/Users/elmae/Proyecto-torneos/supabase/migrations/20260818000100_add_mvp_user_id.sql) que añade la columna `mvp_user_id` a la tabla `tournaments`.
+  - Actualizada la función `finalizeTournament` en [`tournaments.ts`](file:///C:/Users/elmae/Proyecto-torneos/src/lib/actions/tournaments.ts) para almacenar permanentemente la identidad del MVP del torneo.
+  - Modificada la acción `getPlayerDetails` en [`profile.ts`](file:///C:/Users/elmae/Proyecto-torneos/src/lib/actions/profile.ts) para calcular la cantidad de MVPs del competidor.
+  - Agregada la tarjeta dorada de **"MVPs Ganados"** en el modal de detalles del jugador en [`RankingsClient.tsx`](file:///C:/Users/elmae/Proyecto-torneos/src/app/rankings/RankingsClient.tsx), reorganizando el grid de métricas a 4 columnas.
+
+### Migraciones SQL Creadas
+- `20260818000000_rankings_decay.sql`
+- `20260818000100_add_mvp_user_id.sql`
+

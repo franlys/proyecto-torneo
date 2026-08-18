@@ -117,6 +117,13 @@ export async function updateProfile(formData: FormData) {
 export async function getPlayerDetails(userId: string) {
   const supabase = await createClient()
 
+  // 0. Fetch the user's profile to get the avatar
+  const { data: profileData } = await supabase
+    .from('profiles')
+    .select('avatar_url, username')
+    .eq('id', userId)
+    .maybeSingle()
+
   // 1. Fetch user tournament history
   const { data: participations } = await supabase
     .from('participants')
@@ -124,6 +131,7 @@ export async function getPlayerDetails(userId: string) {
       id,
       tournament_id,
       team_id,
+      total_kills,
       tournaments (
         id,
         name,
@@ -157,12 +165,22 @@ export async function getPlayerDetails(userId: string) {
     .eq('user_id', userId)
     .order('created_at', { ascending: true })
 
+  // 2.5. Fetch MVP counts from tournaments
+  const { count: mvpCount } = await supabase
+    .from('tournaments')
+    .select('*', { count: 'exact', head: true })
+    .eq('mvp_user_id', userId)
+
   return {
+    avatarUrl: profileData?.avatar_url || null,
+    username: profileData?.username || null,
     participations: participations || [],
     badges: badges || [],
-    pointsHistory: pointsHistory || []
+    pointsHistory: pointsHistory || [],
+    mvpCount: mvpCount || 0
   }
 }
+
 
 export async function uploadProfileAvatar(formData: FormData) {
   const supabase = await createClient()
