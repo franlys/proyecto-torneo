@@ -305,7 +305,7 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
       {/* Wallet Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Balance Card */}
-        <GlowCard glowColor="#00F5FF" borderColor="rgba(0, 245, 255, 0.15)" className="p-6 bg-gradient-to-br from-[#0d0f15] to-[#161922] flex flex-col justify-between min-h-[160px] text-left">
+        <GlowCard glowColor="#00F5FF" borderColor="rgba(0, 245, 255, 0.15)" className="p-6 bg-gradient-to-br from-[#0d0f15] to-[#161922] flex flex-col justify-between min-h-[160px] text-left self-start w-full">
           <div className="absolute -right-10 -bottom-10 w-32 h-32 bg-neon-cyan/5 rounded-full blur-2xl group-hover:bg-neon-cyan/15 transition-colors" />
           <div className="absolute -left-10 -top-10 w-24 h-24 bg-neon-purple/5 rounded-full blur-xl" />
 
@@ -585,7 +585,13 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                         />
 
                         {/* Front Face */}
-                        <div className="card-face card-front">
+                        <div
+                          className="card-face card-front"
+                          style={{
+                            pointerEvents: isFlipped ? 'none' : 'auto',
+                            zIndex: isFlipped ? 1 : 2
+                          }}
+                        >
                           {/* Top: Chip and Card Brand Logo */}
                           <div className="flex justify-between items-start">
                             {/* Golden Chip */}
@@ -622,7 +628,7 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
 
                           {/* Bottom: Expiry, Postal Code, Cardholder Name */}
                           <div className="grid grid-cols-3 gap-3 items-end text-left">
-                            <div className="col-span-2 space-y-1">
+                            <div className="col-span-2 space-y-1" onClick={(e) => e.stopPropagation()}>
                               <span className="paypal-card-label">Titular</span>
                               <div className="h-9 px-2 bg-white/5 border border-white/10 rounded-lg flex items-center justify-start overflow-hidden">
                                 <p className="font-mono text-[10px] tracking-widest text-white truncate uppercase">
@@ -643,7 +649,13 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                         </div>
 
                         {/* Back Face */}
-                        <div className="card-face card-back justify-between py-5 text-left">
+                        <div
+                          className="card-face card-back justify-between py-5 text-left"
+                          style={{
+                            pointerEvents: isFlipped ? 'auto' : 'none',
+                            zIndex: isFlipped ? 2 : 1
+                          }}
+                        >
                           {/* Magnetic stripe */}
                           <div className="h-9 bg-black/80 -mx-5 mt-1" />
 
