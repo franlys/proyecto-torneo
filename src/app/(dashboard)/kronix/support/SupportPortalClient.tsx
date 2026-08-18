@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createTicket, replyToTicket, getTicketDetails, updateTicketStatus } from '@/lib/actions/support-tickets'
 import { MessageSquare, Calendar, Loader2, Send, CheckCircle2, Ticket, ArrowLeft } from 'lucide-react'
+import { GlowCard } from '@/components/ui/GlowCard'
 
 interface SupportPortalClientProps {
   initialTickets: any[]
@@ -213,17 +214,17 @@ export function SupportPortalClient({ initialTickets }: SupportPortalClientProps
       {/* Ticket Details & Chat Panel */}
       <div className="lg:col-span-2">
         {!selectedTicketId ? (
-          <div className="py-24 text-center border border-dashed border-white/5 bg-[#121219]/20 rounded-3xl text-white/20 uppercase tracking-widest text-sm font-bold flex flex-col items-center justify-center gap-4">
+          <GlowCard glowColor="#00F5FF" borderColor="rgba(255, 255, 255, 0.05)" className="py-24 text-center bg-[#121219]/20 flex flex-col items-center justify-center gap-4">
             <Ticket className="w-10 h-10 text-white/10" />
-            <span>Selecciona un ticket para ver la conversación</span>
-          </div>
+            <span className="text-white/40 uppercase tracking-widest text-xs font-black">Selecciona un ticket para ver la conversación</span>
+          </GlowCard>
         ) : fetchingDetails ? (
-          <div className="py-24 text-center border border-dashed border-white/5 bg-[#121219]/20 rounded-3xl text-white/20 uppercase tracking-widest text-sm font-bold flex flex-col items-center justify-center gap-4">
+          <GlowCard glowColor="#00F5FF" borderColor="rgba(255, 255, 255, 0.05)" className="py-24 text-center bg-[#121219]/20 flex flex-col items-center justify-center gap-4">
             <Loader2 className="w-10 h-10 text-neon-cyan animate-spin" />
-            <span>Cargando conversación...</span>
-          </div>
+            <span className="text-white/40 uppercase tracking-widest text-xs font-black">Cargando conversación...</span>
+          </GlowCard>
         ) : selectedTicket ? (
-          <div className="bg-[#121219] border border-white/5 rounded-2xl flex flex-col min-h-[500px]">
+          <GlowCard glowColor="#00F5FF" borderColor="rgba(255, 255, 255, 0.05)" className="bg-[#121219] flex flex-col min-h-[500px]">
             {/* Thread Header */}
             <div className="px-6 py-4.5 bg-white/[0.02] border-b border-white/5 flex items-center justify-between">
               <div>
@@ -306,7 +307,7 @@ export function SupportPortalClient({ initialTickets }: SupportPortalClientProps
                 </button>
               </form>
             )}
-          </div>
+          </GlowCard>
         ) : null}
       </div>
     </div>

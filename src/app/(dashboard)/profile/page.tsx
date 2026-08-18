@@ -88,19 +88,34 @@ export default async function ProfilePage({
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
-  const defaultTab = searchParams?.tab === 'ajustes' ? 'profile' : searchParams?.tab === 'sorteos' ? 'sorteos' : 'inicio'
+  const defaultTab = 
+    searchParams?.tab === 'ajustes' ? 'profile' :
+    searchParams?.tab === 'sorteos' ? 'sorteos' :
+    searchParams?.tab === 'amigos' ? 'friends' :
+    searchParams?.tab === 'medallero' ? 'badges' :
+    searchParams?.tab === 'desempeno' ? 'stats' :
+    searchParams?.tab === 'inscripciones' ? 'history' :
+    'inicio'
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white font-orbitron">
-          {searchParams?.tab === 'ajustes' ? 'Ajustes de Cuenta' : searchParams?.tab === 'sorteos' ? 'Mis Sorteos' : `¡Hola, ${profile?.username || 'Gamer'}!`}
+          {searchParams?.tab === 'ajustes' ? 'Ajustes de Cuenta' : searchParams?.tab === 'sorteos' ? 'Mis Sorteos' : searchParams?.tab === 'amigos' ? 'Mis Amigos' : searchParams?.tab === 'medallero' ? 'Mi Medallero' : searchParams?.tab === 'desempeno' ? 'Mi Desempeño' : searchParams?.tab === 'inscripciones' ? 'Mis Inscripciones' : `¡Hola, ${profile?.username || 'Gamer'}!`}
         </h1>
         <p className="text-white/40 text-sm mt-1">
           {searchParams?.tab === 'ajustes'
             ? 'Gestiona tu información personal, contraseña y cuentas de juego.'
             : searchParams?.tab === 'sorteos'
             ? 'Consulta tus boletos virtuales y el estado de tus compras.'
+            : searchParams?.tab === 'amigos'
+            ? 'Conecta con otros competidores y gestiona tus amigos.'
+            : searchParams?.tab === 'medallero'
+            ? 'Tus logros, trofeos y medallas ganadas en competencias oficiales.'
+            : searchParams?.tab === 'desempeno'
+            ? 'Gráficos detallados de K/D, kills y clasificaciones de rango.'
+            : searchParams?.tab === 'inscripciones'
+            ? 'Historial completo de competencias y torneos inscritos.'
             : 'Tu panel central de control en Kronix. Consulta tus torneos, boletos y desempeño.'}
         </p>
       </div>

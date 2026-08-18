@@ -23,7 +23,7 @@ export async function registerTournament(
     // 1. Obtener detalles del torneo
     const { data: tournament, error: tourneyErr } = await adminSupabase
       .from('tournaments')
-      .select('id, name, slug, mode, status, is_private, registration_password, max_teams, creator_id, collaborator_id, created_at, registration_start_date, registration_end_date, entry_fee, discipline')
+      .select('id, name, slug, mode, status, is_private, registration_password, max_teams, creator_id, collaborator_id, created_at, registration_start_date, registration_end_date, entry_fee, discipline, start_date')
       .eq('id', tournamentId)
       .single()
 
@@ -161,6 +161,50 @@ export async function registerTournament(
 
     if (existingPlayer && existingPlayer.length > 0) {
       return { error: 'Ya estás inscrito en este torneo.' }
+    }
+
+    // 2.2. Verificar conflicto de fechas con otros torneos activos
+    if (tournament.start_date && allUserIds.length > 0) {
+      const { data: otherParticipations } = await adminSupabase
+        .from('participants')
+        .select(`
+          user_id,
+          display_name,
+          tournament_id,
+          tournaments (
+            id,
+            name,
+            start_date,
+            status
+          )
+        `)
+        .in('user_id', allUserIds)
+        .neq('tournament_id', tournamentId)
+
+      if (otherParticipations && otherParticipations.length > 0) {
+        const newStart = new Date(tournament.start_date).getTime()
+
+        for (const part of otherParticipations) {
+          const otherTourney = part.tournaments as any
+          if (otherTourney && otherTourney.start_date && otherTourney.status !== 'finished' && otherTourney.status !== 'draft') {
+            const otherStart = new Date(otherTourney.start_date).getTime()
+            const diffHours = Math.abs(newStart - otherStart) / (1000 * 60 * 60)
+            
+            // Si la diferencia es menor a 6 horas (360 minutos)
+            if (diffHours < 6) {
+              const formattedDate = new Date(otherTourney.start_date).toLocaleString('es-ES', {
+                day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit'
+              })
+              const isSelf = part.user_id === user.id
+              const playerName = isSelf ? 'Tú ya estás' : `El integrante '${part.display_name}' ya está`
+              
+              return {
+                error: `Conflicto de calendario: ${playerName} inscrito en el torneo "${otherTourney.name}" que inicia el ${formattedDate}. Debe haber una diferencia de al menos 6 horas entre torneos.`
+              }
+            }
+          }
+        }
+      }
     }
 
     const maxPerTeam = ({ individual: 1, duos: 2, trios: 3, cuartetos: 4, quintas: 5 } as any)[tournament.mode] || 1

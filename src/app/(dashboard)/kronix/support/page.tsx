@@ -12,12 +12,16 @@ export default async function SupportTicketsPage() {
   const profile = await getProfile()
   if (!profile) redirect('/login')
 
-  // Only streamers, admins, or federation can open support tickets
+  // Only streamers can open support tickets. Admins are redirected to their management mailbox.
   if (
-    profile.role !== 'STREAMER' &&
-    profile.role !== 'SUPER_ADMIN' &&
-    profile.role !== 'ADMIN'
+    profile.role === 'SUPER_ADMIN' ||
+    profile.role === 'ADMIN' ||
+    profile.role === 'KRONIX_STAFF'
   ) {
+    redirect('/admin/tickets')
+  }
+
+  if (profile.role !== 'STREAMER') {
     redirect('/kronix')
   }
 

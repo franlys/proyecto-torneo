@@ -18,6 +18,14 @@ export async function createTicket(
     return { error: 'El asunto y el mensaje no pueden estar vacíos' }
   }
 
+  if (
+    profile.role === 'SUPER_ADMIN' ||
+    profile.role === 'ADMIN' ||
+    profile.role === 'KRONIX_STAFF'
+  ) {
+    return { error: 'Los administradores no pueden crear tickets de soporte.' }
+  }
+
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('support_tickets')
