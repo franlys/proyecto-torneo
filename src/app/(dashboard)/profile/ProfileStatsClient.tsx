@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react'
+import { motion } from 'framer-motion'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts'
 import { updateProfile, uploadProfileAvatar } from '@/lib/actions/profile'
 import { updateDiscordUsername } from '@/lib/actions/game-accounts'
@@ -505,14 +506,19 @@ export function ProfileStatsClient({
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap border ${
-                active
-                  ? 'bg-white/5 text-neon-cyan border-white/10 shadow-sm'
-                  : 'text-white/50 hover:text-white border-transparent hover:bg-white/[0.02]'
-              }`}
+              className="relative flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider whitespace-nowrap group"
             >
-              <Icon size={14} className={`shrink-0 ${active ? 'text-neon-cyan animate-pulse' : 'text-white/30'}`} />
-              <span>{tab.label}</span>
+              {active && (
+                <motion.div
+                  layoutId="profileTabPill"
+                  className="absolute inset-0 bg-white/5 border border-white/10 rounded-xl -z-10 shadow-sm"
+                  transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+                />
+              )}
+              <Icon size={14} className={`shrink-0 transition-colors ${active ? 'text-neon-cyan' : 'text-white/30 group-hover:text-white/60'}`} />
+              <span className={active ? 'text-neon-cyan' : 'text-white/50 group-hover:text-white transition-colors'}>
+                {tab.label}
+              </span>
               {tab.count !== undefined && (
                 <span className={`text-[9px] font-orbitron px-1.5 py-0.5 rounded-full font-bold ${active ? 'bg-neon-cyan/20 text-neon-cyan' : 'bg-white/5 text-white/30'}`}>
                   {tab.count}

@@ -6,6 +6,7 @@ import { Navbar } from '@/components/navigation/Navbar'
 import { HomeTracker } from '@/components/analytics/HomeTracker'
 import { getOptimizedImageUrl } from '@/lib/utils'
 import { PublicCountdown } from '@/components/tournaments/PublicCountdown'
+import { GlowCard } from '@/components/ui/GlowCard'
 
 const orbitron = Orbitron({ subsets: ['latin'] })
 
@@ -140,8 +141,17 @@ export default async function TorneosPublicosPage() {
               const spotsLeft = maxTeams ? Math.max(0, maxTeams - totalTeamsRegistered) : null
 
               return (
-                <div key={t.id} className="group relative rounded-2xl bg-white/[0.01] border border-white/5 hover:border-white/10 transition-all p-5 flex flex-col justify-between overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-neon-cyan/5 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300" />
+                <GlowCard
+                  key={t.id}
+                  glowColor="#00F5FF"
+                  borderColor="rgba(255, 255, 255, 0.05)"
+                  className="relative overflow-hidden group p-5 flex flex-col justify-between transition-all duration-300 hover:scale-[1.01]"
+                >
+                  {/* Cyber HUD Corner Brackets */}
+                  <div className="absolute top-2 left-2 w-2 h-2 border-t border-l border-white/10 group-hover:border-neon-cyan/50 transition-colors pointer-events-none z-20" />
+                  <div className="absolute top-2 right-2 w-2 h-2 border-t border-r border-white/10 group-hover:border-neon-cyan/50 transition-colors pointer-events-none z-20" />
+                  <div className="absolute bottom-2 left-2 w-2 h-2 border-b border-l border-white/10 group-hover:border-neon-cyan/50 transition-colors pointer-events-none z-20" />
+                  <div className="absolute bottom-2 right-2 w-2 h-2 border-b border-r border-white/10 group-hover:border-neon-cyan/50 transition-colors pointer-events-none z-20" />
                   
                   <div className="relative z-10">
                     {/* Upper row: Status & Mode */}
@@ -267,7 +277,7 @@ export default async function TorneosPublicosPage() {
                       Ver Torneo
                     </Link>
                   </div>
-                </div>
+                </GlowCard>
               )
             })}
           </div>

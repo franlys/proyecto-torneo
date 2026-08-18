@@ -253,22 +253,36 @@ export function RankingsClient({ communityRankings, nationalRankings, discipline
   return (
     <div className="space-y-8">
       {/* Ranking Type Tabs */}
-      <div className="flex gap-2 border-b border-white/5 pb-px overflow-x-auto scrollbar-hide">
+      <div className="flex gap-2 border-b border-white/5 pb-px overflow-x-auto scrollbar-hide relative">
         <button
           onClick={() => setRankingType('community')}
-          className={`px-5 py-3 text-xs font-black uppercase tracking-widest border-b-2 transition-all ${
-            rankingType === 'community' ? 'border-neon-cyan text-white' : 'border-transparent text-white/40 hover:text-white/80'
-          }`}
+          className="px-5 py-3 text-xs font-black uppercase tracking-widest relative group"
         >
-          Ranking Kronix (Comunidad)
+          {rankingType === 'community' && (
+            <motion.div
+              layoutId="activeRankingTabLine"
+              className="absolute bottom-0 left-0 right-0 h-[2px] bg-neon-cyan"
+              transition={{ type: "spring", stiffness: 350, damping: 25 }}
+            />
+          )}
+          <span className={rankingType === 'community' ? 'text-white font-bold' : 'text-white/40 group-hover:text-white/80 transition-colors'}>
+            Ranking Kronix (Comunidad)
+          </span>
         </button>
         <button
           onClick={() => setRankingType('national')}
-          className={`px-5 py-3 text-xs font-black uppercase tracking-widest border-b-2 transition-all ${
-            rankingType === 'national' ? 'border-neon-cyan text-white' : 'border-transparent text-white/40 hover:text-white/80'
-          }`}
+          className="px-5 py-3 text-xs font-black uppercase tracking-widest relative group"
         >
-          Rankings Nacionales (FED / Pro)
+          {rankingType === 'national' && (
+            <motion.div
+              layoutId="activeRankingTabLine"
+              className="absolute bottom-0 left-0 right-0 h-[2px] bg-neon-cyan"
+              transition={{ type: "spring", stiffness: 350, damping: 25 }}
+            />
+          )}
+          <span className={rankingType === 'national' ? 'text-white font-bold' : 'text-white/40 group-hover:text-white/80 transition-colors'}>
+            Rankings Nacionales (FED / Pro)
+          </span>
         </button>
       </div>
 

@@ -2210,74 +2210,123 @@ export function LeaderboardClient({
 
 
       {/* Tabs — scrollable on mobile without ugly scrollbars */}
-      <div className="flex items-center gap-1.5 mb-6 sm:mb-8 sm:justify-center overflow-x-auto pb-1 px-3 sm:px-0 scrollbar-none no-scrollbar max-w-full">
+      <div className="flex items-center gap-1.5 mb-6 sm:mb-8 sm:justify-center overflow-x-auto pb-1 px-3 sm:px-0 scrollbar-none no-scrollbar max-w-full relative">
         <button
           onClick={() => setActiveTab('ranking')}
-          className={`shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap ${
-            activeTab === 'ranking' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'
-          }`}
-          style={{ borderColor: activeTab === 'ranking' ? primaryColor : 'transparent', borderWidth: 1 }}
+          className="shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap relative group"
         >
-          Posiciones
+          {activeTab === 'ranking' && (
+            <motion.div
+              layoutId="activeTabGlow"
+              className="absolute inset-0 bg-white/10 border rounded-xl -z-10"
+              style={{ borderColor: primaryColor }}
+              transition={{ type: "spring", stiffness: 350, damping: 25 }}
+            />
+          )}
+          <span className={activeTab === 'ranking' ? 'text-white font-bold' : 'text-white/40 group-hover:text-white/80 transition-colors'}>
+            Posiciones
+          </span>
         </button>
         <button
           onClick={() => setActiveTab('participants')}
-          className={`shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap ${
-            activeTab === 'participants' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'
-          }`}
-          style={{ borderColor: activeTab === 'participants' ? primaryColor : 'transparent', borderWidth: 1 }}
+          className="shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap relative group"
         >
-          Participantes
+          {activeTab === 'participants' && (
+            <motion.div
+              layoutId="activeTabGlow"
+              className="absolute inset-0 bg-white/10 border rounded-xl -z-10"
+              style={{ borderColor: primaryColor }}
+              transition={{ type: "spring", stiffness: 350, damping: 25 }}
+            />
+          )}
+          <span className={activeTab === 'participants' ? 'text-white font-bold' : 'text-white/40 group-hover:text-white/80 transition-colors'}>
+            Participantes
+          </span>
         </button>
         {isShooter && (
           <button
             onClick={() => setActiveTab('matches')}
-            className={`shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap ${
-              activeTab === 'matches' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'
-            }`}
-            style={{ borderColor: activeTab === 'matches' ? primaryColor : 'transparent', borderWidth: 1 }}
+            className="shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap relative group"
           >
-            Partidas
+            {activeTab === 'matches' && (
+              <motion.div
+                layoutId="activeTabGlow"
+                className="absolute inset-0 bg-white/10 border rounded-xl -z-10"
+                style={{ borderColor: primaryColor }}
+                transition={{ type: "spring", stiffness: 350, damping: 25 }}
+              />
+            )}
+            <span className={activeTab === 'matches' ? 'text-white font-bold' : 'text-white/40 group-hover:text-white/80 transition-colors'}>
+              Partidas
+            </span>
           </button>
         )}
         {isShooter && (
           <button
             onClick={() => setActiveTab('statistics')}
-            className={`shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap ${
-              activeTab === 'statistics' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'
-            }`}
-            style={{ borderColor: activeTab === 'statistics' ? primaryColor : 'transparent', borderWidth: 1 }}
+            className="shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap relative group"
           >
-            Estadísticas
+            {activeTab === 'statistics' && (
+              <motion.div
+                layoutId="activeTabGlow"
+                className="absolute inset-0 bg-white/10 border rounded-xl -z-10"
+                style={{ borderColor: primaryColor }}
+                transition={{ type: "spring", stiffness: 350, damping: 25 }}
+              />
+            )}
+            <span className={activeTab === 'statistics' ? 'text-white font-bold' : 'text-white/40 group-hover:text-white/80 transition-colors'}>
+              Estadísticas
+            </span>
           </button>
         )}
         <button
           onClick={() => setActiveTab('rules')}
-          className={`shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap ${
-            activeTab === 'rules' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'
-          }`}
-          style={{ borderColor: activeTab === 'rules' ? primaryColor : 'transparent', borderWidth: 1 }}
+          className="shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap relative group"
         >
-          Reglas
+          {activeTab === 'rules' && (
+            <motion.div
+              layoutId="activeTabGlow"
+              className="absolute inset-0 bg-white/10 border rounded-xl -z-10"
+              style={{ borderColor: primaryColor }}
+              transition={{ type: "spring", stiffness: 350, damping: 25 }}
+            />
+          )}
+          <span className={activeTab === 'rules' ? 'text-white font-bold' : 'text-white/40 group-hover:text-white/80 transition-colors'}>
+            Reglas
+          </span>
         </button>
         <button
           onClick={() => setActiveTab('evidences')}
-          className={`shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap ${
-            activeTab === 'evidences' ? 'bg-neon-purple/20 text-white' : 'text-white/40 hover:text-white/80'
-          }`}
-          style={{ borderColor: activeTab === 'evidences' ? '#b026ff' : 'transparent', borderWidth: 1 }}
+          className="shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap relative group"
         >
-          Subir Evidencias
+          {activeTab === 'evidences' && (
+            <motion.div
+              layoutId="activeTabGlow"
+              className="absolute inset-0 bg-neon-purple/20 border rounded-xl -z-10"
+              style={{ borderColor: '#b026ff' }}
+              transition={{ type: "spring", stiffness: 350, damping: 25 }}
+            />
+          )}
+          <span className={activeTab === 'evidences' ? 'text-white font-bold' : 'text-white/40 group-hover:text-white/80 transition-colors'}>
+            Subir Evidencias
+          </span>
         </button>
         {arenaBettingEnabled && (
           <button
             onClick={() => setActiveTab('bets')}
-            className={`shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg relative whitespace-nowrap ${
-              activeTab === 'bets' ? 'bg-yellow-500/20 text-yellow-300' : 'text-white/40 hover:text-white/80'
-            }`}
-            style={{ borderColor: activeTab === 'bets' ? '#eab308' : 'transparent', borderWidth: 1 }}
+            className="shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg relative whitespace-nowrap group"
           >
-            Apuestas 🪙
+            {activeTab === 'bets' && (
+              <motion.div
+                layoutId="activeTabGlow"
+                className="absolute inset-0 bg-yellow-500/20 border rounded-xl -z-10"
+                style={{ borderColor: '#eab308' }}
+                transition={{ type: "spring", stiffness: 350, damping: 25 }}
+              />
+            )}
+            <span className={activeTab === 'bets' ? 'text-yellow-300 font-bold' : 'text-white/40 group-hover:text-white/80 transition-colors'}>
+              Apuestas 🪙
+            </span>
           </button>
         )}
       </div>

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Trophy, Calendar, Ticket, ArrowLeft, Upload, Loader2, Sparkles, CheckCircle2, ShieldCheck, Landmark, X } from 'lucide-react'
 import { CountdownClock } from '@/components/raffles/CountdownClock'
 import { TicketSelector } from '@/components/raffles/TicketSelector'
+import { GlowCard } from '@/components/ui/GlowCard'
 import { buyTicketAction, validatePromoCodeAction, buyTicketPublicAction, requestRaffleRefundAction, buyTicketWithKCoinsAction } from '@/lib/actions/raffles'
 import { uploadEvidence } from '@/lib/actions/storage'
 import Script from 'next/script'
@@ -450,8 +451,13 @@ export function RaffleDetailClient({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Left Side: Prize Info & Countdown */}
         <div className="lg:col-span-2 space-y-6 lg:sticky lg:top-24 h-max">
+
           {/* Prize Card */}
-          <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-white/[0.01] p-6 space-y-6">
+          <GlowCard
+            glowColor="#00F5FF"
+            borderColor="rgba(255, 255, 255, 0.05)"
+            className="p-6 space-y-6"
+          >
             <div className="flex flex-col sm:flex-row gap-6">
               {/* Image Preview */}
               <div className="relative w-full sm:w-56 aspect-video sm:aspect-square rounded-xl bg-neutral-900 overflow-hidden shrink-0 border border-white/5">
@@ -492,7 +498,7 @@ export function RaffleDetailClient({
                     <span className="text-neon-cyan font-orbitron">{progressPercent}%</span>
                   </div>
                   <div className="relative w-full h-2 rounded-full bg-white/5 overflow-hidden border border-white/5">
-                    <div 
+                    <div
                       className="absolute left-0 top-0 h-full bg-gradient-to-r from-neon-cyan to-neon-purple rounded-full transition-all duration-300"
                       style={{ width: `${progressPercent}%` }}
                     />
@@ -500,10 +506,14 @@ export function RaffleDetailClient({
                 </div>
               </div>
             </div>
-          </div>
+          </GlowCard>
 
           {/* Refund Info Banner / Button Card */}
-          <div className="p-5 bg-white/[0.01] border border-white/5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+          <GlowCard
+            glowColor="#b026ff"
+            borderColor="rgba(255, 255, 255, 0.05)"
+            className="p-5 flex flex-col sm:flex-row items-center justify-between gap-4"
+          >
             <div className="text-left space-y-1">
               <h4 className="text-xs font-orbitron font-bold text-white uppercase tracking-wider">
                 ¿Necesitas solicitar una devolución?
@@ -523,14 +533,18 @@ export function RaffleDetailClient({
             >
               🔄 Solicitar Devolución
             </button>
-          </div>
+          </GlowCard>
 
           {/* Countdown Clock */}
           {raffle.status === 'active' && (
-            <div className="p-6 bg-white/[0.01] border border-white/5 rounded-2xl flex flex-col items-center justify-center space-y-4">
+            <GlowCard
+              glowColor="#00F5FF"
+              borderColor="rgba(255, 255, 255, 0.05)"
+              className="p-6 flex flex-col items-center justify-center space-y-4"
+            >
               <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">Tiempo restante para el sorteo</span>
               <CountdownClock targetDate={raffle.draw_date} />
-            </div>
+            </GlowCard>
           )}
 
           {/* Winner info if finished */}

@@ -10,6 +10,7 @@ import { HomeTracker } from '@/components/analytics/HomeTracker'
 import { getLandingSettings } from '@/lib/actions/landing-settings'
 import { getOptimizedImageUrl } from '@/lib/utils'
 import { WelcomeVideoModal } from '@/components/ui/WelcomeVideoModal'
+import { TournamentCard } from '@/components/ui/TournamentCard'
 
 const orbitron = Orbitron({ subsets: ['latin'] })
 
@@ -123,6 +124,12 @@ export default async function Home() {
           className="absolute -top-40 -left-40 w-[600px] h-[600px] blur-[100px] rounded-full -z-10 opacity-20" 
           style={{ backgroundColor: `${secondaryColor}10` }}
         />
+
+        {/* HUD Tactical Corner Decorations */}
+        <div className="absolute top-24 left-8 w-6 h-6 border-t-2 border-l-2 border-white/5 pointer-events-none" />
+        <div className="absolute top-24 right-8 w-6 h-6 border-t-2 border-r-2 border-white/5 pointer-events-none" />
+        <div className="absolute bottom-8 left-8 w-6 h-6 border-b-2 border-l-2 border-white/5 pointer-events-none" />
+        <div className="absolute bottom-8 right-8 w-6 h-6 border-b-2 border-r-2 border-white/5 pointer-events-none" />
         
         <div className="max-w-7xl mx-auto text-center">
           {dynamicLiveTickerText && (
@@ -152,9 +159,30 @@ export default async function Home() {
              );
            })()}
           
-          <p className="max-w-2xl mx-auto text-white/40 text-base md:text-lg mb-10 leading-relaxed">
+          <p className="max-w-2xl mx-auto text-white/40 text-base md:text-lg mb-8 leading-relaxed">
             {settings?.hero_subtitle || 'La herramienta definitiva de clasificación nacional. Consulta estadísticas de atletas, descubre torneos avalados por la Federación y visualiza los rankings de la República Dominicana.'}
           </p>
+
+          {/* Live Stats Pills */}
+          {(activeCount > 0 || totalViewers > 0) && (
+            <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
+              {activeCount > 0 && (
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-neon-cyan/5 border border-neon-cyan/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-neon-cyan animate-pulse" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-neon-cyan">
+                    {activeCount} Torneo{activeCount === 1 ? '' : 's'} Activo{activeCount === 1 ? '' : 's'}
+                  </span>
+                </div>
+              )}
+              {totalViewers > 0 && (
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">
+                    👥 {totalViewers.toLocaleString('es-ES')} Espectadores
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
              <Link 
@@ -211,168 +239,15 @@ export default async function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {recentPublicTournaments.map((t) => {
-              const totalPrize = Number(t.prize_1st || 0) + Number(t.prize_2nd || 0) + Number(t.prize_3rd || 0) + Number(t.prize_mvp || 0)
-              const totalTeamsRegistered = t.teams?.length || 0
-              const maxTeams = t.max_teams
-              const spotsLeft = maxTeams ? Math.max(0, maxTeams - totalTeamsRegistered) : null
-              const hasLogo = !!t.logo_url
-
-              return (
-                <div key={t.id} className="group relative rounded-2xl bg-white/[0.01] border border-white/5 hover:border-white/10 transition-all p-5 flex flex-col justify-between overflow-hidden">
-                  <div 
-                    className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none" 
-                    style={{ backgroundImage: `linear-gradient(to bottom right, ${primaryColor}08, transparent)` }}
-                  />
-                  
-                  <div>
-                    {/* Header: Badge & Mode */}
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-1.5">
-                        {(() => {
-                          if (t.status === 'active') {
-                            return (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20">
-                                <span className="w-1.5 h-1.5 rounded-full bg-neon-cyan animate-pulse" />
-                                En Curso
-                              </span>
-                            )
-                          }
-                          if (t.status === 'finished') {
-                            return (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-gold/10 text-gold border border-gold/20">
-                                Finalizado
-                              </span>
-                            )
-                          }
-                          const now = new Date()
-                          const regStart = t.registration_start_date ? new Date(t.registration_start_date) : null
-                          const regEnd = t.registration_end_date ? new Date(t.registration_end_date) : null
-
-                          if (regStart && now < regStart) {
-                            return (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-white/10 text-white/60 border border-white/20">
-                                <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
-                                Próximamente
-                              </span>
-                            )
-                          }
-                          if (regEnd && now > regEnd) {
-                            return (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-red-500/10 text-red-400 border border-red-500/20">
-                                Cerrado
-                              </span>
-                            )
-                          }
-                          return (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-neon-purple/10 text-neon-purple border border-neon-purple/20">
-                              <span className="w-1.5 h-1.5 rounded-full bg-neon-purple animate-pulse" />
-                              Inscripciones Abiertas
-                            </span>
-                          )
-                        })()}
-                        {t.is_private && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-neon-purple/10 text-neon-purple border border-neon-purple/20">
-                            <span>🔒</span> Privado
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[9px] bg-white/5 border border-white/10 px-2 py-0.5 rounded text-white/60 font-bold uppercase tracking-wider">
-                        {t.mode ? t.mode.toUpperCase() : 'TODOS'}
-                      </span>
-                    </div>
-
-                    {/* Logo & Name */}
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="w-12 h-12 rounded-xl overflow-hidden bg-black/40 border border-white/10 flex items-center justify-center shrink-0">
-                        {hasLogo ? (
-                          <img src={getOptimizedImageUrl(t.logo_url, 100, 100)} alt={t.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-lg">🏆</span>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="font-orbitron font-bold text-sm text-white group-hover:text-neon-cyan transition-colors line-clamp-1">
-                          {t.name}
-                        </h3>
-                        <p className="text-neon-cyan text-[10px] font-bold tracking-wider mt-1 uppercase">
-                          {t.discipline ? (DISCIPLINE_LABELS[t.discipline] || t.discipline.replace(/_/g, ' ')) : 'Juego General'}
-                        </p>
-                        <p className="text-white/40 text-[9px] uppercase tracking-wide mt-0.5">
-                          Formato: {t.format ? t.format.replace(/_/g, ' ') : 'Estándar'}
-                        </p>
-                        {(() => {
-                          const creatorProfile = (t as any).creator
-                          const collaboratorProfile = (t as any).collaborator
-                          const isCreatorAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(creatorProfile?.role || '')
-
-                          let organizerText = ''
-                          if (isCreatorAdmin) {
-                            if (collaboratorProfile) {
-                              organizerText = `Kronix & ${collaboratorProfile.organization_name || collaboratorProfile.username}`
-                            } else {
-                              organizerText = 'Kronix'
-                            }
-                          } else {
-                            organizerText = creatorProfile?.organization_name || creatorProfile?.username || 'Organizador'
-                          }
-
-                          return (
-                            <p className="text-white/50 text-[9px] mt-1 font-semibold flex items-center gap-1">
-                              <span className="text-neon-cyan">👑</span> Organizador: {organizerText}
-                            </p>
-                          )
-                        })()}
-                      </div>
-                    </div>
-
-                    {/* Capacity & Dates */}
-                    <div className="space-y-1.5 text-[10px] text-white/40 border-t border-white/5 pt-3 mb-4">
-                      {t.start_date && (
-                        <div className="flex justify-between">
-                          <span>Inicio Torneo:</span>
-                          <span className="text-white/60">
-                            {new Date(t.start_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </span>
-                        </div>
-                      )}
-                      {maxTeams !== undefined && maxTeams !== null && maxTeams > 0 ? (
-                        <div className="flex justify-between">
-                          <span>Cupos Libres:</span>
-                          <span className={spotsLeft === 0 ? "text-red-400 font-bold" : "text-neon-cyan font-bold"}>
-                            {spotsLeft === 0 ? 'Agotado' : `${spotsLeft} / ${maxTeams}`}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex justify-between">
-                          <span>Equipos Inscritos:</span>
-                          <span className="text-white/60">
-                            {totalTeamsRegistered}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Footer: Prize & Link */}
-                  <div className="pt-3 border-t border-white/5 flex items-center justify-between mt-auto">
-                    <div>
-                      <span className="text-[9px] text-white/30 uppercase block">Premio Total</span>
-                      <span className="text-gold font-orbitron font-black text-sm">
-                        {totalPrize > 0 ? `$${totalPrize.toLocaleString()}` : 'Medallas'}
-                      </span>
-                    </div>
-
-                    <Link 
-                      href={`/t/${t.slug}`} 
-                      className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-wider text-white hover:bg-neon-cyan hover:text-black hover:border-neon-cyan transition-all"
-                    >
-                      Ver Torneo
-                    </Link>
-                  </div>
-                </div>
-              )
-            })}
+            {recentPublicTournaments.map((t) => (
+              <TournamentCard
+                key={t.id}
+                t={t}
+                primaryColor={primaryColor}
+                secondaryColor={secondaryColor}
+                DISCIPLINE_LABELS={DISCIPLINE_LABELS}
+              />
+            ))}
           </div>
         </section>
       )}

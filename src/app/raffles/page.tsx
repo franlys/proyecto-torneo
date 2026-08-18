@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getProfile } from '@/lib/actions/auth-helpers'
 import { Navbar } from '@/components/navigation/Navbar'
 import { HomeTracker } from '@/components/analytics/HomeTracker'
+import { GlowCard } from '@/components/ui/GlowCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -93,10 +94,18 @@ export default async function RafflesCatalogPage() {
                 ? Math.max(1, Math.min(100, Math.round((soldCount / r.total_tickets) * 100)))
                 : 0
               return (
-                <div
+                <GlowCard
                   key={r.id}
-                  className="group relative overflow-hidden rounded-2xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.02] hover:border-white/10 transition-all duration-300 flex flex-col sm:flex-row"
+                  glowColor="#00F5FF"
+                  borderColor="rgba(255, 255, 255, 0.05)"
+                  className="relative overflow-hidden flex flex-col sm:flex-row group transition-all duration-300 hover:scale-[1.01]"
                 >
+                  {/* Cyber HUD Corner Brackets */}
+                  <div className="absolute top-2 left-2 w-2 h-2 border-t border-l border-white/10 group-hover:border-neon-cyan/50 transition-colors pointer-events-none z-20" />
+                  <div className="absolute top-2 right-2 w-2 h-2 border-t border-r border-white/10 group-hover:border-neon-cyan/50 transition-colors pointer-events-none z-20" />
+                  <div className="absolute bottom-2 left-2 w-2 h-2 border-b border-l border-white/10 group-hover:border-neon-cyan/50 transition-colors pointer-events-none z-20" />
+                  <div className="absolute bottom-2 right-2 w-2 h-2 border-b border-r border-white/10 group-hover:border-neon-cyan/50 transition-colors pointer-events-none z-20" />
+
                   {/* Prize Image */}
                   <div className="relative w-full sm:w-44 h-44 sm:h-auto shrink-0 bg-neutral-900 overflow-hidden">
                     {r.prize_image ? (
@@ -153,7 +162,7 @@ export default async function RafflesCatalogPage() {
                       </Link>
                     </div>
                   </div>
-                </div>
+                </GlowCard>
               )
             })}
           </div>
@@ -177,13 +186,15 @@ export default async function RafflesCatalogPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {finishedRaffles.map((r) => {
               return (
-                <div
+                <GlowCard
                   key={r.id}
-                  className="rounded-2xl border border-white/5 bg-white/[0.01] p-5 space-y-4"
+                  glowColor="#eab308"
+                  borderColor="rgba(255, 255, 255, 0.05)"
+                  className="p-5 space-y-4 transition-all duration-300 hover:scale-[1.01]"
                 >
                   <div className="relative aspect-video rounded-xl bg-neutral-900 overflow-hidden">
                     {r.prize_image ? (
-                      <img src={r.prize_image} alt={r.title} className="w-full h-full object-cover opacity-60" />
+                       <img src={r.prize_image} alt={r.title} className="w-full h-full object-cover opacity-60" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-white/[0.02]">
                         <Trophy size={28} className="text-white/20" />
@@ -214,7 +225,7 @@ export default async function RafflesCatalogPage() {
                       <span className="text-xs font-bold text-neon-cyan font-orbitron">#{r.winner_ticket_id ? 'N/A' : 'Conf'}</span>
                     </div>
                   </div>
-                </div>
+                </GlowCard>
               )
             })}
           </div>

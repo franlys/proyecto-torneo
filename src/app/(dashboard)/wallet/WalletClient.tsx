@@ -6,6 +6,7 @@ import { Landmark, ArrowUpRight, ArrowDownLeft, History, Loader2, CheckCircle, X
 import { motion, AnimatePresence } from 'framer-motion'
 import { requestWithdrawalAction } from '@/lib/actions/withdrawals'
 import { calculatePayPalGrossAmount } from '@/lib/services/paypal-fee'
+import { GlowCard } from '@/components/ui/GlowCard'
 
 interface WalletClientProps {
   initialBalance: number
@@ -189,7 +190,7 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
       {/* Wallet Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Balance Card */}
-        <div className="relative p-6 rounded-2xl bg-gradient-to-br from-[#0d0f15] to-[#161922] border border-white/10 shadow-[0_0_30px_rgba(0,245,255,0.03)] overflow-hidden flex flex-col justify-between min-h-[160px] group text-left">
+        <GlowCard glowColor="#00F5FF" borderColor="rgba(0, 245, 255, 0.15)" className="p-6 bg-gradient-to-br from-[#0d0f15] to-[#161922] flex flex-col justify-between min-h-[160px] text-left">
           <div className="absolute -right-10 -bottom-10 w-32 h-32 bg-neon-cyan/5 rounded-full blur-2xl group-hover:bg-neon-cyan/15 transition-colors" />
           <div className="absolute -left-10 -top-10 w-24 h-24 bg-neon-purple/5 rounded-full blur-xl" />
 
@@ -216,10 +217,10 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
               ${((initialBalance || 0) / exchangeRate).toFixed(2)} USD
             </span>
           </div>
-        </div>
+        </GlowCard>
 
         {/* Deposit Form Card */}
-        <div className="md:col-span-2 p-6 rounded-2xl bg-dark-card border border-white/5 space-y-6 text-left">
+        <GlowCard glowColor="#00F5FF" borderColor="rgba(255, 255, 255, 0.05)" className="md:col-span-2 p-6 bg-dark-card space-y-6 text-left">
           <h3 className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
             <ArrowUpRight size={16} className="text-neon-cyan" /> Recargar Saldo (K-Coins)
           </h3>
@@ -489,10 +490,10 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
               </div>
             </div>
           )}
-        </div>
+        </GlowCard>
 
         {/* Withdraw Form Card */}
-        <div className="md:col-span-3 p-6 rounded-2xl bg-dark-card border border-white/5 space-y-6 text-left">
+        <GlowCard glowColor="#b026ff" borderColor="rgba(255, 255, 255, 0.05)" className="md:col-span-3 p-6 bg-dark-card space-y-6 text-left">
           <h3 className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
             <ArrowDownLeft size={16} className="text-red-400" /> Retirar Fondos a PayPal (Auto-Payout)
           </h3>
@@ -580,13 +581,13 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
               </p>
             )}
           </form>
-        </div>
+        </GlowCard>
       </div>
 
       {/* History Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Recargas History */}
-        <div className="p-6 rounded-2xl bg-dark-card border border-white/5 space-y-4 text-left">
+        <GlowCard glowColor="#00F5FF" borderColor="rgba(255, 255, 255, 0.05)" className="p-6 bg-dark-card space-y-4 text-left">
           <h3 className="text-xs font-bold uppercase tracking-wider text-white/60 flex items-center gap-2">
             <Landmark size={14} className="text-white/30" /> Historial de Depósitos
           </h3>
@@ -635,10 +636,10 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
               ))
             )}
           </div>
-        </div>
+        </GlowCard>
 
         {/* Transactions History */}
-        <div className="p-6 rounded-2xl bg-dark-card border border-white/5 space-y-4 text-left">
+        <GlowCard glowColor="#b026ff" borderColor="rgba(255, 255, 255, 0.05)" className="p-6 bg-dark-card space-y-4 text-left">
           <h3 className="text-xs font-bold uppercase tracking-wider text-white/60 flex items-center gap-2">
             <History size={14} className="text-white/30" /> Movimientos de Cuenta
           </h3>
@@ -669,7 +670,7 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
               ))
             )}
           </div>
-        </div>
+        </GlowCard>
       </div>
 
       {/* Thank You Modal */}
