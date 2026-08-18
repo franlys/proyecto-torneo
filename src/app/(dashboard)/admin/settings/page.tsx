@@ -7,7 +7,7 @@ import { AdminErrorCard } from '@/components/ui/AdminErrorCard'
 
 export default async function AdminSettingsPage() {
   const admin = await isAdmin()
-  if (!admin) redirect('/tournaments')
+  if (!admin) redirect('/kronix')
 
   try {
     const settings = await getLandingSettings()

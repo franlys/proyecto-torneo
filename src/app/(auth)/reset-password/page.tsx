@@ -27,7 +27,7 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     if (isSuccess) {
       const timer = setTimeout(() => {
-        router.push('/tournaments')
+        router.push('/kronix')
       }, 2000)
       return () => clearTimeout(timer)
     }

@@ -69,7 +69,7 @@ export function TabLinks({ tabs }: { tabs: { name: string; path: string }[] }) {
       >
         {tabs.map((tab) => {
           // Match exact or prefix for subpages (except the overview root)
-          const isOverview = tab.path === `/tournaments/${tab.path.split('/')[2]}`
+          const isOverview = tab.path === `/kronix/${tab.path.split('/')[2]}`
           const isActive = isOverview
             ? pathname === tab.path
             : pathname.startsWith(tab.path)

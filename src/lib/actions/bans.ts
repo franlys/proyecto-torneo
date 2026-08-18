@@ -161,8 +161,8 @@ export async function banTeamForAbandonment(
     const { recalculateStandings } = await import('./submissions')
     await recalculateStandings(adminSupabase, tournamentId)
 
-    revalidatePath(`/tournaments/${tournamentId}/participants`)
-    revalidatePath(`/tournaments/${tournamentId}`)
+    revalidatePath(`/kronix/${tournamentId}/participants`)
+    revalidatePath(`/kronix/${tournamentId}`)
     revalidatePath(`/t/${tournament.slug}`)
     
     return { success: true }

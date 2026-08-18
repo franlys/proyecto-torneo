@@ -133,7 +133,7 @@ export function TournamentCard({ tournament }: { tournament: Tournament }) {
   }, [tournament.creatorId, tournament.collaboratorId])
 
   const isParticipant = !!tournament.registrationStatus && !isAdminOrStaff
-  const linkHref = isParticipant ? `/t/${tournament.slug}` : `/tournaments/${tournament.id}`
+  const linkHref = isParticipant ? `/t/${tournament.slug}` : `/kronix/${tournament.id}`
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.preventDefault()

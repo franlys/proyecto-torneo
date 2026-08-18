@@ -183,7 +183,7 @@ export function Navbar({ user, profile }: NavbarProps) {
                 </Link>
               )}
               <Link
-                href="/tournaments"
+                href="/kronix"
                 onClick={toggleMenu}
                 className="w-full block text-center bg-white text-black py-3.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-neon-cyan transition-all"
               >

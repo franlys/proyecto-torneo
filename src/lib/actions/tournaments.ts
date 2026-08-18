@@ -418,9 +418,9 @@ export async function updateTournament(
   pushToAC('tournaments', 'upsert', mappedUpdated as unknown as Record<string, unknown>)
 
   // Invalidate all relevant caches so the frontend reflects changes immediately
-  revalidatePath(`/tournaments/${id}`)
-  revalidatePath(`/tournaments/${id}/edit`)
-  revalidatePath('/tournaments')
+  revalidatePath(`/kronix/${id}`)
+  revalidatePath(`/kronix/${id}/edit`)
+  revalidatePath('/kronix')
   revalidatePath('/torneos')
   revalidatePath(`/t/${(updated as any).slug}`)
   revalidatePath('/')
@@ -460,8 +460,8 @@ export async function publishTournament(
   const { data: updated } = await supabase.from('tournaments').select('*').eq('id', id).single()
   if (updated) pushToAC('tournaments', 'upsert', mapTournamentRow(updated as Record<string, unknown>) as unknown as Record<string, unknown>)
 
-  revalidatePath(`/tournaments/${id}`)
-  revalidatePath('/tournaments')
+  revalidatePath(`/kronix/${id}`)
+  revalidatePath('/kronix')
   revalidatePath('/torneos')
   return { success: true }
 }
@@ -704,8 +704,8 @@ export async function activateTournament(
   const { data: activated } = await supabase.from('tournaments').select('*').eq('id', id).single()
   if (activated) pushToAC('tournaments', 'upsert', mapTournamentRow(activated as Record<string, unknown>) as unknown as Record<string, unknown>)
 
-  revalidatePath(`/tournaments/${id}`)
-  revalidatePath('/tournaments')
+  revalidatePath(`/kronix/${id}`)
+  revalidatePath('/kronix')
   revalidatePath('/torneos')
 
   return { success: true }
@@ -1587,8 +1587,8 @@ export async function finishTournament(
   const { data: finished } = await supabase.from('tournaments').select('*').eq('id', id).single()
   if (finished) pushToAC('tournaments', 'upsert', mapTournamentRow(finished as Record<string, unknown>) as unknown as Record<string, unknown>)
 
-  revalidatePath(`/tournaments/${id}`)
-  revalidatePath('/tournaments')
+  revalidatePath(`/kronix/${id}`)
+  revalidatePath('/kronix')
   revalidatePath('/torneos')
   revalidatePath('/hall-of-fame')
   // Invalidate the public leaderboard page so the next visit gets fresh status
@@ -1642,8 +1642,8 @@ export async function reactivateTournament(
     pushToAC('tournaments', 'upsert', mapTournamentRow(reactivated as Record<string, unknown>) as unknown as Record<string, unknown>)
   }
 
-  revalidatePath(`/tournaments/${id}`)
-  revalidatePath('/tournaments')
+  revalidatePath(`/kronix/${id}`)
+  revalidatePath('/kronix')
   revalidatePath('/torneos')
   revalidatePath('/hall-of-fame')
   if (tournament.slug) revalidatePath(`/t/${tournament.slug}`)
@@ -1911,7 +1911,7 @@ export async function updateBettingStatus(
     .eq('id', id)
 
   if (error) return { error: error.message }
-  revalidatePath(`/tournaments/${id}`)
+  revalidatePath(`/kronix/${id}`)
   return { success: true }
 }
 
@@ -1953,8 +1953,8 @@ export async function toggleTournamentPrivacy(
     )
   }
 
-  revalidatePath(`/tournaments/${id}`)
-  revalidatePath('/tournaments')
+  revalidatePath(`/kronix/${id}`)
+  revalidatePath('/kronix')
   revalidatePath('/torneos')
   revalidatePath('/')
   return { success: true }
@@ -2053,9 +2053,9 @@ export async function addDynamicMatch(
     pushToAC('matches', 'upsert', r)
   }
 
-  revalidatePath(`/tournaments/${tournamentId}`)
+  revalidatePath(`/kronix/${tournamentId}`)
   revalidatePath(`/t/${updatedTourney?.slug}`)
-  revalidatePath('/tournaments')
+  revalidatePath('/kronix')
   revalidatePath('/torneos')
   return { success: true }
 }
@@ -2328,7 +2328,7 @@ export async function syncTournamentDiscordChannels(
     }
   }
 
-  revalidatePath(`/tournaments/${tournamentId}`)
+  revalidatePath(`/kronix/${tournamentId}`)
   if (tournament.slug) {
     revalidatePath(`/t/${tournament.slug}`)
   }
@@ -2498,7 +2498,7 @@ export async function cleanupTournamentDiscordChannels(
     })
     .eq('tournament_id', tournamentId)
 
-  revalidatePath(`/tournaments/${tournamentId}`)
+  revalidatePath(`/kronix/${tournamentId}`)
   return {
     success: true,
     message: `¡Limpieza completada! Se eliminaron ${deletedCount} canales duplicados/antiguos en Discord.`,

@@ -5,6 +5,7 @@ import { signIn, resendVerificationEmail } from '@/lib/actions/auth'
 import { useState, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { GlowCard } from '@/components/ui/GlowCard'
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -43,17 +44,21 @@ function LoginForm() {
     <div>
       {/* Logo */}
       <div className="text-center mb-8">
-        <h1 className="font-orbitron text-2xl font-bold tracking-widest text-neon-cyan uppercase">
-          Tournament
+        <h1 className="font-orbitron text-3xl font-black tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-white via-neon-cyan to-white uppercase drop-shadow-[0_0_15px_rgba(0,245,255,0.3)] animate-pulse">
+          KRONIX
         </h1>
-        <p className="font-orbitron text-xs tracking-[0.3em] text-white/40 uppercase mt-1">
+        <p className="font-orbitron text-[9px] tracking-[0.4em] text-white/40 uppercase mt-1.5">
           Leaderboard Platform
         </p>
       </div>
 
       {/* Unverified email wall */}
       {isUnverified ? (
-        <div className="bg-white/5 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-8 text-center">
+        <GlowCard glowColor="#EAB308" borderColor="rgba(234, 179, 8, 0.2)" className="bg-white/5 backdrop-blur-sm p-8 text-center relative overflow-hidden group">
+          {/* Holographic Gloss Shine Effect */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl z-20">
+            <div className="absolute -inset-y-12 left-[-30%] w-16 bg-gradient-to-r from-transparent via-white/10 to-transparent rotate-[25deg] transition-all duration-1000 ease-out group-hover:left-[130%]" />
+          </div>
           <div className="w-14 h-14 rounded-full bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center mx-auto mb-4">
             <span className="text-2xl">✉️</span>
           </div>
@@ -90,10 +95,14 @@ function LoginForm() {
           <Link href="/login" className="inline-block mt-6 text-white/40 text-xs hover:text-white transition-colors">
             ← Volver al login
           </Link>
-        </div>
+        </GlowCard>
       ) : (
         /* Normal login card */
-        <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 relative">
+        <GlowCard glowColor="#00F5FF" borderColor="rgba(255, 255, 255, 0.05)" className="bg-white/5 backdrop-blur-sm p-8 group relative overflow-hidden">
+          {/* Holographic Gloss Shine Effect */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl z-20">
+            <div className="absolute -inset-y-12 left-[-30%] w-16 bg-gradient-to-r from-transparent via-white/10 to-transparent rotate-[25deg] transition-all duration-1000 ease-out group-hover:left-[130%]" />
+          </div>
           <h2 className="text-white font-semibold text-xl mb-6">Iniciar sesión</h2>
 
           <form action={action} className="space-y-4">
@@ -227,7 +236,7 @@ function LoginForm() {
              <span className="text-[8px] font-orbitron uppercase tracking-widest text-white/70">Powered by</span>
              <span className="text-[10px] font-orbitron font-bold uppercase tracking-widest text-white mt-0.5">GonzalezLabs</span>
           </div>
-        </div>
+        </GlowCard>
       )}
     </div>
   )

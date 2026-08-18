@@ -17,7 +17,7 @@ export default async function AdminRaffleDetailPage({ params }: AdminRaffleDetai
 
   const admin = await isSystemAdmin(user.id)
   if (!admin) {
-    redirect('/tournaments')
+    redirect('/kronix')
   }
 
   const { id } = await params

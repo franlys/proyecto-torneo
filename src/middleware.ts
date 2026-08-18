@@ -40,7 +40,7 @@ export async function middleware(request: NextRequest) {
 
     const { data: { user } } = await supabase.auth.getUser()
 
-    const protectedRoutes = ['/tournaments', '/profile', '/wallet', '/notifications', '/subscription', '/admin']
+    const protectedRoutes = ['/kronix', '/profile', '/wallet', '/notifications', '/subscription', '/admin']
     const isProtected = protectedRoutes.some(route => request.nextUrl.pathname.startsWith(route))
 
     // Protect dashboard routes
@@ -55,7 +55,7 @@ export async function middleware(request: NextRequest) {
   } catch (error) {
     console.error('Middleware error:', error)
     // Fallback: redirect to login if we can't determine auth status for protected routes
-    const protectedRoutes = ['/tournaments', '/profile', '/wallet', '/notifications', '/subscription', '/admin']
+    const protectedRoutes = ['/kronix', '/profile', '/wallet', '/notifications', '/subscription', '/admin']
     const isProtected = protectedRoutes.some(route => request.nextUrl.pathname.startsWith(route))
     if (isProtected) {
       const url = request.nextUrl.clone()
@@ -69,7 +69,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/tournaments/:path*',
+    '/kronix/:path*',
     '/profile/:path*',
     '/wallet/:path*',
     '/notifications/:path*',

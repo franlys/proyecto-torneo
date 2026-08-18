@@ -35,7 +35,7 @@ export default async function AdminTournamentDetailPage({ params }: { params: { 
   return (
     <div className="space-y-12">
       <Link 
-        href="/admin/tournaments" 
+        href="/admin/kronix" 
         className="inline-flex items-center gap-2 text-white/40 hover:text-white text-[10px] font-black uppercase tracking-widest transition-colors"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>

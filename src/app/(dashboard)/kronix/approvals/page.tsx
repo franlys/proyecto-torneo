@@ -16,7 +16,7 @@ export default async function ApprovalsPage() {
   const isAuthorized = profile.role !== 'USER'
 
   if (!isAuthorized) {
-    redirect('/tournaments')
+    redirect('/kronix')
   }
 
   try {

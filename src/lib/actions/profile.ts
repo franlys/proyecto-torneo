@@ -284,7 +284,7 @@ export async function updateStreamerSettings(formData: FormData): Promise<{ succ
 
   if (error) return { error: error.message }
 
-  revalidatePath('/tournaments/payments')
+  revalidatePath('/kronix/payments')
   revalidatePath('/profile')
   return { success: true }
 }

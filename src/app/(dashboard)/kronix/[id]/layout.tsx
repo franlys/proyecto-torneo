@@ -22,20 +22,20 @@ export default async function TournamentDashboardLayout({
     .eq('id', params.id)
     .single()
 
-  if (!tournament) redirect('/tournaments')
+  if (!tournament) redirect('/kronix')
 
   const tabs = [
-    { name: 'Resumen', path: `/tournaments/${params.id}` },
-    { name: 'Ajustes', path: `/tournaments/${params.id}/edit` },
-    { name: 'Participantes', path: `/tournaments/${params.id}/participants` },
-    { name: 'Partidas', path: `/tournaments/${params.id}/matches` },
-    { name: 'Evidencias', path: `/tournaments/${params.id}/submissions` },
-    { name: 'Personalizar', path: `/tournaments/${params.id}/customize` },
-    { name: 'Códigos', path: `/tournaments/${params.id}/codes` },
+    { name: 'Resumen', path: `/kronix/${params.id}` },
+    { name: 'Ajustes', path: `/kronix/${params.id}/edit` },
+    { name: 'Participantes', path: `/kronix/${params.id}/participants` },
+    { name: 'Partidas', path: `/kronix/${params.id}/matches` },
+    { name: 'Evidencias', path: `/kronix/${params.id}/submissions` },
+    { name: 'Personalizar', path: `/kronix/${params.id}/customize` },
+    { name: 'Códigos', path: `/kronix/${params.id}/codes` },
   ]
 
   if (tournament.arena_betting_enabled) {
-    tabs.push({ name: 'Apuestas', path: `/tournaments/${params.id}/bets` })
+    tabs.push({ name: 'Apuestas', path: `/kronix/${params.id}/bets` })
   }
 
   return (
@@ -44,7 +44,7 @@ export default async function TournamentDashboardLayout({
       <div className="bg-[#0f0f1b]/80 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6 relative overflow-visible shadow-2xl">
         <div className="space-y-1.5 shrink-0">
           <Link
-            href="/tournaments"
+            href="/kronix"
             className="text-[10px] font-bold text-white/40 hover:text-neon-cyan uppercase tracking-widest transition-colors inline-flex items-center gap-1.5"
           >
             ← Volver a Mis Torneos

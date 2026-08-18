@@ -218,7 +218,7 @@ export default function DashboardShell({
       {(userRole !== 'USER' || isStaff) && (
         <>
           <Link
-            href="/tournaments"
+            href="/kronix"
             onClick={() => setDrawerOpen(false)}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
           >
@@ -231,7 +231,7 @@ export default function DashboardShell({
           {(userRole === 'STREAMER' || userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && (
             <>
               <Link
-                href="/tournaments/approvals"
+                href="/kronix/approvals"
                 onClick={() => setDrawerOpen(false)}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
               >
@@ -241,7 +241,7 @@ export default function DashboardShell({
                 Aprobaciones
               </Link>
               <Link
-                href="/tournaments/staff"
+                href="/kronix/staff"
                 onClick={() => setDrawerOpen(false)}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
               >
@@ -251,7 +251,7 @@ export default function DashboardShell({
                 Mi Staff
               </Link>
               <Link
-                href="/tournaments/payments"
+                href="/kronix/payments"
                 onClick={() => setDrawerOpen(false)}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
               >
@@ -261,7 +261,7 @@ export default function DashboardShell({
                 Métodos de Pago
               </Link>
               <Link
-                href="/tournaments/support"
+                href="/kronix/support"
                 onClick={() => setDrawerOpen(false)}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
               >
@@ -390,7 +390,7 @@ export default function DashboardShell({
                 Panel Admin
               </Link>
               <Link
-                href="/admin/tournaments"
+                href="/admin/kronix"
                 onClick={() => setDrawerOpen(false)}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
               >
@@ -552,7 +552,7 @@ export default function DashboardShell({
       {/* Desktop & Split-screen Sidebar — visible on md and up */}
       <aside className="hidden md:flex md:w-56 lg:w-60 shrink-0 bg-dark-card border-r border-white/5 flex-col h-screen sticky top-0 overflow-y-auto z-30">
         <div className="px-5 lg:px-6 py-5 border-b border-white/5">
-          <Link href="/tournaments" className="flex items-center gap-2.5 group">
+          <Link href="/kronix" className="flex items-center gap-2.5 group">
             <img 
               src="/logo.png" 
               alt="KRONIX Logo" 
@@ -570,7 +570,7 @@ export default function DashboardShell({
 
       {/* Mobile Header (under md) */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-dark-card/95 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-4 py-3">
-        <Link href="/tournaments" className="flex items-center gap-2 group">
+        <Link href="/kronix" className="flex items-center gap-2 group">
           <img 
             src="/logo.png" 
             alt="KRONIX Logo" 
@@ -627,7 +627,7 @@ export default function DashboardShell({
               className="md:hidden fixed top-0 left-0 bottom-0 z-50 w-72 bg-dark-card border-r border-white/5 flex flex-col overflow-y-auto"
             >
               <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between">
-                <Link href="/tournaments" onClick={() => setDrawerOpen(false)}>
+                <Link href="/kronix" onClick={() => setDrawerOpen(false)}>
                   <span className="font-orbitron text-sm font-bold tracking-widest text-neon-cyan uppercase">Tournament</span>
                   <span className="block font-orbitron text-[10px] tracking-[0.25em] text-white/30 uppercase mt-0.5">Platform</span>
                 </Link>

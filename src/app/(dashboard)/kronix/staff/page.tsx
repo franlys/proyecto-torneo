@@ -18,7 +18,7 @@ export default async function StaffManagementPage() {
     profile.role !== 'SUPER_ADMIN' &&
     profile.role !== 'ADMIN'
   ) {
-    redirect('/tournaments')
+    redirect('/kronix')
   }
 
   // Fetch data

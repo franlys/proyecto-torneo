@@ -23,7 +23,7 @@ interface PageProps {
 
 export default async function AdminUsersPage({ searchParams }: PageProps) {
   const admin = await isAdmin()
-  if (!admin) redirect('/tournaments')
+  if (!admin) redirect('/kronix')
 
   const query = searchParams?.query || ''
   const page = Number(searchParams?.page) || 1

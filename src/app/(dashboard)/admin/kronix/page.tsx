@@ -84,7 +84,7 @@ export default async function AdminTournamentsPage() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <Link 
-                      href={`/admin/tournaments/${t.id}`}
+                      href={`/admin/kronix/${t.id}`}
                       className="inline-flex items-center gap-2 bg-white/5 hover:bg-neon-cyan hover:text-black px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all"
                     >
                       Gestionar

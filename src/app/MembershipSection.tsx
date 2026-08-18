@@ -129,7 +129,7 @@ export function MembershipSection({ user, profile }: { user: any, profile: any }
             </div>
             <div className="border-t border-white/5 pt-6">
               <Link 
-                href="/tournaments"
+                href="/kronix"
                 className="inline-flex items-center gap-2 px-8 py-4 bg-[#009cde] hover:bg-[#007fb5] text-white rounded-xl font-bold uppercase tracking-widest text-xs transition-colors"
               >
                 Ir a Gestión de Torneos <ArrowRight className="w-4 h-4" />

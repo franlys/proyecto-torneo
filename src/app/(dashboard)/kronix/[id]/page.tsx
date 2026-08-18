@@ -151,7 +151,7 @@ export default async function TournamentOverviewPage({
             {result.message}
           </p>
           <Link
-            href="/tournaments"
+            href="/kronix"
             className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white transition-all uppercase tracking-wider font-orbitron"
           >
             Volver a Torneos
@@ -243,7 +243,7 @@ export default async function TournamentOverviewPage({
               <FinishTournamentButton id={id} />
             </div>
             <Link
-              href={`/tournaments/${id}/submissions`}
+              href={`/kronix/${id}/submissions`}
               className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white transition-all uppercase tracking-wider font-orbitron"
             >
               Revisar Evidencias
@@ -297,7 +297,7 @@ export default async function TournamentOverviewPage({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {(tournament.status === 'draft' || tournament.status === 'pending') && (
             <QuickAction
-              href={`/tournaments/${id}/edit`}
+              href={`/kronix/${id}/edit`}
               label="Editar Ajustes"
               desc="Cambia modalidad, puntos, reglas y más"
               icon={
@@ -309,7 +309,7 @@ export default async function TournamentOverviewPage({
             />
           )}
           <QuickAction
-            href={`/tournaments/${id}/participants`}
+            href={`/kronix/${id}/participants`}
             label="Participantes"
             desc="Gestiona equipos y jugadores"
             icon={
@@ -321,7 +321,7 @@ export default async function TournamentOverviewPage({
           />
           {!['clash_royale', 'street_fighter_6', 'super_smash_bros_ultimate', 'league_of_legends', 'valorant'].includes(tournament.discipline) && (
             <QuickAction
-              href={`/tournaments/${id}/submissions`}
+              href={`/kronix/${id}/submissions`}
               label="Submissions"
               desc="Revisa y aprueba registros de kills"
               icon={
@@ -333,7 +333,7 @@ export default async function TournamentOverviewPage({
             />
           )}
           <QuickAction
-            href={`/tournaments/${id}/customize`}
+            href={`/kronix/${id}/customize`}
             label="Personalizar"
             desc="Tema visual del leaderboard público"
             icon={
@@ -344,7 +344,7 @@ export default async function TournamentOverviewPage({
             }
           />
           <QuickAction
-            href={`/tournaments/${id}/matches`}
+            href={`/kronix/${id}/matches`}
             label="Partidas"
             desc="Nombres de rondas y mapas"
             icon={
@@ -370,7 +370,7 @@ export default async function TournamentOverviewPage({
           {isKronixAdmin && (
             <>
               <QuickAction
-                href={`/tournaments/${id}/codes`}
+                href={`/kronix/${id}/codes`}
                 label="Códigos de Streamer"
                 desc="Genera y gestiona códigos para Apuestas Kronix"
                 icon={
@@ -382,7 +382,7 @@ export default async function TournamentOverviewPage({
               />
               {tournament.arenaBettingEnabled && (
                 <QuickAction
-                  href={`/tournaments/${id}/bets`}
+                  href={`/kronix/${id}/bets`}
                   label="Apuestas del Torneo"
                   desc="Gestiona cuotas, crea mercados y resuelve apuestas"
                   icon={

@@ -24,7 +24,7 @@ function EmptyState({ canCreate }: { canCreate: boolean }) {
           <p className="text-white/60 text-sm font-medium mb-1">Sin torneos todavía</p>
           <p className="text-white/25 text-xs mb-6">Crea tu primer torneo y empieza a competir</p>
           <Link
-            href="/tournaments/new"
+            href="/kronix/new"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white
               bg-gradient-to-r from-neon-cyan to-neon-purple hover:opacity-90 active:scale-[0.97]
               transition-all duration-150"
@@ -87,7 +87,7 @@ export default async function TournamentsPage() {
           </div>
           {canCreate && (
             <Link
-              href="/tournaments/new"
+              href="/kronix/new"
               className="shrink-0 inline-flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white
                 bg-gradient-to-r from-neon-cyan to-neon-purple hover:opacity-90 active:scale-[0.97]
                 transition-all duration-150 shadow-lg shadow-neon-cyan/10"

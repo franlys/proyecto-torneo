@@ -6,7 +6,7 @@ import Link from 'next/link'
 
 export default async function MatchesPage({ params }: { params: { id: string } }) {
   const tRes = await getTournament(params.id)
-  if ('error' in tRes) redirect('/tournaments')
+  if ('error' in tRes) redirect('/kronix')
 
   const mRes = await getTournamentMatches(params.id)
   if ('error' in mRes) {

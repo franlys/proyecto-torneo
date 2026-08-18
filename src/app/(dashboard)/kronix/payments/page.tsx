@@ -17,7 +17,7 @@ export default async function PaymentsConfigurationPage() {
     profile.role !== 'SUPER_ADMIN' &&
     profile.role !== 'ADMIN'
   ) {
-    redirect('/tournaments')
+    redirect('/kronix')
   }
 
   // Load current values

@@ -45,7 +45,7 @@ export default async function EditTournamentPage({ params }: EditTournamentPageP
       <div className="p-8 max-w-3xl mx-auto">
         <div className="mb-8">
           <Link
-            href={`/tournaments/${id}`}
+            href={`/kronix/${id}`}
             className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-white/60 transition-colors duration-150 mb-4"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,7 +68,7 @@ export default async function EditTournamentPage({ params }: EditTournamentPageP
               <span className="text-neon-purple font-semibold">Anunciado</span>.
               Este torneo actualmente está {tournament.status === 'active' ? 'activo' : 'finalizado'}.
               {tournament.status === 'finished' && (
-                <> Puedes <Link href={`/tournaments/${id}`} className="text-neon-cyan hover:underline">reactivarlo desde el resumen</Link> si necesitas reabrirlo.</>
+                <> Puedes <Link href={`/kronix/${id}`} className="text-neon-cyan hover:underline">reactivarlo desde el resumen</Link> si necesitas reabrirlo.</>
               )}
             </p>
           </div>
@@ -81,7 +81,7 @@ export default async function EditTournamentPage({ params }: EditTournamentPageP
     <div className="p-8 max-w-3xl mx-auto">
       <div className="mb-8">
         <Link
-          href={`/tournaments/${id}`}
+          href={`/kronix/${id}`}
           className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-white/60 transition-colors duration-150 mb-4"
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

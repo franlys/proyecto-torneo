@@ -49,7 +49,7 @@ export async function signIn(
   if (redirectTo && redirectTo.startsWith('/')) {
     redirect(redirectTo)
   } else {
-    redirect('/tournaments')
+    redirect('/kronix')
   }
 }
 

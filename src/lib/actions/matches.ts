@@ -399,7 +399,7 @@ export async function updateMatch(
   }
 
   revalidatePath(`/t/[slug]`, 'page')
-  revalidatePath(`/tournaments/${tournamentId}/matches`)
+  revalidatePath(`/kronix/${tournamentId}/matches`)
   return { success: true }
 }
 
@@ -471,7 +471,7 @@ export async function createMatch(
   })
 
   revalidatePath(`/t/[slug]`, 'page')
-  revalidatePath(`/tournaments/${tournamentId}/matches`)
+  revalidatePath(`/kronix/${tournamentId}/matches`)
   
   return { data: mapped }
 }
@@ -533,7 +533,7 @@ export async function notifyEvidenceWindowAction(
     console.error('Error sending Discord Evidence Window announcement:', discordErr)
   }
 
-  revalidatePath(`/tournaments/${tournamentId}/matches`)
+  revalidatePath(`/kronix/${tournamentId}/matches`)
   revalidatePath(`/t/[slug]`, 'page')
   return { success: true }
 }

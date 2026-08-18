@@ -61,7 +61,7 @@ export async function markNotificationReadAction(id: string): Promise<{ success:
       return { success: false, error: error.message }
     }
 
-    revalidatePath('/tournaments')
+    revalidatePath('/kronix')
     return { success: true }
   } catch (err: any) {
     return { success: false, error: err.message || 'Error al actualizar notificación' }
@@ -89,7 +89,7 @@ export async function markAllNotificationsReadAction(): Promise<{ success: boole
       return { success: false, error: error.message }
     }
 
-    revalidatePath('/tournaments')
+    revalidatePath('/kronix')
     return { success: true }
   } catch (err: any) {
     return { success: false, error: err.message || 'Error al marcar todas las notificaciones' }

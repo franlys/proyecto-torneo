@@ -242,6 +242,6 @@ export async function updateTeammateGameCredentials(
     console.error('Error auto-saving game account:', accUpsertErr.message)
   }
 
-  revalidatePath('/tournaments')
+  revalidatePath('/kronix')
   return { success: true }
 }

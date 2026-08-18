@@ -73,8 +73,8 @@ export async function approveRegistrationRequest(teamId: string): Promise<{ succ
       }).catch(e => console.error('Error al enviar correo de aprobación de registro:', e))
     }
 
-    revalidatePath(`/tournaments/${tournament.id}/participants`)
-    revalidatePath('/tournaments')
+    revalidatePath(`/kronix/${tournament.id}/participants`)
+    revalidatePath('/kronix')
     return { success: true }
   } catch (err: any) {
     return { error: err.message || 'Error inesperado al aprobar la solicitud.' }
@@ -158,7 +158,7 @@ export async function uploadPaymentEvidence(
       }
     }
 
-    revalidatePath(`/tournaments/${team.tournament_id}/participants`)
+    revalidatePath(`/kronix/${team.tournament_id}/participants`)
     return { success: true }
   } catch (err: any) {
     return { error: err.message || 'Error inesperado al subir el comprobante.' }
@@ -263,8 +263,8 @@ export async function confirmPaymentRegistration(teamId: string): Promise<{ succ
       }).catch(e => console.error('Error al enviar correo de confirmación de registro:', e))
     }
 
-    revalidatePath(`/tournaments/${tournament.id}/participants`)
-    revalidatePath('/tournaments')
+    revalidatePath(`/kronix/${tournament.id}/participants`)
+    revalidatePath('/kronix')
     return { success: true }
   } catch (err: any) {
     return { error: err.message || 'Error inesperado al confirmar el registro.' }
@@ -357,8 +357,8 @@ export async function rejectRegistrationRequest(
       return { error: 'No se puede rechazar un equipo ya confirmado o en estado inválido.' }
     }
 
-    revalidatePath(`/tournaments/${tournament.id}/participants`)
-    revalidatePath('/tournaments')
+    revalidatePath(`/kronix/${tournament.id}/participants`)
+    revalidatePath('/kronix')
     return { success: true }
   } catch (err: any) {
     return { error: err.message || 'Error inesperado al rechazar la solicitud.' }

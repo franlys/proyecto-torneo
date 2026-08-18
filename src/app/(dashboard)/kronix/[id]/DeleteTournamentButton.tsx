@@ -29,7 +29,7 @@ export function DeleteTournamentButton({ id, name }: DeleteTournamentButtonProps
       }
       // Navigate back to tournaments list after successful delete
       toast.success('Torneo eliminado correctamente')
-      router.push('/tournaments')
+      router.push('/kronix')
       router.refresh()
     } catch {
       toast.error('Error inesperado al eliminar el torneo.')

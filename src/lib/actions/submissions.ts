@@ -342,9 +342,9 @@ export async function recalculateStandings(supabase: any, tournamentId: string) 
           console.log(`[MATCH POINT] Equipo ${winner.teamId} ya tenía ${cumulativePoints[winner.teamId]} pts (>= ${limit}) y acaba de ganar la partida ${match.id}. ¡CAMPEÓN!`)
 
           const { revalidatePath } = await import('next/cache')
-          revalidatePath(`/tournaments/${tournamentId}`)
+          revalidatePath(`/kronix/${tournamentId}`)
           revalidatePath(`/t/${tourney.slug}`)
-          revalidatePath('/tournaments')
+          revalidatePath('/kronix')
           revalidatePath('/')
 
           const { pushToAC } = await import('./ac-push')

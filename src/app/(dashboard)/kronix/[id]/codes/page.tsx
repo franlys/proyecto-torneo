@@ -27,7 +27,7 @@ export default async function TournamentCodesPage({
   if (!tournament) notFound()
 
   // Solo el creador o un admin puede gestionar códigos
-  if (!admin && tournament.creator_id !== user.id) redirect('/tournaments')
+  if (!admin && tournament.creator_id !== user.id) redirect('/kronix')
 
   const { data: codes } = await supabase
     .from('streamer_codes')

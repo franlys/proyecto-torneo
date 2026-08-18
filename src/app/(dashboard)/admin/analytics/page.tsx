@@ -5,7 +5,7 @@ import { AnalyticsClient } from './AnalyticsClient'
 
 export default async function AdminAnalyticsPage() {
   const admin = await isAdmin()
-  if (!admin) redirect('/tournaments')
+  if (!admin) redirect('/kronix')
 
   const res = await getPlatformAnalytics()
   

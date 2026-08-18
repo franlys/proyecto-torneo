@@ -53,7 +53,7 @@ export function AdminErrorCard({ section, error }: AdminErrorCardProps) {
 
       <div className="pt-4 border-t border-white/5 flex gap-4">
         <Link
-          href="/tournaments"
+          href="/kronix"
           className="flex-1 text-center bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 hover:text-white py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all"
         >
           Ir al Inicio

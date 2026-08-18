@@ -45,7 +45,7 @@ export async function generateStreamerCode(tournamentId: string, streamerName: s
 
   if (error) return { error: error.message }
 
-  revalidatePath(`/tournaments/${tournamentId}/codes`)
+  revalidatePath(`/kronix/${tournamentId}/codes`)
   return { data }
 }
 

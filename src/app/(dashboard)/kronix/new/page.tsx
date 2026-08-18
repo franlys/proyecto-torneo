@@ -40,7 +40,7 @@ export default async function NewTournamentPage() {
     <div className="p-8 max-w-3xl mx-auto">
       <div className="mb-8">
         <Link
-          href="/tournaments"
+          href="/kronix"
           className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-white/60 transition-colors duration-150 mb-4"
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

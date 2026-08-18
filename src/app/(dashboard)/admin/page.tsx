@@ -10,7 +10,7 @@ import { PendingWithdrawalsPanel } from './PendingWithdrawalsPanel'
 
 export default async function AdminPage() {
   const admin = await isAdmin()
-  if (!admin) redirect('/tournaments')
+  if (!admin) redirect('/kronix')
   const superAdmin = await isSuperAdmin()
 
   try {
@@ -230,7 +230,7 @@ export default async function AdminPage() {
               {(allTournaments ?? []).map((t) => (
                 <div key={t.id} className="px-5 py-3 flex items-center justify-between">
                   <div>
-                    <Link href={`/tournaments/${t.id}`} className="text-white text-sm hover:text-neon-cyan transition-colors">
+                    <Link href={`/kronix/${t.id}`} className="text-white text-sm hover:text-neon-cyan transition-colors">
                       {t.name}
                     </Link>
                     <p className="text-white/30 text-xs mt-0.5">{new Date(t.created_at).toLocaleDateString('es')}</p>

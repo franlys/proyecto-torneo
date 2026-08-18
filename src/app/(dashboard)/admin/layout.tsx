@@ -9,7 +9,7 @@ export default async function AdminLayout({
 }) {
   const allowed = await isAdmin()
   if (!allowed) {
-    redirect('/tournaments')
+    redirect('/kronix')
   }
 
   const isSuperAdminUser = await isSuperAdmin()

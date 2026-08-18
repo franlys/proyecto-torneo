@@ -13,7 +13,7 @@ export default async function AdminRafflesPage() {
 
   const admin = await isSystemAdmin(user.id)
   if (!admin) {
-    redirect('/tournaments')
+    redirect('/kronix')
   }
 
   const res = await getRaffles()

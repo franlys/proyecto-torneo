@@ -41,7 +41,7 @@ export async function createTicket(
     })
   }
 
-  revalidatePath('/tournaments/support')
+  revalidatePath('/kronix/support')
   return { success: true, ticketId: data?.id }
 }
 
@@ -184,7 +184,7 @@ export async function replyToTicket(
     .update(updates)
     .eq('id', ticketId)
 
-  revalidatePath(`/tournaments/support`)
+  revalidatePath(`/kronix/support`)
   revalidatePath(`/admin/tickets`)
   return { success: true }
 }
@@ -222,7 +222,7 @@ export async function updateTicketStatus(
 
   if (error) return { error: error.message }
 
-  revalidatePath(`/tournaments/support`)
+  revalidatePath(`/kronix/support`)
   revalidatePath(`/admin/tickets`)
   return { success: true }
 }

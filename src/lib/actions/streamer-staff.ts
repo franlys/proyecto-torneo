@@ -135,7 +135,7 @@ export async function inviteStaffMember(
     isNewUser: !existingAuthUser
   }).catch(err => console.error('Failed to send staff invite email:', err))
 
-  revalidatePath('/tournaments/staff')
+  revalidatePath('/kronix/staff')
   return { success: true }
 }
 
@@ -256,7 +256,7 @@ export async function removeStaffMember(staffRelationId: string): Promise<{ succ
     }).catch(err => console.error('Failed to send staff removal email:', err))
   }
 
-  revalidatePath('/tournaments/staff')
+  revalidatePath('/kronix/staff')
   return { success: true }
 }
 
@@ -276,7 +276,7 @@ export async function cancelInvitation(invitationId: string): Promise<{ success:
 
   if (error) return { error: error.message }
 
-  revalidatePath('/tournaments/staff')
+  revalidatePath('/kronix/staff')
   return { success: true }
 }
 
@@ -347,7 +347,7 @@ export async function acceptInvitation(invitationId: string): Promise<{ success:
     .update({ status: 'accepted' })
     .eq('id', invitationId)
 
-  revalidatePath('/tournaments/staff')
+  revalidatePath('/kronix/staff')
   return { success: true }
 }
 
@@ -387,7 +387,7 @@ export async function rejectInvitation(invitationId: string): Promise<{ success:
 
   if (error) return { error: error.message }
 
-  revalidatePath('/tournaments/staff')
+  revalidatePath('/kronix/staff')
   return { success: true }
 }
 

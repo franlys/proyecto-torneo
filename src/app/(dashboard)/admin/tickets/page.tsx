@@ -18,7 +18,7 @@ export default async function AdminTicketsPage() {
     profile.role !== 'ADMIN' &&
     profile.role !== 'KRONIX_STAFF'
   ) {
-    redirect('/tournaments')
+    redirect('/kronix')
   }
 
   // Fetch tickets (this will fetch all because the user has an admin role)

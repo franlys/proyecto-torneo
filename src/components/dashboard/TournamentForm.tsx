@@ -308,7 +308,7 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
     if (onSuccess) {
       onSuccess(result.data.id)
     } else {
-      router.push(`/tournaments/${result.data.id}`)
+      router.push(`/kronix/${result.data.id}`)
     }
   }
 

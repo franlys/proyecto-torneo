@@ -5,7 +5,7 @@ import { AdsClient } from './AdsClient'
 
 export default async function AdminAdsPage() {
   const admin = await isAdmin()
-  if (!admin) redirect('/tournaments')
+  if (!admin) redirect('/kronix')
 
   const res = await getAllAds()
   const ads = 'data' in res && res.data ? res.data : []

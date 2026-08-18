@@ -30,6 +30,7 @@ import {
   Flame,
   TrendingUp
 } from 'lucide-react'
+import { GlowCard } from '@/components/ui/GlowCard'
 
 interface ProfileStatsClientProps {
   profile: any
@@ -104,6 +105,11 @@ export function ProfileStatsClient({
   defaultTab = 'inicio',
 }: ProfileStatsClientProps) {
   const [activeTab, setActiveTab] = useState<'inicio' | 'profile' | 'history' | 'badges' | 'stats' | 'friends' | 'sorteos'>(defaultTab)
+
+  useEffect(() => {
+    setActiveTab(defaultTab)
+  }, [defaultTab])
+
   const [username, setUsername] = useState(profile?.username ?? '')
   const [streamUrl, setStreamUrl] = useState(profile?.stream_url ?? '')
   const [discordUsername, setDiscordUsername] = useState(profile?.discord_username ?? '')
@@ -489,45 +495,7 @@ export function ProfileStatsClient({
         )}
       </div>
 
-      {/* Apple-style Segmented Control Horizontal Navigation */}
-      <div className="bg-[#0d0d0f]/60 backdrop-blur-md border border-white/5 p-1 rounded-2xl flex items-center gap-1 overflow-x-auto no-scrollbar select-none sticky top-[52px] md:top-0 z-20 shadow-md">
-        {[
-          { id: 'inicio', label: 'Inicio', icon: User },
-          { id: 'profile', label: 'Ajustes', icon: Settings },
-          { id: 'friends', label: 'Amigos', icon: Users },
-          { id: 'history', label: 'Mis Torneos', count: participations.length, icon: Trophy },
-          { id: 'badges', label: 'Medallero', count: badges.length, icon: Award },
-          { id: 'stats', label: 'Desempeño', icon: Activity },
-          { id: 'sorteos', label: 'Mis Boletos', count: tickets.length, icon: Ticket },
-        ].map((tab) => {
-          const Icon = tab.icon
-          const active = activeTab === tab.id
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className="relative flex items-center justify-center h-9 gap-2 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider whitespace-nowrap group"
-            >
-              {active && (
-                <motion.div
-                  layoutId="profileTabPill"
-                  className="absolute inset-0 bg-white/5 border border-white/10 rounded-xl -z-10 shadow-sm"
-                  transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-                />
-              )}
-              <Icon size={14} className={`shrink-0 transition-colors ${active ? 'text-neon-cyan' : 'text-white/30 group-hover:text-white/60'}`} />
-              <span className={active ? 'text-neon-cyan' : 'text-white/50 group-hover:text-white transition-colors'}>
-                {tab.label}
-              </span>
-              {tab.count !== undefined && (
-                <span className={`text-[9px] font-orbitron px-1.5 py-0.5 rounded-full font-bold ${active ? 'bg-neon-cyan/20 text-neon-cyan' : 'bg-white/5 text-white/30'}`}>
-                  {tab.count}
-                </span>
-              )}
-            </button>
-          )
-        })}
-      </div>
+
 
       {/* Tab Contents */}
       <div className="space-y-6">
@@ -559,87 +527,108 @@ export function ProfileStatsClient({
                   const isWinner = isFinished && t.raffle?.winner_name === t.buyer_name
 
                   return (
-                    <div
+                    <motion.div
                       key={t.id}
-                      className="relative overflow-hidden bg-dark-card border border-white/5 rounded-2xl flex flex-col md:flex-row justify-between items-stretch gap-0 group hover:border-white/10 transition-all shadow-lg"
+                      whileHover={{ scale: 1.015, y: -2 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                      className="w-full"
                     >
-                      {/* Main Stub */}
-                      <div className="p-5 flex-1 flex gap-4 items-center min-w-0">
-                        <div className="w-14 h-14 rounded-xl bg-neutral-900 overflow-hidden shrink-0 border border-white/10 relative">
-                          {t.raffle?.prize_image ? (
-                            <img src={t.raffle.prize_image} alt={t.raffle.title} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-lg">🎁</div>
-                          )}
+                      <GlowCard
+                        glowColor="#00F5FF"
+                        borderColor="rgba(255, 255, 255, 0.05)"
+                        className="bg-dark-card flex flex-col md:flex-row justify-between items-stretch gap-0 group hover:border-white/10 transition-all shadow-lg overflow-hidden relative"
+                      >
+                        {/* Holographic Gloss Shine Effect */}
+                        <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl z-20">
+                          <div className="absolute -inset-y-12 left-[-30%] w-16 bg-gradient-to-r from-transparent via-white/10 to-transparent rotate-[25deg] transition-all duration-1000 ease-out group-hover:left-[130%]" />
                         </div>
-                        <div className="min-w-0 flex-1 space-y-1">
-                          <span className="text-[8px] font-orbitron font-black text-neon-cyan uppercase tracking-widest block">KRONIX BOLETO OFICIAL</span>
-                          <h4 className="text-xs font-bold text-white font-orbitron line-clamp-1">
-                            {t.raffle?.title}
-                          </h4>
-                          <p className="text-[9px] text-white/40 font-mono">
-                            ADQUIRIDO: {new Date(t.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </p>
-                          {/* Simulated Barcode */}
-                          <div className="pt-2.5 flex items-center gap-1 opacity-30 group-hover:opacity-55 transition-opacity">
-                            <div className="h-3.5 w-[2px] bg-white"></div>
-                            <div className="h-3.5 w-[1px] bg-white"></div>
-                            <div className="h-3.5 w-[3px] bg-white"></div>
-                            <div className="h-3.5 w-[1px] bg-white"></div>
-                            <div className="h-3.5 w-[2px] bg-white"></div>
-                            <div className="h-3.5 w-[4px] bg-white"></div>
-                            <div className="h-3.5 w-[1px] bg-white"></div>
-                            <div className="h-3.5 w-[2px] bg-white"></div>
-                            <div className="h-3.5 w-[3px] bg-white"></div>
-                            <span className="text-[7px] font-mono text-white/80 tracking-widest pl-2">KRNX-{t.id.slice(0, 8).toUpperCase()}</span>
+
+                        {/* Main Stub */}
+                        <div className="p-5 flex-1 flex gap-4 items-center min-w-0">
+                          <div className="w-14 h-14 rounded-xl bg-neutral-900 overflow-hidden shrink-0 border border-white/10 relative">
+                            {t.raffle?.prize_image ? (
+                              <img src={t.raffle.prize_image} alt={t.raffle.title} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-lg">🎁</div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <span className="text-[8px] font-orbitron font-black text-neon-cyan uppercase tracking-widest block">KRONIX BOLETO OFICIAL</span>
+                            <h4 className="text-xs font-bold text-white font-orbitron line-clamp-1">
+                              {t.raffle?.title}
+                            </h4>
+                            <p className="text-[9px] text-white/40 font-mono">
+                              ADQUIRIDO: {new Date(t.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </p>
+                            {/* Simulated Barcode */}
+                            <div className="pt-2.5 flex items-center gap-1 opacity-40 group-hover:opacity-85 transition-opacity relative overflow-hidden">
+                              {/* Neon scanning laser line for barcode */}
+                              <motion.div
+                                initial={{ top: '0%' }}
+                                animate={{ top: ['0%', '100%', '0%'] }}
+                                transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+                                className="absolute left-0 right-0 h-[1.5px] bg-neon-cyan/80 blur-[0.5px] pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
+                              />
+
+                              <div className="h-3.5 w-[2px] bg-white"></div>
+                              <div className="h-3.5 w-[1px] bg-white"></div>
+                              <div className="h-3.5 w-[3px] bg-white"></div>
+                              <div className="h-3.5 w-[1px] bg-white"></div>
+                              <div className="h-3.5 w-[2px] bg-white"></div>
+                              <div className="h-3.5 w-[4px] bg-white"></div>
+                              <div className="h-3.5 w-[1px] bg-white"></div>
+                              <div className="h-3.5 w-[2px] bg-white"></div>
+                              <div className="h-3.5 w-[3px] bg-white"></div>
+                              <span className="text-[7px] font-mono text-white/80 tracking-widest pl-2">KRNX-{t.id.slice(0, 8).toUpperCase()}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Ticket Divider */}
-                      <div className="hidden md:flex flex-col justify-between items-center relative py-2 shrink-0 w-4">
-                        {/* Top notch */}
-                        <div className="absolute -top-1.5 left-0.5 w-3 h-3 bg-dark-bg border-b border-white/5 rounded-full z-10"></div>
-                        {/* Dashed line */}
-                        <div className="w-[1px] h-full border-r border-dashed border-white/10"></div>
-                        {/* Bottom notch */}
-                        <div className="absolute -bottom-1.5 left-0.5 w-3 h-3 bg-dark-bg border-t border-white/5 rounded-full z-10"></div>
-                      </div>
-
-                      {/* Receipt Stub */}
-                      <div className="p-5 bg-white/[0.01] md:w-44 shrink-0 flex flex-col justify-center items-center gap-2 text-center border-t md:border-t-0 md:border-l border-white/5 relative">
-                        <span className="text-[8px] font-orbitron font-bold text-white/30 uppercase tracking-wider block">NÚMERO DE BOLETO</span>
-                        <span className="text-lg font-orbitron font-black text-neon-cyan tracking-wider drop-shadow-[0_0_8px_rgba(6,182,212,0.3)]">
-                          #{t.ticket_number}
-                        </span>
-
-                        <div className="flex flex-col items-center gap-1.5 mt-0.5">
-                          {isVerified ? (
-                            <span className="px-2.5 py-0.5 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-[8px] font-bold uppercase tracking-wider">
-                              ✓ Confirmado
-                            </span>
-                          ) : (
-                            <span className="px-2.5 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-[8px] font-bold uppercase tracking-wider animate-pulse">
-                              ⚡ Verificando
-                            </span>
-                          )}
-
-                          {isFinished && (
-                            <div>
-                              {isWinner ? (
-                                <span className="px-2 py-0.5 rounded-full bg-gold/10 border border-gold/20 text-gold text-[8px] font-orbitron font-bold uppercase tracking-widest animate-bounce flex items-center gap-1">
-                                  <Trophy className="w-3 h-3 text-gold inline" /> Ganador
-                                </span>
-                              ) : (
-                                <span className="text-[8px] text-white/20 uppercase tracking-widest block font-orbitron">
-                                  No premiado
-                                </span>
-                              )}
-                            </div>
-                          )}
+                        {/* Ticket Divider */}
+                        <div className="hidden md:flex flex-col justify-between items-center relative py-2 shrink-0 w-4">
+                          {/* Top notch */}
+                          <div className="absolute -top-1.5 left-0.5 w-3 h-3 bg-dark-bg border-b border-white/5 rounded-full z-10"></div>
+                          {/* Dashed line */}
+                          <div className="w-[1px] h-full border-r border-dashed border-white/10"></div>
+                          {/* Bottom notch */}
+                          <div className="absolute -bottom-1.5 left-0.5 w-3 h-3 bg-dark-bg border-t border-white/5 rounded-full z-10"></div>
                         </div>
-                      </div>
-                    </div>
+
+                        {/* Receipt Stub */}
+                        <div className="p-5 bg-white/[0.01] md:w-44 shrink-0 flex flex-col justify-center items-center gap-2 text-center border-t md:border-t-0 md:border-l border-white/5 relative">
+                          <span className="text-[8px] font-orbitron font-bold text-white/30 uppercase tracking-wider block">NÚMERO DE BOLETO</span>
+                          <span className="text-lg font-orbitron font-black text-neon-cyan tracking-wider drop-shadow-[0_0_8px_rgba(6,182,212,0.3)]">
+                            #{t.ticket_number}
+                          </span>
+
+                          <div className="flex flex-col items-center gap-1.5 mt-0.5">
+                            {isVerified ? (
+                              <span className="px-2.5 py-0.5 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-[8px] font-bold uppercase tracking-wider">
+                                ✓ Confirmado
+                              </span>
+                            ) : (
+                              <span className="px-2.5 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-[8px] font-bold uppercase tracking-wider animate-pulse">
+                                ⚡ Verificando
+                              </span>
+                            )}
+
+                            {isFinished && (
+                              <div>
+                                {isWinner ? (
+                                  <span className="px-2 py-0.5 rounded-full bg-gold/10 border border-gold/20 text-gold text-[8px] font-orbitron font-bold uppercase tracking-widest animate-bounce flex items-center gap-1">
+                                    <Trophy className="w-3 h-3 text-gold inline" /> Ganador
+                                  </span>
+                                ) : (
+                                  <span className="text-[8px] text-white/20 uppercase tracking-widest block font-orbitron">
+                                    No premiado
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </GlowCard>
+                    </motion.div>
                   )
                 })}
               </div>
@@ -648,7 +637,61 @@ export function ProfileStatsClient({
         )}
 
         {activeTab === 'inicio' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="space-y-6">
+            {/* General Announcements & Welcome Banner */}
+            <div className="p-6 rounded-2xl bg-gradient-to-r from-neon-purple/20 via-neon-cyan/10 to-transparent border border-white/5 relative overflow-hidden">
+              <div className="absolute right-6 top-1/2 -translate-y-1/2 opacity-10 pointer-events-none">
+                <Trophy size={100} className="text-neon-cyan" />
+              </div>
+              <h4 className="font-orbitron font-black text-lg text-white uppercase tracking-tight mb-2">
+                ¡Bienvenido a tu Centro de Mando, {profile?.username || 'Gamer'}!
+              </h4>
+              <p className="text-xs text-white/60 leading-relaxed max-w-xl">
+                Desde aquí puedes gestionar tu historial competitivo, consultar tus estadísticas, revisar tus boletos de sorteos activos y conectar con tu escuadra. ¡Que comience el juego!
+              </p>
+            </div>
+
+            {/* Quick Action Buttons Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <a 
+                href="/torneos"
+                className="p-4 rounded-xl bg-white/[0.01] hover:bg-white/[0.03] border border-white/5 hover:border-neon-cyan/30 transition-all text-center space-y-2 group"
+              >
+                <div className="text-xl">🏆</div>
+                <span className="block text-[10px] font-bold uppercase tracking-widest text-white/50 group-hover:text-neon-cyan transition-colors">
+                  Torneos Públicos
+                </span>
+              </a>
+              <a 
+                href="/rankings"
+                className="p-4 rounded-xl bg-white/[0.01] hover:bg-white/[0.03] border border-white/5 hover:border-neon-purple/30 transition-all text-center space-y-2 group"
+              >
+                <div className="text-xl">📈</div>
+                <span className="block text-[10px] font-bold uppercase tracking-widest text-white/50 group-hover:text-neon-purple transition-colors">
+                  Rankings Nacionales
+                </span>
+              </a>
+              <a 
+                href="/raffles"
+                className="p-4 rounded-xl bg-white/[0.01] hover:bg-white/[0.03] border border-white/5 hover:border-yellow-500/30 transition-all text-center space-y-2 group"
+              >
+                <div className="text-xl">🎟️</div>
+                <span className="block text-[10px] font-bold uppercase tracking-widest text-white/50 group-hover:text-yellow-400 transition-colors">
+                  Sorteos Activos
+                </span>
+              </a>
+              <a 
+                href="/wallet"
+                className="p-4 rounded-xl bg-white/[0.01] hover:bg-white/[0.03] border border-white/5 hover:border-green-500/30 transition-all text-center space-y-2 group"
+              >
+                <div className="text-xl">💳</div>
+                <span className="block text-[10px] font-bold uppercase tracking-widest text-white/50 group-hover:text-green-400 transition-colors">
+                  Mi Billetera
+                </span>
+              </a>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Main Dashboard Section */}
             <div className="lg:col-span-2 space-y-6">
               {/* Torneos Inscritos widget */}
@@ -904,7 +947,8 @@ export function ProfileStatsClient({
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
         {activeTab === 'profile' && (
           <>
