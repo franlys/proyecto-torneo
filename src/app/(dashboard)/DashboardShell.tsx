@@ -8,7 +8,7 @@ import { updateTeammateGameCredentials, GAME_LABELS } from '@/lib/actions/game-a
 import { AlertTriangle, User, Bell, X, Check, Calendar, ChevronRight, Coins } from 'lucide-react'
 import { toast } from 'sonner'
 import { getMyNotificationsAction, markNotificationReadAction, markAllNotificationsReadAction } from '@/lib/actions/notifications'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { updateProfile } from '@/lib/actions/profile'
 
@@ -39,6 +39,7 @@ export default function DashboardShell({
   balance?: number
 }) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const isAdminUser = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'KRONIX_STAFF'
 
@@ -181,26 +182,113 @@ export default function DashboardShell({
     }
   }, [])
 
+  const SidebarLink = ({ href, onClick, children, className = "" }: { href: string; onClick?: () => void; children: React.ReactNode; className?: string }) => {
+    const currentTab = searchParams.get('tab')
+    
+    const isActive = href === '/kronix' 
+      ? (pathname === '/kronix' || (pathname.startsWith('/kronix/') && !pathname.startsWith('/kronix/approvals') && !pathname.startsWith('/kronix/staff') && !pathname.startsWith('/kronix/payments') && !pathname.startsWith('/kronix/support')))
+      : href === '/profile'
+      ? (pathname === '/profile' && !currentTab)
+      : href.startsWith('/profile?')
+      ? (pathname === '/profile' && currentTab === new URL(href, 'http://localhost').searchParams.get('tab'))
+      : pathname === href
+
+    return (
+      <Link
+        href={href}
+        onClick={onClick}
+        className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 group z-10 ${
+          isActive 
+            ? 'text-white font-bold' 
+            : 'text-white/60 hover:text-white hover:bg-white/[0.02]'
+        } ${className}`}
+      >
+        {isActive && (
+          <motion.div
+            layoutId="sidebarActiveBg"
+            className="absolute inset-0 bg-white/5 border border-white/5 rounded-lg -z-10"
+            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+          />
+        )}
+        {isActive && (
+          <motion.div
+            layoutId="sidebarActiveIndicator"
+            className="absolute left-0 top-2.5 bottom-2.5 w-[3px] bg-neon-cyan rounded-r-md shadow-[0_0_8px_#00F5FF]"
+            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+          />
+        )}
+        {children}
+      </Link>
+    )
+  }
+
+  const SidebarButton = ({ onClick, children, isActive }: { onClick: (e: any) => void; children: React.ReactNode; isActive: boolean }) => {
+    return (
+      <button
+        onClick={onClick}
+        className={`relative w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-all duration-200 group z-10 ${
+          isActive 
+            ? 'text-white font-bold' 
+            : 'text-white/60 hover:text-white hover:bg-white/[0.02]'
+        }`}
+      >
+        {isActive && (
+          <motion.div
+            layoutId="sidebarActiveBg"
+            className="absolute inset-0 bg-white/5 border border-white/5 rounded-lg -z-10"
+            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+          />
+        )}
+        {isActive && (
+          <motion.div
+            layoutId="sidebarActiveIndicator"
+            className="absolute left-0 top-2.5 bottom-2.5 w-[3px] bg-neon-cyan rounded-r-md shadow-[0_0_8px_#00F5FF]"
+            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+          />
+        )}
+        {children}
+      </button>
+    )
+  }
+
   const NavLinks = () => (
     <nav className="flex-1 px-3 py-4 space-y-1">
-      <Link
-        href="/profile"
-        onClick={() => setDrawerOpen(false)}
-        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-      >
+      <SidebarLink href="/profile">
         <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l9-9 9 9M5 10v10a1 1 0 001 1h3m10-11V11a1 1 0 00-1-1h-3m-6 0a1 1 0 00-1 1v4a1 1 0 001 1h3m0 0l-3-3m3 3l-3-3" />
         </svg>
         Mi Inicio
-      </Link>
+      </SidebarLink>
+      
+      {/* Sub-menu under Mi Inicio */}
+      <div className="pl-3 space-y-0.5 mt-0.5 border-l border-white/15 ml-5">
+        <SidebarLink href="/profile?tab=ajustes" className="!py-1.5 !px-2.5 text-xs text-white/50 hover:text-white">
+          <span>⚙️</span> Ajustes Perfil
+        </SidebarLink>
+        <SidebarLink href="/profile?tab=amigos" className="!py-1.5 !px-2.5 text-xs text-white/50 hover:text-white">
+          <span>👥</span> Amigos
+        </SidebarLink>
+        <SidebarLink href="/profile?tab=medallero" className="!py-1.5 !px-2.5 text-xs text-white/50 hover:text-white">
+          <span>🏅</span> Medallero
+        </SidebarLink>
+        <SidebarLink href="/profile?tab=desempeno" className="!py-1.5 !px-2.5 text-xs text-white/50 hover:text-white">
+          <span>📊</span> Desempeño
+        </SidebarLink>
+        <SidebarLink href="/profile?tab=sorteos" className="!py-1.5 !px-2.5 text-xs text-white/50 hover:text-white">
+          <span>🎟️</span> Mis Boletos Sorteos
+        </SidebarLink>
+        <SidebarLink href="/wallet" className="!py-1.5 !px-2.5 text-xs text-white/50 hover:text-white">
+          <span>💳</span> Mi Billetera (K-Coins)
+        </SidebarLink>
+      </div>
 
-      <button
+      <SidebarButton
         onClick={(e) => {
           e.preventDefault()
           setShowNotificationsDrawer(true)
           setDrawerOpen(false)
         }}
-        className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors text-left"
+        isActive={showNotificationsDrawer}
       >
         <div className="flex items-center gap-3">
           <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -213,165 +301,94 @@ export default function DashboardShell({
             {unreadNotificationsCount}
           </span>
         )}
-      </button>
+      </SidebarButton>
 
-      <Link
-        href="/kronix"
-        onClick={() => setDrawerOpen(false)}
-        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-      >
+      <SidebarLink href="/kronix">
         <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7h18M3 12h18M3 17h18" />
         </svg>
         {userRole === 'USER' ? 'Mis Inscripciones' : 'Mis Torneos'}
-      </Link>
+      </SidebarLink>
 
       {(userRole !== 'USER' || isStaff) && (
         <>
           {(userRole === 'STREAMER' || userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && (
             <>
-              <Link
-                href="/kronix/approvals"
-                onClick={() => setDrawerOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-              >
+              <SidebarLink href="/kronix/approvals">
                 <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                 </svg>
                 Aprobaciones
-              </Link>
-              <Link
-                href="/kronix/staff"
-                onClick={() => setDrawerOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-              >
+              </SidebarLink>
+              <SidebarLink href="/kronix/staff">
                 <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
                 Mi Staff
-              </Link>
-              <Link
-                href="/kronix/payments"
-                onClick={() => setDrawerOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-              >
+              </SidebarLink>
+              <SidebarLink href="/kronix/payments">
                 <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                 </svg>
                 Métodos de Pago
-              </Link>
+              </SidebarLink>
             </>
           )}
 
           {userRole === 'STREAMER' && (
-            <Link
-              href="/kronix/support"
-              onClick={() => setDrawerOpen(false)}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-            >
+            <SidebarLink href="/kronix/support">
               <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
               Soporte Kronix
-            </Link>
+            </SidebarLink>
           )}
         </>
       )}
 
-      {userRole === 'USER' && (
-        <>
-          <div className="px-3 pt-4 pb-1">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-white/20">Explorar</span>
-          </div>
-          <Link
-            href="/torneos"
-            onClick={() => setDrawerOpen(false)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-          >
-            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 13.5a3 3 0 100-6 3 3 0 000 6z" />
-            </svg>
-            Torneos Públicos
-          </Link>
-          <Link
-            href="/rankings"
-            onClick={() => setDrawerOpen(false)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-          >
-            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-            </svg>
-            Rankings Nacionales
-          </Link>
-          <Link
-            href="/copas"
-            onClick={() => setDrawerOpen(false)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-          >
-            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479L12 14zm0 0L5.84 10.578a12.083 12.083 0 00-.665 6.479L12 14z" />
-            </svg>
-            Copas Oficiales
-          </Link>
-          <Link
-            href="/hall-of-fame"
-            onClick={() => setDrawerOpen(false)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-          >
-            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.907c.961 0 1.371 1.24.588 1.81l-3.97 2.883a1 1 0 00-.364 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.971-2.883a1 1 0 00-1.18 0l-3.97 2.883c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.364-1.118L2.49 10.1c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-            </svg>
-            Hall of Fame
-          </Link>
-        </>
-      )}
-
-      {/* Sorteos (Visible to everyone) */}
+      {/* Explorar Section */}
       <div className="px-3 pt-4 pb-1">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-white/20">Sorteos</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-white/20">Explorar</span>
       </div>
-      <Link
-        href="/raffles"
-        onClick={() => setDrawerOpen(false)}
-        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-      >
+      <SidebarLink href="/torneos">
         <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 13.5a3 3 0 100-6 3 3 0 000 6z" />
         </svg>
-        🏆 Sorteos Activos
-      </Link>
-      <Link
-        href="/profile?tab=sorteos"
-        onClick={() => setDrawerOpen(false)}
-        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-      >
+        Torneos Públicos
+      </SidebarLink>
+      <SidebarLink href="/rankings">
         <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
         </svg>
-        🎟️ Mis Boletos Sorteos
-      </Link>
-      <Link
-        href="/wallet"
-        onClick={() => setDrawerOpen(false)}
-        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-      >
+        Rankings Nacionales
+      </SidebarLink>
+      <SidebarLink href="/copas">
         <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479L12 14zm0 0L5.84 10.578a12.083 12.083 0 00-.665 6.479L12 14z" />
         </svg>
-        Mi Billetera (K-Coins)
-      </Link>
+        Copas Oficiales
+      </SidebarLink>
+      <SidebarLink href="/hall-of-fame">
+        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.907c.961 0 1.371 1.24.588 1.81l-3.97 2.883a1 1 0 00-.364 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.971-2.883a1 1 0 00-1.18 0l-3.97 2.883c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.364-1.118L2.49 10.1c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+        </svg>
+        Hall of Fame
+      </SidebarLink>
+      <SidebarLink href="/raffles">
+        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+        </svg>
+        Sorteos Activos
+      </SidebarLink>
+
       {(userRole === 'STREAMER' || userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && (
-        <Link
-          href="/subscription"
-          onClick={() => setDrawerOpen(false)}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-yellow-500/80 hover:text-yellow-400 hover:bg-yellow-500/10 transition-colors"
-        >
+        <SidebarLink href="/subscription" className="text-yellow-500/80 hover:text-yellow-400 hover:bg-yellow-500/10">
           <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
           </svg>
           👑 Membresía VIP
-        </Link>
+        </SidebarLink>
       )}
 
       {(userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'KRONIX_STAFF') && (
@@ -381,119 +398,75 @@ export default function DashboardShell({
           </div>
           {(userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && (
             <>
-              <Link
-                href="/admin"
-                onClick={() => setDrawerOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-neon-cyan/70 hover:text-neon-cyan hover:bg-neon-cyan/5 transition-colors"
-              >
+              <SidebarLink href="/admin" className="text-neon-cyan/70 hover:text-neon-cyan hover:bg-neon-cyan/5">
                 <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
                 Panel Admin
-              </Link>
-              <Link
-                href="/admin/kronix"
-                onClick={() => setDrawerOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-              >
+              </SidebarLink>
+              <SidebarLink href="/admin/kronix">
                 <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
                 Torneos Admin
-              </Link>
-              <Link
-                href="/admin/users"
-                onClick={() => setDrawerOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-              >
+              </SidebarLink>
+              <SidebarLink href="/admin/users">
                 <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
                 Usuarios
-              </Link>
-              <Link
-                href="/admin/subscriptions"
-                onClick={() => setDrawerOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-              >
+              </SidebarLink>
+              <SidebarLink href="/admin/subscriptions">
                 <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 Suscripciones
-              </Link>
-              <Link
-                href="/admin/finance"
-                onClick={() => setDrawerOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-              >
+              </SidebarLink>
+              <SidebarLink href="/admin/finance">
                 <svg className="w-4 h-4 shrink-0 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 Finanzas & Ingresos
-              </Link>
-              <Link
-                href="/admin/analytics"
-                onClick={() => setDrawerOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-              >
+              </SidebarLink>
+              <SidebarLink href="/admin/analytics">
                 <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
                 Analíticas
-              </Link>
-              <Link
-                href="/admin/ads"
-                onClick={() => setDrawerOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-              >
+              </SidebarLink>
+              <SidebarLink href="/admin/ads">
                 <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
                 </svg>
                 Publicidad
-              </Link>
-              <Link
-                href="/admin/settings"
-                onClick={() => setDrawerOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-              >
+              </SidebarLink>
+              <SidebarLink href="/admin/settings">
                 <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                 </svg>
                 Personalizar Inicio
-              </Link>
-              <Link
-                href="/admin/raffles"
-                onClick={() => setDrawerOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-              >
+              </SidebarLink>
+              <SidebarLink href="/admin/raffles">
                 <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
                 </svg>
                 Gestión de Sorteos
-              </Link>
-              <Link
-                href="/admin/bets"
-                onClick={() => setDrawerOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-              >
+              </SidebarLink>
+              <SidebarLink href="/admin/bets">
                 <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 Control Apuestas
-              </Link>
+              </SidebarLink>
             </>
           )}
-          <Link
-            href="/admin/tickets"
-            onClick={() => setDrawerOpen(false)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-          >
+          <SidebarLink href="/admin/tickets">
             <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
             </svg>
             Soporte Tickets
-          </Link>
+          </SidebarLink>
         </>
       )}
     </nav>
