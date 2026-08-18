@@ -215,19 +215,19 @@ export default function DashboardShell({
         )}
       </button>
 
+      <Link
+        href="/kronix"
+        onClick={() => setDrawerOpen(false)}
+        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+      >
+        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7h18M3 12h18M3 17h18" />
+        </svg>
+        {userRole === 'USER' ? 'Mis Inscripciones' : 'Mis Torneos'}
+      </Link>
+
       {(userRole !== 'USER' || isStaff) && (
         <>
-          <Link
-            href="/kronix"
-            onClick={() => setDrawerOpen(false)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-          >
-            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7h18M3 12h18M3 17h18" />
-            </svg>
-            Mis Torneos
-          </Link>
-          
           {(userRole === 'STREAMER' || userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && (
             <>
               <Link
@@ -627,9 +627,12 @@ export default function DashboardShell({
               className="md:hidden fixed top-0 left-0 bottom-0 z-50 w-72 bg-dark-card border-r border-white/5 flex flex-col overflow-y-auto"
             >
               <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between">
-                <Link href="/kronix" onClick={() => setDrawerOpen(false)}>
-                  <span className="font-orbitron text-sm font-bold tracking-widest text-neon-cyan uppercase">Tournament</span>
-                  <span className="block font-orbitron text-[10px] tracking-[0.25em] text-white/30 uppercase mt-0.5">Platform</span>
+                <Link href="/kronix" onClick={() => setDrawerOpen(false)} className="flex items-center gap-2.5">
+                  <img src="/logo.png" alt="KRONIX Logo" className="w-5 h-5 object-contain" />
+                  <div>
+                    <span className="font-sans font-black tracking-[0.2em] text-xs text-white uppercase">KRONIX</span>
+                    <span className="block font-sans text-[8px] tracking-[0.15em] text-white/30 uppercase -mt-0.5">by GonzalezLabs</span>
+                  </div>
                 </Link>
                 <button
                   onClick={() => setDrawerOpen(false)}
