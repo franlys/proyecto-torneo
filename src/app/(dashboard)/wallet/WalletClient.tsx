@@ -483,17 +483,19 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                         flex-direction: column;
                         justify-content: space-between;
                         padding: 20px;
-                        user-select: none;
+                        transform-style: preserve-3d;
+                        user-select: auto;
                       }
                       .card-front {
                         background: linear-gradient(135deg, #0d0f14 0%, #171a24 100%);
                         border: 1px solid rgba(255, 255, 255, 0.08);
                         box-shadow: 0 15px 35px rgba(0,0,0,0.5), 0 0 15px rgba(0, 245, 255, 0.05);
+                        transform: translateZ(1px);
                       }
                       .card-back {
                         background: linear-gradient(135deg, #090a0d 0%, #12131a 100%);
                         border: 1px solid rgba(255, 255, 255, 0.08);
-                        transform: rotateY(180deg);
+                        transform: rotateY(180deg) translateZ(1px);
                         box-shadow: 0 15px 35px rgba(0,0,0,0.5);
                       }
                       .card-glow-active {
@@ -509,6 +511,8 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                         margin-bottom: 3px;
                       }
                       .paypal-field-container {
+                        position: relative;
+                        z-index: 10;
                         height: 38px;
                         background: rgba(255, 255, 255, 0.03);
                         border: 1px solid rgba(255, 255, 255, 0.08);
@@ -517,6 +521,7 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                         display: flex;
                         align-items: center;
                         transition: all 0.2s ease;
+                        pointer-events: auto;
                       }
                       .paypal-field-container.focused {
                         border-color: #00F5FF;
@@ -554,7 +559,7 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                     </div>
 
                     {/* 3D Card Interactive Preview */}
-                    <div className="card-perspective py-4 flex justify-center">
+                    <div className="card-perspective py-2 flex flex-col items-center">
                       <div
                         className={`card-container ${focusedField ? 'card-glow-active' : ''}`}
                         style={{
@@ -576,14 +581,6 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                           setIsFlipped(!isFlipped)
                         }}
                       >
-                        {/* Dynamic sheen overlay */}
-                        <div
-                          className="absolute inset-0 opacity-15 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none rounded-2xl z-20"
-                          style={{
-                            transform: `translate(${tilt.y * 1.5}px, ${tilt.x * 1.5}px)`
-                          }}
-                        />
-
                         {/* Front Face */}
                         <div
                           className="card-face card-front"
@@ -592,8 +589,16 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                             zIndex: isFlipped ? 1 : 2
                           }}
                         >
+                          {/* Dynamic sheen overlay inside face */}
+                          <div
+                            className="absolute inset-0 opacity-15 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none rounded-2xl z-0"
+                            style={{
+                              transform: `translate(${tilt.y * 1.5}px, ${tilt.x * 1.5}px)`
+                            }}
+                          />
+
                           {/* Top: Chip and Card Brand Logo */}
-                          <div className="flex justify-between items-start">
+                          <div className="flex justify-between items-start z-10">
                             {/* Golden Chip */}
                             <div className="w-9 h-7 rounded bg-gradient-to-br from-yellow-300 via-amber-400 to-yellow-600 border border-amber-600/30 relative overflow-hidden flex flex-col justify-around p-1">
                               <div className="h-[1px] bg-black/10 w-full" />
@@ -617,7 +622,7 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                           </div>
 
                           {/* Middle: Card Number container */}
-                          <div className="space-y-1 text-left">
+                          <div className="space-y-1 text-left z-10">
                             <span className="paypal-card-label">Número de Tarjeta</span>
                             <div
                               id="card-number-container"
@@ -627,7 +632,7 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                           </div>
 
                           {/* Bottom: Expiry, Postal Code, Cardholder Name */}
-                          <div className="grid grid-cols-3 gap-3 items-end text-left">
+                          <div className="grid grid-cols-3 gap-3 items-end text-left z-10">
                             <div className="col-span-2 space-y-1" onClick={(e) => e.stopPropagation()}>
                               <span className="paypal-card-label">Titular</span>
                               <div className="h-9 px-2 bg-white/5 border border-white/10 rounded-lg flex items-center justify-start overflow-hidden">
@@ -656,11 +661,19 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                             zIndex: isFlipped ? 2 : 1
                           }}
                         >
+                          {/* Dynamic sheen overlay inside face */}
+                          <div
+                            className="absolute inset-0 opacity-10 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none rounded-2xl z-0"
+                            style={{
+                              transform: `translate(${tilt.y * 1.5}px, ${tilt.x * 1.5}px)`
+                            }}
+                          />
+
                           {/* Magnetic stripe */}
-                          <div className="h-9 bg-black/80 -mx-5 mt-1" />
+                          <div className="h-9 bg-black/80 -mx-5 mt-1 z-10" />
 
                           {/* CVV Container */}
-                          <div className="space-y-1 px-2">
+                          <div className="space-y-1 px-2 z-10">
                             <div className="flex justify-between items-center">
                               <span className="paypal-card-label">Código de Seguridad (CVC)</span>
                               {/* Small generic brand label on back */}
@@ -680,13 +693,14 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                           </div>
 
                           {/* Small disclaimer text */}
-                          <div className="px-2">
+                          <div className="px-2 z-10">
                             <p className="text-[6px] text-white/20 leading-tight">
                               Esta tarjeta digital interactiva representa una conexión segura encriptada punto a punto con PayPal. Ningún dato de pago sensible es almacenado por Kronix.
                             </p>
                           </div>
                         </div>
                       </div>
+                      <p className="text-[9px] text-white/30 text-center mt-2">💡 Haz clic en la tarjeta para voltearla y ver el reverso</p>
                     </div>
 
                     {/* Standard Input Fields Below Card (Cardholder Name & Postal Code) */}
