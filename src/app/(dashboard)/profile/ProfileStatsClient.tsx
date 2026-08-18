@@ -490,7 +490,7 @@ export function ProfileStatsClient({
       </div>
 
       {/* Apple-style Segmented Control Horizontal Navigation */}
-      <div className="bg-[#0d0d0f]/60 backdrop-blur-md border border-white/5 p-1 rounded-2xl flex gap-1 overflow-x-auto no-scrollbar select-none sticky top-[52px] md:top-0 z-20 shadow-md">
+      <div className="bg-[#0d0d0f]/60 backdrop-blur-md border border-white/5 p-1 rounded-2xl flex items-center gap-1 overflow-x-auto no-scrollbar select-none sticky top-[52px] md:top-0 z-20 shadow-md">
         {[
           { id: 'inicio', label: 'Inicio', icon: User },
           { id: 'profile', label: 'Ajustes', icon: Settings },
@@ -506,7 +506,7 @@ export function ProfileStatsClient({
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className="relative flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider whitespace-nowrap group"
+              className="relative flex items-center justify-center h-9 gap-2 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider whitespace-nowrap group"
             >
               {active && (
                 <motion.div

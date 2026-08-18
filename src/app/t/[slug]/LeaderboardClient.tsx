@@ -2213,7 +2213,7 @@ export function LeaderboardClient({
       <div className="flex items-center gap-1.5 mb-6 sm:mb-8 sm:justify-center overflow-x-auto pb-1 px-3 sm:px-0 scrollbar-none no-scrollbar max-w-full relative">
         <button
           onClick={() => setActiveTab('ranking')}
-          className="shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap relative group"
+          className="shrink-0 px-3.5 sm:px-5 h-9 sm:h-10 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap relative group flex items-center justify-center"
         >
           {activeTab === 'ranking' && (
             <motion.div
@@ -2229,7 +2229,7 @@ export function LeaderboardClient({
         </button>
         <button
           onClick={() => setActiveTab('participants')}
-          className="shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap relative group"
+          className="shrink-0 px-3.5 sm:px-5 h-9 sm:h-10 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap relative group flex items-center justify-center"
         >
           {activeTab === 'participants' && (
             <motion.div
@@ -2246,7 +2246,7 @@ export function LeaderboardClient({
         {isShooter && (
           <button
             onClick={() => setActiveTab('matches')}
-            className="shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap relative group"
+            className="shrink-0 px-3.5 sm:px-5 h-9 sm:h-10 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap relative group flex items-center justify-center"
           >
             {activeTab === 'matches' && (
               <motion.div
@@ -2264,7 +2264,7 @@ export function LeaderboardClient({
         {isShooter && (
           <button
             onClick={() => setActiveTab('statistics')}
-            className="shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap relative group"
+            className="shrink-0 px-3.5 sm:px-5 h-9 sm:h-10 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap relative group flex items-center justify-center"
           >
             {activeTab === 'statistics' && (
               <motion.div
@@ -2281,7 +2281,7 @@ export function LeaderboardClient({
         )}
         <button
           onClick={() => setActiveTab('rules')}
-          className="shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap relative group"
+          className="shrink-0 px-3.5 sm:px-5 h-9 sm:h-10 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap relative group flex items-center justify-center"
         >
           {activeTab === 'rules' && (
             <motion.div
@@ -2297,7 +2297,7 @@ export function LeaderboardClient({
         </button>
         <button
           onClick={() => setActiveTab('evidences')}
-          className="shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap relative group"
+          className="shrink-0 px-3.5 sm:px-5 h-9 sm:h-10 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg whitespace-nowrap relative group flex items-center justify-center"
         >
           {activeTab === 'evidences' && (
             <motion.div
@@ -2314,7 +2314,7 @@ export function LeaderboardClient({
         {arenaBettingEnabled && (
           <button
             onClick={() => setActiveTab('bets')}
-            className="shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg relative whitespace-nowrap group"
+            className="shrink-0 px-3.5 sm:px-5 h-9 sm:h-10 rounded-xl font-orbitron text-xs sm:text-sm transition-all shadow-lg relative whitespace-nowrap group flex items-center justify-center"
           >
             {activeTab === 'bets' && (
               <motion.div
