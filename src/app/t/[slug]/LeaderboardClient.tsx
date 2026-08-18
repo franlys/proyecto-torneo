@@ -1807,7 +1807,7 @@ export function LeaderboardClient({
 
       {/* ── Main UI Content (With Glow Effect) ──────────────────────── */}
       <div 
-        className="w-full max-w-7xl mx-auto p-4 md:p-8 relative z-10 min-h-[90vh] flex flex-col justify-center py-10"
+        className="w-full max-w-7xl mx-auto p-4 md:p-8 relative z-10 min-h-[90vh] flex flex-col justify-start py-10"
         style={{ 
           filter: `drop-shadow(0 0 50px ${primaryColor}15)`,
         }}
