@@ -20,31 +20,36 @@ export async function updateDiscordUsername(
   discordUsername: string,
   discordGuildId?: string | null
 ): Promise<{ success: true } | { error: string }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'No autenticado' }
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autenticado' }
 
-  let cleanGuildId = discordGuildId?.trim() || null
-  if (cleanGuildId) {
-    const { resolveDiscordGuildId } = await import('@/lib/services/discord')
-    const resolved = await resolveDiscordGuildId(cleanGuildId)
-    if (resolved) {
-      cleanGuildId = resolved
+    let cleanGuildId = discordGuildId?.trim() || null
+    if (cleanGuildId) {
+      const { resolveDiscordGuildId } = await import('@/lib/services/discord')
+      const resolved = await resolveDiscordGuildId(cleanGuildId)
+      if (resolved) {
+        cleanGuildId = resolved
+      }
     }
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ 
+        discord_username: discordUsername ? discordUsername.trim() : null,
+        discord_guild_id: cleanGuildId,
+        discord_connected: !!cleanGuildId
+      })
+      .eq('id', user.id)
+
+    if (error) return { error: error.message }
+    revalidatePath('/profile')
+    return { success: true }
+  } catch (err: any) {
+    console.error('Error in updateDiscordUsername Server Action:', err)
+    return { error: err.message || 'Error interno del servidor al actualizar Discord' }
   }
-
-  const { error } = await supabase
-    .from('profiles')
-    .update({ 
-      discord_username: discordUsername.trim(),
-      discord_guild_id: cleanGuildId,
-      discord_connected: !!cleanGuildId
-    })
-    .eq('id', user.id)
-
-  if (error) return { error: error.message }
-  revalidatePath('/profile')
-  return { success: true }
 }
 
 export async function upsertGameAccount(input: {

@@ -11,107 +11,112 @@ const updateProfileSchema = z.object({
 })
 
 export async function updateProfile(formData: FormData) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'No autorizado' }
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autorizado' }
 
-  const rawUsername = formData.get('username')
-  const rawStreamUrl = formData.get('stream_url')
-  
-  const parsed = updateProfileSchema.safeParse({
-    username: rawUsername === '' ? null : (rawUsername ? String(rawUsername) : undefined),
-    stream_url: rawStreamUrl === '' ? '' : (rawStreamUrl ? String(rawStreamUrl) : undefined),
-  })
-  if (!parsed.success) return { error: parsed.error.errors[0].message }
+    const rawUsername = formData.get('username')
+    const rawStreamUrl = formData.get('stream_url')
+    
+    const parsed = updateProfileSchema.safeParse({
+      username: rawUsername === '' ? null : (rawUsername ? String(rawUsername) : undefined),
+      stream_url: rawStreamUrl === '' ? '' : (rawStreamUrl ? String(rawStreamUrl) : undefined),
+    })
+    if (!parsed.success) return { error: parsed.error.errors[0].message }
 
-  const adminSupabase = await createAdminClient()
+    const adminSupabase = await createAdminClient()
 
-  // Fetch existing profile to preserve role, avatar_url, check changes limit and uniqueness
-  const { data: existingProfile } = await adminSupabase
-    .from('profiles')
-    .select('role, username, username_changes_count, avatar_url, stream_url')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  const role = existingProfile?.role || 'USER'
-  const avatar_url = existingProfile?.avatar_url || null
-  let changesCount = existingProfile?.username_changes_count || 0
-
-  const newUsername = parsed.data.username
-  const currentUsername = existingProfile?.username
-
-  if (newUsername && newUsername !== currentUsername) {
-    // Check if duplicate username
-    const { data: duplicateUser } = await adminSupabase
+    // Fetch existing profile to preserve role, avatar_url, check changes limit and uniqueness
+    const { data: existingProfile } = await adminSupabase
       .from('profiles')
-      .select('id')
-      .eq('username', newUsername)
-      .neq('id', user.id)
+      .select('role, username, username_changes_count, avatar_url, stream_url')
+      .eq('id', user.id)
       .maybeSingle()
 
-    if (duplicateUser) {
-      return { error: 'El nombre de usuario ya está registrado por otro jugador' }
-    }
+    const role = existingProfile?.role || 'USER'
+    const avatar_url = existingProfile?.avatar_url || null
+    let changesCount = existingProfile?.username_changes_count || 0
 
-    // If they had a username before, this counts as a name change
-    if (currentUsername) {
-      if (changesCount >= 1) {
-        return { error: 'Ya has agotado tu cambio de nombre gratuito. Los siguientes cambios son de pago.' }
+    const newUsername = parsed.data.username
+    const currentUsername = existingProfile?.username
+
+    if (newUsername && newUsername !== currentUsername) {
+      // Check if duplicate username
+      const { data: duplicateUser } = await adminSupabase
+        .from('profiles')
+        .select('id')
+        .eq('username', newUsername)
+        .neq('id', user.id)
+        .maybeSingle()
+
+      if (duplicateUser) {
+        return { error: 'El nombre de usuario ya está registrado por otro jugador' }
       }
-      changesCount += 1
-    }
-  }
 
-  // Preserve existing username if not specified
-  const finalUsername = newUsername !== undefined ? newUsername : (currentUsername || null)
-  const finalStreamUrl = parsed.data.stream_url !== undefined ? (parsed.data.stream_url || null) : (existingProfile?.stream_url || null)
-
-  const { error } = await adminSupabase
-    .from('profiles')
-    .upsert({ 
-      id: user.id, 
-      username: finalUsername, 
-      role,
-      avatar_url,
-      username_changes_count: changesCount,
-      stream_url: finalStreamUrl,
-      updated_at: new Date().toISOString() 
-    })
-
-  if (error) return { error: error.message }
-
-  // Sincronizar el cambio de nombre en las inscripciones de torneos existentes
-  if (newUsername && newUsername !== currentUsername) {
-    try {
-      // 1. Actualizar el display_name en la tabla de participantes
-      await adminSupabase
-        .from('participants')
-        .update({ display_name: newUsername })
-        .eq('user_id', user.id)
-
-      // 2. Si es torneo individual y el nombre del equipo era su antiguo username, actualizarlo también
+      // If they had a username before, this counts as a name change
       if (currentUsername) {
-        const { data: userParts } = await adminSupabase
+        if (changesCount >= 1) {
+          return { error: 'Ya has agotado tu cambio de nombre gratuito. Los siguientes cambios son de pago.' }
+        }
+        changesCount += 1
+      }
+    }
+
+    // Preserve existing username if not specified
+    const finalUsername = newUsername !== undefined ? newUsername : (currentUsername || null)
+    const finalStreamUrl = parsed.data.stream_url !== undefined ? (parsed.data.stream_url || null) : (existingProfile?.stream_url || null)
+
+    const { error } = await adminSupabase
+      .from('profiles')
+      .upsert({ 
+        id: user.id, 
+        username: finalUsername, 
+        role,
+        avatar_url,
+        username_changes_count: changesCount,
+        stream_url: finalStreamUrl,
+        updated_at: new Date().toISOString() 
+      })
+
+    if (error) return { error: error.message }
+
+    // Sincronizar el cambio de nombre en las inscripciones de torneos existentes
+    if (newUsername && newUsername !== currentUsername) {
+      try {
+        // 1. Actualizar el display_name en la tabla de participantes
+        await adminSupabase
           .from('participants')
-          .select('team_id')
+          .update({ display_name: newUsername })
           .eq('user_id', user.id)
 
-        if (userParts && userParts.length > 0) {
-          const teamIds = userParts.map(p => p.team_id).filter(Boolean)
-          await adminSupabase
-            .from('teams')
-            .update({ name: newUsername })
-            .in('id', teamIds)
-            .eq('name', currentUsername)
-        }
-      }
-    } catch (syncErr) {
-      console.error('Error al sincronizar el cambio de nombre en los torneos:', syncErr)
-    }
-  }
+        // 2. Si es torneo individual y el nombre del equipo era su antiguo username, actualizarlo también
+        if (currentUsername) {
+          const { data: userParts } = await adminSupabase
+            .from('participants')
+            .select('team_id')
+            .eq('user_id', user.id)
 
-  revalidatePath('/profile')
-  return { success: true }
+          if (userParts && userParts.length > 0) {
+            const teamIds = userParts.map(p => p.team_id).filter(Boolean)
+            await adminSupabase
+              .from('teams')
+              .update({ name: newUsername })
+              .in('id', teamIds)
+              .eq('name', currentUsername)
+          }
+        }
+      } catch (syncErr) {
+        console.error('Error al sincronizar el cambio de nombre en los torneos:', syncErr)
+      }
+    }
+
+    revalidatePath('/profile')
+    return { success: true }
+  } catch (err: any) {
+    console.error('Error in updateProfile Server Action:', err)
+    return { error: err.message || 'Error interno del servidor al actualizar el perfil.' }
+  }
 }
 
 export async function getPlayerDetails(userId: string) {
