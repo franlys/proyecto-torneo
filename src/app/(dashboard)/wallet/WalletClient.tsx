@@ -585,7 +585,7 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                         <div
                           className="card-face card-front"
                           style={{
-                            pointerEvents: isFlipped ? 'none' : 'auto',
+                            pointerEvents: 'none',
                             zIndex: isFlipped ? 1 : 2
                           }}
                         >
@@ -624,31 +624,31 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                           {/* Middle: Card Number container */}
                           <div className="space-y-1 text-left z-10">
                             <span className="paypal-card-label">Número de Tarjeta</span>
-                            <div
-                              id="card-number-container"
-                              className={`paypal-field-container ${focusedField === 'number' ? 'focused' : ''}`}
-                              onClick={(e) => e.stopPropagation()}
-                            />
+                            <div className={`h-9 px-3 bg-white/5 border rounded-lg flex items-center justify-start transition-all duration-200 ${focusedField === 'number' ? 'border-neon-cyan bg-neon-cyan/5 shadow-[0_0_8px_rgba(0,245,255,0.15)]' : 'border-white/5'}`}>
+                              <p className="font-mono text-sm tracking-widest text-white/90">
+                                •••• &nbsp; •••• &nbsp; •••• &nbsp; ••••
+                              </p>
+                            </div>
                           </div>
 
                           {/* Bottom: Expiry, Postal Code, Cardholder Name */}
                           <div className="grid grid-cols-3 gap-3 items-end text-left z-10">
-                            <div className="col-span-2 space-y-1" onClick={(e) => e.stopPropagation()}>
+                            <div className="col-span-2 space-y-1">
                               <span className="paypal-card-label">Titular</span>
-                              <div className="h-9 px-2 bg-white/5 border border-white/10 rounded-lg flex items-center justify-start overflow-hidden">
+                              <div className={`h-9 px-2 bg-white/5 border rounded-lg flex items-center justify-start overflow-hidden transition-all duration-200 ${focusedField === 'name' ? 'border-neon-cyan bg-neon-cyan/5 shadow-[0_0_8px_rgba(0,245,255,0.15)]' : 'border-white/5'}`}>
                                 <p className="font-mono text-[10px] tracking-widest text-white truncate uppercase">
-                                  {cardholderName || 'NOMBRE APELLIDO'}
+                                  {cardholderName || 'NOMBRE TITULAR'}
                                 </p>
                               </div>
                             </div>
                             
                             <div className="space-y-1">
                               <span className="paypal-card-label">Vence</span>
-                              <div
-                                id="card-expiry-container"
-                                className={`paypal-field-container ${focusedField === 'expiry' ? 'focused' : ''}`}
-                                onClick={(e) => e.stopPropagation()}
-                              />
+                              <div className={`h-9 px-2 bg-white/5 border rounded-lg flex items-center justify-center transition-all duration-200 ${focusedField === 'expiry' ? 'border-neon-cyan bg-neon-cyan/5 shadow-[0_0_8px_rgba(0,245,255,0.15)]' : 'border-white/5'}`}>
+                                <p className="font-mono text-xs text-white/95">
+                                  MM/AA
+                                </p>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -657,7 +657,7 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                         <div
                           className="card-face card-back justify-between py-5 text-left"
                           style={{
-                            pointerEvents: isFlipped ? 'auto' : 'none',
+                            pointerEvents: 'none',
                             zIndex: isFlipped ? 2 : 1
                           }}
                         >
@@ -684,11 +684,9 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                               <div className="flex-1 h-8 bg-white/10 rounded border border-white/5 flex items-center px-2">
                                 <span className="font-serif italic text-xs text-white/30 tracking-wider">Kronix Club</span>
                               </div>
-                              <div
-                                id="card-cvv-container"
-                                className={`w-20 paypal-field-container ${focusedField === 'cvv' ? 'focused' : ''}`}
-                                onClick={(e) => e.stopPropagation()}
-                              />
+                              <div className={`w-16 h-8 bg-white/5 border rounded flex items-center justify-center transition-all duration-200 ${focusedField === 'cvv' ? 'border-neon-cyan bg-neon-cyan/5 shadow-[0_0_8px_rgba(0,245,255,0.15)]' : 'border-white/5'}`}>
+                                <span className="font-mono text-sm text-white tracking-widest">•••</span>
+                              </div>
                             </div>
                           </div>
 
@@ -705,6 +703,32 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
 
                     {/* Standard Input Fields Below Card (Cardholder Name & Postal Code) */}
                     <div className="space-y-4 text-left max-w-sm mx-auto">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] text-white/40 uppercase tracking-widest font-semibold block">Número de Tarjeta</label>
+                        <div
+                          id="card-number-container"
+                          className={`paypal-field-container ${focusedField === 'number' ? 'focused' : ''}`}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-white/40 uppercase tracking-widest font-semibold block">Fecha de Vencimiento (MM/AA)</label>
+                          <div
+                            id="card-expiry-container"
+                            className={`paypal-field-container ${focusedField === 'expiry' ? 'focused' : ''}`}
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-white/40 uppercase tracking-widest font-semibold block">Código de Seguridad (CVV)</label>
+                          <div
+                            id="card-cvv-container"
+                            className={`paypal-field-container ${focusedField === 'cvv' ? 'focused' : ''}`}
+                          />
+                        </div>
+                      </div>
+
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                           <label className="text-[10px] text-white/40 uppercase tracking-widest font-semibold block">Nombre del Titular</label>
@@ -713,8 +737,12 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                             placeholder="Juan Pérez"
                             value={cardholderName}
                             onChange={(e) => setCardholderName(e.target.value)}
-                            onFocus={() => setIsFlipped(false)}
-                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-neon-cyan transition-colors"
+                            onFocus={() => {
+                              setFocusedField('name')
+                              setIsFlipped(false)
+                            }}
+                            onBlur={() => setFocusedField(null)}
+                            className="w-full px-3 h-[38px] bg-white/5 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-neon-cyan transition-colors"
                           />
                         </div>
 
@@ -723,7 +751,6 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                           <div
                             id="card-postal-code-container"
                             className={`paypal-field-container ${focusedField === 'postalCode' ? 'focused' : ''}`}
-                            onClick={(e) => e.stopPropagation()}
                           />
                         </div>
                       </div>
