@@ -191,16 +191,13 @@ export function ProfileStatsClient({
       const formData = new FormData()
       formData.append('username', username.trim())
       formData.append('stream_url', streamUrl.trim())
+      formData.append('discord_username', discordUsername.trim())
+      formData.append('discord_guild_id', discordGuildId.trim())
       const res = await updateProfile(formData)
       if (res && 'error' in res) {
         toast.error(res.error)
       } else {
-        const discordRes = await updateDiscordUsername(discordUsername, discordGuildId)
-        if ('error' in discordRes) {
-          toast.error(discordRes.error)
-        } else {
-          toast.success('Perfil y Discord actualizados correctamente')
-        }
+        toast.success('Perfil y Discord actualizados correctamente')
       }
     } catch (err: any) {
       toast.error('Error al actualizar perfil: ' + err.message)

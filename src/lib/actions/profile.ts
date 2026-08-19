@@ -8,6 +8,8 @@ import { getProfile } from './auth-helpers'
 const updateProfileSchema = z.object({
   username: z.string().min(2, 'Mínimo 2 caracteres').max(30, 'Máximo 30 caracteres').regex(/^[a-zA-Z0-9_]+$/, 'Solo letras, números y guión bajo').nullable().optional(),
   stream_url: z.string().url('URL inválida. Debe comenzar con http:// o https://').or(z.literal('')).nullable().optional(),
+  discord_username: z.string().max(100, 'Máximo 100 caracteres').nullable().optional(),
+  discord_guild_id: z.string().max(200, 'Máximo 200 caracteres').nullable().optional(),
 })
 
 export async function updateProfile(formData: FormData) {
@@ -18,10 +20,14 @@ export async function updateProfile(formData: FormData) {
 
     const rawUsername = formData.get('username')
     const rawStreamUrl = formData.get('stream_url')
+    const rawDiscordUsername = formData.get('discord_username')
+    const rawDiscordGuildId = formData.get('discord_guild_id')
     
     const parsed = updateProfileSchema.safeParse({
       username: rawUsername === '' ? null : (rawUsername ? String(rawUsername) : undefined),
       stream_url: rawStreamUrl === '' ? '' : (rawStreamUrl ? String(rawStreamUrl) : undefined),
+      discord_username: rawDiscordUsername === '' ? null : (rawDiscordUsername ? String(rawDiscordUsername) : undefined),
+      discord_guild_id: rawDiscordGuildId === '' ? null : (rawDiscordGuildId ? String(rawDiscordGuildId) : undefined),
     })
     if (!parsed.success) return { error: parsed.error.errors[0].message }
 
@@ -67,6 +73,18 @@ export async function updateProfile(formData: FormData) {
     const finalUsername = newUsername !== undefined ? newUsername : (currentUsername || null)
     const finalStreamUrl = parsed.data.stream_url !== undefined ? (parsed.data.stream_url || null) : (existingProfile?.stream_url || null)
 
+    // Discord resolution logic
+    let cleanGuildId = parsed.data.discord_guild_id ? parsed.data.discord_guild_id.trim() : null
+    if (cleanGuildId) {
+      const { resolveDiscordGuildId } = await import('@/lib/services/discord')
+      const resolved = await resolveDiscordGuildId(cleanGuildId)
+      if (resolved) {
+        cleanGuildId = resolved
+      }
+    }
+
+    const finalDiscordUsername = parsed.data.discord_username ? parsed.data.discord_username.trim() : null
+
     const { error } = await adminSupabase
       .from('profiles')
       .upsert({ 
@@ -76,6 +94,9 @@ export async function updateProfile(formData: FormData) {
         avatar_url,
         username_changes_count: changesCount,
         stream_url: finalStreamUrl,
+        discord_username: finalDiscordUsername,
+        discord_guild_id: cleanGuildId,
+        discord_connected: !!cleanGuildId,
         updated_at: new Date().toISOString() 
       })
 

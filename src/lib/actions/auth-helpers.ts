@@ -13,6 +13,10 @@ export type Profile = {
   shortId: string | null
   organizationName: string | null
   balance?: number
+  streamUrl: string | null
+  discordUsername: string | null
+  discordGuildId: string | null
+  discordConnected: boolean
 }
 
 /**
@@ -73,7 +77,11 @@ export async function getProfile(): Promise<Profile | null> {
     usernameChangesCount: profile.username_changes_count || 0,
     shortId: profile.short_id || null,
     organizationName: profile.organization_name || null,
-    balance: parseFloat(profile.balance || '0.00')
+    balance: parseFloat(profile.balance || '0.00'),
+    streamUrl: profile.stream_url || null,
+    discordUsername: profile.discord_username || null,
+    discordGuildId: profile.discord_guild_id || null,
+    discordConnected: !!profile.discord_connected
   }
 }
 
