@@ -42,32 +42,30 @@ export function GlowCard({
       }}
     >
       {/* Dynamic Glow Spotlight Background */}
-      {isFocused && (
-        <div
-          className="absolute pointer-events-none transition-opacity duration-300 -z-10"
-          style={{
-            width: '350px',
-            height: '350px',
-            background: `radial-gradient(circle, ${glowColor}1c 0%, transparent 70%)`,
-            left: `${coords.x - 175}px`,
-            top: `${coords.y - 175}px`,
-          }}
-        />
-      )}
+      <div
+        className="absolute pointer-events-none transition-opacity duration-500 -z-10"
+        style={{
+          width: '350px',
+          height: '350px',
+          background: `radial-gradient(circle, ${glowColor}1c 0%, transparent 70%)`,
+          left: `${coords.x - 175}px`,
+          top: `${coords.y - 175}px`,
+          opacity: isFocused ? 1 : 0
+        }}
+      />
 
       {/* Border Glow Spotlight Overlay */}
-      {isFocused && (
-        <div
-          className="absolute inset-0 pointer-events-none rounded-2xl -z-10"
-          style={{
-            background: `radial-gradient(circle 80px at ${coords.x}px ${coords.y}px, ${glowColor}50 0%, transparent 100%)`,
-            padding: '1px',
-            WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-            WebkitMaskComposite: 'xor',
-            maskComposite: 'exclude',
-          }}
-        />
-      )}
+      <div
+        className="absolute inset-0 pointer-events-none rounded-2xl -z-10 transition-opacity duration-500"
+        style={{
+          background: `radial-gradient(circle 80px at ${coords.x}px ${coords.y}px, ${glowColor}50 0%, transparent 100%)`,
+          padding: '1px',
+          WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+          WebkitMaskComposite: 'xor',
+          maskComposite: 'exclude',
+          opacity: isFocused ? 1 : 0
+        }}
+      />
 
       {/* Card Content */}
       <div className="relative z-10 w-full h-full">
