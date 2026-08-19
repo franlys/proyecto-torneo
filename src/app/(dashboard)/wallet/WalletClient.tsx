@@ -106,77 +106,118 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
   useEffect(() => {
     if (!showPayment || !sdkLoaded || !(window as any).paypal) return
 
-    const container = document.getElementById('paypal-button-container')
-    if (container) container.innerHTML = ''
-    setPaypalRendered(false)
+    let isMounted = true
+    let retryTimer: NodeJS.Timeout
+    let delayTimer: NodeJS.Timeout
 
-    ;(window as any).paypal.Buttons({
-      style: {
-        layout: 'vertical',
-        color: 'gold',
-        shape: 'rect',
-        label: 'pay',
-        height: 48,
-        tagline: false,
-        borderRadius: 12
-      },
-      createOrder: async () => {
-        try {
-          const res = await fetch('/api/paypal/create-order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ amount })
-          })
-          const data = await res.json()
-          if (data.error) {
-            alert(data.error)
-            throw new Error(data.error)
-          }
-          return data.id
-        } catch (err: any) {
-          console.error(err)
-          alert('Error al iniciar orden en PayPal')
-          throw err
+    const initButtons = () => {
+      const container = document.getElementById('paypal-button-container')
+      if (!container) {
+        if (isMounted) {
+          retryTimer = setTimeout(initButtons, 50)
         }
-      },
-      onApprove: async (data: any) => {
-        setIsProcessing(true)
-        try {
-          const res = await fetch('/api/paypal/capture-order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orderID: data.orderID })
-          })
-          const capture = await res.json()
-          if (capture.error) {
-            alert(`Error al capturar el pago: ${capture.error}`)
-          } else if (capture.success) {
-            setPurchasedCoins(capture.coinsAdded || capture.dopAmount || 0)
-            setTransactionId(capture.depositId || '')
-            setShowPaypalModal(false)
-            setShowThankYouModal(true)
-          } else {
-            alert('¡Recarga acreditada con éxito!')
-            if (redirectUrl) {
-              window.location.href = redirectUrl
-            } else {
-              window.location.reload()
+        return
+      }
+
+      container.innerHTML = ''
+      if (isMounted) {
+        setPaypalRendered(false)
+      }
+
+      try {
+        ;(window as any).paypal.Buttons({
+          style: {
+            layout: 'vertical',
+            color: 'gold',
+            shape: 'rect',
+            label: 'pay',
+            height: 48,
+            tagline: false,
+            borderRadius: 12
+          },
+          createOrder: async () => {
+            try {
+              const res = await fetch('/api/paypal/create-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount })
+              })
+              const data = await res.json()
+              if (data.error) {
+                alert(data.error)
+                throw new Error(data.error)
+              }
+              return data.id
+            } catch (err: any) {
+              console.error(err)
+              alert('Error al iniciar orden en PayPal')
+              throw err
+            }
+          },
+          onApprove: async (data: any) => {
+            if (isMounted) {
+              setIsProcessing(true)
+            }
+            try {
+              const res = await fetch('/api/paypal/capture-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderID: data.orderID })
+              })
+              const capture = await res.json()
+              if (capture.error) {
+                alert(`Error al capturar el pago: ${capture.error}`)
+              } else if (capture.success) {
+                if (isMounted) {
+                  setPurchasedCoins(capture.coinsAdded || capture.dopAmount || 0)
+                  setTransactionId(capture.depositId || '')
+                  setShowPaypalModal(false)
+                  setShowThankYouModal(true)
+                }
+              } else {
+                alert('¡Recarga acreditada con éxito!')
+                if (redirectUrl) {
+                  window.location.href = redirectUrl
+                } else {
+                  window.location.reload()
+                }
+              }
+            } catch (err: any) {
+              console.error(err)
+              alert('Error al acreditar recarga')
+            } finally {
+              if (isMounted) {
+                setIsProcessing(false)
+              }
+            }
+          },
+          onError: (err: any) => {
+            console.error('PayPal button error:', err)
+            // Only alert the user if the container is still present in the DOM (meaning it wasn't a sudden unmount/dismiss)
+            if (isMounted && document.getElementById('paypal-button-container')) {
+              alert('Hubo un error con la pasarela de PayPal')
             }
           }
-        } catch (err: any) {
-          console.error(err)
-          alert('Error al acreditar recarga')
-        } finally {
-          setIsProcessing(false)
-        }
-      },
-      onError: (err: any) => {
-        console.error('PayPal button error:', err)
-        alert('Hubo un error con la pasarela de PayPal')
+        }).render('#paypal-button-container').then(() => {
+          if (isMounted) {
+            setPaypalRendered(true)
+          }
+        }).catch((renderErr: any) => {
+          console.error('PayPal render error:', renderErr)
+        })
+      } catch (btnErr) {
+        console.error('PayPal buttons init exception:', btnErr)
       }
-    }).render('#paypal-button-container').then(() => {
-      setPaypalRendered(true)
-    })
+    }
+
+    // Give entry animation a short moment to start mounting the DOM node
+    delayTimer = setTimeout(initButtons, 100)
+
+    return () => {
+      isMounted = false
+      clearTimeout(delayTimer)
+      clearTimeout(retryTimer)
+    }
   }, [showPayment, sdkLoaded, amount])
 
   return (
