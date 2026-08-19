@@ -119,9 +119,11 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
     if (container) container.innerHTML = ''
     setPaypalRendered(false)
 
-    // Render standard PayPal checkout button (excluding default Card button)
-    ;(window as any).paypal.Buttons({
-      fundingSource: (window as any).paypal.FUNDING.PAYPAL,
+    // Check if CardFields is eligible for this merchant client-id
+    const isCardFieldsEligible = !!((window as any).paypal.CardFields && (window as any).paypal.CardFields().isEligible())
+    setCardFieldsEligible(isCardFieldsEligible)
+
+    const buttonsConfig: any = {
       style: {
         layout: 'vertical',
         color: 'gold',
@@ -185,12 +187,20 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
         console.error('PayPal button error:', err)
         alert('Hubo un error con la pasarela de PayPal')
       }
-    }).render('#paypal-button-container').then(() => {
+    }
+
+    // Only restrict funding to yellow button if CardFields is eligible and shown separately.
+    // If not eligible, let standard PayPal buttons draw the card button as fallback.
+    if (isCardFieldsEligible) {
+      buttonsConfig.fundingSource = (window as any).paypal.FUNDING.PAYPAL
+    }
+
+    ;(window as any).paypal.Buttons(buttonsConfig).render('#paypal-button-container').then(() => {
       setPaypalRendered(true)
     })
 
     // Render Custom CardFields if eligible
-    if ((window as any).paypal.CardFields) {
+    if (isCardFieldsEligible) {
       const cardFields = (window as any).paypal.CardFields({
         createOrder: async () => {
           try {
@@ -267,29 +277,27 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
         }
       })
 
-      if (cardFields.isEligible()) {
-        setCardFieldsEligible(true)
-        // Clear containers before rendering
-        const numContainer = document.getElementById('card-number-container')
-        const expContainer = document.getElementById('card-expiry-container')
-        const cvvContainer = document.getElementById('card-cvv-container')
-        const postalContainer = document.getElementById('card-postal-code-container')
-        
-        if (numContainer) numContainer.innerHTML = ''
-        if (expContainer) expContainer.innerHTML = ''
-        if (cvvContainer) cvvContainer.innerHTML = ''
-        if (postalContainer) postalContainer.innerHTML = ''
+      // Clear containers before rendering
+      const numContainer = document.getElementById('card-number-container')
+      const expContainer = document.getElementById('card-expiry-container')
+      const cvvContainer = document.getElementById('card-cvv-container')
+      const postalContainer = document.getElementById('card-postal-code-container')
+      
+      if (numContainer) numContainer.innerHTML = ''
+      if (expContainer) expContainer.innerHTML = ''
+      if (cvvContainer) cvvContainer.innerHTML = ''
+      if (postalContainer) postalContainer.innerHTML = ''
 
+      try {
         cardFields.NumberField().render('#card-number-container')
         cardFields.ExpiryField().render('#card-expiry-container')
         cardFields.CVVField().render('#card-cvv-container')
         cardFields.PostalCodeField().render('#card-postal-code-container')
-
-        setCardFieldsInstance(cardFields)
-      } else {
-        setCardFieldsEligible(false)
-        console.warn('PayPal Card Fields not eligible')
+      } catch (renderError) {
+        console.error('Error rendering CardFields:', renderError)
       }
+
+      setCardFieldsInstance(cardFields)
     }
   }, [showPayment, sdkLoaded, amount])
 
@@ -537,10 +545,11 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                       }
                     `}} />
 
-                    {/* Standard PayPal Yellow Button */}
                     <div className="space-y-3 text-center">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">Pagar con Cuenta PayPal</span>
+                        <span className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">
+                          {cardFieldsEligible ? 'Pagar con Cuenta PayPal' : 'Pagar con PayPal o Tarjeta'}
+                        </span>
                       </div>
                       {!paypalRendered && (
                         <div className="h-[48px] rounded-xl bg-[#FFC439]/10 animate-pulse" />
@@ -551,254 +560,239 @@ export function WalletClient({ initialBalance, transactions, deposits, prefilled
                       />
                     </div>
 
-                    {/* Divider */}
-                    <div className="flex items-center my-6">
-                      <div className="flex-1 h-px bg-white/10" />
-                      <span className="px-3 text-[10px] text-white/30 uppercase tracking-widest font-orbitron">O usar Tarjeta de Débito / Crédito</span>
-                      <div className="flex-1 h-px bg-white/10" />
-                    </div>
+                    {cardFieldsEligible && (
+                      <>
+                        <div className="flex items-center my-6">
+                          <div className="flex-1 h-px bg-white/10" />
+                          <span className="px-3 text-[10px] text-white/30 uppercase tracking-widest font-orbitron">O usar Tarjeta de Débito / Crédito</span>
+                          <div className="flex-1 h-px bg-white/10" />
+                        </div>
 
-                    {/* 3D Card Interactive Preview */}
-                    <div className="card-perspective py-2 flex flex-col items-center">
-                      <div
-                        className={`card-container ${focusedField ? 'card-glow-active' : ''}`}
-                        style={{
-                          transform: `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y + (isFlipped ? 180 : 0)}deg)`
-                        }}
-                        onMouseMove={(e) => {
-                          const card = e.currentTarget
-                          const box = card.getBoundingClientRect()
-                          const x = e.clientX - box.left - box.width / 2
-                          const y = e.clientY - box.top - box.height / 2
-                          const tiltX = (y / (box.height / 2)) * -12
-                          const tiltY = (x / (box.width / 2)) * 12
-                          setTilt({ x: tiltX, y: tiltY })
-                        }}
-                        onMouseLeave={() => {
-                          setTilt({ x: 0, y: 0 })
-                        }}
-                        onClick={() => {
-                          setIsFlipped(!isFlipped)
-                        }}
-                      >
-                        {/* Front Face */}
-                        <div
-                          className="card-face card-front"
-                          style={{
-                            pointerEvents: 'none',
-                            zIndex: isFlipped ? 1 : 2
-                          }}
-                        >
-                          {/* Dynamic sheen overlay inside face */}
+                        <div className="card-perspective py-2 flex flex-col items-center">
                           <div
-                            className="absolute inset-0 opacity-15 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none rounded-2xl z-0"
+                            className={`card-container ${focusedField ? 'card-glow-active' : ''}`}
                             style={{
-                              transform: `translate(${tilt.y * 1.5}px, ${tilt.x * 1.5}px)`
+                              transform: `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y + (isFlipped ? 180 : 0)}deg)`
                             }}
-                          />
+                            onMouseMove={(e) => {
+                              const card = e.currentTarget
+                              const box = card.getBoundingClientRect()
+                              const x = e.clientX - box.left - box.width / 2
+                              const y = e.clientY - box.top - box.height / 2
+                              const tiltX = (y / (box.height / 2)) * -12
+                              const tiltY = (x / (box.width / 2)) * 12
+                              setTilt({ x: tiltX, y: tiltY })
+                            }}
+                            onMouseLeave={() => {
+                              setTilt({ x: 0, y: 0 })
+                            }}
+                            onClick={() => {
+                              setIsFlipped(!isFlipped)
+                            }}
+                          >
+                            <div
+                              className="card-face card-front"
+                              style={{
+                                pointerEvents: 'none',
+                                zIndex: isFlipped ? 1 : 2
+                              }}
+                            >
+                              <div
+                                className="absolute inset-0 opacity-15 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none rounded-2xl z-0"
+                                style={{
+                                  transform: `translate(${tilt.y * 1.5}px, ${tilt.x * 1.5}px)`
+                                }}
+                              />
 
-                          {/* Top: Chip and Card Brand Logo */}
-                          <div className="flex justify-between items-start z-10">
-                            {/* Golden Chip */}
-                            <div className="w-9 h-7 rounded bg-gradient-to-br from-yellow-300 via-amber-400 to-yellow-600 border border-amber-600/30 relative overflow-hidden flex flex-col justify-around p-1">
-                              <div className="h-[1px] bg-black/10 w-full" />
-                              <div className="h-[1px] bg-black/10 w-full" />
-                              <div className="h-[1px] bg-black/10 w-full" />
-                              <div className="absolute top-0 bottom-0 left-1/2 w-[1px] bg-black/10" />
-                            </div>
-                            
-                            {/* Card Brand Logo */}
-                            <div className="text-right">
-                              {cardType === 'visa' ? (
-                                <span className="text-white font-orbitron font-black italic text-lg tracking-wider text-neon-cyan shadow-sm">VISA</span>
-                              ) : cardType === 'mastercard' ? (
-                                <span className="text-white font-orbitron font-black italic text-lg tracking-wider text-orange-400 shadow-sm">MasterCard</span>
-                              ) : cardType === 'amex' ? (
-                                <span className="text-white font-orbitron font-black italic text-lg tracking-wider text-green-400 shadow-sm">AMEX</span>
-                              ) : (
-                                <span className="text-white font-orbitron font-bold italic text-sm tracking-wider text-white/50">CARD</span>
-                              )}
-                            </div>
-                          </div>
+                              <div className="flex justify-between items-start z-10">
+                                <div className="w-9 h-7 rounded bg-gradient-to-br from-yellow-300 via-amber-400 to-yellow-600 border border-amber-600/30 relative overflow-hidden flex flex-col justify-around p-1">
+                                  <div className="h-[1px] bg-black/10 w-full" />
+                                  <div className="h-[1px] bg-black/10 w-full" />
+                                  <div className="h-[1px] bg-black/10 w-full" />
+                                  <div className="absolute top-0 bottom-0 left-1/2 w-[1px] bg-black/10" />
+                                </div>
+                                
+                                <div className="text-right">
+                                  {cardType === 'visa' ? (
+                                    <span className="text-white font-orbitron font-black italic text-lg tracking-wider text-neon-cyan shadow-sm">VISA</span>
+                                  ) : cardType === 'mastercard' ? (
+                                    <span className="text-white font-orbitron font-black italic text-lg tracking-wider text-orange-400 shadow-sm">MasterCard</span>
+                                  ) : cardType === 'amex' ? (
+                                    <span className="text-white font-orbitron font-black italic text-lg tracking-wider text-green-400 shadow-sm">AMEX</span>
+                                  ) : (
+                                    <span className="text-white font-orbitron font-bold italic text-sm tracking-wider text-white/50">CARD</span>
+                                  )}
+                                </div>
+                              </div>
 
-                          {/* Middle: Card Number container */}
-                          <div className="space-y-1 text-left z-10">
-                            <span className="paypal-card-label">Número de Tarjeta</span>
-                            <div className={`h-9 px-3 bg-white/5 border rounded-lg flex items-center justify-start transition-all duration-200 ${focusedField === 'number' ? 'border-neon-cyan bg-neon-cyan/5 shadow-[0_0_8px_rgba(0,245,255,0.15)]' : 'border-white/5'}`}>
-                              <p className="font-mono text-sm tracking-widest text-white/90">
-                                •••• &nbsp; •••• &nbsp; •••• &nbsp; ••••
-                              </p>
-                            </div>
-                          </div>
+                              <div className="space-y-1 text-left z-10">
+                                <span className="paypal-card-label">Número de Tarjeta</span>
+                                <div className={`h-9 px-3 bg-white/5 border rounded-lg flex items-center justify-start transition-all duration-200 ${focusedField === 'number' ? 'border-neon-cyan bg-neon-cyan/5 shadow-[0_0_8px_rgba(0,245,255,0.15)]' : 'border-white/5'}`}>
+                                  <p className="font-mono text-sm tracking-widest text-white/90">
+                                    •••• &nbsp; •••• &nbsp; •••• &nbsp; ••••
+                                  </p>
+                                </div>
+                              </div>
 
-                          {/* Bottom: Expiry, Postal Code, Cardholder Name */}
-                          <div className="grid grid-cols-3 gap-3 items-end text-left z-10">
-                            <div className="col-span-2 space-y-1">
-                              <span className="paypal-card-label">Titular</span>
-                              <div className={`h-9 px-2 bg-white/5 border rounded-lg flex items-center justify-start overflow-hidden transition-all duration-200 ${focusedField === 'name' ? 'border-neon-cyan bg-neon-cyan/5 shadow-[0_0_8px_rgba(0,245,255,0.15)]' : 'border-white/5'}`}>
-                                <p className="font-mono text-[10px] tracking-widest text-white truncate uppercase">
-                                  {cardholderName || 'NOMBRE TITULAR'}
+                              <div className="grid grid-cols-3 gap-3 items-end text-left z-10">
+                                <div className="col-span-2 space-y-1">
+                                  <span className="paypal-card-label">Titular</span>
+                                  <div className={`h-9 px-2 bg-white/5 border rounded-lg flex items-center justify-start overflow-hidden transition-all duration-200 ${focusedField === 'name' ? 'border-neon-cyan bg-neon-cyan/5 shadow-[0_0_8px_rgba(0,245,255,0.15)]' : 'border-white/5'}`}>
+                                    <p className="font-mono text-[10px] tracking-widest text-white truncate uppercase">
+                                      {cardholderName || 'NOMBRE TITULAR'}
+                                    </p>
+                                  </div>
+                                </div>
+                                
+                                <div className="space-y-1">
+                                  <span className="paypal-card-label">Vence</span>
+                                  <div className={`h-9 px-2 bg-white/5 border rounded-lg flex items-center justify-center transition-all duration-200 ${focusedField === 'expiry' ? 'border-neon-cyan bg-neon-cyan/5 shadow-[0_0_8px_rgba(0,245,255,0.15)]' : 'border-white/5'}`}>
+                                    <p className="font-mono text-xs text-white/95">
+                                      MM/AA
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div
+                              className="card-face card-back justify-between py-5 text-left"
+                              style={{
+                                pointerEvents: 'none',
+                                zIndex: isFlipped ? 2 : 1
+                              }}
+                            >
+                              <div
+                                className="absolute inset-0 opacity-10 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none rounded-2xl z-0"
+                                style={{
+                                  transform: `translate(${tilt.y * 1.5}px, ${tilt.x * 1.5}px)`
+                                }}
+                              />
+
+                              <div className="h-9 bg-black/80 -mx-5 mt-1 z-10" />
+
+                              <div className="space-y-1 px-2 z-10">
+                                <div className="flex justify-between items-center">
+                                  <span className="paypal-card-label">Código de Seguridad (CVC)</span>
+                                  <span className="text-[8px] font-orbitron font-bold text-white/20">KRONIX PLATINUM</span>
+                                </div>
+                                <div className="flex gap-2 items-center">
+                                  <div className="flex-1 h-8 bg-white/10 rounded border border-white/5 flex items-center px-2">
+                                    <span className="font-serif italic text-xs text-white/30 tracking-wider">Kronix Club</span>
+                                  </div>
+                                  <div className={`w-16 h-8 bg-white/5 border rounded flex items-center justify-center transition-all duration-200 ${focusedField === 'cvv' ? 'border-neon-cyan bg-neon-cyan/5 shadow-[0_0_8px_rgba(0,245,255,0.15)]' : 'border-white/5'}`}>
+                                    <span className="font-mono text-sm text-white tracking-widest">•••</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="px-2 z-10">
+                                <p className="text-[6px] text-white/20 leading-tight">
+                                  Esta tarjeta digital interactiva representa una conexión segura encriptada punto a punto con PayPal. Ningún dato de pago sensible es almacenado por Kronix.
                                 </p>
                               </div>
                             </div>
-                            
-                            <div className="space-y-1">
-                              <span className="paypal-card-label">Vence</span>
-                              <div className={`h-9 px-2 bg-white/5 border rounded-lg flex items-center justify-center transition-all duration-200 ${focusedField === 'expiry' ? 'border-neon-cyan bg-neon-cyan/5 shadow-[0_0_8px_rgba(0,245,255,0.15)]' : 'border-white/5'}`}>
-                                <p className="font-mono text-xs text-white/95">
-                                  MM/AA
-                                </p>
-                              </div>
-                            </div>
                           </div>
+                          <p className="text-[9px] text-white/30 text-center mt-2">💡 Haz clic en la tarjeta para voltearla y ver el reverso</p>
                         </div>
 
-                        {/* Back Face */}
-                        <div
-                          className="card-face card-back justify-between py-5 text-left"
-                          style={{
-                            pointerEvents: 'none',
-                            zIndex: isFlipped ? 2 : 1
-                          }}
-                        >
-                          {/* Dynamic sheen overlay inside face */}
-                          <div
-                            className="absolute inset-0 opacity-10 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none rounded-2xl z-0"
-                            style={{
-                              transform: `translate(${tilt.y * 1.5}px, ${tilt.x * 1.5}px)`
+                        <div className="space-y-4 text-left max-w-sm mx-auto">
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] text-white/40 uppercase tracking-widest font-semibold block">Número de Tarjeta</label>
+                            <div
+                              id="card-number-container"
+                              className={`paypal-field-container ${focusedField === 'number' ? 'focused' : ''}`}
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] text-white/40 uppercase tracking-widest font-semibold block">Fecha de Vencimiento (MM/AA)</label>
+                              <div
+                                id="card-expiry-container"
+                                className={`paypal-field-container ${focusedField === 'expiry' ? 'focused' : ''}`}
+                              />
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] text-white/40 uppercase tracking-widest font-semibold block">Código de Seguridad (CVV)</label>
+                              <div
+                                id="card-cvv-container"
+                                className={`paypal-field-container ${focusedField === 'cvv' ? 'focused' : ''}`}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] text-white/40 uppercase tracking-widest font-semibold block">Nombre del Titular</label>
+                              <input
+                                type="text"
+                                placeholder="Juan Pérez"
+                                value={cardholderName}
+                                onChange={(e) => setCardholderName(e.target.value)}
+                                onFocus={() => {
+                                  setFocusedField('name')
+                                  setIsFlipped(false)
+                                }}
+                                onBlur={() => setFocusedField(null)}
+                                className="w-full px-3 h-[38px] bg-white/5 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-neon-cyan transition-colors"
+                              />
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] text-white/40 uppercase tracking-widest font-semibold block">Código Postal (ZIP)</label>
+                              <div
+                                id="card-postal-code-container"
+                                className={`paypal-field-container ${focusedField === 'postalCode' ? 'focused' : ''}`}
+                              />
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={async (e) => {
+                              e.preventDefault()
+                              if (!cardFieldsInstance) return
+                              if (!cardholderName.trim()) {
+                                setCardError('Por favor, ingresa el nombre del titular de la tarjeta.')
+                                return
+                              }
+                              setCardSubmitPending(true)
+                              setCardError(null)
+                              try {
+                                await cardFieldsInstance.submit({
+                                  cardholderName: cardholderName
+                                })
+                              } catch (err: any) {
+                                console.error(err)
+                                setCardError('No se pudo procesar el pago. Por favor verifica tus datos e intenta de nuevo.')
+                                setCardSubmitPending(false)
+                              }
                             }}
-                          />
+                            disabled={cardSubmitPending || isProcessing}
+                            className="w-full py-3 bg-neon-cyan hover:bg-neon-cyan/85 text-black font-bold font-orbitron rounded-xl text-xs uppercase tracking-widest transition-all disabled:opacity-40 flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(0,245,255,0.2)] hover:shadow-[0_0_25px_rgba(0,245,255,0.4)]"
+                          >
+                            {cardSubmitPending || isProcessing ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                Procesando Pago Seguro...
+                              </>
+                            ) : (
+                              <>
+                                <span>🔒 Pagar ahora</span>
+                                <span>${(amount || 0).toFixed(2)} USD</span>
+                              </>
+                            )}
+                          </button>
 
-                          {/* Magnetic stripe */}
-                          <div className="h-9 bg-black/80 -mx-5 mt-1 z-10" />
-
-                          {/* CVV Container */}
-                          <div className="space-y-1 px-2 z-10">
-                            <div className="flex justify-between items-center">
-                              <span className="paypal-card-label">Código de Seguridad (CVC)</span>
-                              {/* Small generic brand label on back */}
-                              <span className="text-[8px] font-orbitron font-bold text-white/20">KRONIX PLATINUM</span>
+                          {cardError && (
+                            <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-semibold rounded-xl text-center">
+                              ⚠️ {cardError}
                             </div>
-                            <div className="flex gap-2 items-center">
-                              {/* Mock signature panel */}
-                              <div className="flex-1 h-8 bg-white/10 rounded border border-white/5 flex items-center px-2">
-                                <span className="font-serif italic text-xs text-white/30 tracking-wider">Kronix Club</span>
-                              </div>
-                              <div className={`w-16 h-8 bg-white/5 border rounded flex items-center justify-center transition-all duration-200 ${focusedField === 'cvv' ? 'border-neon-cyan bg-neon-cyan/5 shadow-[0_0_8px_rgba(0,245,255,0.15)]' : 'border-white/5'}`}>
-                                <span className="font-mono text-sm text-white tracking-widest">•••</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Small disclaimer text */}
-                          <div className="px-2 z-10">
-                            <p className="text-[6px] text-white/20 leading-tight">
-                              Esta tarjeta digital interactiva representa una conexión segura encriptada punto a punto con PayPal. Ningún dato de pago sensible es almacenado por Kronix.
-                            </p>
-                          </div>
+                          )}
                         </div>
-                      </div>
-                      <p className="text-[9px] text-white/30 text-center mt-2">💡 Haz clic en la tarjeta para voltearla y ver el reverso</p>
-                    </div>
-
-                    {/* Standard Input Fields Below Card (Cardholder Name & Postal Code) */}
-                    <div className="space-y-4 text-left max-w-sm mx-auto">
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] text-white/40 uppercase tracking-widest font-semibold block">Número de Tarjeta</label>
-                        <div
-                          id="card-number-container"
-                          className={`paypal-field-container ${focusedField === 'number' ? 'focused' : ''}`}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] text-white/40 uppercase tracking-widest font-semibold block">Fecha de Vencimiento (MM/AA)</label>
-                          <div
-                            id="card-expiry-container"
-                            className={`paypal-field-container ${focusedField === 'expiry' ? 'focused' : ''}`}
-                          />
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] text-white/40 uppercase tracking-widest font-semibold block">Código de Seguridad (CVV)</label>
-                          <div
-                            id="card-cvv-container"
-                            className={`paypal-field-container ${focusedField === 'cvv' ? 'focused' : ''}`}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] text-white/40 uppercase tracking-widest font-semibold block">Nombre del Titular</label>
-                          <input
-                            type="text"
-                            placeholder="Juan Pérez"
-                            value={cardholderName}
-                            onChange={(e) => setCardholderName(e.target.value)}
-                            onFocus={() => {
-                              setFocusedField('name')
-                              setIsFlipped(false)
-                            }}
-                            onBlur={() => setFocusedField(null)}
-                            className="w-full px-3 h-[38px] bg-white/5 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-neon-cyan transition-colors"
-                          />
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] text-white/40 uppercase tracking-widest font-semibold block">Código Postal (ZIP)</label>
-                          <div
-                            id="card-postal-code-container"
-                            className={`paypal-field-container ${focusedField === 'postalCode' ? 'focused' : ''}`}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Pay Button */}
-                      <button
-                        onClick={async (e) => {
-                          e.preventDefault()
-                          if (!cardFieldsInstance) return
-                          if (!cardholderName.trim()) {
-                            setCardError('Por favor, ingresa el nombre del titular de la tarjeta.')
-                            return
-                          }
-                          setCardSubmitPending(true)
-                          setCardError(null)
-                          try {
-                            await cardFieldsInstance.submit({
-                              cardholderName: cardholderName
-                            })
-                          } catch (err: any) {
-                            console.error(err)
-                            setCardError('No se pudo procesar el pago. Por favor verifica tus datos e intenta de nuevo.')
-                            setCardSubmitPending(false)
-                          }
-                        }}
-                        disabled={cardSubmitPending || isProcessing}
-                        className="w-full py-3 bg-neon-cyan hover:bg-neon-cyan/85 text-black font-bold font-orbitron rounded-xl text-xs uppercase tracking-widest transition-all disabled:opacity-40 flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(0,245,255,0.2)] hover:shadow-[0_0_25px_rgba(0,245,255,0.4)]"
-                      >
-                        {cardSubmitPending || isProcessing ? (
-                          <>
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            Procesando Pago Seguro...
-                          </>
-                        ) : (
-                          <>
-                            <span>🔒 Pagar ahora</span>
-                            <span>${(amount || 0).toFixed(2)} USD</span>
-                          </>
-                        )}
-                      </button>
-
-                      {/* Error messaging */}
-                      {cardError && (
-                        <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-semibold rounded-xl text-center">
-                          ⚠️ {cardError}
-                        </div>
-                      )}
-                    </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
