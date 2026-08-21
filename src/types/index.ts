@@ -96,7 +96,7 @@ export interface Team {
   avatarUrl?: string;
   streamUrl?: string;
   vipScore: number;
-  registrationStatus?: 'pending_approval' | 'approved_to_pay' | 'pending_payment_validation' | 'confirmed';
+  registrationStatus?: 'pending_approval' | 'approved_to_pay' | 'pending_payment_validation' | 'confirmed' | 'pending_confirmation';
   paymentEvidenceUrl?: string | null;
   amountPaid?: number;
 }

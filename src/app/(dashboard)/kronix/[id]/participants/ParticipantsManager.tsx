@@ -109,7 +109,11 @@ export function ParticipantsManager({
   }, [teams])
 
   const pendingTeams = useMemo(() => {
-    return teams.filter(t => t.registrationStatus === 'pending_approval' || t.registrationStatus === 'approved_to_pay')
+    return teams.filter(t => 
+      t.registrationStatus === 'pending_approval' || 
+      t.registrationStatus === 'approved_to_pay' ||
+      t.registrationStatus === 'pending_confirmation'
+    )
   }, [teams])
 
   const validationTeams = useMemo(() => {
@@ -688,6 +692,23 @@ export function ParticipantsManager({
                           onClick={() => setRejectingTeamId(team.id)}
                           className="p-2 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
                           title="Eliminar solicitud"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </>
+                    )}
+                    {team.registrationStatus === 'pending_confirmation' && (
+                      <>
+                        <span className="text-[10px] bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-3 py-1.5 rounded-xl uppercase font-bold tracking-wider">
+                          ⏳ Confirmando Roster
+                        </span>
+                        <button
+                          disabled={actionLoadingId === team.id}
+                          onClick={() => setRejectingTeamId(team.id)}
+                          className="p-2 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                          title="Eliminar equipo"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
