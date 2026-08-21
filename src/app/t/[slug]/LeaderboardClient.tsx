@@ -3787,11 +3787,11 @@ export function LeaderboardClient({
                 initial={{ scale: 0.95, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                className="bg-[#0e0e12] border border-white/15 rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.9)] w-full max-w-2xl flex flex-col md:flex-row max-h-[90vh] my-4 relative"
+                className="bg-[#0e0e12] border border-white/15 rounded-3xl overflow-y-auto md:overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.9)] w-full max-w-2xl flex flex-col md:flex-row max-h-[90vh] my-4 relative custom-scrollbar"
                 onClick={e => e.stopPropagation()}
               >
                 {/* Left Col: Order Summary */}
-                <div className="md:w-5/12 bg-[#08080a] p-6 border-b md:border-b-0 md:border-r border-white/5 flex flex-col justify-between">
+                <div className="md:w-5/12 bg-[#08080a] p-6 border-b md:border-b-0 md:border-r border-white/5 flex flex-col justify-between shrink-0">
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
                       <span className="text-xl">🛡️</span>
@@ -3838,7 +3838,7 @@ export function LeaderboardClient({
                 </div>
 
                 {/* Right Col: PayPal & Card Buttons */}
-                <div className="flex-1 p-6 bg-[#0c0c10] flex flex-col justify-between space-y-4">
+                <div className="flex-1 p-6 bg-[#0c0c10] flex flex-col justify-between space-y-4 overflow-y-auto min-h-0 custom-scrollbar">
                   <div className="flex justify-between items-center">
                     <p className="text-xs font-orbitron font-bold text-white uppercase tracking-wider">Elige tu método de pago</p>
                     <button
