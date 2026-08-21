@@ -1145,7 +1145,7 @@ export function ProfileStatsClient({
                       onClick={() => {
                         const supabase = createClient()
                         const redirectToUrl = `${window.location.origin}/auth/callback?next=/profile?tab=ajustes`
-                        supabase.auth.signInWithOAuth({
+                        supabase.auth.linkIdentity({
                           provider: 'discord',
                           options: { redirectTo: redirectToUrl }
                         })
