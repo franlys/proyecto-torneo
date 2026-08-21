@@ -28,7 +28,7 @@ export async function approveRegistrationRequest(teamId: string): Promise<{ succ
     // 2. Fetch tournament to verify permissions
     const { data: tournament } = await supabase
       .from('tournaments')
-      .select('id, name, slug, creator_id, collaborator_id')
+      .select('id, name, slug, creator_id, collaborator_id, discord_announcement_channel_id, discord_url')
       .eq('id', team.tournament_id)
       .single()
 
@@ -188,7 +188,7 @@ export async function confirmPaymentRegistration(teamId: string): Promise<{ succ
     // 2. Fetch tournament to verify permissions
     const { data: tournament } = await supabase
       .from('tournaments')
-      .select('id, name, creator_id, collaborator_id, discord_url')
+      .select('id, name, creator_id, collaborator_id, discord_url, discord_announcement_channel_id')
       .eq('id', team.tournament_id)
       .single()
 
@@ -206,41 +206,87 @@ export async function confirmPaymentRegistration(teamId: string): Promise<{ succ
     }
 
     // 3. Confirm registration status
+    const { data: tourney } = await adminSupabase
+      .from('tournaments')
+      .select('mode')
+      .eq('id', team.tournament_id)
+      .single()
+
+    const { data: participants } = await adminSupabase
+      .from('participants')
+      .select('is_confirmed')
+      .eq('team_id', teamId)
+
+    const allConfirmed = !tourney || tourney.mode === 'individual' || (participants && participants.every((p: any) => p.is_confirmed))
+    const finalStatus = allConfirmed ? 'confirmed' : 'pending_confirmation'
+
     const { error: updateErr } = await adminSupabase
       .from('teams')
-      .update({ registration_status: 'confirmed' })
+      .update({ registration_status: finalStatus })
       .eq('id', teamId)
 
     if (updateErr) return { error: updateErr.message }
 
-    // 4. Initialize Standings
-    const { error: standingsErr } = await adminSupabase
-      .from('team_standings')
-      .upsert({
-        tournament_id: tournament.id,
-        team_id: teamId,
-        total_points: 0,
-        total_kills: 0,
-        kill_rate: 0,
-        pot_top_count: 0,
-        vip_score: 0,
-        rank: 99,
-        previous_rank: 99,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'tournament_id,team_id' })
+    if (finalStatus === 'confirmed') {
+      // 4. Initialize Standings
+      const { error: standingsErr } = await adminSupabase
+        .from('team_standings')
+        .upsert({
+          tournament_id: tournament.id,
+          team_id: teamId,
+          total_points: 0,
+          total_kills: 0,
+          kill_rate: 0,
+          pot_top_count: 0,
+          vip_score: 0,
+          rank: 99,
+          previous_rank: 99,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'tournament_id,team_id' })
 
-    if (standingsErr) {
-      console.error('[confirmPaymentRegistration] Standings init failed:', standingsErr.message)
+      if (standingsErr) {
+        console.error('[confirmPaymentRegistration] Standings init failed:', standingsErr.message)
+      }
+
+      // Push confirmed team to AC mirror
+      pushToAC('teams', 'upsert', {
+        id: team.id,
+        tournamentId: team.tournament_id,
+        name: team.name,
+        avatarUrl: team.avatar_url,
+        streamUrl: team.stream_url,
+      })
+
+      // Send Discord Embed Announcement
+      if (tournament.discord_url) {
+        try {
+          const { resolveDiscordGuildId, sendDiscordEmbed, getGuildChannels } = await import('@/lib/services/discord')
+          const guildId = await resolveDiscordGuildId(tournament.discord_url)
+          let announceChannelId = tournament.discord_announcement_channel_id
+
+          if (!announceChannelId && guildId) {
+            const channelsRes = await getGuildChannels(guildId)
+            if (channelsRes.success && Array.isArray(channelsRes.data)) {
+              const annChan = channelsRes.data.find((c: any) => c.name === '📢-anuncios-torneo' || c.name.includes('anuncio'))
+              if (annChan) {
+                announceChannelId = annChan.id
+              }
+            }
+          }
+
+          if (announceChannelId) {
+            await sendDiscordEmbed(announceChannelId, {
+              title: `⚔️ ¡Equipo Confirmado!`,
+              description: `El equipo **${team.name}** ha confirmado su participación para el torneo **${tournament.name}**.\n\n¡Bienvenidos y buena suerte! 🔥`,
+              color: 62909,
+              timestamp: new Date().toISOString(),
+            })
+          }
+        } catch (discordAnnErr) {
+          console.error('[confirmPaymentRegistration] Failed to send Discord confirmation announcement:', discordAnnErr)
+        }
+      }
     }
-
-    // Push confirmed team to AC mirror
-    pushToAC('teams', 'upsert', {
-      id: team.id,
-      tournamentId: team.tournament_id,
-      name: team.name,
-      avatarUrl: team.avatar_url,
-      streamUrl: team.stream_url,
-    })
 
     // 5. Send registration confirmed email to captain
     const { data: captain } = await supabase

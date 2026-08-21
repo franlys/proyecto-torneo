@@ -790,6 +790,35 @@ export async function confirmTeamParticipation(
         name: team.name,
         registrationStatus: 'confirmed'
       })
+
+      // Enviar anuncio oficial a Discord si está configurado
+      if (guildId || tournament.discord_announcement_channel_id) {
+        try {
+          const { sendDiscordEmbed, getGuildChannels } = await import('@/lib/services/discord')
+          let announceChannelId = tournament.discord_announcement_channel_id
+          
+          if (!announceChannelId && guildId) {
+            const channelsRes = await getGuildChannels(guildId)
+            if (channelsRes.success && Array.isArray(channelsRes.data)) {
+              const annChan = channelsRes.data.find((c: any) => c.name === '📢-anuncios-torneo' || c.name.includes('anuncio'))
+              if (annChan) {
+                announceChannelId = annChan.id
+              }
+            }
+          }
+
+          if (announceChannelId) {
+            await sendDiscordEmbed(announceChannelId, {
+              title: `⚔️ ¡Equipo Confirmado!`,
+              description: `El equipo **${team.name}** ha confirmado su participación para el torneo **${tournament.name}**.\n\n¡Bienvenidos y buena suerte! 🔥`,
+              color: 62909,
+              timestamp: new Date().toISOString(),
+            })
+          }
+        } catch (discordAnnErr) {
+          console.error('[confirmTeamParticipation] Failed to send Discord confirmation announcement:', discordAnnErr)
+        }
+      }
     }
 
     revalidatePath(`/t/${tournament.slug}`)
