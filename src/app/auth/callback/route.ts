@@ -34,6 +34,30 @@ export async function GET(request: Request) {
           role: (count ?? 0) === 0 ? 'ADMIN' : 'USER',
         })
       }
+
+      // Sync Discord username if logged in via Discord or connected it
+      try {
+        const { data: discordIdentity } = await adminSupabase
+          .schema('auth')
+          .from('identities')
+          .select('provider_id, identity_data')
+          .eq('user_id', data.user.id)
+          .eq('provider', 'discord')
+          .maybeSingle()
+
+        if (discordIdentity) {
+          const idData = (discordIdentity.identity_data as any) || {}
+          const discordUsername = idData.custom_claims?.username || idData.user_name || idData.name || null
+          if (discordUsername) {
+            await adminSupabase
+              .from('profiles')
+              .update({ discord_username: discordUsername })
+              .eq('id', data.user.id)
+          }
+        }
+      } catch (syncErr) {
+        console.error('Error syncing Discord identity inside auth callback:', syncErr)
+      }
     }
   }
 
