@@ -113,9 +113,9 @@ export function ProfileStatsClient({
   }, [defaultTab])
 
   const [username, setUsername] = useState(profile?.username ?? '')
-  const [streamUrl, setStreamUrl] = useState(profile?.stream_url ?? '')
-  const [discordUsername, setDiscordUsername] = useState(profile?.discord_username ?? '')
-  const [discordGuildId, setDiscordGuildId] = useState(profile?.discord_guild_id ?? '')
+  const [streamUrl, setStreamUrl] = useState(profile?.streamUrl ?? '')
+  const [discordUsername, setDiscordUsername] = useState(profile?.discordUsername ?? '')
+  const [discordGuildId, setDiscordGuildId] = useState(profile?.discordGuildId ?? '')
   const [isSaving, setIsSaving] = useState(false)
 
   // Invitations states
