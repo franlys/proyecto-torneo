@@ -3857,8 +3857,30 @@ export function LeaderboardClient({
                         <p className="text-xs text-white/60 font-semibold">Procesando pago y acreditando K-Coins...</p>
                       </div>
                     ) : (
-                      <div id="paypal-reg-modal-container" className="w-full space-y-2">
-                        {/* PayPal Smart Payment Buttons */}
+                      <div className="w-full">
+                        <style dangerouslySetInnerHTML={{__html: `
+                          .paypal-reg-wrapper {
+                            background: white !important;
+                            border-radius: 16px;
+                            padding: 16px;
+                            overflow: hidden;
+                            border: 1px solid rgba(0, 0, 0, 0.05);
+                            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                          }
+                          #paypal-reg-modal-container {
+                            background: white !important;
+                            border-radius: 12px;
+                            overflow: hidden;
+                          }
+                          #paypal-reg-modal-container .paypal-buttons {
+                            border-radius: 12px;
+                            overflow: hidden;
+                          }
+                        `}} />
+                        <div
+                          id="paypal-reg-modal-container"
+                          className="paypal-reg-wrapper w-full"
+                        />
                       </div>
                     )}
                   </div>
