@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { TeamPortalClient } from './TeamPortalClient'
 import { ConfirmParticipationButton } from './ConfirmParticipationButton'
+import { ResendInvitationButton } from './ResendInvitationButton'
 
 export default async function TeamPortalPage({
   params,
@@ -18,7 +19,7 @@ export default async function TeamPortalPage({
   // Fetch the tournament
   const { data: tournament, error: tErr } = await supabase
     .from('tournaments')
-    .select('id, name, mode, status, kill_rate_enabled, pot_top_enabled, discipline, clash_royale_tag, creator_id, discord_integration_enabled, discord_url, discord_announcement_channel_id, discord_voice_category_id')
+    .select('id, name, mode, status, kill_rate_enabled, pot_top_enabled, discipline, clash_royale_tag, creator_id, collaborator_id, discord_integration_enabled, discord_url, discord_announcement_channel_id, discord_voice_category_id')
     .eq('slug', normalizedSlug)
     .single()
 
@@ -57,6 +58,10 @@ export default async function TeamPortalPage({
 
   // Check logged-in user Discord identity and grant on-the-fly permissions
   const { data: { user } } = await supabase.auth.getUser()
+  const currentUserId = user?.id
+  const isUserCaptain = (participants || []).some((p: any) => p.user_id === currentUserId && p.is_captain)
+  const isUserOrganizer = tournament.creator_id === currentUserId || tournament.collaborator_id === currentUserId
+
   let userHasDiscord = false
   if (user) {
     const adminSupabase = await createAdminClient()
@@ -273,6 +278,9 @@ export default async function TeamPortalPage({
                           </span>
                           {isSelf && (
                             <ConfirmParticipationButton participantId={p.id} />
+                          )}
+                          {!isSelf && (isUserCaptain || isUserOrganizer) && (
+                            <ResendInvitationButton participantId={p.id} />
                           )}
                         </div>
                       )}

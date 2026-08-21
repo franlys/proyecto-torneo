@@ -875,3 +875,74 @@ export async function rejectTeamParticipation(
     return { error: err.message || 'Error al rechazar la invitación.' }
   }
 }
+
+export async function resendTeammateInvitation(
+  participantId: string
+): Promise<{ success: boolean } | { error: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autenticado' }
+
+    const adminSupabase = await createAdminClient()
+
+    // 1. Fetch participant details
+    const { data: participant, error: partErr } = await adminSupabase
+      .from('participants')
+      .select('*, teams(*), tournaments(*), profiles:profiles!participants_user_id_fkey(email, username)')
+      .eq('id', participantId)
+      .single()
+
+    if (partErr || !participant) {
+      return { error: 'No se encontró el participante.' }
+    }
+
+    if (participant.is_confirmed) {
+      return { error: 'El participante ya ha confirmado su participación.' }
+    }
+
+    // 2. Fetch captain of the team
+    const { data: captain } = await adminSupabase
+      .from('participants')
+      .select('display_name, user_id')
+      .eq('team_id', participant.team_id)
+      .eq('is_captain', true)
+      .single()
+
+    // 3. Verify user is authorized (either captain, self, or tournament organizer/admin)
+    const isCaptain = captain?.user_id === user.id
+    const isSelf = participant.user_id === user.id
+    const isOrganizer = participant.tournaments?.creator_id === user.id || participant.tournaments?.collaborator_id === user.id
+
+    if (!isCaptain && !isSelf && !isOrganizer) {
+      return { error: 'No tienes permisos para reenviar esta invitación.' }
+    }
+
+    const teammateEmail = participant.profiles?.email
+    if (!teammateEmail) {
+      return { error: 'El participante no tiene una dirección de correo vinculada.' }
+    }
+
+    // 4. Send email
+    const portalUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/profile`
+    const { sendTeammateInvitationEmail } = await import('@/lib/services/email')
+    
+    const emailRes = await sendTeammateInvitationEmail({
+      email: teammateEmail,
+      teammateName: participant.display_name,
+      captainName: captain?.display_name || 'Tu Capitán',
+      tournamentName: participant.tournaments.name,
+      teamName: participant.teams.name,
+      portalUrl
+    })
+
+    if (!emailRes.success) {
+      return { error: 'Error al enviar el correo con Resend.' }
+    }
+
+    return { success: true }
+  } catch (err: any) {
+    console.error('Error in resendTeammateInvitation Action:', err)
+    return { error: err.message || 'Error inesperado al reenviar la invitación.' }
+  }
+}
