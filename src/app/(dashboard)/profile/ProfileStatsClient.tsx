@@ -1142,13 +1142,21 @@ export function ProfileStatsClient({
                     />
                     <button
                       type="button"
-                      onClick={() => {
-                        const supabase = createClient()
-                        const redirectToUrl = `${window.location.origin}/auth/callback?next=/profile?tab=ajustes`
-                        supabase.auth.linkIdentity({
-                          provider: 'discord',
-                          options: { redirectTo: redirectToUrl }
-                        })
+                      onClick={async () => {
+                        const toastId = toast.loading('Redirigiendo a Discord para vincular cuenta...')
+                        try {
+                          const supabase = createClient()
+                          const redirectToUrl = `${window.location.origin}/auth/callback?next=/profile?tab=ajustes`
+                          const { error } = await supabase.auth.linkIdentity({
+                            provider: 'discord',
+                            options: { redirectTo: redirectToUrl }
+                          })
+                          if (error) {
+                            toast.error(`Error al vincular: ${error.message}. Asegúrate de que "Manual Linking" esté activado en Supabase.`, { id: toastId, duration: 6000 })
+                          }
+                        } catch (err: any) {
+                          toast.error(`Error inesperado: ${err.message || String(err)}`, { id: toastId })
+                        }
                       }}
                       className="shrink-0 px-4 py-3 bg-[#5865F2]/10 hover:bg-[#5865F2]/20 border border-[#5865F2]/20 hover:border-[#5865F2]/30 text-[#5865F2] hover:text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.98]"
                       title="Vincular automáticamente con Discord"
