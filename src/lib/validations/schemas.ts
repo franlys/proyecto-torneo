@@ -46,7 +46,23 @@ const tournamentBaseSchema = z.object({
   streamUrl: z.string().url().optional().or(z.literal('')).or(z.null()),
   maxPointsLimit: z.number().int().min(1).optional().nullable(),
   collaboratorId: z.union([z.string().uuid(), z.literal(''), z.null()]).optional().transform(v => v === '' ? null : v),
-  discordUrl: z.union([z.string().url(), z.literal(''), z.null()]).optional(),
+  discordUrl: z.string()
+    .nullable()
+    .optional()
+    .refine(
+      (val) => {
+        if (!val || val.trim() === '') return true
+        try {
+          new URL(val)
+          return true
+        } catch (_) {
+          return /^\d{17,21}$/.test(val.trim())
+        }
+      },
+      {
+        message: 'Debe ser un enlace de Discord válido (https://...) o un ID de servidor de Discord (numérico).',
+      }
+    ),
 
   
   // Finance Model
