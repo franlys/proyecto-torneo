@@ -509,8 +509,8 @@ export async function registerTournament(
           }
         }
 
-        // Si es un compañero y NO tiene su cuenta de juego vinculada/completada, notificarle por correo
-        if (!isCaptain && targetUserId && (!teammateGameId || !teammateGameUsername)) {
+        // Notificar por correo a los integrantes del equipo para que acepten la invitación
+        if (!isCaptain && targetUserId) {
           const { data: teammateProfile } = await adminSupabase
             .from('profiles')
             .select('email, username')
@@ -518,17 +518,15 @@ export async function registerTournament(
             .single()
 
           if (teammateProfile?.email) {
-            const { sendTeammateRegisteredEmail } = await import('@/lib/services/email')
-            const { GAME_LABELS } = await import('./game-accounts')
-            const gameLabel = GAME_LABELS[tournament.discipline]?.label || tournament.discipline
+            const { sendTeammateInvitationEmail } = await import('@/lib/services/email')
 
-            await sendTeammateRegisteredEmail({
+            await sendTeammateInvitationEmail({
               email: teammateProfile.email,
               teammateName: pData.displayName.trim(),
               captainName: pList[0].displayName.trim(),
               tournamentName: tournament.name,
-              gameLabel: gameLabel,
-              portalUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/t/${tournament.slug}`
+              teamName: team.name,
+              portalUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/profile`
             }).catch(e => console.error('Error al notificar al compañero por correo:', e))
           }
         }

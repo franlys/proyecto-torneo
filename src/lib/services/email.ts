@@ -398,6 +398,67 @@ export async function sendTeammateRegisteredEmail({
   }
 }
 
+interface TeammateInvitationEmailParams {
+  email: string
+  teammateName: string
+  captainName: string
+  tournamentName: string
+  teamName: string
+  portalUrl: string
+}
+
+export async function sendTeammateInvitationEmail({
+  email,
+  teammateName,
+  captainName,
+  tournamentName,
+  teamName,
+  portalUrl,
+}: TeammateInvitationEmailParams) {
+  if (!resend) return { success: false }
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: 'Kronix E-sports <no-reply@kronix.do>',
+      to: [email],
+      subject: `Invitación de equipo para el torneo ${tournamentName} ⚔️`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0c0c12; color: #ffffff; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <img src="https://www.kronix.do/logo.png" alt="KRONIX Logo" style="width: 50px; height: auto; margin-bottom: 12px; display: inline-block;" />
+            <h1 style="font-size: 24px; font-weight: 900; letter-spacing: 0.2em; color: #00f5ff; margin: 0; text-transform: uppercase;">KRONIX</h1>
+          </div>
+          
+          <h2 style="color: #ffffff; font-size: 18px; margin-top: 0;">¡Hola ${teammateName}!</h2>
+          <p style="color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.6;">
+            Tu capitán <strong>${captainName}</strong> te ha invitado a formar parte del equipo <strong>${teamName}</strong> para participar en el torneo <strong>${tournamentName}</strong>.
+          </p>
+          <p style="color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.6; margin-bottom: 24px;">
+            Para confirmar tu participación y asegurar tu cupo en el equipo, debes iniciar sesión en la plataforma y verificar tu cuenta de Discord para que el bot pueda asignarte tu rol de equipo.
+          </p>
+          
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${portalUrl}" style="background: linear-gradient(90deg, #00f5ff 0%, #b026ff 100%); color: #ffffff; text-decoration: none; padding: 12px 36px; border-radius: 8px; font-size: 14px; font-weight: bold; display: inline-block; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 4px 15px rgba(0, 245, 255, 0.2);">
+              ACEPTAR INVITACIÓN
+            </a>
+          </div>
+          
+          <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 24px 0;" />
+          <p style="color: rgba(255,255,255,0.4); font-size: 11px; text-align: center;">
+            Este es un correo automático de Kronix E-sports.
+          </p>
+        </div>
+      `,
+    })
+
+    if (error) throw error
+    return { success: true, data }
+  } catch (err: any) {
+    console.error('Error al enviar correo de invitación al compañero:', err)
+    return { success: false, error: err.message }
+  }
+}
+
 interface TeamRemovedEmailParams {
   email: string
   captainName: string
