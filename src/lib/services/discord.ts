@@ -641,3 +641,38 @@ export async function grantDiscordChannelAccess(
   }
 }
 
+/**
+ * Busca a un miembro en el servidor de Discord por su username y devuelve su ID numérico.
+ */
+export async function findMemberIdByUsername(
+  guildId: string,
+  username: string
+): Promise<string | null> {
+  const cleanGuildId = extractDiscordGuildId(guildId) || guildId
+  const cleanUsername = username.trim().toLowerCase().replace(/^@/, '')
+
+  try {
+    const response = await fetch(`${DISCORD_API_URL}/guilds/${cleanGuildId}/members/search?query=${encodeURIComponent(cleanUsername)}`, {
+      headers: getHeaders(),
+    })
+
+    if (!response.ok) {
+      console.warn(`[Discord Service] Error buscando miembro ${username} en guild ${cleanGuildId}:`, await response.text())
+      return null
+    }
+
+    const members = await response.json()
+    if (Array.isArray(members) && members.length > 0) {
+      const match = members.find(
+        (m: any) => 
+          m.user?.username?.toLowerCase() === cleanUsername || 
+          m.nick?.toLowerCase() === cleanUsername
+      )
+      return match ? match.user.id : members[0].user.id
+    }
+  } catch (err) {
+    console.error(`[Discord Service] Error al buscar miembro ${username}:`, err)
+  }
+  return null
+}
+

@@ -662,6 +662,12 @@ export async function confirmTeamParticipation(
     }
 
     // 2. Resolve user's Discord ID (checks OAuth and manual profile text field)
+    const { data: profile } = await adminSupabase
+      .from('profiles')
+      .select('discord_username')
+      .eq('id', user.id)
+      .maybeSingle()
+
     let discordUserId: string | null = null
     const { data: identities } = await adminSupabase
       .schema('auth')
@@ -675,27 +681,16 @@ export async function confirmTeamParticipation(
       discordUserId = identities.provider_id
     }
 
-    if (!discordUserId) {
-      const { data: profile } = await adminSupabase
-        .from('profiles')
-        .select('discord_username')
-        .eq('id', user.id)
-        .maybeSingle()
-
-      if (profile?.discord_username && /^\d{17,21}$/.test(profile.discord_username.trim())) {
-        discordUserId = profile.discord_username.trim()
-      }
-    }
-
-    if (!discordUserId) {
-      return {
-        error: 'Por favor, vincula tu cuenta de Discord en tu Perfil (usando inicio de sesión social o tu ID numérico en Ajustes) antes de confirmar tu participación.'
+    if (!discordUserId && profile?.discord_username) {
+      const trimmedVal = profile.discord_username.trim()
+      if (/^\d{17,21}$/.test(trimmedVal)) {
+        discordUserId = trimmedVal
       }
     }
 
     // 3. Resolve Discord Guild ID (Server ID)
     let guildId: string | null = null
-    const { resolveDiscordGuildId, checkMemberInGuild, createOrGetTeamRole, assignDiscordRoleToMember } = await import('@/lib/services/discord')
+    const { resolveDiscordGuildId, checkMemberInGuild, createOrGetTeamRole, assignDiscordRoleToMember, findMemberIdByUsername } = await import('@/lib/services/discord')
 
     if (tournament.discord_url) {
       guildId = await resolveDiscordGuildId(tournament.discord_url)
@@ -710,6 +705,25 @@ export async function confirmTeamParticipation(
 
       if (creatorProf?.discord_guild_id) {
         guildId = await resolveDiscordGuildId(creatorProf.discord_guild_id)
+      }
+    }
+
+    // If still no numeric ID, and we have a text username and guildId, resolve it dynamically!
+    if (!discordUserId && profile?.discord_username && guildId) {
+      const resolvedId = await findMemberIdByUsername(guildId, profile.discord_username)
+      if (resolvedId) {
+        discordUserId = resolvedId
+        // Sync resolved ID back to profiles table so subsequent calls don't need API search lookup!
+        await adminSupabase
+          .from('profiles')
+          .update({ discord_username: resolvedId })
+          .eq('id', user.id)
+      }
+    }
+
+    if (!discordUserId) {
+      return {
+        error: 'Por favor, vincula tu cuenta de Discord en tu Perfil (usando inicio de sesión social, tu usuario o tu ID numérico en Ajustes) antes de confirmar tu participación.'
       }
     }
 
