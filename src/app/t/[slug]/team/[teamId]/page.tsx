@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { notFound } from 'next/navigation'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { TeamPortalClient } from './TeamPortalClient'
+import { ConfirmParticipationButton } from './ConfirmParticipationButton'
 
 export default async function TeamPortalPage({
   params,
@@ -50,7 +51,7 @@ export default async function TeamPortalPage({
   // Fetch the team's participants
   const { data: participants } = await supabase
     .from('participants')
-    .select('id, display_name, is_captain, user_id')
+    .select('id, display_name, is_captain, user_id, is_confirmed, discord_connected')
     .eq('team_id', teamId)
     .order('is_captain', { ascending: false })
 
@@ -237,6 +238,48 @@ export default async function TeamPortalPage({
             <div>
               <h2 className="text-2xl font-orbitron font-bold text-white">{team.name}</h2>
               <p className="text-sm text-white/50">{isAutoSynced ? 'Sincronización Automática' : 'Subida de Evidencia'}</p>
+            </div>
+          </div>
+
+          {/* Integrantes del Equipo (Roster Status) */}
+          <div className="mb-6 bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-3">
+            <h3 className="text-xs font-orbitron font-bold text-white uppercase tracking-wider">Roster del Equipo</h3>
+            <div className="space-y-2.5">
+              {(participants || []).map((p: any) => {
+                const isSelf = user && p.user_id === user.id
+                return (
+                  <div key={p.id} className="flex items-center justify-between bg-black/25 p-3 rounded-xl border border-white/5">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-sm">{p.is_captain ? '👑' : '🎮'}</span>
+                      <div>
+                        <p className="text-xs font-bold text-white leading-tight">
+                          {p.display_name} {isSelf && <span className="text-neon-cyan text-[10px] font-normal font-sans ml-1">(Tú)</span>}
+                        </p>
+                        <p className="text-[10px] text-white/40 uppercase tracking-widest mt-0.5">
+                          {p.is_captain ? 'Capitán' : 'Integrante'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {p.is_confirmed ? (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-green-500/10 border border-green-500/20 text-green-400">
+                          Confirmado
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 font-bold">
+                            Pendiente
+                          </span>
+                          {isSelf && (
+                            <ConfirmParticipationButton participantId={p.id} />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
 

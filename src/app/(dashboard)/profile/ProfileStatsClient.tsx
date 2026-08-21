@@ -6,6 +6,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { updateProfile, uploadProfileAvatar } from '@/lib/actions/profile'
 import { updateDiscordUsername } from '@/lib/actions/game-accounts'
 import { getFriendsList, searchUsersForFriends, sendFriendRequest, removeFriend } from '@/lib/actions/friends'
+import { getPendingInvitations, confirmTeamParticipation, rejectTeamParticipation } from '@/lib/actions/registration'
 import { toast } from 'sonner'
 import { SubscriptionUpload } from './SubscriptionUpload'
 import { GameAccountsSection } from '@/components/profile/GameAccountsSection'
@@ -115,6 +116,63 @@ export function ProfileStatsClient({
   const [discordUsername, setDiscordUsername] = useState(profile?.discord_username ?? '')
   const [discordGuildId, setDiscordGuildId] = useState(profile?.discord_guild_id ?? '')
   const [isSaving, setIsSaving] = useState(false)
+
+  // Invitations states
+  const [invitations, setInvitations] = useState<any[]>([])
+  const [loadingInvitations, setLoadingInvitations] = useState(false)
+
+  const fetchInvitations = async () => {
+    setLoadingInvitations(true)
+    const res = await getPendingInvitations()
+    if (res && 'invitations' in res) {
+      setInvitations(res.invitations || [])
+    }
+    setLoadingInvitations(false)
+  }
+
+  useEffect(() => {
+    fetchInvitations()
+  }, [])
+
+  const handleConfirmInvitation = async (invitationId: string) => {
+    const toastId = toast.loading('Confirmando tu participación...')
+    const res = await confirmTeamParticipation(invitationId)
+    if (res && 'success' in res) {
+      toast.success('¡Participación confirmada con éxito!', { id: toastId })
+      fetchInvitations()
+    } else if (res && 'error' in res) {
+      if ((res as any).discordUrl) {
+        toast.error(
+          <div className="space-y-2">
+            <p>{res.error}</p>
+            <a 
+              href={(res as any).discordUrl} 
+              target="_blank" 
+              rel="noreferrer"
+              className="inline-block px-3 py-1 bg-[#5865F2] hover:bg-[#4752C4] text-white text-[10px] uppercase font-bold rounded-lg tracking-wider"
+            >
+              Unirse al Servidor de Discord
+            </a>
+          </div>,
+          { id: toastId, duration: 8000 }
+        )
+      } else {
+        toast.error(res.error, { id: toastId })
+      }
+    }
+  }
+
+  const handleRejectInvitation = async (invitationId: string) => {
+    if (!confirm('¿Estás seguro de que deseas rechazar esta invitación al equipo?')) return
+    const toastId = toast.loading('Rechazando invitación...')
+    const res = await rejectTeamParticipation(invitationId)
+    if (res && 'success' in res) {
+      toast.success('Invitación rechazada', { id: toastId })
+      fetchInvitations()
+    } else if (res && 'error' in res) {
+      toast.error(res.error, { id: toastId })
+    }
+  }
 
   // Friends states
   const [friends, setFriends] = useState<any[]>([])
@@ -647,6 +705,63 @@ export function ProfileStatsClient({
                 Desde aquí puedes gestionar tu historial competitivo, consultar tus estadísticas, revisar tus boletos de sorteos activos y conectar con tu escuadra. ¡Que comience el juego!
               </p>
             </div>
+
+            {/* Pending Team Invitations Section */}
+            {invitations && invitations.length > 0 && (
+              <div className="space-y-4 bg-neon-cyan/5 border border-neon-cyan/20 p-6 rounded-2xl">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">⚔️</span>
+                  <h4 className="font-orbitron font-black text-sm text-neon-cyan uppercase tracking-wider">
+                    Invitaciones de Equipo Pendientes
+                  </h4>
+                </div>
+                <p className="text-xs text-white/60">
+                  Has sido invitado a los siguientes equipos. Para confirmar tu participación, debes verificar tu cuenta de Discord y estar dentro del servidor de Discord correspondiente.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  {invitations.map((inv) => {
+                    const tourney = inv.tournaments
+                    const team = inv.teams
+                    return (
+                      <div 
+                        key={inv.id} 
+                        className="bg-black/40 border border-white/10 rounded-xl p-4 flex flex-col justify-between space-y-3"
+                      >
+                        <div>
+                          <p className="text-[10px] uppercase font-bold tracking-widest text-neon-purple">
+                            Torneo: {tourney?.name}
+                          </p>
+                          <h5 className="text-white font-orbitron font-bold text-sm mt-0.5">
+                            Equipo: {team?.name}
+                          </h5>
+                          {tourney?.start_date && (
+                            <p className="text-[10px] text-white/40 mt-1">
+                              Inicia: {new Date(tourney.start_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-1">
+                          <button
+                            onClick={() => handleConfirmInvitation(inv.id)}
+                            className="flex-1 px-3 py-1.5 bg-neon-cyan text-black font-black uppercase tracking-widest text-[9px] rounded-lg hover:bg-neon-cyan/80 transition-colors flex items-center justify-center gap-1"
+                          >
+                            Confirmar
+                          </button>
+                          <button
+                            onClick={() => handleRejectInvitation(inv.id)}
+                            className="px-3 py-1.5 bg-white/5 border border-white/10 text-white/50 font-bold uppercase tracking-widest text-[9px] rounded-lg hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30 transition-colors"
+                          >
+                            Rechazar
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Quick Action Buttons Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

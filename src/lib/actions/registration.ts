@@ -3,6 +3,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { pushToAC } from './ac-push'
 import { getUsdToDopRate } from '@/lib/services/exchange-rate'
+import { revalidatePath } from 'next/cache'
 
 export async function registerTournament(
   tournamentId: string,
@@ -344,7 +345,7 @@ export async function registerTournament(
 
     const hasEntryFee = tournament.entry_fee && Number(tournament.entry_fee) > 0
     const entryFeeUsd = Number(tournament.entry_fee || 0)
-    let initialStatus = 'confirmed'
+    let initialStatus = tournament.mode === 'individual' ? 'confirmed' : 'pending_confirmation'
     let amountPaidValue = 0
 
     if (hasEntryFee) {
@@ -372,7 +373,7 @@ export async function registerTournament(
         }
       }
 
-      // Descontar K-Coins del capitán usando OCC (descontando el mínimo entre el saldo actual y el costo)
+      // Descontar K-Coins del capitán usando OCC (descontando el mínimo entre el saldo actual and el costo)
       const deductionAmount = Math.min(currentBalance, entryFeeInKCoins)
       const newBalance = parseFloat(Math.max(0, currentBalance - deductionAmount).toFixed(2))
       const { data: updateData, error: deductErr } = await adminSupabase
@@ -398,7 +399,6 @@ export async function registerTournament(
         reference_id: tournamentId,
       })
 
-      initialStatus = 'confirmed'
       amountPaidValue = entryFeeInKCoins
     }
 
@@ -427,6 +427,15 @@ export async function registerTournament(
       streamUrl: team.stream_url,
     })
 
+    // Fetch captain's Discord connection status
+    const { data: capProfile } = await adminSupabase
+      .from('profiles')
+      .select('discord_connected')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    const captainDiscordConnected = !!capProfile?.discord_connected
+
     // 7. Insertar Participantes
     for (let i = 0; i < pList.length; i++) {
       const pData = pList[i]
@@ -451,6 +460,9 @@ export async function registerTournament(
         }
       }
 
+      const isConfirmed = tournament.mode === 'individual' || isCaptain
+      const isDiscordConnected = isCaptain ? captainDiscordConnected : false
+
       const { data: participant, error: partErr } = await adminSupabase
         .from('participants')
         .insert({
@@ -463,6 +475,8 @@ export async function registerTournament(
           user_id: targetUserId,
           game_id: teammateGameId,
           game_username: teammateGameUsername,
+          is_confirmed: isConfirmed,
+          discord_connected: isDiscordConnected,
         })
         .select()
         .single()
@@ -546,5 +560,291 @@ export async function registerTournament(
     return { success: true }
   } catch (err: any) {
     return { error: err.message || 'Ocurrió un error inesperado al procesar la inscripción.' }
+  }
+}
+
+export async function getPendingInvitations(): Promise<{ success: boolean; invitations?: any[] } | { error: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autenticado' }
+
+    const adminSupabase = await createAdminClient()
+    const { data: invitations, error } = await adminSupabase
+      .from('participants')
+      .select(`
+        id,
+        is_confirmed,
+        discord_connected,
+        display_name,
+        tournament_id,
+        team_id,
+        tournaments (
+          id,
+          name,
+          slug,
+          mode,
+          start_date,
+          discord_url,
+          creator_id
+        ),
+        teams (
+          id,
+          name,
+          registration_status
+        )
+      `)
+      .eq('user_id', user.id)
+      .eq('is_confirmed', false)
+
+    if (error) return { error: error.message }
+    return { success: true, invitations: invitations || [] }
+  } catch (err: any) {
+    return { error: err.message || 'Error al obtener invitaciones pendientes.' }
+  }
+}
+
+export async function confirmTeamParticipation(
+  participantId: string
+): Promise<{ success: boolean; joinedDiscord?: boolean; discordUrl?: string } | { error: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autenticado' }
+
+    const adminSupabase = await createAdminClient()
+
+    // 1. Fetch participant, team, and tournament details
+    const { data: participant, error: partErr } = await adminSupabase
+      .from('participants')
+      .select(`
+        id,
+        user_id,
+        is_confirmed,
+        team_id,
+        tournament_id,
+        display_name,
+        game_id,
+        game_username,
+        teams (
+          id,
+          name,
+          registration_status
+        ),
+        tournaments (
+          id,
+          name,
+          slug,
+          mode,
+          discord_url,
+          creator_id,
+          discipline
+        )
+      `)
+      .eq('id', participantId)
+      .single()
+
+    if (partErr || !participant) {
+      return { error: 'No se encontró tu registro de participación.' }
+    }
+
+    if (participant.user_id !== user.id) {
+      return { error: 'No estás autorizado para confirmar este registro.' }
+    }
+
+    if (participant.is_confirmed) {
+      return { success: true } // Already confirmed
+    }
+
+    const team = participant.teams as any
+    const tournament = participant.tournaments as any
+
+    if (!team || !tournament) {
+      return { error: 'Información de torneo o equipo incompleta.' }
+    }
+
+    // 2. Resolve user's Discord ID (checks OAuth and manual profile text field)
+    let discordUserId: string | null = null
+    const { data: identities } = await adminSupabase
+      .schema('auth')
+      .from('identities')
+      .select('provider_id')
+      .eq('provider', 'discord')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (identities?.provider_id) {
+      discordUserId = identities.provider_id
+    }
+
+    if (!discordUserId) {
+      const { data: profile } = await adminSupabase
+        .from('profiles')
+        .select('discord_username')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (profile?.discord_username && /^\d{17,21}$/.test(profile.discord_username.trim())) {
+        discordUserId = profile.discord_username.trim()
+      }
+    }
+
+    if (!discordUserId) {
+      return {
+        error: 'Por favor, vincula tu cuenta de Discord en tu Perfil (usando inicio de sesión social o tu ID numérico en Ajustes) antes de confirmar tu participación.'
+      }
+    }
+
+    // 3. Resolve Discord Guild ID (Server ID)
+    let guildId: string | null = null
+    const { resolveDiscordGuildId, checkMemberInGuild, createOrGetTeamRole, assignDiscordRoleToMember } = await import('@/lib/services/discord')
+
+    if (tournament.discord_url) {
+      guildId = await resolveDiscordGuildId(tournament.discord_url)
+    }
+
+    if (!guildId && tournament.creator_id) {
+      const { data: creatorProf } = await adminSupabase
+        .from('profiles')
+        .select('discord_guild_id')
+        .eq('id', tournament.creator_id)
+        .maybeSingle()
+
+      if (creatorProf?.discord_guild_id) {
+        guildId = await resolveDiscordGuildId(creatorProf.discord_guild_id)
+      }
+    }
+
+    // 4. Validate user is in Discord server (if configured)
+    if (guildId) {
+      const isInServer = await checkMemberInGuild(guildId, discordUserId)
+      if (!isInServer) {
+        return {
+          error: `Debes unirte al servidor oficial de Discord de este torneo antes de confirmar tu participación.`,
+          discordUrl: tournament.discord_url || 'https://discord.gg/'
+        }
+      }
+
+      // Assign team role to the participant in Discord
+      try {
+        const teamRoleRes = await createOrGetTeamRole(guildId, team.name)
+        if ('roleId' in teamRoleRes && teamRoleRes.roleId) {
+          await assignDiscordRoleToMember(guildId, discordUserId, teamRoleRes.roleId)
+        }
+      } catch (roleErr) {
+        console.error('[Confirm Team Participation] Error assigning team role:', roleErr)
+      }
+    }
+
+    // 5. Update participant as confirmed and discord connected
+    const { error: updateErr } = await adminSupabase
+      .from('participants')
+      .update({
+        is_confirmed: true,
+        discord_connected: true
+      })
+      .eq('id', participantId)
+
+    if (updateErr) {
+      return { error: 'Error al actualizar el estado de confirmación: ' + updateErr.message }
+    }
+
+    // 6. Check if all team members are now confirmed
+    const { data: allMembers } = await adminSupabase
+      .from('participants')
+      .select('is_confirmed')
+      .eq('team_id', team.id)
+
+    const allConfirmed = allMembers && allMembers.every((m: any) => m.is_confirmed)
+
+    if (allConfirmed) {
+      // If team has a paid entry, keep it confirmed (free is confirmed immediately)
+      const { error: teamStatusErr } = await adminSupabase
+        .from('teams')
+        .update({ registration_status: 'confirmed' })
+        .eq('id', team.id)
+
+      if (teamStatusErr) {
+        console.error('[confirmTeamParticipation] Failed to confirm team status:', teamStatusErr.message)
+      }
+
+      // Initialize team standings since team is now confirmed!
+      await adminSupabase
+        .from('team_standings')
+        .upsert({
+          tournament_id: tournament.id,
+          team_id: team.id,
+          total_points: 0,
+          total_kills: 0,
+          kill_rate: 0,
+          pot_top_count: 0,
+          vip_score: 0,
+          rank: 99,
+          previous_rank: 99,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'tournament_id,team_id' })
+
+      // Push to Apuestas Kronix
+      const { pushToAC } = await import('./ac-push')
+      pushToAC('teams', 'upsert', {
+        id: team.id,
+        tournamentId: tournament.id,
+        name: team.name,
+        registrationStatus: 'confirmed'
+      })
+    }
+
+    revalidatePath(`/t/${tournament.slug}`)
+    revalidatePath('/profile')
+    revalidatePath(`/t/${tournament.slug}/team/${team.id}`)
+
+    return { success: true }
+  } catch (err: any) {
+    console.error('Error in confirmTeamParticipation Server Action:', err)
+    return { error: err.message || 'Error interno del servidor al confirmar participación.' }
+  }
+}
+
+export async function rejectTeamParticipation(
+  participantId: string
+): Promise<{ success: boolean } | { error: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'No autenticado' }
+
+    const adminSupabase = await createAdminClient()
+
+    const { data: participant, error: partErr } = await adminSupabase
+      .from('participants')
+      .select('id, user_id, team_id, tournaments(slug)')
+      .eq('id', participantId)
+      .single()
+
+    if (partErr || !participant) {
+      return { error: 'No se encontró tu registro de participación.' }
+    }
+
+    if (participant.user_id !== user.id) {
+      return { error: 'No estás autorizado para rechazar esta invitación.' }
+    }
+
+    // Delete the participant record (declining removes the player from the team roster)
+    const { error: deleteErr } = await adminSupabase
+      .from('participants')
+      .delete()
+      .eq('id', participantId)
+
+    if (deleteErr) return { error: deleteErr.message }
+
+    const tournament = participant.tournaments as any
+    if (tournament) {
+      revalidatePath(`/t/${tournament.slug}`)
+    }
+    revalidatePath('/profile')
+
+    return { success: true }
+  } catch (err: any) {
+    return { error: err.message || 'Error al rechazar la invitación.' }
   }
 }

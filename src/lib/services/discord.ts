@@ -309,6 +309,25 @@ export async function assignDiscordRoleToMember(
 }
 
 /**
+ * Verifica si un usuario (ID de Discord) es miembro del servidor de Discord.
+ */
+export async function checkMemberInGuild(
+  guildId: string,
+  discordUserId: string
+): Promise<boolean> {
+  const cleanGuildId = extractDiscordGuildId(guildId) || guildId
+  try {
+    const response = await fetch(`${DISCORD_API_URL}/guilds/${cleanGuildId}/members/${discordUserId}`, {
+      headers: getHeaders(),
+    })
+    return response.ok
+  } catch (err) {
+    console.error(`[Discord Service] Error al verificar miembro ${discordUserId} en guild ${cleanGuildId}:`, err)
+    return false
+  }
+}
+
+/**
  * Crea un canal de voz privado dentro de una categoría, restringiendo acceso con roles.
  */
 export async function createPrivateVoiceChannel(
