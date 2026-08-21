@@ -1122,9 +1122,11 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
                         <input 
                           type="range" 
                           min="0" max="100" 
-                          {...register('organizerSplit', { valueAsNumber: true })}
+                          {...register('organizerSplit', { 
+                            valueAsNumber: true,
+                            onChange: (e) => setValue('streamerSplit', 100 - parseInt(e.target.value))
+                          })}
                           className="w-full accent-neon-cyan h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer"
-                          onChange={(e) => setValue('streamerSplit', 100 - parseInt(e.target.value))}
                         />
                       </div>
                       <div>
