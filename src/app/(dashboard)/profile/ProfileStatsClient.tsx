@@ -1097,7 +1097,7 @@ export function ProfileStatsClient({
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Tu nombre de usuario"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30 transition-colors"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30 transition-colors select-text"
                   />
                   <p className="text-[10px] text-white/40 mt-2">
                     Solo se permiten letras, números y guiones bajos (sin espacios). Mínimo 2, máximo 30 caracteres.
@@ -1118,7 +1118,7 @@ export function ProfileStatsClient({
                     value={streamUrl}
                     onChange={(e) => setStreamUrl(e.target.value)}
                     placeholder="https://twitch.tv/tu_canal"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30 transition-colors"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30 transition-colors select-text"
                   />
                   <p className="text-[10px] text-white/40 mt-1">
                     Ingresa tu canal de Twitch, Kick, YouTube o Facebook Gaming para precargarlo en tus inscripciones.
@@ -1136,7 +1136,7 @@ export function ProfileStatsClient({
                     value={discordUsername}
                     onChange={(e) => setDiscordUsername(e.target.value)}
                     placeholder="Ej: nombre_usuario#0000 o nombre_usuario"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30 transition-colors"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30 transition-colors select-text"
                   />
                   <p className="text-[10px] text-white/40 mt-1">
                     Vincula tu usuario de Discord para coordinar partidas y verificar tu identidad social.
@@ -1154,7 +1154,7 @@ export function ProfileStatsClient({
                     value={discordGuildId}
                     onChange={(e) => setDiscordGuildId(e.target.value)}
                     placeholder="Ej: https://discord.gg/4CFcdEC7V o ID de Servidor"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30 transition-colors"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30 transition-colors select-text"
                   />
                   <p className="text-[10px] text-white/40 mt-1">
                     Solo para Organizadores/Streamers. Puedes pegar el <strong>enlace de invitación de tu servidor</strong> (ej: <code className="text-neon-cyan">https://discord.gg/...</code>) o el ID numérico. El sistema lo detectará automáticamente.

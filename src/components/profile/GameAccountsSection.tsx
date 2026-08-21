@@ -182,7 +182,7 @@ export function GameAccountsSection({ initialAccounts }: GameAccountsSectionProp
                       value={gameId}
                       onChange={e => setGameId(e.target.value)}
                       placeholder={GAME_LABELS[editingGame]?.idPlaceholder}
-                      className="w-full bg-black/50 border border-white/10 focus:border-neon-cyan/50 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono placeholder:text-white/20 outline-none transition-all"
+                      className="w-full bg-black/50 border border-white/10 focus:border-neon-cyan/50 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono placeholder:text-white/20 outline-none transition-all select-text"
                     />
                   </div>
                   <div>
@@ -194,7 +194,7 @@ export function GameAccountsSection({ initialAccounts }: GameAccountsSectionProp
                       value={gameUsername}
                       onChange={e => setGameUsername(e.target.value)}
                       placeholder={GAME_LABELS[editingGame]?.usernamePlaceholder}
-                      className="w-full bg-black/50 border border-white/10 focus:border-neon-cyan/50 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/20 outline-none transition-all"
+                      className="w-full bg-black/50 border border-white/10 focus:border-neon-cyan/50 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-white/20 outline-none transition-all select-text"
                     />
                   </div>
                 </div>
