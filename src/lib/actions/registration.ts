@@ -669,16 +669,14 @@ export async function confirmTeamParticipation(
       .maybeSingle()
 
     let discordUserId: string | null = null
-    const { data: identities } = await adminSupabase
-      .schema('auth')
-      .from('identities')
-      .select('provider_id')
-      .eq('provider', 'discord')
-      .eq('user_id', user.id)
-      .maybeSingle()
-
-    if (identities?.provider_id) {
-      discordUserId = identities.provider_id
+    try {
+      const { data: { user: fullUser } } = await adminSupabase.auth.admin.getUserById(user.id)
+      const discordIdentity = fullUser?.identities?.find((id) => id.provider === 'discord')
+      if (discordIdentity) {
+        discordUserId = discordIdentity.id
+      }
+    } catch (err) {
+      console.error('[confirmTeamParticipation] Failed to query user identities:', err)
     }
 
     if (!discordUserId && profile?.discord_username) {
