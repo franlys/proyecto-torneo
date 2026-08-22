@@ -1184,6 +1184,46 @@ export function ProfileStatsClient({
                       </svg>
                       <span>Vincular Automático</span>
                     </button>
+                    {(profile?.discordUsername || profile?.discordConnected) && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const toastId = toast.loading('Desvinculando cuenta de Discord...')
+                          try {
+                            const supabase = createClient()
+                            const { data: { user } } = await supabase.auth.getUser()
+                            
+                            // 1. Unlink identity from GoTrue auth.identities
+                            const discordIdentity = user?.identities?.find((id) => id.provider === 'discord')
+                            if (discordIdentity) {
+                              const { error: unlinkErr } = await supabase.auth.unlinkIdentity(discordIdentity)
+                              if (unlinkErr) {
+                                toast.error(`Error al desvincular de Supabase Auth: ${unlinkErr.message}`, { id: toastId })
+                                return
+                              }
+                            }
+
+                            // 2. Call server action to clear DB fields
+                            const { unlinkDiscordProfile } = await import('@/lib/actions/registration')
+                            const res = await unlinkDiscordProfile()
+                            if (res.error) {
+                              toast.error(`Error al limpiar perfil: ${res.error}`, { id: toastId })
+                              return
+                            }
+
+                            setDiscordUsername('')
+                            toast.success('Cuenta de Discord desvinculada con éxito.', { id: toastId })
+                            window.location.reload()
+                          } catch (err: any) {
+                            toast.error(`Error inesperado: ${err.message || String(err)}`, { id: toastId })
+                          }
+                        }}
+                        className="shrink-0 px-4 py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/30 text-red-400 hover:text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                        title="Desvincular cuenta de Discord"
+                      >
+                        Desvincular
+                      </button>
+                    )}
                   </div>
                   <p className="text-[10px] text-white/40 mt-1">
                     Vincula tu usuario de Discord para coordinar partidas y verificar tu identidad social. Puedes hacer clic en "Vincular Automático" para conectarlo directamente.

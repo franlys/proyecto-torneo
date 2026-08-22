@@ -960,3 +960,33 @@ export async function resendTeammateInvitation(
     return { error: err.message || 'Error inesperado al reenviar la invitación.' }
   }
 }
+
+/**
+ * Desvincula Discord del perfil público del usuario (borra discord_username y discord_connected).
+ */
+export async function unlinkDiscordProfile(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { success: false, error: 'No autorizado' }
+    }
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        discord_username: null,
+        discord_connected: false
+      })
+      .eq('id', user.id)
+
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err.message || err }
+  }
+}
