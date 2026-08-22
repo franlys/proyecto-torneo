@@ -65,6 +65,31 @@ export async function getProfile(): Promise<Profile | null> {
     }
   }
 
+  if (profile && !profile.discord_username) {
+    try {
+      const adminSupabase = await createAdminClient()
+      const { data: { user: fullUser } } = await adminSupabase.auth.admin.getUserById(user.id)
+      const discordIdentity = fullUser?.identities?.find((id) => id.provider === 'discord')
+      if (discordIdentity) {
+        const idData = (discordIdentity.identity_data as any) || {}
+        const discordUsername = idData.username || idData.full_name || idData.name || idData.custom_claims?.username || idData.user_name || null
+        if (discordUsername) {
+          await adminSupabase
+            .from('profiles')
+            .update({ 
+              discord_username: discordUsername,
+              discord_connected: true
+            })
+            .eq('id', user.id)
+          profile.discord_username = discordUsername
+          profile.discord_connected = true
+        }
+      }
+    } catch (err) {
+      console.error('[getProfile] Failed to run self-healing Discord identity sync:', err)
+    }
+  }
+
   if (!profile) return null
 
   return {
