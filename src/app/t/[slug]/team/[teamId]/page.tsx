@@ -64,23 +64,34 @@ export default async function TeamPortalPage({
 
   let userHasDiscord = false
   if (user) {
-    const adminSupabase = await createAdminClient()
-    const { data: identities } = await adminSupabase
-      .schema('auth')
-      .from('identities')
-      .select('provider_id')
-      .eq('user_id', user.id)
-      .eq('provider', 'discord')
-      .maybeSingle()
-
-    if (identities?.provider_id) {
-      userHasDiscord = true
-      const userDiscordId = identities.provider_id
-      const isTeamMember = (participants || []).some((p: any) => p.user_id === user.id)
-      if (isTeamMember && team.discord_voice_channel_id) {
-        const { grantDiscordChannelAccess } = await import('@/lib/services/discord')
-        grantDiscordChannelAccess(team.discord_voice_channel_id, userDiscordId, 'voice').catch(() => {})
+    try {
+      const adminSupabase = await createAdminClient()
+      const { data: { user: fullUser } } = await adminSupabase.auth.admin.getUserById(user.id)
+      const discordIdentity = fullUser?.identities?.find((id) => id.provider === 'discord')
+      
+      let userDiscordId: string | null = discordIdentity?.id || null
+      
+      if (!userDiscordId) {
+        const { data: prof } = await adminSupabase
+          .from('profiles')
+          .select('discord_username')
+          .eq('id', user.id)
+          .maybeSingle()
+        if (prof?.discord_username && /^\d{17,21}$/.test(prof.discord_username.trim())) {
+          userDiscordId = prof.discord_username.trim()
+        }
       }
+
+      if (userDiscordId) {
+        userHasDiscord = true
+        const isTeamMember = (participants || []).some((p: any) => p.user_id === user.id)
+        if (isTeamMember && team.discord_voice_channel_id) {
+          const { grantDiscordChannelAccess } = await import('@/lib/services/discord')
+          grantDiscordChannelAccess(team.discord_voice_channel_id, userDiscordId, 'voice').catch(() => {})
+        }
+      }
+    } catch (err) {
+      console.error('[TeamPortalPage] Failed to check logged-in user Discord:', err)
     }
   }
 
