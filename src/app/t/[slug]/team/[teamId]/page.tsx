@@ -186,10 +186,29 @@ export default async function TeamPortalPage({
             }
           }
 
-          // 5. Asignar rol del equipo automáticamente a los miembros con Discord vinculado
+          // 5. Asignar rol del equipo y otorgar accesos individuales a los canales
           if (teamRoleId && teamDiscordIds.length > 0) {
+            const { grantDiscordChannelAccess } = await import('@/lib/services/discord')
+            
+            const voiceChannelName = `🔊 ${team.name}`
+            const textChannelName = `chat-${team.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'equipo'}`
+            
+            const existingVoice = guildChannels.find((c: any) => c.parent_id === categoryId && c.type === 2 && (c.name === voiceChannelName || c.name === team.name))
+            const existingText = guildChannels.find((c: any) => c.parent_id === categoryId && c.type === 0 && (c.name === textChannelName || c.name.includes(team.name.toLowerCase())))
+
             for (const dUserId of teamDiscordIds) {
+              // 1. Asignar rol de equipo
               assignDiscordRoleToMember(discordGuildId, dUserId, teamRoleId).catch(() => {})
+              
+              // 2. Dar permiso individual en canal de voz
+              if (existingVoice?.id) {
+                grantDiscordChannelAccess(existingVoice.id, dUserId, 'voice').catch(() => {})
+              }
+              
+              // 3. Dar permiso individual en canal de texto
+              if (existingText?.id) {
+                grantDiscordChannelAccess(existingText.id, dUserId, 'text').catch(() => {})
+              }
             }
           }
 
