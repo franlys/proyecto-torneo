@@ -676,3 +676,47 @@ export async function findMemberIdByUsername(
   return null
 }
 
+/**
+ * Crea un enlace de invitación dinámico para el servidor de Discord.
+ */
+export async function createGuildInvite(guildId: string): Promise<string | null> {
+  const cleanGuildId = extractDiscordGuildId(guildId) || guildId
+  try {
+    const response = await fetch(`${DISCORD_API_URL}/guilds/${cleanGuildId}/channels`, {
+      headers: getHeaders(),
+    })
+    
+    if (!response.ok) {
+      console.warn(`[Discord Service] Error al obtener canales para crear invitación en guild ${cleanGuildId}:`, await response.text())
+      return null
+    }
+    
+    const channels = await response.json()
+    if (!Array.isArray(channels)) return null
+    
+    // Buscar el primer canal de texto público (type 0 = GUILD_TEXT)
+    const textChannel = channels.find((c: any) => c.type === 0)
+    if (!textChannel) return null
+    
+    // Crear invitación
+    const inviteRes = await fetch(`${DISCORD_API_URL}/channels/${textChannel.id}/invites`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        max_age: 86400,
+        max_uses: 0,
+      }),
+    })
+    
+    if (inviteRes.ok) {
+      const inviteData = await inviteRes.json()
+      if (inviteData?.code) {
+        return `https://discord.gg/${inviteData.code}`
+      }
+    }
+  } catch (err) {
+    console.error('[Discord Service] Error al crear invitación dinámica:', err)
+  }
+  return null
+}
+

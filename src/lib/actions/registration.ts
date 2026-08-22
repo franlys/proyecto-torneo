@@ -688,7 +688,7 @@ export async function confirmTeamParticipation(
 
     // 3. Resolve Discord Guild ID (Server ID)
     let guildId: string | null = null
-    const { resolveDiscordGuildId, checkMemberInGuild, createOrGetTeamRole, assignDiscordRoleToMember, findMemberIdByUsername } = await import('@/lib/services/discord')
+    const { resolveDiscordGuildId, checkMemberInGuild, createOrGetTeamRole, assignDiscordRoleToMember, findMemberIdByUsername, createGuildInvite } = await import('@/lib/services/discord')
 
     if (tournament.discord_url) {
       guildId = await resolveDiscordGuildId(tournament.discord_url)
@@ -729,9 +729,15 @@ export async function confirmTeamParticipation(
     if (guildId) {
       const isInServer = await checkMemberInGuild(guildId, discordUserId)
       if (!isInServer) {
+        let joinUrl = tournament.discord_url || 'https://discord.gg/'
+        if (joinUrl && /^\d{17,21}$/.test(joinUrl.trim())) {
+          const botInvite = await createGuildInvite(guildId)
+          joinUrl = botInvite || `https://discord.com/channels/${guildId}`
+        }
+
         return {
           error: `Debes unirte al servidor oficial de Discord de este torneo antes de confirmar tu participación.`,
-          discordUrl: tournament.discord_url || 'https://discord.gg/'
+          discordUrl: joinUrl
         }
       }
 
