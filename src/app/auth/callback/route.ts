@@ -49,31 +49,28 @@ export async function GET(request: Request) {
 
       // Sync Discord username if logged in via Discord or connected it
       try {
-        const { data: discordIdentity, error: identityErr } = await adminSupabase
-          .schema('auth')
-          .from('identities')
-          .select('provider_id, identity_data')
-          .eq('user_id', data.user.id)
-          .eq('provider', 'discord')
-          .maybeSingle()
-
-        if (identityErr) {
-          console.error('[auth/callback] Error querying auth.identities:', identityErr.message)
+        const { data: { user: fullUser }, error: userErr } = await adminSupabase.auth.admin.getUserById(data.user.id)
+        if (userErr) {
+          console.error('[auth/callback] Error fetching full user details:', userErr.message)
         }
 
+        const discordIdentity = fullUser?.identities?.find((id) => id.provider === 'discord')
         console.log('[auth/callback] Discord identity lookup result:', discordIdentity)
 
         if (discordIdentity) {
           const idData = (discordIdentity.identity_data as any) || {}
           console.log('[auth/callback] Discord identity_data details:', idData)
           
-          const discordUsername = idData.username || idData.custom_claims?.username || idData.user_name || idData.name || null
+          const discordUsername = idData.username || idData.full_name || idData.name || idData.custom_claims?.username || idData.user_name || null
           console.log('[auth/callback] Resolved discordUsername:', discordUsername)
 
           if (discordUsername) {
             const { error: updateErr } = await adminSupabase
               .from('profiles')
-              .update({ discord_username: discordUsername })
+              .update({ 
+                discord_username: discordUsername,
+                discord_connected: true
+              })
               .eq('id', data.user.id)
 
             if (updateErr) {
