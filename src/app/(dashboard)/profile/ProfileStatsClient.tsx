@@ -112,6 +112,24 @@ export function ProfileStatsClient({
     setActiveTab(defaultTab)
   }, [defaultTab])
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const errorParam = params.get('error')
+    const successParam = params.get('success')
+    if (errorParam) {
+      toast.error(decodeURIComponent(errorParam), { duration: 8000 })
+      const url = new URL(window.location.href)
+      url.searchParams.delete('error')
+      window.history.replaceState({}, '', url.pathname + url.search)
+    }
+    if (successParam) {
+      toast.success(decodeURIComponent(successParam))
+      const url = new URL(window.location.href)
+      url.searchParams.delete('success')
+      window.history.replaceState({}, '', url.pathname + url.search)
+    }
+  }, [])
+
   const [username, setUsername] = useState(profile?.username ?? '')
   const [streamUrl, setStreamUrl] = useState(profile?.streamUrl ?? '')
   const [discordUsername, setDiscordUsername] = useState(profile?.discordUsername ?? '')
