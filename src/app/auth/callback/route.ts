@@ -5,13 +5,24 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
   const next = searchParams.get('next') || '/kronix'
+  const errorParam = searchParams.get('error')
+  const errorDesc = searchParams.get('error_description')
+
+  if (errorParam) {
+    console.error('[auth/callback] Error returned from Supabase OAuth:', errorParam, errorDesc)
+  }
 
   if (code) {
     const supabase = await createClient()
-    const { data } = await supabase.auth.exchangeCodeForSession(code)
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+
+    if (error) {
+      console.error('[auth/callback] exchangeCodeForSession failed:', error.message)
+    }
 
     // Garantizar que el perfil existe (red de seguridad si el trigger falló)
-    if (data.user) {
+    if (data?.user) {
+      console.log('[auth/callback] Logged in user resolved:', data.user.id, data.user.email)
       const adminSupabase = await createAdminClient()
       const { data: existingProfile } = await adminSupabase
         .from('profiles')
@@ -20,6 +31,7 @@ export async function GET(request: Request) {
         .maybeSingle()
 
       if (!existingProfile) {
+        console.log('[auth/callback] Creating new profile for user:', data.user.id)
         const { count } = await adminSupabase
           .from('profiles')
           .select('*', { count: 'exact', head: true })
@@ -37,7 +49,7 @@ export async function GET(request: Request) {
 
       // Sync Discord username if logged in via Discord or connected it
       try {
-        const { data: discordIdentity } = await adminSupabase
+        const { data: discordIdentity, error: identityErr } = await adminSupabase
           .schema('auth')
           .from('identities')
           .select('provider_id, identity_data')
@@ -45,18 +57,34 @@ export async function GET(request: Request) {
           .eq('provider', 'discord')
           .maybeSingle()
 
+        if (identityErr) {
+          console.error('[auth/callback] Error querying auth.identities:', identityErr.message)
+        }
+
+        console.log('[auth/callback] Discord identity lookup result:', discordIdentity)
+
         if (discordIdentity) {
           const idData = (discordIdentity.identity_data as any) || {}
-          const discordUsername = idData.custom_claims?.username || idData.user_name || idData.name || null
+          console.log('[auth/callback] Discord identity_data details:', idData)
+          
+          const discordUsername = idData.username || idData.custom_claims?.username || idData.user_name || idData.name || null
+          console.log('[auth/callback] Resolved discordUsername:', discordUsername)
+
           if (discordUsername) {
-            await adminSupabase
+            const { error: updateErr } = await adminSupabase
               .from('profiles')
               .update({ discord_username: discordUsername })
               .eq('id', data.user.id)
+
+            if (updateErr) {
+              console.error('[auth/callback] Failed to update profile discord_username:', updateErr.message)
+            } else {
+              console.log('[auth/callback] Profile discord_username successfully updated to:', discordUsername)
+            }
           }
         }
       } catch (syncErr) {
-        console.error('Error syncing Discord identity inside auth callback:', syncErr)
+        console.error('[auth/callback] Unexpected error syncing Discord identity:', syncErr)
       }
     }
   }
