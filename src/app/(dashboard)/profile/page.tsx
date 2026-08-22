@@ -33,7 +33,8 @@ export default async function ProfilePage({
         slug,
         discipline,
         start_date,
-        status
+        status,
+        discord_url
       ),
       teams (
         id,

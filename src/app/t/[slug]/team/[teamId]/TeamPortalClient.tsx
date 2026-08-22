@@ -300,16 +300,26 @@ export function TeamPortalClient({
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+            {tournament.discord_url && (
+              <a
+                href={/^\d{17,21}$/.test(tournament.discord_url.trim()) ? `https://discord.com/channels/${tournament.discord_url.trim()}` : tournament.discord_url}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-[#5865F2] hover:bg-[#4752C4] text-white font-bold text-xs transition-all shadow-sm"
+              >
+                <span>💬 Servidor de Discord</span>
+              </a>
+            )}
             {team.discord_voice_channel_id && (
               <a
                 href={`https://discord.com/channels/${discordGuildId}/${team.discord_voice_channel_id}`}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-[#5865F2]/20 hover:bg-[#5865F2]/40 border border-[#5865F2]/40 text-white font-bold text-xs transition-all group shadow-sm"
+                className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-[#5865F2]/10 hover:bg-[#5865F2]/25 border border-[#5865F2]/20 text-white font-bold text-xs transition-all group shadow-sm"
               >
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>🔊 Entrar a Voz de {team.name}</span>
+                <span>🔊 Voz de {team.name}</span>
               </a>
             )}
             {tournament.discord_announcement_channel_id && (
