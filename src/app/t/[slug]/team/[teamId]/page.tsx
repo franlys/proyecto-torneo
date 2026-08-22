@@ -152,15 +152,26 @@ export default async function TeamPortalPage({
           let teamDiscordIds: string[] = []
           if (teamUserIds.length > 0) {
             const adminSupabase = await createAdminClient()
-            const { data: identities } = await adminSupabase
-              .schema('auth')
-              .from('identities')
-              .select('user_id, provider_id')
-              .eq('provider', 'discord')
-              .in('user_id', teamUserIds)
-
-            if (identities) {
-              teamDiscordIds = identities.map((i) => i.provider_id).filter(Boolean)
+            for (const userId of teamUserIds) {
+              try {
+                const { data: { user: fullUser } } = await adminSupabase.auth.admin.getUserById(userId)
+                const discordIdentity = fullUser?.identities?.find((id) => id.provider === 'discord')
+                if (discordIdentity?.id) {
+                  teamDiscordIds.push(discordIdentity.id)
+                } else {
+                  // Fallback: check profile discord_username if it is a snowflake ID
+                  const { data: prof } = await adminSupabase
+                    .from('profiles')
+                    .select('discord_username')
+                    .eq('id', userId)
+                    .maybeSingle()
+                  if (prof?.discord_username && /^\d{17,21}$/.test(prof.discord_username.trim())) {
+                    teamDiscordIds.push(prof.discord_username.trim())
+                  }
+                }
+              } catch (uErr) {
+                console.error(`[TeamPortalPage] Failed to fetch identities for user ${userId}:`, uErr)
+              }
             }
           }
 
