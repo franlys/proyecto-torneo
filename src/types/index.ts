@@ -199,3 +199,39 @@ export interface ColumnConfig {
   visible: boolean;
   order: number;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Gate 1: Kick OAuth Connection & Identity (solo tipos, nunca tokens en claro)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Respuesta de token de Kick (OAuth 2.1 + PKCE) — docs.kick.com. */
+export interface KickTokenResponse {
+  access_token: string;
+  token_type: string;
+  refresh_token: string;
+  expires_in: number;
+  scope: string;
+}
+
+/** Identidad verificada devuelta por GET https://api.kick.com/public/v1/users. */
+export interface KickUser {
+  user_id: string;
+  username: string;
+  email?: string | null;
+  profile_picture?: string | null;
+  [key: string]: unknown;
+}
+
+/** Fila de kick_connections visible desde el cliente (SIN columnas cifradas). */
+export interface KickConnection {
+  id: string;
+  user_id: string;
+  kick_user_id: string;
+  kick_username: string | null;
+  kick_email: string | null;
+  kick_profile_picture: string | null;
+  scopes: string;
+  access_token_expires_at: string;
+  created_at: string;
+  updated_at: string;
+}

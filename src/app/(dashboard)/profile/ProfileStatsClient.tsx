@@ -33,6 +33,7 @@ import {
   TrendingUp
 } from 'lucide-react'
 import { GlowCard } from '@/components/ui/GlowCard'
+import type { KickConnection } from '@/types'
 
 interface ProfileStatsClientProps {
   profile: any
@@ -135,6 +136,62 @@ export function ProfileStatsClient({
   const [discordUsername, setDiscordUsername] = useState(profile?.discordUsername ?? '')
   const [discordGuildId, setDiscordGuildId] = useState(profile?.discordGuildId ?? '')
   const [isSaving, setIsSaving] = useState(false)
+
+  // ── Conexión con Kick (Gate 1) — bloque solo aditivo ───────────────────────
+  const [kickConnection, setKickConnection] = useState<Pick<
+    KickConnection,
+    'kick_username' | 'scopes' | 'access_token_expires_at'
+  > | null>(null)
+  const [kickLoading, setKickLoading] = useState(true)
+  const [kickDisconnecting, setKickDisconnecting] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    const loadKickConnection = async () => {
+      // Solo columnas seguras (S1: las columnas cifradas ni siquiera son
+      // seleccionables por el rol authenticated).
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('kick_connections')
+        .select('kick_username, scopes, access_token_expires_at')
+        .maybeSingle()
+      if (cancelled) return
+      if (error) {
+        console.error('[Kick] No se pudo leer la conexión de Kick:', error.message)
+      }
+      setKickConnection(data ?? null)
+      setKickLoading(false)
+    }
+    loadKickConnection()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const handleKickConnect = () => {
+    window.location.href = '/api/kick/authorize'
+  }
+
+  const handleKickDisconnect = async () => {
+    if (!confirm('¿Desvincular tu cuenta de Kick? Se revocará el acceso en Kick y se borrará la conexión.')) return
+    setKickDisconnecting(true)
+    const toastId = toast.loading('Desvinculando cuenta de Kick...')
+    try {
+      const res = await fetch('/api/kick/disconnect', { method: 'POST' })
+      if (res.ok) {
+        toast.success('Cuenta de Kick desvinculada con éxito', { id: toastId })
+        setKickConnection(null)
+        window.location.reload()
+      } else {
+        const body = await res.json().catch(() => null)
+        toast.error(body?.error ?? 'No se pudo desvincular tu cuenta de Kick.', { id: toastId })
+      }
+    } catch (err: any) {
+      toast.error(`Error inesperado: ${err.message || String(err)}`, { id: toastId })
+    } finally {
+      setKickDisconnecting(false)
+    }
+  }
 
   // Invitations states
   const [invitations, setInvitations] = useState<any[]>([])
@@ -1243,6 +1300,51 @@ export function ProfileStatsClient({
                   </div>
                   <p className="text-[10px] text-white/40 mt-1">
                     Vincula tu usuario de Discord para coordinar partidas y verificar tu identidad social. Puedes hacer clic en "Vincular Automático" para conectarlo directamente.
+                  </p>
+                </div>
+
+                {/* ── Conexión con Kick (Gate 1) — bloque solo aditivo ────────── */}
+                <div>
+                  <label className="block text-xs text-white/50 uppercase tracking-widest font-bold mb-1.5">
+                    Cuenta de Kick
+                  </label>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs flex items-center min-w-0">
+                      {kickLoading ? (
+                        <span className="text-white/30">Verificando conexión...</span>
+                      ) : kickConnection ? (
+                        <span className="truncate">
+                          <span className="text-green-400 font-bold mr-2">● Conectado</span>
+                          <span className="text-white font-bold">{kickConnection.kick_username}</span>
+                          <span className="text-white/30 font-mono ml-2 text-[10px]">scope: {kickConnection.scopes}</span>
+                        </span>
+                      ) : (
+                        <span className="text-white/30">No vinculada</span>
+                      )}
+                    </div>
+                    {kickConnection ? (
+                      <button
+                        type="button"
+                        onClick={handleKickDisconnect}
+                        disabled={kickDisconnecting}
+                        className="shrink-0 px-4 py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/30 text-red-400 hover:text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.98] disabled:opacity-50"
+                        title="Desvincular cuenta de Kick"
+                      >
+                        {kickDisconnecting ? 'Desvinculando...' : 'Desvincular'}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleKickConnect}
+                        className="shrink-0 px-4 py-3 bg-[#53FC18]/10 hover:bg-[#53FC18]/20 border border-[#53FC18]/20 hover:border-[#53FC18]/30 text-[#53FC18] hover:text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                        title="Vincular automáticamente con Kick"
+                      >
+                        <span>Vincular con Kick</span>
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-white/40 mt-1">
+                    Vincula tu cuenta de Kick para verificar tu identidad como streamer. Al desvincular, el acceso se revoca automáticamente en Kick.
                   </p>
                 </div>
 
