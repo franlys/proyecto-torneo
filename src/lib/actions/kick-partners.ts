@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 import { isSuperAdmin } from '@/lib/actions/auth-helpers'
 import { revalidatePath } from 'next/cache'
 import {
@@ -26,7 +26,7 @@ export async function authorizePartnerAction(targetUserId: string): Promise<{ su
   }
 
   try {
-    const supabase = await createClient()
+    const supabase = await createAdminClient()
     const partner = await authorizeKickPartner(supabase, targetUserId)
     revalidatePath('/admin/kick-partners')
     return { success: true, partner }
@@ -45,7 +45,7 @@ export async function updatePartnerFlagsAction(
   }
 
   try {
-    const supabase = await createClient()
+    const supabase = await createAdminClient()
     const partner = await updateKickPartnerFlags(supabase, partnerId, {
       integrationEnabled,
       subscriberTournamentsEnabled,
@@ -63,7 +63,7 @@ export async function revokePartnerAction(partnerId: string): Promise<{ success?
   }
 
   try {
-    const supabase = await createClient()
+    const supabase = await createAdminClient()
     const partner = await revokeKickPartner(supabase, partnerId)
     revalidatePath('/admin/kick-partners')
     return { success: true, partner }
@@ -78,7 +78,7 @@ export async function getPartnersListAction(): Promise<{ partners?: KickStreamer
   }
 
   try {
-    const supabase = await createClient()
+    const supabase = await createAdminClient()
     const partners = await getKickStreamerPartners(supabase)
     return { partners }
   } catch (err: unknown) {
