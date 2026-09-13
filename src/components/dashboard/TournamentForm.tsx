@@ -7,6 +7,8 @@ import { useState, useEffect } from 'react'
 import { createTournamentSchema, type CreateTournamentInput } from '@/lib/validations/schemas'
 import { createTournament, updateTournament } from '@/lib/actions/tournaments'
 import { getDiscordChannelsAction } from '@/lib/actions/discord-channels'
+import { getActivePartnersForTournamentAction } from '@/lib/actions/kick-partners'
+import type { ActivePartnerOption } from '@/lib/services/kick-partners'
 import { extractDiscordGuildId } from '@/lib/services/discord'
 import { ScoringRuleEditor } from './ScoringRuleEditor'
 import { createClient } from '@/lib/supabase/client'
@@ -93,6 +95,7 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
   const [fetchingChannels, setFetchingChannels] = useState(false)
 
   const [connectedKickAccount, setConnectedKickAccount] = useState<{ kick_user_id: string; kick_username: string } | null>(null)
+  const [activeKickPartners, setActiveKickPartners] = useState<ActivePartnerOption[]>([])
 
   useEffect(() => {
     setMounted(true)
@@ -131,6 +134,9 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
           }
         }
       }
+
+      const partners = await getActivePartnersForTournamentAction()
+      setActiveKickPartners(partners)
     }
     loadData()
   }, [])
@@ -984,46 +990,45 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
                 </div>
               )}
 
-              {/* Kick Subscription Restriction toggle */}
-              <div className="space-y-2 pt-2 border-t border-white/5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (kickBroadcasterId) {
-                      setValue('kickBroadcasterId', null)
-                    } else if (connectedKickAccount?.kick_user_id) {
-                      setValue('kickBroadcasterId', connectedKickAccount.kick_user_id)
-                    }
-                  }}
-                  disabled={!connectedKickAccount?.kick_user_id}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all duration-150
-                    ${Boolean(kickBroadcasterId)
-                      ? 'border-emerald-500/30 bg-emerald-500/5'
-                      : 'border-white/10 bg-white/[0.03] hover:border-white/20'
-                    } ${!connectedKickAccount?.kick_user_id ? 'opacity-60 cursor-not-allowed' : ''}`}
-                >
-                  <div className="text-left">
-                    <p className={`text-sm font-medium transition-colors duration-150
-                      ${Boolean(kickBroadcasterId) ? 'text-emerald-400' : 'text-white/50'}`}>
-                      Exclusivo para Suscriptores de Kick
-                    </p>
-                    <p className="text-xs text-white/30 mt-0.5">
-                      {connectedKickAccount?.kick_user_id
-                        ? `Solo suscriptores directos de tu canal Kick (${connectedKickAccount.kick_username}) podrán inscribirse`
-                        : 'Debes vincular tu cuenta de Kick en tu perfil para habilitar torneos exclusivos para suscriptores'
-                      }
-                    </p>
+              {/* Kick Streamer Partner Subscription Restriction */}
+              <div className="space-y-3 pt-3 border-t border-white/5">
+                <div>
+                  <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-1">
+                    Restricción de Suscriptores Kick (Streamer Partner)
+                  </label>
+                  <p className="text-xs text-white/40 mb-3">
+                    Permite restringir la inscripción únicamente a suscriptores directos activos del Streamer Partner seleccionado.
+                  </p>
+                </div>
+
+                {activeKickPartners.length === 0 && !kickBroadcasterId ? (
+                  <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs text-white/40">
+                    No hay Kick Streamer Partners autorizados por Super Admin disponibles actualmente.
                   </div>
-                  <div
-                    className={`relative w-10 h-5 rounded-full transition-colors duration-150 shrink-0
-                      ${Boolean(kickBroadcasterId) ? 'bg-emerald-500' : 'bg-white/10'}`}
-                  >
-                    <div
-                      className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-150
-                        ${Boolean(kickBroadcasterId) ? 'translate-x-5' : 'translate-x-0.5'}`}
-                    />
+                ) : (
+                  <div>
+                    <select
+                      value={kickBroadcasterId || ''}
+                      onChange={(e) => {
+                        const val = e.target.value ? e.target.value : null
+                        setValue('kickBroadcasterId', val)
+                      }}
+                      className={inputClass}
+                    >
+                      <option value="">Sin restricción de Kick (Torneo Abierto)</option>
+                      {activeKickPartners.map((p) => (
+                        <option key={p.kickUserId} value={p.kickUserId}>
+                          {p.kickUsername ? `🎮 ${p.kickUsername} (@${p.username || 'partner'})` : p.username || p.kickUserId}
+                        </option>
+                      ))}
+                      {kickBroadcasterId && !activeKickPartners.some((p) => p.kickUserId === kickBroadcasterId) && (
+                        <option value={kickBroadcasterId}>
+                          ⚠️ Partner Configurado (ID: {kickBroadcasterId})
+                        </option>
+                      )}
+                    </select>
                   </div>
-                </button>
+                )}
                 {Boolean(kickBroadcasterId) && (
                   <input type="hidden" {...register('kickBroadcasterId')} />
                 )}

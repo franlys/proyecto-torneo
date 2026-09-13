@@ -111,20 +111,24 @@ export async function validateKickBroadcasterAuthority(
 
   const targetKickBroadcasterId = kickBroadcasterId.trim()
 
-  const { data: kickConn } = await supabase
-    .from('kick_connections')
-    .select('kick_user_id')
-    .eq('user_id', userId)
+  // Gate 4A Authority Check: Broadcaster must be an active, authorized Kick Streamer Partner
+  const { data: partner, error: partnerError } = await supabase
+    .from('kick_streamer_partners')
+    .select('id, integration_enabled, subscriber_tournaments_enabled, revoked_at')
+    .eq('kick_user_id', targetKickBroadcasterId)
+    .is('revoked_at', null)
+    .eq('integration_enabled', true)
+    .eq('subscriber_tournaments_enabled', true)
     .maybeSingle()
 
-  if (kickConn?.kick_user_id === targetKickBroadcasterId) {
+  if (!partnerError && partner) {
     return { valid: true, kickBroadcasterId: targetKickBroadcasterId }
   }
 
   return {
     valid: false,
     kickBroadcasterId: null,
-    error: 'No estás autorizado para asignar un kick_broadcaster_id que no corresponda a tu propia cuenta conectada de Kick.',
+    error: 'No estás autorizado. El broadcaster de Kick seleccionado no es un Kick Streamer Partner activo con torneos para suscriptores habilitados.',
   }
 }
 

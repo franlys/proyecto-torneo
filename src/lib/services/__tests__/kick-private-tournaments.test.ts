@@ -114,6 +114,35 @@ function buildMockSupabaseClient() {
         }
       }
 
+      if (table === 'kick_streamer_partners') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockImplementation((_col1, bId) => ({
+              is: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  eq: vi.fn().mockReturnValue({
+                    maybeSingle: vi.fn().mockImplementation(async () => {
+                      if (bId === 'kick-creator-100') {
+                        return {
+                          data: {
+                            id: 'partner-creator',
+                            integration_enabled: true,
+                            subscriber_tournaments_enabled: true,
+                            revoked_at: null,
+                          },
+                          error: null,
+                        }
+                      }
+                      return { data: null, error: null }
+                    }),
+                  }),
+                }),
+              }),
+            })),
+          }),
+        }
+      }
+
       if (table === 'kick_subscribers') {
         return {
           select: vi.fn().mockReturnValue({

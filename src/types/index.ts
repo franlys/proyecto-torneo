@@ -236,3 +236,21 @@ export interface KickConnection {
   created_at: string;
   updated_at: string;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Gate 4A: Kronix Kick Streamer Partners
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface KickStreamerPartner {
+  id: string;
+  userId: string;
+  kickUserId: string;
+  integrationEnabled: boolean;
+  subscriberTournamentsEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+  revokedAt: string | null;
+  username?: string | null;
+  kickUsername?: string | null;
+}
+
