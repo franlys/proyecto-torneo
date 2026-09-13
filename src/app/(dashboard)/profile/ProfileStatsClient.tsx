@@ -1334,14 +1334,16 @@ export function ProfileStatsClient({
                         {kickDisconnecting ? 'Desvinculando...' : 'Desvincular'}
                       </button>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={handleKickConnect}
+                      <a
+                        href="/api/kick/authorize"
+                        onClick={() => {
+                          toast.loading('Redirigiendo a Kick para autorizar cuenta...')
+                        }}
                         className="shrink-0 px-4 py-3 bg-[#53FC18]/10 hover:bg-[#53FC18]/20 border border-[#53FC18]/20 hover:border-[#53FC18]/30 text-[#53FC18] hover:text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.98]"
                         title="Vincular automáticamente con Kick"
                       >
                         <span>Vincular con Kick</span>
-                      </button>
+                      </a>
                     )}
                   </div>
                   <p className="text-[10px] text-white/40 mt-1">
