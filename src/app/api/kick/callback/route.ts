@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     return redirectToProfile(request, { error: 'El flujo de vinculación expiró. Inténtalo de nuevo.' })
   }
 
-  let flow: { state: string; codeVerifier: string; returnTo?: string }
+  let flow: { state: string; codeVerifier: string; returnTo?: string; redirectUrl?: string }
   try {
     const parsed = FLOW_COOKIE_SCHEMA.safeParse(JSON.parse(flowCookie))
     if (!parsed.success) {
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const tokens = await exchangeCodeForTokens(code, flow.codeVerifier)
+    const tokens = await exchangeCodeForTokens(code, flow.codeVerifier, flow.redirectUrl)
     const kickUser = await fetchKickUser(tokens.access_token)
 
     const adminClient = await createAdminClient()

@@ -45,6 +45,7 @@ export const FLOW_COOKIE_SCHEMA = z.object({
   state: z.string().min(16),
   codeVerifier: z.string().min(43).max(128),
   returnTo: z.string().max(2048).optional(),
+  redirectUrl: z.string().max(2048).optional(),
 })
 
 /** Skew de seguridad restando al expires_in al calcular la expiración. */
@@ -205,14 +206,15 @@ async function readJsonSafe(response: Response): Promise<unknown> {
  * doc de Kick (form-urlencoded): grant_type, code, client_id, client_secret,
  * redirect_uri, code_verifier.
  */
-export async function exchangeCodeForTokens(code: string, codeVerifier: string): Promise<KickTokenResponse> {
+export async function exchangeCodeForTokens(code: string, codeVerifier: string, customRedirectUrl?: string): Promise<KickTokenResponse> {
   const { clientId, clientSecret, redirectUrl } = getKickConfig()
+  const targetRedirectUrl = customRedirectUrl || redirectUrl
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
     code,
     client_id: clientId,
     client_secret: clientSecret,
-    redirect_uri: redirectUrl,
+    redirect_uri: targetRedirectUrl,
     code_verifier: codeVerifier,
   })
 

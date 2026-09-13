@@ -40,15 +40,18 @@ export async function GET(request: NextRequest) {
   const codeChallenge = generateCodeChallenge(codeVerifier)
   const state = generateOAuthState()
 
+  const origin = new URL(request.url).origin
+  const redirectUrl = `${origin}/api/kick/callback`
+
   const authorizeUrl = buildAuthorizeUrl({
     clientId: config.clientId,
-    redirectUrl: config.redirectUrl,
+    redirectUrl,
     state,
     codeChallenge,
   })
 
   const response = NextResponse.redirect(authorizeUrl)
-  response.cookies.set(KICK_OAUTH_FLOW_COOKIE, JSON.stringify({ state, codeVerifier }), {
+  response.cookies.set(KICK_OAUTH_FLOW_COOKIE, JSON.stringify({ state, codeVerifier, redirectUrl }), {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
