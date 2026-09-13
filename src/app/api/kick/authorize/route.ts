@@ -47,10 +47,12 @@ export async function GET(request: NextRequest) {
     codeChallenge,
   })
 
+  const returnTo = request.nextUrl.searchParams.get('returnTo')
+
   const response = NextResponse.redirect(authorizeUrl)
   response.cookies.set(
     KICK_OAUTH_FLOW_COOKIE,
-    JSON.stringify({ state, codeVerifier, redirectUrl, isAuthFlow: !user }),
+    JSON.stringify({ state, codeVerifier, redirectUrl, isAuthFlow: !user, returnTo: returnTo || null }),
     {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

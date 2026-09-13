@@ -90,7 +90,19 @@ export async function GET(request: NextRequest) {
       // 1. Authenticated user -> link Kick connection
       const result = await upsertKickConnection({ supabase: adminClient, userId: user.id, tokens, kickUser })
       if ('error' in result) {
+        if (flow.returnTo) {
+          const sep = flow.returnTo.includes('?') ? '&' : '?'
+          const res = NextResponse.redirect(`${origin}${flow.returnTo}${sep}kick_error=${encodeURIComponent(result.error)}`)
+          res.cookies.delete(KICK_OAUTH_FLOW_COOKIE)
+          return res
+        }
         return redirectToProfile(request, { error: result.error })
+      }
+      if (flow.returnTo) {
+        const sep = flow.returnTo.includes('?') ? '&' : '?'
+        const res = NextResponse.redirect(`${origin}${flow.returnTo}${sep}kick_linked=true`)
+        res.cookies.delete(KICK_OAUTH_FLOW_COOKIE)
+        return res
       }
       return redirectToProfile(request, { success: `Cuenta de Kick vinculada con éxito como ${kickUser.username}.` })
     } else {
@@ -157,11 +169,16 @@ export async function GET(request: NextRequest) {
 
       // Sign in user via magic link
       if (targetEmail) {
+        const defaultRedirect = `${origin}/kronix`
+        const targetRedirect = flow.returnTo
+          ? `${origin}${flow.returnTo}${flow.returnTo.includes('?') ? '&' : '?'}kick_linked=true`
+          : defaultRedirect
+
         const { data: linkData } = await adminClient.auth.admin.generateLink({
           type: 'magiclink',
           email: targetEmail,
           options: {
-            redirectTo: `${origin}/kronix`,
+            redirectTo: targetRedirect,
           },
         })
 
@@ -172,7 +189,10 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      return NextResponse.redirect(`${origin}/kronix`)
+      const finalRedirect = flow.returnTo
+        ? `${origin}${flow.returnTo}${flow.returnTo.includes('?') ? '&' : '?'}kick_linked=true`
+        : `${origin}/kronix`
+      return NextResponse.redirect(finalRedirect)
     }
   } catch (err) {
     console.error('[Kick Callback] Fallo en el intercambio/persistencia:', err instanceof Error ? `${err.name}: ${err.message}` : err)

@@ -20,6 +20,7 @@ import { registerTournament } from '@/lib/actions/registration'
 import { getFriendsList, searchUsersForFriends, sendFriendRequest } from '@/lib/actions/friends'
 import { getGameAccountForUser, upsertGameAccount, GAME_LABELS } from '@/lib/actions/game-accounts'
 import { toast } from 'sonner'
+import { checkTournamentKickEligibilityAction, type TournamentKickStatus } from '@/lib/actions/kick-eligibility-actions'
 import { NicknameModal } from '@/components/profile/NicknameModal'
 import { placePredictionAction } from '@/lib/actions/predictions'
 import { calculatePayPalGrossAmount } from '@/lib/services/paypal-fee'
@@ -251,6 +252,10 @@ export function LeaderboardClient({
   isLoggedIn = false,
   arenaBettingEnabled = false,
   exchangeRate = 58.25,
+  kickBroadcasterId = null,
+  kickSubsType = 'all',
+  kickBroadcasterName = null,
+  kickBroadcasterUsername = null,
 }: {
   tournamentId: string
   tournamentName: string
@@ -312,6 +317,10 @@ export function LeaderboardClient({
   isLoggedIn?: boolean
   arenaBettingEnabled?: boolean
   exchangeRate?: number
+  kickBroadcasterId?: string | null
+  kickSubsType?: 'direct' | 'all' | null
+  kickBroadcasterName?: string | null
+  kickBroadcasterUsername?: string | null
 }) {
   // Stable supabase client — created once, not on every render.
   // If this were inside the component body without useMemo, every render would produce
@@ -357,6 +366,25 @@ export function LeaderboardClient({
   const isSubmittingReg = React.useRef(false)
   const router = useRouter()
 
+  // Kick subscription verification state
+  const [kickEligibility, setKickEligibility] = useState<TournamentKickStatus | null>(null)
+  const [checkingKick, setCheckingKick] = useState(false)
+
+  const checkKickStatus = useCallback(async () => {
+    if (!kickBroadcasterId) return null
+    setCheckingKick(true)
+    try {
+      const status = await checkTournamentKickEligibilityAction(tournamentId)
+      setKickEligibility(status)
+      return status
+    } catch (err) {
+      console.error('Error checking Kick eligibility:', err)
+      return null
+    } finally {
+      setCheckingKick(false)
+    }
+  }, [kickBroadcasterId, tournamentId])
+
   // Auto-save registration draft to sessionStorage
   useEffect(() => {
     if (!isRegistering) return
@@ -387,6 +415,9 @@ export function LeaderboardClient({
   ])
 
   const handleOpenRegistration = async () => {
+    if (kickBroadcasterId) {
+      checkKickStatus()
+    }
     const size = { individual: 1, duos: 2, trios: 3, cuartetos: 4, quintas: 5 }[mode] || 1
     const initialParticipants = Array(size).fill('')
     const initialUserIds = Array(size).fill(null)
@@ -559,6 +590,13 @@ export function LeaderboardClient({
     isSubmittingReg.current = true
     setRegLoading(true)
     try {
+      if (kickBroadcasterId && !kickEligibility?.eligible) {
+        toast.error('Debes validar tu suscripción de Kick para poder inscribirte en este torneo.')
+        setRegLoading(false)
+        isSubmittingReg.current = false
+        return
+      }
+
       if (mode !== 'individual') {
         for (let i = 1; i < regParticipants.length; i++) {
           if (!regParticipantUserIds[i]) {
@@ -927,11 +965,15 @@ export function LeaderboardClient({
           setShowNicknameModal(true)
         }
 
-        // Auto-open registration if redirected from wallet
+        // Auto-open registration if redirected from wallet or Kick OAuth linking
         if (typeof window !== 'undefined') {
           const params = new URLSearchParams(window.location.search)
-          if (params.get('openRegister') === 'true' && !registration) {
+          const shouldOpen = params.get('openRegister') === 'true' || params.get('open_register') === 'true' || params.get('kick_linked') === 'true'
+          if (shouldOpen && !registration) {
             handleOpenRegistration()
+            if (params.get('kick_linked') === 'true') {
+              toast.success('¡Cuenta de Kick vinculada con éxito! Validando suscripción...')
+            }
           }
         }
       }
@@ -1996,10 +2038,44 @@ export function LeaderboardClient({
                         <span>🔒</span> Privado
                       </span>
                     )}
+                    {kickBroadcasterId && (
+                      <span className="text-[9px] bg-[#53FC18]/15 text-[#53FC18] font-bold px-2 py-0.5 rounded border border-[#53FC18]/30 uppercase tracking-wide flex items-center gap-1.5 shadow-[0_0_12px_rgba(83,252,24,0.15)]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#53FC18] animate-pulse" />
+                        <span>Solo Subs Kick ({kickSubsType === 'direct' ? 'Únicos' : 'Todos'})</span>
+                      </span>
+                    )}
                     <span className="text-[9px] bg-neon-cyan/20 text-neon-cyan font-bold px-2 py-0.5 rounded border border-neon-cyan/30 uppercase tracking-wide">
                       {mode.toUpperCase()}
                     </span>
                   </div>
+
+                  {kickBroadcasterId && (
+                    <div className="mt-3.5 p-3.5 rounded-2xl bg-[#53FC18]/10 border border-[#53FC18]/25 space-y-1.5 text-left shadow-[0_0_20px_rgba(83,252,24,0.08)]">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 text-[#53FC18]">
+                          <span className="text-sm">⚡</span>
+                          <span className="text-[11px] font-black uppercase tracking-widest">
+                            Torneo Exclusivo de Streamer
+                          </span>
+                        </div>
+                        <a
+                          href={`https://kick.com/${kickBroadcasterUsername || kickBroadcasterName}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] font-mono px-2 py-0.5 rounded bg-black/50 text-[#53FC18] hover:bg-[#53FC18]/20 transition-all border border-[#53FC18]/30 flex items-center gap-1"
+                        >
+                          <span>kick.com/{kickBroadcasterUsername || kickBroadcasterName}</span>
+                          <span>↗</span>
+                        </a>
+                      </div>
+                      <p className="text-xs text-white/90 leading-relaxed">
+                        Este torneo es exclusivo del canal de <strong className="text-[#53FC18]">@{kickBroadcasterUsername || kickBroadcasterName}</strong> y está reservado {kickSubsType === 'direct' ? 'únicamente para suscriptores únicos (suscripción directa / pagada, no regalada)' : 'para suscriptores activos (directos o regalados)'}.
+                      </p>
+                      <p className="text-[10px] text-white/50">
+                        🛡️ Antes de inscribirte o pagar la cuota, deberás vincular y validar tu cuenta de Kick en el formulario.
+                      </p>
+                    </div>
+                  )}
 
                   <p className="text-white/60 text-xs mt-1.5 leading-relaxed">
                     {isUserRegistered 
@@ -2188,9 +2264,9 @@ export function LeaderboardClient({
                     ) : (
                       <button
                         onClick={handleOpenRegistration}
-                        className="w-full md:w-auto px-6 py-3 bg-neon-cyan hover:bg-neon-cyan/90 active:scale-95 text-black font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(0,245,255,0.2)] hover:shadow-[0_0_35px_rgba(0,245,255,0.35)]"
+                        className="w-full md:w-auto px-6 py-3 bg-neon-cyan hover:bg-neon-cyan/90 active:scale-95 text-black font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(0,245,255,0.2)] hover:shadow-[0_0_35px_rgba(0,245,255,0.35)] flex items-center justify-center gap-2"
                       >
-                        Inscribirse Ahora
+                        {kickBroadcasterId ? <span>⚡ Inscribirse (Solo Subs Kick)</span> : <span>Inscribirse Ahora</span>}
                       </button>
                     )
                   ) : (
@@ -3424,6 +3500,155 @@ export function LeaderboardClient({
                 </div>
                 <form onSubmit={handleRegisterSubmit} className="flex flex-col flex-1 overflow-hidden">
                   <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                  {kickBroadcasterId && (
+                    <div className="rounded-2xl border border-[#53FC18]/30 bg-[#53FC18]/10 p-4 sm:p-5 space-y-3.5 shadow-[0_0_30px_rgba(83,252,24,0.08)]">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-[#53FC18] animate-pulse" />
+                            <h4 className="font-orbitron font-black text-xs sm:text-sm text-white uppercase tracking-wider">
+                              Torneo Exclusivo de Kick
+                            </h4>
+                          </div>
+                          <p className="text-xs text-white/70 mt-1">
+                            Streamer: <strong className="text-[#53FC18]">@{kickBroadcasterUsername || kickBroadcasterName}</strong>
+                          </p>
+                        </div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded bg-black/60 text-[#53FC18] border border-[#53FC18]/30 shrink-0">
+                          {kickSubsType === 'direct' ? 'Subs Únicos' : 'Todos los Subs'}
+                        </span>
+                      </div>
+
+                      <div className="text-[11px] text-white/70 leading-relaxed border-t border-white/5 pt-2.5">
+                        {kickSubsType === 'direct' ? (
+                          <p>
+                            ⚠️ <strong>Requisito estricto:</strong> Este torneo es <strong>únicamente para suscriptores directos (pagados)</strong> de <span className="text-[#53FC18]">@{kickBroadcasterUsername || kickBroadcasterName}</span>. Las suscripciones regaladas no son válidas para este evento.
+                          </p>
+                        ) : (
+                          <p>
+                            ℹ️ Este torneo está abierto a <strong>todos los suscriptores activos</strong> (directos o suscripciones de regalo) del canal de <span className="text-[#53FC18]">@{kickBroadcasterUsername || kickBroadcasterName}</span>.
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Status Card */}
+                      {checkingKick ? (
+                        <div className="p-3.5 rounded-xl bg-black/50 border border-white/10 flex items-center justify-center gap-2.5 text-xs text-white/70 font-mono">
+                          <div className="w-4 h-4 border-2 border-[#53FC18] border-t-transparent rounded-full animate-spin" />
+                          <span>Validando vinculación y suscripción en Kick...</span>
+                        </div>
+                      ) : !isLoggedIn ? (
+                        <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 space-y-2.5">
+                          <p className="text-xs text-red-300 font-semibold">
+                            Debes iniciar sesión para vincular tu cuenta de Kick y validar tu suscripción.
+                          </p>
+                          <Link
+                            href={`/login?redirectTo=${encodeURIComponent(`/t/${slug}?open_register=true`)}`}
+                            className="inline-block px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all"
+                          >
+                            Iniciar Sesión
+                          </Link>
+                        </div>
+                      ) : !kickEligibility?.hasKickConnected ? (
+                        <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-3">
+                          <div className="flex items-start gap-2.5">
+                            <span className="text-xl">🔗</span>
+                            <div>
+                              <p className="text-xs font-bold text-amber-300">
+                                Vincula tu cuenta de Kick para verificar
+                              </p>
+                              <p className="text-[11px] text-white/70 mt-0.5 leading-snug">
+                                Antes de ingresar los datos de tu equipo o pagar la cuota, debes vincular tu cuenta de Kick para comprobar que estás suscrito a <strong className="text-white">@{kickBroadcasterUsername || kickBroadcasterName}</strong>.
+                              </p>
+                            </div>
+                          </div>
+
+                          <a
+                            href={`/api/kick/authorize?returnTo=${encodeURIComponent(`/t/${slug}?open_register=true`)}`}
+                            className="w-full py-2.5 px-4 bg-[#53FC18] hover:bg-[#46dc14] active:scale-[0.98] text-black font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(83,252,24,0.3)] flex items-center justify-center gap-2 font-orbitron text-center"
+                          >
+                            <span>🟢 Vincular Cuenta de Kick</span>
+                          </a>
+                        </div>
+                      ) : !kickEligibility?.eligible ? (
+                        <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 space-y-3">
+                          <div className="flex items-start gap-2.5">
+                            <span className="text-xl">🚫</span>
+                            <div>
+                              <p className="text-xs font-bold text-red-400">
+                                Acceso Denegado: No eres suscriptor elegible
+                              </p>
+                              <p className="text-[11px] text-white/70 mt-0.5 leading-snug">
+                                Tu cuenta de Kick <strong className="text-white font-mono">@{kickEligibility.userKickUsername || 'desconocida'}</strong> está conectada, pero{' '}
+                                {kickEligibility.reason === 'gifted_subscription_ineligible' ? (
+                                  <strong className="text-red-300">
+                                    tu suscripción es de regalo y las reglas de este torneo exigen ser suscriptor único (directo/pagado).
+                                  </strong>
+                                ) : (
+                                  <strong className="text-red-300">
+                                    no se encontró una suscripción activa al canal de @{kickBroadcasterUsername || kickBroadcasterName}.
+                                  </strong>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                            <a
+                              href={`https://kick.com/${kickBroadcasterUsername || kickBroadcasterName}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-1 py-2 px-3 bg-white/10 hover:bg-white/15 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 border border-white/10 text-center"
+                            >
+                              <span>📺 Ir a kick.com/{kickBroadcasterUsername || kickBroadcasterName}</span>
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => checkKickStatus()}
+                              className="py-2 px-4 bg-[#53FC18]/20 hover:bg-[#53FC18]/30 text-[#53FC18] border border-[#53FC18]/40 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5"
+                            >
+                              <span>🔄 Re-verificar Suscripción</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-lg">✅</span>
+                            <div>
+                              <p className="text-xs font-bold text-emerald-400">
+                                Suscripción de Kick Verificada
+                              </p>
+                              <p className="text-[11px] text-white/70">
+                                Cuenta: <strong className="text-white font-mono">@{kickEligibility.userKickUsername}</strong> • Suscriptor {kickSubsType === 'direct' ? 'Único' : 'Activo'} confirmado
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => checkKickStatus()}
+                            title="Actualizar estado de suscripción"
+                            className="p-1.5 text-white/40 hover:text-white rounded-lg hover:bg-white/5 transition-all text-xs"
+                          >
+                            🔄
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {kickBroadcasterId && !kickEligibility?.eligible ? (
+                    <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 text-center space-y-2">
+                      <span className="text-2xl">🔒</span>
+                      <h5 className="text-xs font-bold uppercase tracking-wider text-white/80">
+                        Formulario de Inscripción Bloqueado
+                      </h5>
+                      <p className="text-[11px] text-white/50 max-w-sm mx-auto leading-relaxed">
+                        Debes validar que eres suscriptor de Kick en el recuadro de arriba para poder ingresar los integrantes de tu equipo y pagar la cuota de inscripción.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
                   {mode !== 'individual' && (
                     <div>
                       <label className="block text-xs text-white/60 uppercase tracking-widest font-bold mb-1.5 ml-1">
@@ -3733,10 +3958,25 @@ export function LeaderboardClient({
                       )}
                     </div>
                   )}
+                  </>
+                  )}
 
                   </div>
                   <div className="flex gap-3 p-6 pt-4 border-t border-white/5 bg-white/[0.01]">
-                    {entryFee > 0 && isLoggedIn && localBalance < (entryFee * (exchangeRate || 58.25)) ? (
+                    {kickBroadcasterId && !kickEligibility?.eligible ? (
+                      <div className="flex-1 flex flex-col items-center justify-center">
+                        <button
+                          type="button"
+                          disabled
+                          className="w-full py-3 bg-red-500/10 border border-red-500/30 text-red-400 font-bold text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 cursor-not-allowed font-orbitron"
+                        >
+                          <span>🔒 Requiere Suscripción de Kick</span>
+                        </button>
+                        <span className="text-[10px] text-white/40 mt-1.5 text-center">
+                          Valida tu suscripción de Kick en el cuadro superior para habilitar la inscripción y el pago.
+                        </span>
+                      </div>
+                    ) : entryFee > 0 && isLoggedIn && localBalance < (entryFee * (exchangeRate || 58.25)) ? (
                       <button
                         type="button"
                         onClick={() => setShowRegPayModal(true)}

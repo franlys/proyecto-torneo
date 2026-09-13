@@ -63,6 +63,37 @@ export default async function PublicLeaderboardPage({
     collaboratorProfile = colab
   }
 
+  // Fetch Kick broadcaster details if tournament is restricted to Kick subscribers
+  let kickBroadcasterName: string | null = null
+  let kickBroadcasterUsername: string | null = null
+
+  if (tournament.kick_broadcaster_id) {
+    const { data: bConn } = await adminSupabase
+      .from('kick_connections')
+      .select('kick_username, profiles:user_id(username, organization_name)')
+      .eq('kick_user_id', tournament.kick_broadcaster_id)
+      .maybeSingle()
+
+    if (bConn) {
+      kickBroadcasterUsername = bConn.kick_username
+      const bp = bConn.profiles as any
+      kickBroadcasterName = bConn.kick_username || bp?.organization_name || bp?.username || 'Streamer'
+    } else {
+      const { data: partner } = await adminSupabase
+        .from('kick_streamer_partners')
+        .select('user_id, profiles:user_id(username)')
+        .eq('kick_user_id', tournament.kick_broadcaster_id)
+        .maybeSingle()
+      if (partner) {
+        const pProf = partner.profiles as any
+        kickBroadcasterName = pProf?.username || 'Streamer Partner'
+        kickBroadcasterUsername = pProf?.username || ''
+      }
+    }
+    if (!kickBroadcasterName) kickBroadcasterName = 'Streamer'
+    if (!kickBroadcasterUsername) kickBroadcasterUsername = kickBroadcasterName
+  }
+
   // Fetch only confirmed teams with their participants (for the positions and Participants tab)
   const { data: allTeams } = await supabase
     .from('teams')
@@ -332,6 +363,10 @@ export default async function PublicLeaderboardPage({
         discordUrl={tournament.discord_url}
         arenaBettingEnabled={!!tournament.arena_betting_enabled}
         exchangeRate={exchangeRate}
+        kickBroadcasterId={tournament.kick_broadcaster_id || null}
+        kickSubsType={tournament.kick_subs_type || 'all'}
+        kickBroadcasterName={kickBroadcasterName}
+        kickBroadcasterUsername={kickBroadcasterUsername}
       />
     </div>
   )
