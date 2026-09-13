@@ -32,16 +32,12 @@ export default function KickPartnersClient({
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [selectedUserId, setSelectedUserId] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
-
-  // Map partners list
-  const partnerUserIds = new Set(
-    initialPartners
-      .filter((p) => !p.revokedAt)
-      .map((p) => p.userId)
-  )
+  // Local copy so the list updates immediately after actions
+  const [partners, setPartners] = useState<KickStreamerPartner[]>(initialPartners)
 
   // Users with Kick connected who are not yet active partners
-  const availableUsers = kickUsers.filter((u) => !partnerUserIds.has(u.user_id))
+  const activeUserIds = new Set(partners.filter((p) => !p.revokedAt).map((p) => p.userId))
+  const availableUsers = kickUsers.filter((u) => !activeUserIds.has(u.user_id))
 
   const handleAuthorize = async () => {
     if (!selectedUserId) {
@@ -55,9 +51,15 @@ export default function KickPartnersClient({
 
     if (res.error) {
       toast.error(res.error)
-    } else {
+    } else if (res.partner) {
       toast.success('Partner autorizado exitosamente')
       setSelectedUserId('')
+      setPartners((prev) => {
+        // If already exists (reactivated), replace; otherwise prepend
+        const exists = prev.some((p) => p.id === res.partner!.id)
+        if (exists) return prev.map((p) => (p.id === res.partner!.id ? res.partner! : p))
+        return [res.partner!, ...prev]
+      })
       router.refresh()
     }
   }
@@ -72,8 +74,9 @@ export default function KickPartnersClient({
 
     if (res.error) {
       toast.error(res.error)
-    } else {
+    } else if (res.partner) {
       toast.success(`Integración Kick ${newIntegration ? 'activada' : 'desactivada'}`)
+      setPartners((prev) => prev.map((p) => (p.id === res.partner!.id ? res.partner! : p)))
       router.refresh()
     }
   }
@@ -92,8 +95,9 @@ export default function KickPartnersClient({
 
     if (res.error) {
       toast.error(res.error)
-    } else {
+    } else if (res.partner) {
       toast.success(`Torneos para suscriptores ${newSubscriber ? 'activados' : 'desactivados'}`)
+      setPartners((prev) => prev.map((p) => (p.id === res.partner!.id ? res.partner! : p)))
       router.refresh()
     }
   }
@@ -109,13 +113,14 @@ export default function KickPartnersClient({
 
     if (res.error) {
       toast.error(res.error)
-    } else {
+    } else if (res.partner) {
       toast.success('Partner revocado exitosamente')
+      setPartners((prev) => prev.map((p) => (p.id === res.partner!.id ? res.partner! : p)))
       router.refresh()
     }
   }
 
-  const filteredPartners = initialPartners.filter((p) => {
+  const filteredPartners = partners.filter((p) => {
     if (!searchQuery.trim()) return true
     const q = searchQuery.toLowerCase()
     const username = p.username?.toLowerCase() || ''

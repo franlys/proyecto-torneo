@@ -88,7 +88,7 @@ export async function getPartnersListAction(): Promise<{ partners?: KickStreamer
 
 export async function getActivePartnersForTournamentAction(): Promise<ActivePartnerOption[]> {
   try {
-    const supabase = await createClient()
+    const supabase = await createAdminClient()
     return await getActiveKickPartnersForTournaments(supabase)
   } catch (err: unknown) {
     console.error('Error in getActivePartnersForTournamentAction:', err)

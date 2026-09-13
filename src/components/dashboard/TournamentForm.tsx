@@ -195,6 +195,7 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
     collaboratorId: initialData?.collaboratorId ?? '',
     discordUrl: initialData?.discordUrl ?? '',
     kickBroadcasterId: initialData?.kickBroadcasterId ?? null,
+    kickSubsType: initialData?.kickSubsType ?? null,
     discipline: initialData?.discipline ?? 'warzone',
     mode: initialData?.mode ?? 'duos',
     format: initialData?.format ?? 'battle_royale_clasico',
@@ -962,7 +963,7 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
                     ${isPrivate ? 'text-white' : 'text-white/50'}`}>
                     Torneo Privado
                   </p>
-                  <p className="text-xs text-white/30 mt-0.5">Requiere ingresar contraseña para inscribirse</p>
+                  <p className="text-xs text-white/30 mt-0.5">Acceso restringido — solo participantes autorizados</p>
                 </div>
                 <div
                   className={`relative w-10 h-5 rounded-full transition-colors duration-150 shrink-0
@@ -997,7 +998,7 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
                     Restricción de Suscriptores Kick (Streamer Partner)
                   </label>
                   <p className="text-xs text-white/40 mb-3">
-                    Permite restringir la inscripción únicamente a suscriptores directos activos del Streamer Partner seleccionado.
+                    Restringe la inscripción a suscriptores del Streamer Partner seleccionado. La verificación se hace vía API de Kick.
                   </p>
                 </div>
 
@@ -1006,12 +1007,13 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
                     No hay Kick Streamer Partners autorizados por Super Admin disponibles actualmente.
                   </div>
                 ) : (
-                  <div>
+                  <div className="space-y-3">
                     <select
                       value={kickBroadcasterId || ''}
                       onChange={(e) => {
                         const val = e.target.value ? e.target.value : null
                         setValue('kickBroadcasterId', val)
+                        if (!val) setValue('kickSubsType', null)
                       }}
                       className={inputClass}
                     >
@@ -1027,6 +1029,55 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
                         </option>
                       )}
                     </select>
+
+                    {/* Subscription type selector — only shown when a streamer is selected */}
+                    {kickBroadcasterId && (
+                      <div className="space-y-2">
+                        <label className="block text-xs font-medium text-white/50 uppercase tracking-wider">
+                          Tipo de suscriptores permitidos
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            {
+                              value: 'direct' as const,
+                              label: 'Subs directos',
+                              desc: 'Solo suscriptores que pagaron ellos mismos',
+                              icon: '💚',
+                            },
+                            {
+                              value: 'all' as const,
+                              label: 'Todos los subs',
+                              desc: 'Directos + subs regalados por el streamer',
+                              icon: '🎁',
+                            },
+                          ].map((opt) => {
+                            const current = watch('kickSubsType')
+                            const isSelected = current === opt.value
+                            return (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => setValue('kickSubsType', opt.value)}
+                                className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all ${
+                                  isSelected
+                                    ? 'border-emerald-500/40 bg-emerald-500/10'
+                                    : 'border-white/10 bg-white/[0.02] hover:border-white/20'
+                                }`}
+                              >
+                                <span className="text-base mb-1">{opt.icon}</span>
+                                <span className={`text-xs font-semibold ${isSelected ? 'text-emerald-400' : 'text-white/60'}`}>
+                                  {opt.label}
+                                </span>
+                                <span className="text-[10px] text-white/30 mt-0.5 leading-tight">{opt.desc}</span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                        {!watch('kickSubsType') && (
+                          <p className="text-[10px] text-amber-400/70">Selecciona qué tipo de subs pueden inscribirse</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
                 {Boolean(kickBroadcasterId) && (

@@ -36,7 +36,6 @@ const tournamentBaseSchema = z.object({
   logoUrl: z.string().url().optional().or(z.literal('')).or(z.null()),
   maxTeams: z.number().int().min(1).optional().nullable(),
   isPrivate: z.boolean().default(false),
-  registrationPassword: z.string().max(100).optional().nullable(),
   registrationStartDate: z.string().optional().nullable(),
   registrationEndDate: z.string().optional().nullable(),
   hideLogoInLeaderboard: z.boolean().default(false),
@@ -46,6 +45,7 @@ const tournamentBaseSchema = z.object({
   streamUrl: z.string().url().optional().or(z.literal('')).or(z.null()),
   maxPointsLimit: z.number().int().min(1).optional().nullable(),
   kickBroadcasterId: z.string().optional().nullable(),
+  kickSubsType: z.enum(['direct', 'all']).optional().nullable(),
   collaboratorId: z.union([z.string().uuid(), z.literal(''), z.null()]).optional().transform(v => v === '' ? null : v),
   discordUrl: z.string()
     .nullable()
@@ -122,14 +122,6 @@ function refineTournament<T extends z.ZodTypeAny>(schema: T) {
         code: 'custom',
         path: ['killRaceTimeLimitMinutes'],
         message: 'Kill Race requiere un límite de tiempo',
-      })
-    }
-
-    if (data.isPrivate && (!data.registrationPassword || data.registrationPassword.trim() === '')) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['registrationPassword'],
-        message: 'La contraseña es obligatoria para torneos privados.',
       })
     }
   })
