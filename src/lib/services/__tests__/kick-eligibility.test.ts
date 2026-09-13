@@ -22,12 +22,17 @@ describe('Gate 3: Kick Subscriber Benefits & Tournament Eligibility', () => {
     let storedSub: Partial<KickSubscriberRow> | null = subRecord ?? null
 
     const mockSelectConnection = vi.fn().mockReturnValue({
-      eq: vi.fn().mockReturnValue({
+      eq: vi.fn().mockImplementation((col, _val) => ({
         maybeSingle: vi.fn().mockResolvedValue({
-          data: connection !== undefined ? connection : { kick_user_id: kickUserId },
+          data:
+            col === 'kick_user_id'
+              ? { kick_username: 'broadcaster_streamer' }
+              : connection !== undefined
+                ? connection
+                : { kick_user_id: kickUserId },
           error: null,
         }),
-      }),
+      })),
     })
 
     const mockSelectSub = vi.fn().mockReturnValue({
@@ -54,10 +59,18 @@ describe('Gate 3: Kick Subscriber Benefits & Tournament Eligibility', () => {
       })),
     })
 
-    const mockUpsert = vi.fn().mockImplementation(async (row) => {
-      if (upsertError) return { error: upsertError }
+    const mockUpsert = vi.fn().mockImplementation((row) => {
+      if (upsertError) {
+        return {
+          error: upsertError,
+          select: () => ({ maybeSingle: async () => ({ data: null, error: upsertError }) }),
+        }
+      }
       storedSub = { ...storedSub, ...row }
-      return { error: null }
+      return {
+        error: null,
+        select: () => ({ maybeSingle: async () => ({ data: storedSub, error: null }) }),
+      }
     })
 
     const mockUpdate = vi.fn().mockImplementation((updates) => ({
@@ -457,5 +470,41 @@ describe('Gate 3: Kick Subscriber Benefits & Tournament Eligibility', () => {
     expect(res.reason).toBe('stale_event')
     const current = getStoredSub()
     expect(current?.last_event_timestamp).toBe(t2)
+  })
+
+  // ── T3-13: Fallback Live en tiempo real si no existe en DB ──────────────────
+  it('T3-13: Sin subRecord en DB pero Kick API confirma suscripción activa -> Fallback Live exitoso y ELIGIBLE', async () => {
+    const globalFetch = globalThis.fetch
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        id: 90662586,
+        username: 'yismeliii',
+        badges: [{ type: 'subscriber', text: 'Subscriber', active: true }],
+        subscribed_for: 1,
+      }),
+    }) as any
+
+    try {
+      const { supabase, getStoredSub } = createMockSupabase({
+        connection: { kick_user_id: kickUserId, kick_username: 'yismeliii' } as any,
+        subRecord: null,
+      })
+
+      const res = await checkKickTournamentEligibility(supabase, {
+        userId,
+        broadcasterKickUserId,
+        subsType: 'direct',
+      })
+
+      expect(res.eligible).toBe(true)
+      expect(res.reason).toBe('eligible')
+      expect(res.subscriptionType).toBe('direct')
+      const stored = getStoredSub()
+      expect(stored?.subscription_type).toBe('direct')
+      expect(stored?.is_active).toBe(true)
+    } finally {
+      globalThis.fetch = globalFetch
+    }
   })
 })

@@ -73,7 +73,7 @@ export async function checkKickTournamentEligibility(
   // 1. Verificar conexión de Kick del usuario en Kronix (Gate 1)
   const { data: connection, error: connError } = await adminClient
     .from('kick_connections')
-    .select('kick_user_id')
+    .select('kick_user_id, kick_username')
     .eq('user_id', userId)
     .maybeSingle()
 
@@ -87,9 +87,10 @@ export async function checkKickTournamentEligibility(
   }
 
   const subscriberKickUserId = connection.kick_user_id
+  const subscriberKickUsername = (connection as any).kick_username as string | undefined
 
   // 2. Consultar la proyección de estado actual en public.kick_subscribers
-  const { data: subRecord, error: subError } = await adminClient
+  let { data: subRecord, error: subError } = await adminClient
     .from('kick_subscribers')
     .select('*')
     .eq('broadcaster_kick_user_id', broadcasterKickUserId)
@@ -101,12 +102,111 @@ export async function checkKickTournamentEligibility(
     return { eligible: false, reason: 'database_error' }
   }
 
+  const nowMs = Date.now()
+  const isExpiredOrInactive =
+    subRecord && (!subRecord.is_active || new Date(subRecord.expires_at).getTime() <= nowMs)
+
+  // 2.1 Sincronización en vivo con Kick (Fallback)
+  // Si no se encontró registro local, o está inactivo/expirado, verificamos directamente con Kick
+  // en tiempo real por si el usuario se suscribió antes o el webhook tardó en llegar.
+  if (!subRecord || isExpiredOrInactive) {
+    try {
+      let broadcasterKickUsername: string | null = null
+
+      const { data: bConn } = await adminClient
+        .from('kick_connections')
+        .select('kick_username')
+        .eq('kick_user_id', broadcasterKickUserId)
+        .maybeSingle()
+
+      if (bConn?.kick_username) {
+        broadcasterKickUsername = bConn.kick_username
+      } else {
+        const { data: partner } = await adminClient
+          .from('kick_streamer_partners')
+          .select('user_id, profiles:user_id(username)')
+          .eq('kick_user_id', broadcasterKickUserId)
+          .maybeSingle()
+        if (partner?.profiles) {
+          broadcasterKickUsername = (partner.profiles as any)?.username || null
+        }
+      }
+
+      if (broadcasterKickUsername && subscriberKickUsername) {
+        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null
+        const timeoutId = controller ? setTimeout(() => controller.abort(), 4500) : null
+
+        try {
+          const liveRes = await fetch(
+            `https://kick.com/api/v2/channels/${encodeURIComponent(broadcasterKickUsername.toLowerCase())}/users/${encodeURIComponent(subscriberKickUsername)}`,
+            {
+              headers: {
+                Accept: 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              },
+              signal: controller?.signal,
+            }
+          )
+
+          if (liveRes.ok) {
+            const kickData = await liveRes.json()
+            const badges = Array.isArray(kickData?.badges) ? kickData.badges : []
+            const hasSubBadge = badges.some(
+              (b: any) => b.type === 'subscriber' && (b.active === undefined || b.active === true)
+            )
+            const subscribedFor = typeof kickData?.subscribed_for === 'number' ? kickData.subscribed_for : 0
+
+            if (hasSubBadge || subscribedFor > 0) {
+              const defaultExpiresAt = new Date(nowMs + 30 * 86400 * 1000).toISOString()
+              const eventTimestamp = new Date().toISOString()
+
+              // Guardar la proyección verificada en kick_subscribers
+              const { data: upserted } = await adminClient
+                .from('kick_subscribers')
+                .upsert(
+                  {
+                    broadcaster_kick_user_id: broadcasterKickUserId,
+                    subscriber_kick_user_id: subscriberKickUserId,
+                    subscription_type: 'direct',
+                    is_active: true,
+                    expires_at: defaultExpiresAt,
+                    last_event_timestamp: eventTimestamp,
+                    updated_at: eventTimestamp,
+                  },
+                  {
+                    onConflict: 'broadcaster_kick_user_id,subscriber_kick_user_id',
+                  }
+                )
+                .select('*')
+                .maybeSingle()
+
+              subRecord = upserted || {
+                id: 'live-fallback',
+                broadcaster_kick_user_id: broadcasterKickUserId,
+                subscriber_kick_user_id: subscriberKickUserId,
+                subscription_type: 'direct',
+                is_active: true,
+                expires_at: defaultExpiresAt,
+                last_event_timestamp: eventTimestamp,
+                created_at: eventTimestamp,
+                updated_at: eventTimestamp,
+              }
+            }
+          }
+        } finally {
+          if (timeoutId) clearTimeout(timeoutId)
+        }
+      }
+    } catch (liveErr) {
+      console.warn('[Kick Eligibility] Advertencia en live verification fallback:', liveErr)
+    }
+  }
+
   if (!subRecord) {
     return { eligible: false, reason: 'no_subscription_found' }
   }
 
   const row = subRecord as KickSubscriberRow
-  const nowMs = Date.now()
   const expiresAtMs = new Date(row.expires_at).getTime()
 
   // 3. Regla de Prevalencia de expires_at: expires_at <= NOW() -> DENY (subscription_expired)
