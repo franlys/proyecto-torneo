@@ -46,6 +46,7 @@ export const FLOW_COOKIE_SCHEMA = z.object({
   codeVerifier: z.string().min(43).max(128),
   returnTo: z.string().max(2048).optional(),
   redirectUrl: z.string().max(2048).optional(),
+  isAuthFlow: z.boolean().optional(),
 })
 
 /** Skew de seguridad restando al expires_in al calcular la expiración. */

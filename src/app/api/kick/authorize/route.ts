@@ -24,16 +24,13 @@ export async function GET(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
-    return NextResponse.redirect(new URL('/auth/login', request.url))
-  }
-
   let config: ReturnType<typeof getKickConfig>
   try {
     config = getKickConfig()
   } catch (err) {
     console.error('[Kick Authorize] Configuración faltante:', err instanceof Error ? err.message : err)
-    return NextResponse.redirect(new URL('/profile?tab=ajustes&error=' + encodeURIComponent('La integración con Kick no está configurada en este entorno.'), request.url))
+    const targetPath = user ? '/profile?tab=ajustes&error=' : '/login?error='
+    return NextResponse.redirect(new URL(targetPath + encodeURIComponent('La integración con Kick no está configurada en este entorno.'), request.url))
   }
 
   const codeVerifier = generateCodeVerifier()
@@ -51,12 +48,16 @@ export async function GET(request: NextRequest) {
   })
 
   const response = NextResponse.redirect(authorizeUrl)
-  response.cookies.set(KICK_OAUTH_FLOW_COOKIE, JSON.stringify({ state, codeVerifier, redirectUrl }), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: KICK_OAUTH_FLOW_MAX_AGE,
-    path: '/',
-  })
+  response.cookies.set(
+    KICK_OAUTH_FLOW_COOKIE,
+    JSON.stringify({ state, codeVerifier, redirectUrl, isAuthFlow: !user }),
+    {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: KICK_OAUTH_FLOW_MAX_AGE,
+      path: '/',
+    }
+  )
   return response
 }

@@ -1286,7 +1286,7 @@ export function ProfileStatsClient({
                             const toastId = toast.loading('Redirigiendo a Discord para vincular cuenta...')
                             try {
                               const supabase = createClient()
-                              const redirectToUrl = `${window.location.origin}/auth/callback?next=/profile?tab=ajustes`
+                              const redirectToUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent('/profile?tab=ajustes&success=' + encodeURIComponent('¡Cuenta de Discord vinculada exitosamente!'))}`
                               const { error } = await supabase.auth.linkIdentity({
                                 provider: 'discord',
                                 options: { redirectTo: redirectToUrl }
