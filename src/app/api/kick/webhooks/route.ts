@@ -28,6 +28,7 @@ import {
   markKickWebhookEventFailed,
   KickWebhookError,
 } from '@/lib/services/kick-webhooks'
+import { updateKickSubscriberProjection } from '@/lib/services/kick-eligibility'
 
 export async function POST(request: Request): Promise<NextResponse> {
   // 1. Obtener raw body como string intacto
@@ -145,8 +146,16 @@ export async function POST(request: Request): Promise<NextResponse> {
     })
   }
 
-  // 7. Procesamiento técnico y marcado final
+  // 7. Procesamiento técnico de proyección y marcado final (MEDIUM #1 remediado)
   try {
+    // Gate 3: Actualizar proyección de elegibilidad en kick_subscribers PRIMERO
+    await updateKickSubscriberProjection(adminClient, {
+      eventType: headersData.eventType,
+      rawPayload: jsonPayload,
+      eventTimestampIso: headersData.timestamp,
+    })
+
+    // Si la proyección se actualiza con éxito, se marca como processed
     await markKickWebhookEventProcessed(adminClient, headersData.messageId)
 
     return NextResponse.json({
@@ -156,7 +165,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       reclaim: claimResult.isReclaim,
     })
   } catch (err) {
-    // Registra error sanitizado en DB y devuelve mensaje técnico genérico en HTTP 500
+    // Registra error sanitizado en DB marcando status = 'failed' (permite re-intento/reclaim) y HTTP 500
     await markKickWebhookEventFailed(adminClient, headersData.messageId, err)
 
     return NextResponse.json(
@@ -165,3 +174,4 @@ export async function POST(request: Request): Promise<NextResponse> {
     )
   }
 }
+
