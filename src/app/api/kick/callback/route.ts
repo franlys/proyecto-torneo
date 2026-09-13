@@ -11,6 +11,7 @@ import {
 
 function redirectToProfile(request: NextRequest, params: { error?: string; success?: string }): NextResponse {
   const url = new URL('/profile', request.url)
+  url.searchParams.set('tab', 'ajustes')
   if (params.error) url.searchParams.set('error', params.error)
   if (params.success) url.searchParams.set('success', params.success)
   const response = NextResponse.redirect(url)

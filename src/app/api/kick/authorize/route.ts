@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     config = getKickConfig()
   } catch (err) {
     console.error('[Kick Authorize] Configuración faltante:', err instanceof Error ? err.message : err)
-    return NextResponse.redirect(new URL('/profile?error=' + encodeURIComponent('La integración con Kick no está configurada en este entorno.'), request.url))
+    return NextResponse.redirect(new URL('/profile?tab=ajustes&error=' + encodeURIComponent('La integración con Kick no está configurada en este entorno.'), request.url))
   }
 
   const codeVerifier = generateCodeVerifier()
