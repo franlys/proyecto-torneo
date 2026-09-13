@@ -64,46 +64,37 @@ export async function GET(request: Request) {
         const discordIdentity = fullUser?.identities?.find((id) => id.provider === 'discord')
         console.log('[auth/callback] Discord identity lookup result:', discordIdentity)
 
-        if (!discordIdentity) {
-          console.warn('[auth/callback] No discord identity found for user:', data.user.id)
-          return NextResponse.redirect(`${origin}${appendQueryParam(next, 'error', 'No se encontró la identidad de Discord vinculada a tu cuenta de Supabase.')}`)
-        }
+        if (discordIdentity) {
+          const idData = (discordIdentity.identity_data as Record<string, unknown>) || {}
+          console.log('[auth/callback] Discord identity_data details:', idData)
+          
+          const discordUsername = (idData.username || idData.full_name || idData.name || (idData.custom_claims as Record<string, unknown> | undefined)?.username || idData.user_name || null) as string | null
+          console.log('[auth/callback] Resolved discordUsername:', discordUsername)
 
-        const idData = (discordIdentity.identity_data as any) || {}
-        console.log('[auth/callback] Discord identity_data details:', idData)
-        
-        const discordUsername = idData.username || idData.full_name || idData.name || idData.custom_claims?.username || idData.user_name || null
-        console.log('[auth/callback] Resolved discordUsername:', discordUsername)
+          if (discordUsername) {
+            const { error: updateErr } = await adminSupabase
+              .from('profiles')
+              .update({ 
+                discord_username: discordUsername,
+                discord_connected: true
+              })
+              .eq('id', data.user.id)
 
-        if (discordUsername) {
-          const { error: updateErr } = await adminSupabase
-            .from('profiles')
-            .update({ 
-              discord_username: discordUsername,
-              discord_connected: true
-            })
-            .eq('id', data.user.id)
-
-          if (updateErr) {
-            console.error('[auth/callback] Failed to update profile discord_username:', updateErr.message)
-            return NextResponse.redirect(`${origin}${appendQueryParam(next, 'error', `Error al actualizar perfil: ${updateErr.message}`)}`)
-          } else {
-            console.log('[auth/callback] Profile discord_username successfully updated to:', discordUsername)
+            if (updateErr) {
+              console.error('[auth/callback] Failed to update profile discord_username:', updateErr.message)
+            } else {
+              console.log('[auth/callback] Profile discord_username successfully updated to:', discordUsername)
+            }
           }
         }
-      } catch (syncErr: any) {
-        console.error('[auth/callback] Unexpected error syncing Discord identity:', syncErr)
-        return NextResponse.redirect(`${origin}${appendQueryParam(next, 'error', `Error inesperado de sincronización: ${syncErr.message || syncErr}`)}`)
+      } catch (syncErr: unknown) {
+        const errMessage = syncErr instanceof Error ? syncErr.message : String(syncErr)
+        console.error('[auth/callback] Unexpected error syncing Discord identity:', errMessage)
       }
     } else {
       return NextResponse.redirect(`${origin}${appendQueryParam(next, 'error', 'Sesión no válida o no encontrada.')}`)
     }
   }
 
-  let finalNext = next
-  if (!next.includes('error=')) {
-    finalNext = appendQueryParam(next, 'success', 'Cuenta de Discord vinculada correctamente.')
-  }
-
-  return NextResponse.redirect(`${origin}${finalNext}`)
+  return NextResponse.redirect(`${origin}${next}`)
 }
