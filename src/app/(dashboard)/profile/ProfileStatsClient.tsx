@@ -169,6 +169,7 @@ export function ProfileStatsClient({
   }, [])
 
   const handleKickConnect = () => {
+    toast.loading('Redirigiendo a Kick para autorizar cuenta...')
     window.location.href = '/api/kick/authorize'
   }
 
