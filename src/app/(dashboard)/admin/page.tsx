@@ -123,12 +123,21 @@ export default async function AdminPage() {
         {/* Quick Actions */}
         <div className="flex flex-wrap gap-3 items-center">
           {superAdmin && (
-            <Link
-              href="/admin/users"
-              className="px-4 py-2 bg-neon-cyan/10 border border-neon-cyan/20 text-neon-cyan text-sm rounded-lg hover:bg-neon-cyan/20 transition-colors"
-            >
-              Gestionar usuarios
-            </Link>
+            <>
+              <Link
+                href="/admin/kick-partners"
+                className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm rounded-lg hover:bg-emerald-500/20 transition-colors font-medium flex items-center gap-1.5"
+              >
+                <span>🎮</span>
+                <span>Streamers Kick Partners</span>
+              </Link>
+              <Link
+                href="/admin/users"
+                className="px-4 py-2 bg-neon-cyan/10 border border-neon-cyan/20 text-neon-cyan text-sm rounded-lg hover:bg-neon-cyan/20 transition-colors"
+              >
+                Gestionar usuarios
+              </Link>
+            </>
           )}
           <Link
             href="/admin/subscriptions"
