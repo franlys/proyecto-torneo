@@ -46,6 +46,9 @@ interface ProfileStatsClientProps {
   isStaff?: boolean
   defaultTab?: 'inicio' | 'profile' | 'history' | 'badges' | 'stats' | 'friends' | 'sorteos'
   tickets?: any[]
+  initialKickConnection?: Pick<KickConnection, 'kick_username' | 'scopes' | 'access_token_expires_at'> | null
+  kickSuccess?: string
+  kickError?: string
 }
 
 const GAME_NAMES: Record<string, string> = {
@@ -106,6 +109,9 @@ export function ProfileStatsClient({
   isStaff = false,
   tickets = [],
   defaultTab = 'inicio',
+  initialKickConnection = null,
+  kickSuccess,
+  kickError,
 }: ProfileStatsClientProps) {
   const [activeTab, setActiveTab] = useState<'inicio' | 'profile' | 'history' | 'badges' | 'stats' | 'friends' | 'sorteos'>(defaultTab)
 
@@ -141,36 +147,28 @@ export function ProfileStatsClient({
   const [kickConnection, setKickConnection] = useState<Pick<
     KickConnection,
     'kick_username' | 'scopes' | 'access_token_expires_at'
-  > | null>(null)
-  const [kickLoading, setKickLoading] = useState(true)
+  > | null>(initialKickConnection ?? null)
+  const [kickLoading, setKickLoading] = useState(false)
   const [kickDisconnecting, setKickDisconnecting] = useState(false)
 
   useEffect(() => {
-    let cancelled = false
-    const loadKickConnection = async () => {
-      // Solo columnas seguras (S1: las columnas cifradas ni siquiera son
-      // seleccionables por el rol authenticated).
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('kick_connections')
-        .select('kick_username, scopes, access_token_expires_at')
-        .maybeSingle()
-      if (cancelled) return
-      if (error) {
-        console.error('[Kick] No se pudo leer la conexión de Kick:', error.message)
-      }
-      setKickConnection(data ?? null)
-      setKickLoading(false)
+    if (initialKickConnection !== undefined) {
+      setKickConnection(initialKickConnection)
     }
-    loadKickConnection()
-    return () => {
-      cancelled = true
+  }, [initialKickConnection])
+
+  useEffect(() => {
+    if (kickSuccess) {
+      toast.success(kickSuccess)
     }
-  }, [])
+    if (kickError) {
+      toast.error(kickError)
+    }
+  }, [kickSuccess, kickError])
 
   const handleKickConnect = () => {
     toast.loading('Redirigiendo a Kick para autorizar cuenta...')
-    window.location.href = '/api/kick/authorize'
+    window.location.href = `/api/kick/authorize?returnTo=${encodeURIComponent('/profile?tab=ajustes')}`
   }
 
   const handleKickDisconnect = async () => {
@@ -1346,7 +1344,7 @@ export function ProfileStatsClient({
                       </button>
                     ) : (
                       <a
-                        href="/api/kick/authorize"
+                        href={`/api/kick/authorize?returnTo=${encodeURIComponent('/profile?tab=ajustes')}`}
                         onClick={() => {
                           toast.loading('Redirigiendo a Kick para autorizar cuenta...')
                         }}

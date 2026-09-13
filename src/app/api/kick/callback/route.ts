@@ -16,7 +16,11 @@ function redirectToProfile(request: NextRequest, params: { error?: string; succe
   if (params.error) url.searchParams.set('error', params.error)
   if (params.success) url.searchParams.set('success', params.success)
   const response = NextResponse.redirect(url)
+  const isKronixDomain = url.hostname.endsWith('kronix.do')
   response.cookies.delete(KICK_OAUTH_FLOW_COOKIE)
+  if (isKronixDomain) {
+    response.cookies.set(KICK_OAUTH_FLOW_COOKIE, '', { maxAge: 0, path: '/', domain: '.kronix.do' })
+  }
   return response
 }
 
@@ -90,11 +94,15 @@ export async function GET(request: NextRequest) {
     if (user) {
       // 1. Authenticated user -> link Kick connection
       const result = await upsertKickConnection({ supabase: adminClient, userId: user.id, tokens, kickUser })
+      const isKronixDomain = url.hostname.endsWith('kronix.do')
       if ('error' in result) {
         if (flow.returnTo) {
           const sep = flow.returnTo.includes('?') ? '&' : '?'
           const res = NextResponse.redirect(`${origin}${flow.returnTo}${sep}kick_error=${encodeURIComponent(result.error)}`)
           res.cookies.delete(KICK_OAUTH_FLOW_COOKIE)
+          if (isKronixDomain) {
+            res.cookies.set(KICK_OAUTH_FLOW_COOKIE, '', { maxAge: 0, path: '/', domain: '.kronix.do' })
+          }
           return res
         }
         return redirectToProfile(request, { error: result.error })
@@ -103,6 +111,9 @@ export async function GET(request: NextRequest) {
         const sep = flow.returnTo.includes('?') ? '&' : '?'
         const res = NextResponse.redirect(`${origin}${flow.returnTo}${sep}kick_linked=true`)
         res.cookies.delete(KICK_OAUTH_FLOW_COOKIE)
+        if (isKronixDomain) {
+          res.cookies.set(KICK_OAUTH_FLOW_COOKIE, '', { maxAge: 0, path: '/', domain: '.kronix.do' })
+        }
         return res
       }
       return redirectToProfile(request, { success: `Cuenta de Kick vinculada con éxito como ${kickUser.username}.` })

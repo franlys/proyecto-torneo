@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getProfile } from '@/lib/actions/auth-helpers'
 import { redirect } from 'next/navigation'
 import { ProfileStatsClient } from './ProfileStatsClient'
@@ -8,7 +8,7 @@ import { ProfileStatsClient } from './ProfileStatsClient'
 export default async function ProfilePage({
   searchParams,
 }: {
-  searchParams: { tab?: string }
+  searchParams: { tab?: string; success?: string; error?: string; kick_linked?: string; kick_error?: string }
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -91,6 +91,14 @@ export default async function ProfilePage({
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
+  // 8. Fetch user's Kick connection
+  const adminSupabase = await createAdminClient()
+  const { data: kickConnection } = await adminSupabase
+    .from('kick_connections')
+    .select('kick_username, scopes, access_token_expires_at')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
   const defaultTab = 
     searchParams?.tab === 'ajustes' ? 'profile' :
     searchParams?.tab === 'sorteos' ? 'sorteos' :
@@ -134,6 +142,9 @@ export default async function ProfilePage({
         isStaff={isStaff}
         defaultTab={defaultTab}
         tickets={tickets || []}
+        initialKickConnection={kickConnection || null}
+        kickSuccess={searchParams?.success || (searchParams?.kick_linked ? 'Cuenta de Kick vinculada con éxito' : undefined)}
+        kickError={searchParams?.error || searchParams?.kick_error}
       />
     </div>
   )

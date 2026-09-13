@@ -14,7 +14,10 @@ export async function createClient() {
         setAll(cookiesToSet: CookieToSet[]) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options as Parameters<typeof cookieStore.set>[2])
+              cookieStore.set(name, value, {
+                ...(options as Parameters<typeof cookieStore.set>[2]),
+                path: '/',
+              })
             )
           } catch {}
         },
