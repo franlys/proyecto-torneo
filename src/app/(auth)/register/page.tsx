@@ -227,7 +227,7 @@ function RegisterForm() {
 
           {/* Kick */}
           <a
-            href="/api/kick/authorize"
+            href={`/api/kick/authorize${redirectTo ? `?returnTo=${encodeURIComponent(redirectTo)}` : ''}`}
             className="flex items-center justify-center gap-2 py-2.5 px-3 bg-white/5 hover:bg-[#53FC18]/10 border border-white/5 hover:border-[#53FC18]/20 rounded-xl transition-all group"
             title="Crear cuenta con Kick"
           >

@@ -542,14 +542,15 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 describe('GET /api/kick/authorize', () => {
-  it('sin sesión → redirect a /auth/login sin generar cookie ni URL de Kick', async () => {
+  it('sin sesión → inicia flujo de 1-click login hacia https://id.kick.com/oauth/authorize', async () => {
     mockUser = null
     const { GET } = await import('@/app/api/kick/authorize/route')
     const request = new Request('http://localhost:3000/api/kick/authorize')
     const res = await GET(request as never)
-    expect(res.headers.get('location')).toContain('/auth/login')
-    expect(res.headers.get('location')).not.toContain('id.kick.com')
-    expect(res.headers.get('set-cookie') ?? '').not.toContain(KICK_OAUTH_FLOW_COOKIE)
+    const location = res.headers.get('location') ?? ''
+    const url = new URL(location)
+    expect(url.origin + url.pathname).toBe('https://id.kick.com/oauth/authorize')
+    expect(res.headers.get('set-cookie') ?? '').toContain(KICK_OAUTH_FLOW_COOKIE)
   })
 
   it('con sesión → 307 a https://id.kick.com/oauth/authorize con cookie httpOnly + secure', async () => {

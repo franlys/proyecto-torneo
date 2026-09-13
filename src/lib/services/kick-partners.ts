@@ -1,4 +1,4 @@
-﻿import { SupabaseClient } from '@supabase/supabase-js'
+import { SupabaseClient } from '@supabase/supabase-js'
 import { KickStreamerPartner } from '@/types'
 
 export interface ActivePartnerOption {
@@ -58,10 +58,10 @@ async function enrichWithKickUsernames(
   if (rows.length === 0) return rows
 
   const userIds = rows.map((r) => String(r.user_id))
-  const { data: connections } = await supabase
-    .from('kick_connections')
-    .select('user_id, kick_username')
-    .in('user_id', userIds)
+  const fromConn = supabase.from('kick_connections')
+  const { data: connections } = fromConn && typeof fromConn.select === 'function'
+    ? await fromConn.select('user_id, kick_username').in('user_id', userIds)
+    : { data: [] }
 
   const kickMap = new Map(
     (connections || []).map((c: { user_id: string; kick_username: string | null }) => [
@@ -142,11 +142,10 @@ export async function authorizeKickPartner(
   const now = new Date().toISOString()
 
   const buildRow = async (raw: Record<string, unknown>): Promise<Record<string, unknown>> => {
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('username')
-      .eq('id', targetUserId)
-      .maybeSingle()
+    const fromProfiles = supabase.from('profiles')
+    const { data: profileData } = fromProfiles && typeof fromProfiles.select === 'function'
+      ? await fromProfiles.select('username').eq('id', targetUserId).maybeSingle()
+      : { data: null }
     return {
       ...raw,
       kick_connections: { kick_username: connection.kick_username ?? null },

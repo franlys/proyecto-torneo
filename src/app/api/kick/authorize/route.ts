@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     codeChallenge,
   })
 
-  const returnTo = request.nextUrl.searchParams.get('returnTo')
+  const returnTo = new URL(request.url).searchParams.get('returnTo')
 
   const response = NextResponse.redirect(authorizeUrl)
   response.cookies.set(

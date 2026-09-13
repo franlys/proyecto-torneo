@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { cookies } from 'next/headers'
 import { createAdminClient, createClient } from '@/lib/supabase/server'
 import {
   exchangeCodeForTokens,
@@ -107,92 +108,78 @@ export async function GET(request: NextRequest) {
       return redirectToProfile(request, { success: `Cuenta de Kick vinculada con éxito como ${kickUser.username}.` })
     } else {
       // 2. Unauthenticated user -> 1-Click Login or Signup via Kick
-      let targetUserId: string | null = null
-      let targetEmail: string | null = kickUser.email || null
+      const targetEmail: string = kickUser.email || `kick_${kickUser.id}@users.kronix.do`
 
-      // Check existing connection in DB
-      const { data: existingConn } = await adminClient
-        .from('kick_connections')
-        .select('user_id')
-        .eq('kick_user_id', String(kickUser.id))
-        .maybeSingle()
+      // Generate login / signup magic link directly via Supabase Auth Admin
+      const { data: linkData, error: linkErr } = await adminClient.auth.admin.generateLink({
+        type: 'magiclink',
+        email: targetEmail,
+        options: {
+          data: {
+            username: kickUser.username,
+            full_name: kickUser.username,
+          },
+        },
+      })
 
-      if (existingConn?.user_id) {
-        targetUserId = existingConn.user_id
-        const { data: uData } = await adminClient.auth.admin.getUserById(targetUserId as string)
-        if (uData?.user?.email) {
-          targetEmail = uData.user.email
-        }
+      if (linkErr || !linkData?.user || !linkData?.properties?.hashed_token) {
+        console.error('[Kick Auth Callback] Error generando link de acceso:', linkErr?.message)
+        return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent('No se pudo autenticar con Kick: ' + (linkErr?.message || 'Token inválido'))}`)
       }
 
-      if (!targetUserId) {
-        if (!targetEmail) {
-          targetEmail = `kick_${kickUser.id}@users.kronix.do`
-        }
+      const targetUserId = linkData.user.id
 
-        // Check if user exists by email
-        const { data: existingUsers } = await adminClient.auth.admin.listUsers()
-        const foundUser = existingUsers?.users?.find((u) => u.email?.toLowerCase() === targetEmail?.toLowerCase())
+      // Ensure profile exists or is updated
+      const { data: existingProfile } = await adminClient
+        .from('profiles')
+        .select('id')
+        .eq('id', targetUserId)
+        .maybeSingle()
 
-        if (foundUser) {
-          targetUserId = foundUser.id
-        } else {
-          // Create new user in Supabase
-          const { data: newUser, error: createErr } = await adminClient.auth.admin.createUser({
-            email: targetEmail,
-            email_confirm: true,
-            user_metadata: {
-              username: kickUser.username,
-              full_name: kickUser.username,
-            },
-          })
-
-          if (createErr || !newUser?.user) {
-            console.error('[Kick Auth Callback] Error creando usuario:', createErr?.message)
-            return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent('No se pudo crear la cuenta mediante Kick.')}`)
-          }
-
-          targetUserId = newUser.user.id
-
-          const { count } = await adminClient.from('profiles').select('*', { count: 'exact', head: true })
-          await adminClient.from('profiles').insert({
-            id: targetUserId,
-            username: kickUser.username,
-            email: targetEmail,
-            role: (count ?? 0) === 0 ? 'ADMIN' : 'USER',
-          })
-        }
+      if (!existingProfile) {
+        const { count } = await adminClient.from('profiles').select('*', { count: 'exact', head: true })
+        await adminClient.from('profiles').upsert({
+          id: targetUserId,
+          username: kickUser.username,
+          email: targetEmail,
+          role: (count ?? 0) === 0 ? 'ADMIN' : 'USER',
+        })
       }
 
       // Upsert Kick connection
       await upsertKickConnection({ supabase: adminClient, userId: targetUserId, tokens, kickUser })
 
-      // Sign in user via magic link
-      if (targetEmail) {
-        const defaultRedirect = `${origin}/kronix`
-        const targetRedirect = flow.returnTo
-          ? `${origin}${flow.returnTo}${flow.returnTo.includes('?') ? '&' : '?'}kick_linked=true`
-          : defaultRedirect
+      // Verify OTP on server client to directly issue HTTP session cookies to browser
+      const otpType = (linkData.properties.verification_type as any) || 'email'
+      const { data: sessionData, error: verifyErr } = await supabase.auth.verifyOtp({
+        token_hash: linkData.properties.hashed_token,
+        type: otpType,
+      })
 
-        const { data: linkData } = await adminClient.auth.admin.generateLink({
-          type: 'magiclink',
-          email: targetEmail,
-          options: {
-            redirectTo: targetRedirect,
-          },
-        })
-
-        if (linkData?.properties?.action_link) {
+      if (verifyErr || !sessionData?.session) {
+        console.error('[Kick Auth Callback] verifyOtp failed on server:', verifyErr?.message)
+        if (linkData.properties.action_link) {
           const res = NextResponse.redirect(linkData.properties.action_link)
           res.cookies.delete(KICK_OAUTH_FLOW_COOKIE)
           return res
         }
+        return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent('Error al establecer sesión con Kick.')}`)
       }
 
-      const finalRedirect = flow.returnTo
+      const finalDestination = flow.returnTo
         ? `${origin}${flow.returnTo}${flow.returnTo.includes('?') ? '&' : '?'}kick_linked=true`
         : `${origin}/kronix`
-      return NextResponse.redirect(finalRedirect)
+
+      const res = NextResponse.redirect(finalDestination)
+      res.cookies.delete(KICK_OAUTH_FLOW_COOKIE)
+
+      // Mirror all cookies from cookieStore so the browser receives the auth token immediately
+      const cookieStore = await cookies()
+      for (const c of cookieStore.getAll()) {
+        res.cookies.set(c.name, c.value)
+      }
+
+      return res
     }
   } catch (err) {
     console.error('[Kick Callback] Fallo en el intercambio/persistencia:', err instanceof Error ? `${err.name}: ${err.message}` : err)

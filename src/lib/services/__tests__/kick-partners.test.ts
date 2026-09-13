@@ -14,12 +14,13 @@ import {
 import { isSuperAdmin } from '../../actions/auth-helpers'
 import { SupabaseClient } from '@supabase/supabase-js'
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn().mockResolvedValue({
+vi.mock('@/lib/supabase/server', () => {
+  const clientMock = vi.fn().mockResolvedValue({
     from: vi.fn().mockReturnValue({
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       is: vi.fn().mockReturnThis(),
+      in: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
       single: vi.fn().mockResolvedValue({ data: { id: 'p1', user_id: 'u1', kick_user_id: 'k1' }, error: null }),
       maybeSingle: vi.fn().mockResolvedValue({ data: { kick_user_id: 'k1' }, error: null }),
@@ -36,8 +37,12 @@ vi.mock('@/lib/supabase/server', () => ({
         }),
       }),
     }),
-  }),
-}))
+  })
+  return {
+    createClient: clientMock,
+    createAdminClient: clientMock,
+  }
+})
 
 vi.mock('../../actions/auth-helpers', () => ({
   isSuperAdmin: vi.fn(),
