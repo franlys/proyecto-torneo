@@ -23,6 +23,7 @@ function SubmitButton() {
 function LoginForm() {
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirectTo')
+  const oauthError = searchParams.get('error')
   const [state, action] = useFormState(signIn, null)
   const [resendMsg, setResendMsg] = useState<string | null>(null)
   const [resending, setResending] = useState(false)
@@ -104,6 +105,12 @@ function LoginForm() {
             <div className="absolute -inset-y-12 left-[-30%] w-16 bg-gradient-to-r from-transparent via-white/10 to-transparent rotate-[25deg] transition-all duration-1000 ease-out group-hover:left-[130%]" />
           </div>
           <h2 className="text-white font-semibold text-xl mb-6">Iniciar sesión</h2>
+
+          {oauthError && (
+            <p className="text-red-400 text-sm bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2 mb-4">
+              {oauthError}
+            </p>
+          )}
 
           <form action={action} className="space-y-4">
             <input type="hidden" name="redirectTo" value={redirectTo || ''} />

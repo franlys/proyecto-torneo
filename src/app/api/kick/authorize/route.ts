@@ -37,8 +37,11 @@ export async function GET(request: NextRequest) {
   const codeChallenge = generateCodeChallenge(codeVerifier)
   const state = generateOAuthState()
 
-  const origin = new URL(request.url).origin
-  const redirectUrl = `${origin}/api/kick/callback`
+  const url = new URL(request.url)
+  const origin = url.origin
+  const hostname = url.hostname
+  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
+  const redirectUrl = isLocal ? `${origin}/api/kick/callback` : (config.redirectUrl || `${origin}/api/kick/callback`)
 
   const authorizeUrl = buildAuthorizeUrl({
     clientId: config.clientId,
@@ -47,9 +50,10 @@ export async function GET(request: NextRequest) {
     codeChallenge,
   })
 
-  const returnTo = new URL(request.url).searchParams.get('returnTo')
+  const returnTo = url.searchParams.get('returnTo')
 
   const response = NextResponse.redirect(authorizeUrl)
+  const isKronixDomain = hostname.endsWith('kronix.do')
   response.cookies.set(
     KICK_OAUTH_FLOW_COOKIE,
     JSON.stringify({ state, codeVerifier, redirectUrl, isAuthFlow: !user, returnTo: returnTo || null }),
@@ -59,6 +63,7 @@ export async function GET(request: NextRequest) {
       sameSite: 'lax',
       maxAge: KICK_OAUTH_FLOW_MAX_AGE,
       path: '/',
+      domain: isKronixDomain ? '.kronix.do' : undefined,
     }
   )
   return response

@@ -38,6 +38,7 @@ function SubmitButton() {
 function RegisterForm() {
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirectTo')
+  const oauthError = searchParams.get('error')
   const [state, action] = useFormState(signUp, null)
   const [clientError, setClientError] = useState<string | null>(null)
 
@@ -108,6 +109,12 @@ function RegisterForm() {
       {/* Card */}
       <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 relative">
         <h2 className="text-white font-semibold text-xl mb-6">Crear cuenta</h2>
+
+        {oauthError && (
+          <p className="text-red-400 text-sm bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2 mb-4">
+            {oauthError}
+          </p>
+        )}
 
         <form action={action} onSubmit={handleSubmit} className="space-y-4">
           <div>

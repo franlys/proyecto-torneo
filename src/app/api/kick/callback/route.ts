@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { cookies } from 'next/headers'
 import { createAdminClient, createClient } from '@/lib/supabase/server'
+import { createServerClient } from '@supabase/ssr'
 import {
   exchangeCodeForTokens,
   fetchKickUser,
@@ -108,7 +108,23 @@ export async function GET(request: NextRequest) {
       return redirectToProfile(request, { success: `Cuenta de Kick vinculada con éxito como ${kickUser.username}.` })
     } else {
       // 2. Unauthenticated user -> 1-Click Login or Signup via Kick
-      const targetEmail: string = kickUser.email || `kick_${kickUser.id}@users.kronix.do`
+      const { data: existingConn } = await adminClient
+        .from('kick_connections')
+        .select('user_id')
+        .eq('kick_user_id', kickUser.user_id)
+        .maybeSingle()
+
+      let targetUserId: string | null = null
+      let targetEmail: string = kickUser.email || `kick_${kickUser.user_id}@users.kronix.do`
+
+      if (existingConn?.user_id) {
+        const foundUserId = existingConn.user_id
+        targetUserId = foundUserId
+        const { data: userData } = await adminClient.auth.admin.getUserById(foundUserId)
+        if (userData?.user?.email) {
+          targetEmail = userData.user.email
+        }
+      }
 
       // Generate login / signup magic link directly via Supabase Auth Admin
       const { data: linkData, error: linkErr } = await adminClient.auth.admin.generateLink({
@@ -127,7 +143,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent('No se pudo autenticar con Kick: ' + (linkErr?.message || 'Token inválido'))}`)
       }
 
-      const targetUserId = linkData.user.id
+      targetUserId = linkData.user.id
 
       // Ensure profile exists or is updated
       const { data: existingProfile } = await adminClient
@@ -149,9 +165,42 @@ export async function GET(request: NextRequest) {
       // Upsert Kick connection
       await upsertKickConnection({ supabase: adminClient, userId: targetUserId, tokens, kickUser })
 
-      // Verify OTP on server client to directly issue HTTP session cookies to browser
-      const otpType = (linkData.properties.verification_type as any) || 'email'
-      const { data: sessionData, error: verifyErr } = await supabase.auth.verifyOtp({
+      const finalDestination = flow.returnTo
+        ? `${origin}${flow.returnTo}${flow.returnTo.includes('?') ? '&' : '?'}kick_linked=true`
+        : `${origin}/kronix`
+
+      const res = NextResponse.redirect(finalDestination)
+      const isKronixDomain = url.hostname.endsWith('kronix.do')
+      res.cookies.delete(KICK_OAUTH_FLOW_COOKIE)
+      if (isKronixDomain) {
+        res.cookies.set(KICK_OAUTH_FLOW_COOKIE, '', { maxAge: 0, path: '/', domain: '.kronix.do' })
+      }
+
+      // Create an SSR client attached directly to the redirect response so session cookies
+      // have full path='/', maxAge, httpOnly, sameSite, secure attributes on Set-Cookie headers
+      const ssrClient = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            getAll() {
+              return request.cookies.getAll()
+            },
+            setAll(cookiesToSet: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
+              cookiesToSet.forEach(({ name, value, options }) => {
+                res.cookies.set(name, value, {
+                  ...(options as Parameters<typeof res.cookies.set>[2]),
+                  path: '/',
+                  domain: isKronixDomain ? '.kronix.do' : undefined,
+                })
+              })
+            },
+          },
+        }
+      )
+
+      const otpType = (linkData.properties.verification_type as any) || 'signup'
+      const { data: sessionData, error: verifyErr } = await ssrClient.auth.verifyOtp({
         token_hash: linkData.properties.hashed_token,
         type: otpType,
       })
@@ -159,31 +208,22 @@ export async function GET(request: NextRequest) {
       if (verifyErr || !sessionData?.session) {
         console.error('[Kick Auth Callback] verifyOtp failed on server:', verifyErr?.message)
         if (linkData.properties.action_link) {
-          const res = NextResponse.redirect(linkData.properties.action_link)
-          res.cookies.delete(KICK_OAUTH_FLOW_COOKIE)
-          return res
+          const fallbackRes = NextResponse.redirect(linkData.properties.action_link)
+          fallbackRes.cookies.delete(KICK_OAUTH_FLOW_COOKIE)
+          if (isKronixDomain) {
+            fallbackRes.cookies.set(KICK_OAUTH_FLOW_COOKIE, '', { maxAge: 0, path: '/', domain: '.kronix.do' })
+          }
+          return fallbackRes
         }
-        return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent('Error al establecer sesión con Kick.')}`)
-      }
-
-      const finalDestination = flow.returnTo
-        ? `${origin}${flow.returnTo}${flow.returnTo.includes('?') ? '&' : '?'}kick_linked=true`
-        : `${origin}/kronix`
-
-      const res = NextResponse.redirect(finalDestination)
-      res.cookies.delete(KICK_OAUTH_FLOW_COOKIE)
-
-      // Mirror all cookies from cookieStore so the browser receives the auth token immediately
-      const cookieStore = await cookies()
-      for (const c of cookieStore.getAll()) {
-        res.cookies.set(c.name, c.value)
+        return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent('Error al establecer sesión con Kick: ' + (verifyErr?.message || 'Sesión no generada'))}`)
       }
 
       return res
     }
   } catch (err) {
-    console.error('[Kick Callback] Fallo en el intercambio/persistencia:', err instanceof Error ? `${err.name}: ${err.message}` : err)
-    if (user) return redirectToProfile(request, { error: 'No se pudo completar la vinculación con Kick. Inténtalo de nuevo.' })
-    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent('No se pudo completar el acceso con Kick. Inténtalo de nuevo.')}`)
+    const errorMsg = err instanceof Error ? err.message : String(err)
+    console.error('[Kick Callback] Fallo en el intercambio/persistencia:', errorMsg)
+    if (user) return redirectToProfile(request, { error: 'No se pudo completar la vinculación con Kick: ' + errorMsg })
+    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent('No se pudo completar el acceso con Kick: ' + errorMsg)}`)
   }
 }
