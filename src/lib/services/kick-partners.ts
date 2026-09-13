@@ -1,4 +1,4 @@
-import { SupabaseClient } from '@supabase/supabase-js'
+﻿import { SupabaseClient } from '@supabase/supabase-js'
 import { KickStreamerPartner } from '@/types'
 
 export interface ActivePartnerOption {
@@ -43,16 +43,43 @@ export function mapPartnerRow(row: Record<string, unknown>): KickStreamerPartner
 }
 
 /**
- * Gets all Kick Streamer Partners for Super Admin management.
+ * Helper: fetches kick_username for each user_id from kick_connections and
+ * injects it as { kick_connections: { kick_username } } in each row.
+ *
+ * WHY: There is no direct FK between kick_streamer_partners and
+ * kick_connections - both relate to profiles via user_id. PostgREST cannot
+ * resolve "kick_connections:user_id (kick_username)" and throws
+ * "column profiles_1.kick_username does not exist".
  */
+async function enrichWithKickUsernames(
+  supabase: SupabaseClient,
+  rows: Record<string, unknown>[]
+): Promise<Record<string, unknown>[]> {
+  if (rows.length === 0) return rows
+
+  const userIds = rows.map((r) => String(r.user_id))
+  const { data: connections } = await supabase
+    .from('kick_connections')
+    .select('user_id, kick_username')
+    .in('user_id', userIds)
+
+  const kickMap = new Map(
+    (connections || []).map((c: { user_id: string; kick_username: string | null }) => [
+      c.user_id,
+      c.kick_username,
+    ])
+  )
+
+  return rows.map((r) => ({
+    ...r,
+    kick_connections: { kick_username: kickMap.get(String(r.user_id)) ?? null },
+  }))
+}
+
 export async function getKickStreamerPartners(supabase: SupabaseClient): Promise<KickStreamerPartner[]> {
   const { data, error } = await supabase
     .from('kick_streamer_partners')
-    .select(`
-      *,
-      profiles:user_id (username),
-      kick_connections:user_id (kick_username)
-    `)
+    .select('*, profiles:user_id (username)')
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -60,22 +87,14 @@ export async function getKickStreamerPartners(supabase: SupabaseClient): Promise
     throw new Error(`Error al obtener partners de Kick: ${error.message}`)
   }
 
-  return (data || []).map((row) => mapPartnerRow(row as Record<string, unknown>))
+  const enriched = await enrichWithKickUsernames(supabase, (data || []) as Record<string, unknown>[])
+  return enriched.map((row) => mapPartnerRow(row))
 }
 
-/**
- * Gets active authorized partners for tournament selection.
- * Only returns partners where revoked_at IS NULL, integration_enabled = true, subscriber_tournaments_enabled = true.
- */
 export async function getActiveKickPartnersForTournaments(supabase: SupabaseClient): Promise<ActivePartnerOption[]> {
   const { data, error } = await supabase
     .from('kick_streamer_partners')
-    .select(`
-      user_id,
-      kick_user_id,
-      profiles:user_id (username),
-      kick_connections:user_id (kick_username)
-    `)
+    .select('user_id, kick_user_id, profiles:user_id (username)')
     .is('revoked_at', null)
     .eq('integration_enabled', true)
     .eq('subscriber_tournaments_enabled', true)
@@ -85,7 +104,10 @@ export async function getActiveKickPartnersForTournaments(supabase: SupabaseClie
     return []
   }
 
-  return (data || []).map((row: Record<string, unknown>) => {
+  const rows = (data || []) as Record<string, unknown>[]
+  const enriched = await enrichWithKickUsernames(supabase, rows)
+
+  return enriched.map((row: Record<string, unknown>) => {
     const profiles = row.profiles as { username?: string | null } | null | undefined
     const kickConn = row.kick_connections as { kick_username?: string | null } | null | undefined
     return {
@@ -97,16 +119,10 @@ export async function getActiveKickPartnersForTournaments(supabase: SupabaseClie
   })
 }
 
-/**
- * Authorizes a user as a Kick Streamer Partner.
- * Requires user to have an existing kick_connections entry.
- * If partner row already exists (even if revoked), reactivates it (revoked_at = NULL).
- */
 export async function authorizeKickPartner(
   supabase: SupabaseClient,
   targetUserId: string
 ): Promise<KickStreamerPartner> {
-  // 1. Verify target user has an active Kick connection
   const { data: connection, error: connError } = await supabase
     .from('kick_connections')
     .select('kick_user_id, kick_username')
@@ -117,7 +133,6 @@ export async function authorizeKickPartner(
     throw new Error('El usuario no tiene una cuenta de Kick conectada en Kronix')
   }
 
-  // 2. Check if partner row already exists for targetUserId
   const { data: existingPartner } = await supabase
     .from('kick_streamer_partners')
     .select('*')
@@ -126,8 +141,20 @@ export async function authorizeKickPartner(
 
   const now = new Date().toISOString()
 
+  const buildRow = async (raw: Record<string, unknown>): Promise<Record<string, unknown>> => {
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', targetUserId)
+      .maybeSingle()
+    return {
+      ...raw,
+      kick_connections: { kick_username: connection.kick_username ?? null },
+      profiles: profileData ?? null,
+    }
+  }
+
   if (existingPartner) {
-    // Reactivate / update existing partner
     const { data: updated, error: updateError } = await supabase
       .from('kick_streamer_partners')
       .update({
@@ -138,11 +165,7 @@ export async function authorizeKickPartner(
         updated_at: now,
       })
       .eq('id', existingPartner.id)
-      .select(`
-        *,
-        profiles:user_id (username),
-        kick_connections:user_id (kick_username)
-      `)
+      .select('*')
       .single()
 
     if (updateError) {
@@ -150,10 +173,9 @@ export async function authorizeKickPartner(
       throw new Error(`Error al reactivar partner: ${updateError.message}`)
     }
 
-    return mapPartnerRow(updated as Record<string, unknown>)
+    return mapPartnerRow(await buildRow(updated as Record<string, unknown>))
   }
 
-  // Insert new partner
   const { data: inserted, error: insertError } = await supabase
     .from('kick_streamer_partners')
     .insert({
@@ -163,11 +185,7 @@ export async function authorizeKickPartner(
       subscriber_tournaments_enabled: true,
       revoked_at: null,
     })
-    .select(`
-      *,
-      profiles:user_id (username),
-      kick_connections:user_id (kick_username)
-    `)
+    .select('*')
     .single()
 
   if (insertError) {
@@ -175,13 +193,9 @@ export async function authorizeKickPartner(
     throw new Error(`Error al registrar partner: ${insertError.message}`)
   }
 
-  return mapPartnerRow(inserted as Record<string, unknown>)
+  return mapPartnerRow(await buildRow(inserted as Record<string, unknown>))
 }
 
-/**
- * Updates flags for a Kick Streamer Partner.
- * Enforces invariant: if integration_enabled is false, subscriber_tournaments_enabled must also be false.
- */
 export async function updateKickPartnerFlags(
   supabase: SupabaseClient,
   partnerId: string,
@@ -200,7 +214,6 @@ export async function updateKickPartnerFlags(
   let newIntegration = flags.integrationEnabled !== undefined ? flags.integrationEnabled : Boolean(current.integration_enabled)
   let newSubscriber = flags.subscriberTournamentsEnabled !== undefined ? flags.subscriberTournamentsEnabled : Boolean(current.subscriber_tournaments_enabled)
 
-  // Invariant enforcement
   if (!newIntegration) {
     newSubscriber = false
   }
@@ -213,11 +226,7 @@ export async function updateKickPartnerFlags(
       updated_at: new Date().toISOString(),
     })
     .eq('id', partnerId)
-    .select(`
-      *,
-      profiles:user_id (username),
-      kick_connections:user_id (kick_username)
-    `)
+    .select('*, profiles:user_id (username)')
     .single()
 
   if (error) {
@@ -225,12 +234,10 @@ export async function updateKickPartnerFlags(
     throw new Error(`Error al actualizar flags del partner: ${error.message}`)
   }
 
-  return mapPartnerRow(updated as Record<string, unknown>)
+  const enriched = await enrichWithKickUsernames(supabase, [updated as Record<string, unknown>])
+  return mapPartnerRow(enriched[0])
 }
 
-/**
- * Revokes a Kick Streamer Partner (logical revocation via revoked_at = NOW()).
- */
 export async function revokeKickPartner(
   supabase: SupabaseClient,
   partnerId: string
@@ -246,11 +253,7 @@ export async function revokeKickPartner(
       updated_at: now,
     })
     .eq('id', partnerId)
-    .select(`
-      *,
-      profiles:user_id (username),
-      kick_connections:user_id (kick_username)
-    `)
+    .select('*, profiles:user_id (username)')
     .single()
 
   if (error) {
@@ -258,13 +261,10 @@ export async function revokeKickPartner(
     throw new Error(`Error al revocar partner: ${error.message}`)
   }
 
-  return mapPartnerRow(updated as Record<string, unknown>)
+  const enriched = await enrichWithKickUsernames(supabase, [updated as Record<string, unknown>])
+  return mapPartnerRow(enriched[0])
 }
 
-/**
- * Validates whether a kickBroadcasterId is authorized as an active Partner with subscriber tournaments enabled.
- * If kickBroadcasterId is null, undefined, or empty -> returns valid (no restriction).
- */
 export async function validateKickPartnerAuthority(
   supabase: SupabaseClient,
   kickBroadcasterId: string | null | undefined
