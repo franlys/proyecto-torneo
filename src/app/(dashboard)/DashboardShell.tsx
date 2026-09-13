@@ -424,6 +424,11 @@ export default function DashboardShell({
                 <SidebarLink href="/admin/users" className="!py-1.5 !px-2.5 text-xs text-white/50 hover:text-white">
                   <span>👥</span> Usuarios
                 </SidebarLink>
+                {userRole === 'SUPER_ADMIN' && (
+                  <SidebarLink href="/admin/kick-partners" className="!py-1.5 !px-2.5 text-xs text-emerald-400 hover:text-emerald-300 font-medium">
+                    <span>🟢</span> Streamers Kick
+                  </SidebarLink>
+                )}
                 <SidebarLink href="/admin/subscriptions" className="!py-1.5 !px-2.5 text-xs text-white/50 hover:text-white">
                   <span>🎟️</span> Suscripciones
                 </SidebarLink>
