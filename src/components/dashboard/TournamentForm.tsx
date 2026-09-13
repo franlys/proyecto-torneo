@@ -92,6 +92,8 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
   const [discordChannels, setDiscordChannels] = useState<{ id: string; name: string }[]>([])
   const [fetchingChannels, setFetchingChannels] = useState(false)
 
+  const [connectedKickAccount, setConnectedKickAccount] = useState<{ kick_user_id: string; kick_username: string } | null>(null)
+
   useEffect(() => {
     setMounted(true)
     async function loadData() {
@@ -104,6 +106,16 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
         .select('role, discord_guild_id, discord_connected')
         .eq('id', user.id)
         .single()
+
+      const { data: kickConn } = await supabase
+        .from('kick_connections')
+        .select('kick_user_id, kick_username')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (kickConn && kickConn.kick_user_id) {
+        setConnectedKickAccount(kickConn)
+      }
 
       if (profile) {
         setCurrentUserProfile(profile)
@@ -176,6 +188,7 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
     discordAnnouncementChannelId: initialData?.discordAnnouncementChannelId ?? '',
     collaboratorId: initialData?.collaboratorId ?? '',
     discordUrl: initialData?.discordUrl ?? '',
+    kickBroadcasterId: initialData?.kickBroadcasterId ?? null,
     discipline: initialData?.discipline ?? 'warzone',
     mode: initialData?.mode ?? 'duos',
     format: initialData?.format ?? 'battle_royale_clasico',
@@ -211,6 +224,7 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
   const mode = watch('mode')
   const rulesText = watch('rulesText') ?? ''
   const isPrivate = watch('isPrivate')
+  const kickBroadcasterId = watch('kickBroadcasterId')
   const discipline = watch('discipline')
   const maxPointsLimit = watch('maxPointsLimit')
 
@@ -969,6 +983,51 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
                   {errors.registrationPassword && <p className="text-red-400 text-xs mt-1">{String(errors.registrationPassword.message)}</p>}
                 </div>
               )}
+
+              {/* Kick Subscription Restriction toggle */}
+              <div className="space-y-2 pt-2 border-t border-white/5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (kickBroadcasterId) {
+                      setValue('kickBroadcasterId', null)
+                    } else if (connectedKickAccount?.kick_user_id) {
+                      setValue('kickBroadcasterId', connectedKickAccount.kick_user_id)
+                    }
+                  }}
+                  disabled={!connectedKickAccount?.kick_user_id}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all duration-150
+                    ${Boolean(kickBroadcasterId)
+                      ? 'border-emerald-500/30 bg-emerald-500/5'
+                      : 'border-white/10 bg-white/[0.03] hover:border-white/20'
+                    } ${!connectedKickAccount?.kick_user_id ? 'opacity-60 cursor-not-allowed' : ''}`}
+                >
+                  <div className="text-left">
+                    <p className={`text-sm font-medium transition-colors duration-150
+                      ${Boolean(kickBroadcasterId) ? 'text-emerald-400' : 'text-white/50'}`}>
+                      Exclusivo para Suscriptores de Kick
+                    </p>
+                    <p className="text-xs text-white/30 mt-0.5">
+                      {connectedKickAccount?.kick_user_id
+                        ? `Solo suscriptores directos de tu canal Kick (${connectedKickAccount.kick_username}) podrán inscribirse`
+                        : 'Debes vincular tu cuenta de Kick en tu perfil para habilitar torneos exclusivos para suscriptores'
+                      }
+                    </p>
+                  </div>
+                  <div
+                    className={`relative w-10 h-5 rounded-full transition-colors duration-150 shrink-0
+                      ${Boolean(kickBroadcasterId) ? 'bg-emerald-500' : 'bg-white/10'}`}
+                  >
+                    <div
+                      className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-150
+                        ${Boolean(kickBroadcasterId) ? 'translate-x-5' : 'translate-x-0.5'}`}
+                    />
+                  </div>
+                </button>
+                {Boolean(kickBroadcasterId) && (
+                  <input type="hidden" {...register('kickBroadcasterId')} />
+                )}
+              </div>
             </div>
           </div>
         </section>

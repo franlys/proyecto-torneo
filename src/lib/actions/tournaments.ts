@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { createTournamentSchema, updateTournamentSchema } from '@/lib/validations/schemas'
 import type { Tournament, ScoringRule } from '@/types'
@@ -99,6 +100,34 @@ export async function checkTournamentAccess(creatorId: string, userId: string, c
   return false
 }
 
+export async function validateKickBroadcasterAuthority(
+  supabase: SupabaseClient,
+  userId: string,
+  kickBroadcasterId: string | null | undefined
+): Promise<{ valid: boolean; kickBroadcasterId: string | null; error?: string }> {
+  if (!kickBroadcasterId || kickBroadcasterId.trim() === '') {
+    return { valid: true, kickBroadcasterId: null }
+  }
+
+  const targetKickBroadcasterId = kickBroadcasterId.trim()
+
+  const { data: kickConn } = await supabase
+    .from('kick_connections')
+    .select('kick_user_id')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (kickConn?.kick_user_id === targetKickBroadcasterId) {
+    return { valid: true, kickBroadcasterId: targetKickBroadcasterId }
+  }
+
+  return {
+    valid: false,
+    kickBroadcasterId: null,
+    error: 'No estás autorizado para asignar un kick_broadcaster_id que no corresponda a tu propia cuenta conectada de Kick.',
+  }
+}
+
 function mapScoringRuleRow(row: Record<string, unknown>): ScoringRule {
   return {
     id: row.id as string,
@@ -159,6 +188,13 @@ export async function createTournament(
     }
   }
 
+  // Server-side Kick Broadcaster ID Authority Check (strict user.id check)
+  const kickAuth = await validateKickBroadcasterAuthority(supabase, user.id, input.kickBroadcasterId)
+  if (!kickAuth.valid) {
+    return { error: kickAuth.error || 'No estás autorizado' }
+  }
+  const targetKickBroadcasterId = kickAuth.kickBroadcasterId
+
   // Insert tournament
   const { data: tournament, error: tErr } = await supabase
     .from('tournaments')
@@ -194,6 +230,7 @@ export async function createTournament(
       max_points_limit: input.maxPointsLimit || null,
       collaborator_id: collaboratorId,
       discord_url: input.discordUrl || null,
+      kick_broadcaster_id: targetKickBroadcasterId,
       // Finance Model
       entry_fee: input.entryFee || 0,
       prize_1st: input.prize1st || 0,
@@ -359,6 +396,13 @@ export async function updateTournament(
   }
   if (input.discordUrl !== undefined) {
     updatePayload.discord_url = input.discordUrl || null
+  }
+  if (input.kickBroadcasterId !== undefined) {
+    const kickAuth = await validateKickBroadcasterAuthority(supabase, user.id, input.kickBroadcasterId)
+    if (!kickAuth.valid) {
+      return { error: kickAuth.error || 'No estás autorizado' }
+    }
+    updatePayload.kick_broadcaster_id = kickAuth.kickBroadcasterId
   }
 
   // Finance Model

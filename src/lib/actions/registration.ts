@@ -4,6 +4,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { pushToAC } from './ac-push'
 import { getUsdToDopRate } from '@/lib/services/exchange-rate'
 import { revalidatePath } from 'next/cache'
+import { checkKickTournamentEligibility } from '@/lib/services/kick-eligibility'
 
 export async function registerTournament(
   tournamentId: string,
@@ -24,7 +25,7 @@ export async function registerTournament(
     // 1. Obtener detalles del torneo
     const { data: tournament, error: tourneyErr } = await adminSupabase
       .from('tournaments')
-      .select('id, name, slug, mode, status, is_private, registration_password, max_teams, creator_id, collaborator_id, created_at, registration_start_date, registration_end_date, entry_fee, discipline, start_date')
+      .select('id, name, slug, mode, status, is_private, registration_password, max_teams, creator_id, collaborator_id, created_at, registration_start_date, registration_end_date, entry_fee, discipline, start_date, kick_broadcaster_id')
       .eq('id', tournamentId)
       .single()
 
@@ -34,6 +35,30 @@ export async function registerTournament(
 
     if (tournament.status !== 'pending' && tournament.status !== 'active') {
       return { error: 'Las inscripciones están cerradas para este torneo.' }
+    }
+
+    // 1.1. Validación server-side de elegibilidad Kick Private Tournament
+    if (tournament.kick_broadcaster_id) {
+      const kickEligibility = await checkKickTournamentEligibility(adminSupabase, {
+        userId: user.id,
+        broadcasterKickUserId: tournament.kick_broadcaster_id,
+      })
+
+      if (!kickEligibility.eligible) {
+        if (kickEligibility.reason === 'kick_not_connected') {
+          return { error: 'Este torneo requiere una cuenta de Kick vinculada. Vincula tu cuenta de Kick en tu perfil.' }
+        }
+        if (kickEligibility.reason === 'no_subscription_found') {
+          return { error: 'Este torneo es exclusivo para suscriptores de Kick del organizador. No se encontró una suscripción activa a este canal.' }
+        }
+        if (kickEligibility.reason === 'subscription_expired') {
+          return { error: 'Tu suscripción de Kick ha expirado. Renueva tu suscripción para inscribirte.' }
+        }
+        if (kickEligibility.reason === 'gifted_subscription_ineligible') {
+          return { error: 'Las suscripciones regaladas (gifted) no son elegibles para este torneo exclusivo. Se requiere una suscripción directa activa.' }
+        }
+        return { error: 'No cumples con los requisitos de suscripción de Kick para este torneo.' }
+      }
     }
 
     // 1.2. Verificar ventana de inscripciones por fecha/hora exacta
