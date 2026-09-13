@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { sendRefundRequestedEmail, sendRefundProcessedEmail } from '@/lib/email'
 
 export async function isSystemAdmin(userId: string): Promise<boolean> {
-  const supabase = await createClient()
+  const supabase = await createAdminClient()
   const { data: profile } = await supabase
     .from('profiles')
     .select('role')

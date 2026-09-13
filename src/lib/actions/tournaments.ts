@@ -30,22 +30,25 @@ function generateSlug(name: string): string {
 export async function checkTournamentAccess(creatorId: string, userId: string, collaboratorId?: string | null): Promise<boolean> {
   if (creatorId === userId || (collaboratorId && collaboratorId === userId)) return true
   
-  const supabase = await createClient()
-  const { data: profile } = await supabase
+  const adminSupabase = await createAdminClient()
+  const { data: profile } = await adminSupabase
     .from('profiles')
     .select('role')
     .eq('id', userId)
     .single()
+
+  if (profile?.role === 'SUPER_ADMIN') {
+    return true
+  }
     
   if (
-    profile?.role === 'SUPER_ADMIN' ||
     profile?.role === 'ADMIN' ||
     profile?.role === 'KRONIX_STAFF' ||
     profile?.role === 'FEDERATION'
   ) {
-    // Si es admin del sistema, permitimos acceso total solo si el torneo es oficial de Kronix
+    // Si es admin del sistema, permitimos acceso total si el torneo es oficial de Kronix
     // (el creador tiene un rol de staff/admin) o es una colaboración (el colaborador tiene rol de staff/admin).
-    const { data: creatorProfile } = await supabase
+    const { data: creatorProfile } = await adminSupabase
       .from('profiles')
       .select('role')
       .eq('id', creatorId)
@@ -60,7 +63,7 @@ export async function checkTournamentAccess(creatorId: string, userId: string, c
     }
 
     if (collaboratorId) {
-      const { data: collabProfile } = await supabase
+      const { data: collabProfile } = await adminSupabase
         .from('profiles')
         .select('role')
         .eq('id', collaboratorId)
@@ -78,7 +81,7 @@ export async function checkTournamentAccess(creatorId: string, userId: string, c
     return false
   }
 
-  const { data: staff } = await supabase
+  const { data: staff } = await adminSupabase
     .from('streamer_staff')
     .select('id')
     .eq('streamer_id', creatorId)
@@ -88,7 +91,7 @@ export async function checkTournamentAccess(creatorId: string, userId: string, c
   if (staff) return true
 
   if (collaboratorId) {
-    const { data: staffColab } = await supabase
+    const { data: staffColab } = await adminSupabase
       .from('streamer_staff')
       .select('id')
       .eq('streamer_id', collaboratorId)
@@ -222,7 +225,7 @@ export async function createTournament(
       start_date: input.startDate || null,
       end_date: input.endDate || null,
       is_private: input.isPrivate || false,
-      registration_password: input.registrationPassword || null,
+      registration_password: null,
       max_teams: input.maxTeams || null,
       registration_start_date: input.registrationStartDate || new Date().toISOString(),
       registration_end_date: input.registrationEndDate || null,
@@ -387,8 +390,6 @@ export async function updateTournament(
     updatePayload.max_teams = input.maxTeams
   if (input.isPrivate !== undefined)
     updatePayload.is_private = input.isPrivate
-  if (input.registrationPassword !== undefined)
-    updatePayload.registration_password = input.registrationPassword
   if (input.registrationStartDate !== undefined)
     updatePayload.registration_start_date = input.registrationStartDate || null
   if (input.registrationEndDate !== undefined)

@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getProfile, isAdmin } from './auth-helpers'
 import { revalidatePath } from 'next/cache'
 
@@ -61,9 +61,9 @@ export async function getTickets(): Promise<any[] | { error: string }> {
   if (!profile) return { error: 'No autenticado' }
 
   const admin = await isAdmin()
-  const supabase = await createClient()
+  const db = admin ? await createAdminClient() : await createClient()
 
-  let query = supabase
+  let query = db
     .from('support_tickets')
     .select(`
       id,
@@ -96,10 +96,10 @@ export async function getTicketDetails(
   if (!profile) return { error: 'No autenticado' }
 
   const admin = await isAdmin()
-  const supabase = await createClient()
+  const db = admin ? await createAdminClient() : await createClient()
 
   // 1. Fetch the ticket
-  const { data: ticket, error: ticketErr } = await supabase
+  const { data: ticket, error: ticketErr } = await db
     .from('support_tickets')
     .select(`
       id,
@@ -122,7 +122,7 @@ export async function getTicketDetails(
   }
 
   // 2. Fetch the conversation messages
-  const { data: messages, error: msgErr } = await supabase
+  const { data: messages, error: msgErr } = await db
     .from('support_ticket_messages')
     .select(`
       id,
@@ -154,10 +154,11 @@ export async function replyToTicket(
 
   if (message.trim().length === 0) return { error: 'El mensaje no puede estar vacío' }
 
-  const supabase = await createClient()
+  const admin = await isAdmin()
+  const db = admin ? await createAdminClient() : await createClient()
 
   // Verify access to ticket
-  const { data: ticket } = await supabase
+  const { data: ticket } = await db
     .from('support_tickets')
     .select('streamer_id')
     .eq('id', ticketId)
@@ -165,13 +166,12 @@ export async function replyToTicket(
 
   if (!ticket) return { error: 'Ticket no encontrado' }
 
-  const admin = await isAdmin()
   if (!admin && ticket.streamer_id !== profile.id) {
     return { error: 'No autorizado' }
   }
 
   // Insert message
-  const { error: msgErr } = await supabase.from('support_ticket_messages').insert({
+  const { error: msgErr } = await db.from('support_ticket_messages').insert({
     ticket_id: ticketId,
     sender_id: profile.id,
     message: message.trim(),
@@ -187,7 +187,7 @@ export async function replyToTicket(
     updates.status = 'open' // Set back to open when streamer responds
   }
 
-  await supabase
+  await db
     .from('support_tickets')
     .update(updates)
     .eq('id', ticketId)
@@ -208,11 +208,11 @@ export async function updateTicketStatus(
   if (!profile) return { error: 'No autenticado' }
 
   const admin = await isAdmin()
-  const supabase = await createClient()
+  const db = admin ? await createAdminClient() : await createClient()
 
   // Streamers can close their own tickets, admins/staff can update any ticket
   if (!admin) {
-    const { data: ticket } = await supabase
+    const { data: ticket } = await db
       .from('support_tickets')
       .select('streamer_id')
       .eq('id', ticketId)
@@ -223,7 +223,7 @@ export async function updateTicketStatus(
     }
   }
 
-  const { error } = await supabase
+  const { error } = await db
     .from('support_tickets')
     .update({ status, updated_at: new Date().toISOString() })
     .eq('id', ticketId)

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 import { Orbitron } from 'next/font/google'
 import Link from 'next/link'
 import { AdminErrorCard } from '@/components/ui/AdminErrorCard'
@@ -7,7 +7,7 @@ const orbitron = Orbitron({ subsets: ['latin'] })
 
 export default async function AdminTournamentsPage() {
   try {
-    const supabase = await createClient()
+    const supabase = await createAdminClient()
     
     // Fetch tournaments
     const { data: tournamentsData, error: tErr } = await supabase

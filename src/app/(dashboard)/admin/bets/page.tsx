@@ -7,7 +7,9 @@ export default async function AdminBetsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
+  const adminSupabase = await createAdminClient()
+
+  const { data: profile } = await adminSupabase
     .from('profiles')
     .select('role')
     .eq('id', user.id)
@@ -16,8 +18,6 @@ export default async function AdminBetsPage() {
   if (!profile || (profile.role !== 'SUPER_ADMIN' && profile.role !== 'ADMIN')) {
     redirect('/dashboard')
   }
-
-  const adminSupabase = await createAdminClient()
 
   const { data: tournaments } = await adminSupabase
     .from('tournaments')

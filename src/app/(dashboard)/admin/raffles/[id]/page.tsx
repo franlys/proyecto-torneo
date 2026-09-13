@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { getRaffleForAdmin, isSystemAdmin } from '@/lib/actions/raffles'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { RaffleAdminClient } from './RaffleAdminClient'
 
 export const dynamic = 'force-dynamic'
@@ -30,7 +30,8 @@ export default async function AdminRaffleDetailPage({ params }: AdminRaffleDetai
   const raffle = res.data
   const tickets = res.tickets
 
-  const { data: profiles } = await supabase
+  const adminSupabase = await createAdminClient()
+  const { data: profiles } = await adminSupabase
     .from('profiles')
     .select('id, username, email')
     .order('username', { ascending: true })

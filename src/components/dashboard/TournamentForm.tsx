@@ -3,7 +3,7 @@
 import { useForm, FormProvider } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createTournamentSchema, type CreateTournamentInput } from '@/lib/validations/schemas'
 import { createTournament, updateTournament } from '@/lib/actions/tournaments'
 import { getDiscordChannelsAction } from '@/lib/actions/discord-channels'
@@ -96,6 +96,18 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
 
   const [connectedKickAccount, setConnectedKickAccount] = useState<{ kick_user_id: string; kick_username: string } | null>(null)
   const [activeKickPartners, setActiveKickPartners] = useState<ActivePartnerOption[]>([])
+  const [kickDropdownOpen, setKickDropdownOpen] = useState(false)
+  const kickDropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (kickDropdownRef.current && !kickDropdownRef.current.contains(e.target as Node)) {
+        setKickDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   useEffect(() => {
     setMounted(true)
@@ -977,17 +989,12 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
               </button>
 
               {isPrivate && (
-                <div>
-                  <label className="block text-xs font-medium text-white/50 uppercase tracking-wider mb-2">
-                    Contraseña de Inscripción *
-                  </label>
-                  <input
-                    required
-                    {...register('registrationPassword')}
-                    placeholder="Ej. CLAVE123"
-                    className={inputClass}
-                  />
-                  {errors.registrationPassword && <p className="text-red-400 text-xs mt-1">{String(errors.registrationPassword.message)}</p>}
+                <div className="p-3.5 rounded-xl bg-neon-purple/10 border border-neon-purple/25 text-xs text-neon-purple flex items-start gap-2.5">
+                  <span className="text-base shrink-0">🔒</span>
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-white block">Torneo Privado Activado</span>
+                    <span className="text-white/60 block">Las inscripciones requerirán validación automática de API o aprobación manual del organizador. Sin contraseñas que puedan filtrarse.</span>
+                  </div>
                 </div>
               )}
 
@@ -1008,27 +1015,149 @@ export function TournamentForm({ onSuccess, initialData, tournamentId }: Tournam
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <select
-                      value={kickBroadcasterId || ''}
-                      onChange={(e) => {
-                        const val = e.target.value ? e.target.value : null
-                        setValue('kickBroadcasterId', val)
-                        if (!val) setValue('kickSubsType', null)
-                      }}
-                      className={inputClass}
-                    >
-                      <option value="">Sin restricción de Kick (Torneo Abierto)</option>
-                      {activeKickPartners.map((p) => (
-                        <option key={p.kickUserId} value={p.kickUserId}>
-                          {p.kickUsername ? `🎮 ${p.kickUsername} (@${p.username || 'partner'})` : p.username || p.kickUserId}
-                        </option>
-                      ))}
-                      {kickBroadcasterId && !activeKickPartners.some((p) => p.kickUserId === kickBroadcasterId) && (
-                        <option value={kickBroadcasterId}>
-                          ⚠️ Partner Configurado (ID: {kickBroadcasterId})
-                        </option>
-                      )}
-                    </select>
+                    {(() => {
+                      const selectedPartner = activeKickPartners.find((p) => p.kickUserId === kickBroadcasterId)
+                      return (
+                        <div className="relative" ref={kickDropdownRef}>
+                          <button
+                            type="button"
+                            onClick={() => setKickDropdownOpen(!kickDropdownOpen)}
+                            className={`w-full px-4 py-3 rounded-xl border flex items-center justify-between text-left transition-all ${
+                              kickBroadcasterId
+                                ? 'bg-emerald-500/10 border-emerald-500/30 text-white'
+                                : 'bg-[#12121a] border-white/10 text-white hover:border-white/20'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              {selectedPartner ? (
+                                <>
+                                  <span className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm shrink-0">
+                                    🎮
+                                  </span>
+                                  <div className="truncate">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-sm font-bold text-white truncate">
+                                        {selectedPartner.kickUsername || selectedPartner.username}
+                                      </span>
+                                      <span className="text-[9px] uppercase font-black px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 shrink-0">
+                                        Partner Kick
+                                      </span>
+                                    </div>
+                                    <span className="text-[11px] text-white/40 block truncate">
+                                      {selectedPartner.username ? `@${selectedPartner.username} en Kronix` : `ID Kick: ${selectedPartner.kickUserId}`}
+                                    </span>
+                                  </div>
+                                </>
+                              ) : kickBroadcasterId ? (
+                                <>
+                                  <span className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm shrink-0">
+                                    ⚠️
+                                  </span>
+                                  <div className="truncate">
+                                    <span className="text-sm font-bold text-white block">
+                                      Partner Configurado (ID: {kickBroadcasterId})
+                                    </span>
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="w-7 h-7 rounded-lg bg-white/5 text-white/60 flex items-center justify-center text-sm shrink-0">
+                                    🌐
+                                  </span>
+                                  <div>
+                                    <span className="text-sm font-medium text-white block">
+                                      Sin restricción de Kick (Torneo Abierto)
+                                    </span>
+                                    <span className="text-[11px] text-white/40 block">
+                                      Cualquier usuario o equipo puede inscribirse libremente
+                                    </span>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                            <svg
+                              className={`w-4 h-4 text-white/40 transition-transform shrink-0 ml-2 ${kickDropdownOpen ? 'rotate-180' : ''}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+
+                          {kickDropdownOpen && (
+                            <div className="absolute top-full left-0 right-0 mt-2 rounded-xl bg-[#0f0f18] border border-white/15 shadow-2xl p-1.5 z-50 max-h-72 overflow-y-auto space-y-1 backdrop-blur-xl">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setValue('kickBroadcasterId', null)
+                                  setValue('kickSubsType', null)
+                                  setKickDropdownOpen(false)
+                                }}
+                                className={`w-full p-2.5 rounded-lg flex items-center gap-3 text-left transition-colors ${
+                                  !kickBroadcasterId
+                                    ? 'bg-white/10 text-white font-medium'
+                                    : 'text-white/60 hover:bg-white/5 hover:text-white'
+                                }`}
+                              >
+                                <span className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-sm shrink-0">
+                                  🌐
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-semibold text-white">Sin restricción de Kick (Torneo Abierto)</p>
+                                  <p className="text-[10px] text-white/40">Inscripción libre para todos</p>
+                                </div>
+                                {!kickBroadcasterId && <span className="text-emerald-400 text-xs font-bold">✓</span>}
+                              </button>
+
+                              <div className="px-2 pt-2 pb-1 text-[10px] font-black uppercase tracking-wider text-white/30">
+                                Streamers Partners Autorizados ({activeKickPartners.length})
+                              </div>
+
+                              {activeKickPartners.map((p) => {
+                                const isSelected = kickBroadcasterId === p.kickUserId
+                                return (
+                                  <button
+                                    key={p.kickUserId}
+                                    type="button"
+                                    onClick={() => {
+                                      setValue('kickBroadcasterId', p.kickUserId)
+                                      if (!watch('kickSubsType')) {
+                                        setValue('kickSubsType', 'direct')
+                                      }
+                                      setKickDropdownOpen(false)
+                                    }}
+                                    className={`w-full p-2.5 rounded-lg flex items-center gap-3 text-left transition-colors ${
+                                      isSelected
+                                        ? 'bg-emerald-500/15 text-white border border-emerald-500/30'
+                                        : 'text-white/80 hover:bg-white/5 hover:text-white'
+                                    }`}
+                                  >
+                                    <span className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm shrink-0">
+                                      🎮
+                                    </span>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-xs font-bold text-white truncate">
+                                          {p.kickUsername || p.username}
+                                        </span>
+                                        <span className="text-[9px] uppercase font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400">
+                                          Partner Kick
+                                        </span>
+                                      </div>
+                                      <span className="text-[10px] text-white/40 block truncate">
+                                        {p.username ? `@${p.username} en Kronix` : `ID Kick: ${p.kickUserId}`}
+                                      </span>
+                                    </div>
+                                    {isSelected && <span className="text-emerald-400 text-xs font-bold">✓</span>}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
 
                     {/* Subscription type selector — only shown when a streamer is selected */}
                     {kickBroadcasterId && (

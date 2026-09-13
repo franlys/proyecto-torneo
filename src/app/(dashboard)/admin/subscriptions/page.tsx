@@ -1,11 +1,11 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 import { Orbitron } from 'next/font/google'
 import { SubscriptionsClient } from './SubscriptionsClient'
 
 const orbitron = Orbitron({ subsets: ['latin'] })
 
 export default async function AdminSubscriptionsPage() {
-  const supabase = await createClient()
+  const supabase = await createAdminClient()
   
   const { data: requests } = await supabase
     .from('subscription_requests')

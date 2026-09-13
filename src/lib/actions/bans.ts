@@ -13,8 +13,10 @@ export async function banTeamForAbandonment(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'No autenticado' }
 
+    const adminSupabase = await createAdminClient()
+
     // Fetch tournament to verify creator/collaborator
-    const { data: tournament, error: tourneyErr } = await supabase
+    const { data: tournament, error: tourneyErr } = await adminSupabase
       .from('tournaments')
       .select('id, name, creator_id, collaborator_id, slug')
       .eq('id', tournamentId)
@@ -29,7 +31,7 @@ export async function banTeamForAbandonment(
     }
 
     // Fetch all participants of this team
-    const { data: teamParticipants, error: partErr } = await supabase
+    const { data: teamParticipants, error: partErr } = await adminSupabase
       .from('participants')
       .select('user_id, display_name, game_id')
       .eq('team_id', teamId)
@@ -39,8 +41,6 @@ export async function banTeamForAbandonment(
     if (!teamParticipants || teamParticipants.length === 0) {
       return { error: 'No se encontraron participantes en este equipo' }
     }
-
-    const adminSupabase = await createAdminClient()
 
     // Fetch team name and captain details for notification email before they are deleted
     const { data: teamData } = await adminSupabase

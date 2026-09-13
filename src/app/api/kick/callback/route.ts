@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
 
       if (existingConn?.user_id) {
         targetUserId = existingConn.user_id
-        const { data: uData } = await adminClient.auth.admin.getUserById(targetUserId)
+        const { data: uData } = await adminClient.auth.admin.getUserById(targetUserId as string)
         if (uData?.user?.email) {
           targetEmail = uData.user.email
         }

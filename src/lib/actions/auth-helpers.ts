@@ -28,7 +28,9 @@ export async function getProfile(): Promise<Profile | null> {
   
   if (!user) return null
  
-  let { data: profile } = await supabase
+  const adminSupabase = await createAdminClient()
+
+  let { data: profile } = await adminSupabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
@@ -37,8 +39,6 @@ export async function getProfile(): Promise<Profile | null> {
   if (!profile) {
     // Self-healing safety net: create profile using admin client
     try {
-      const adminSupabase = await createAdminClient()
-      
       const { count } = await adminSupabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })

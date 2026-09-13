@@ -15,7 +15,7 @@ export interface AdPlacementData {
 
 export async function getAllAds() {
   try {
-    const supabase = await createClient()
+    const supabase = await createAdminClient()
     const { data, error } = await supabase
       .from('advertising_placements')
       .select('*')

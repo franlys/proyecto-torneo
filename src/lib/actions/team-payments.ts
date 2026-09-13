@@ -24,7 +24,7 @@ export async function contributeToTeamFeeAction(
     const adminSupabase = await createAdminClient()
 
     // 1. Fetch team and tournament
-    const { data: team, error: teamErr } = await supabase
+    const { data: team, error: teamErr } = await adminSupabase
       .from('teams')
       .select('id, name, registration_status, amount_paid, tournament_id, tournaments(id, name, entry_fee, slug)')
       .eq('id', teamId)

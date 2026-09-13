@@ -17,7 +17,7 @@ export async function approveRegistrationRequest(teamId: string): Promise<{ succ
     const adminSupabase = await createAdminClient()
 
     // 1. Fetch team and tournament details
-    const { data: team, error: teamErr } = await supabase
+    const { data: team, error: teamErr } = await adminSupabase
       .from('teams')
       .select('id, name, tournament_id, registration_status')
       .eq('id', teamId)
@@ -26,7 +26,7 @@ export async function approveRegistrationRequest(teamId: string): Promise<{ succ
     if (teamErr || !team) return { error: 'No se encontró el equipo.' }
 
     // 2. Fetch tournament to verify permissions
-    const { data: tournament } = await supabase
+    const { data: tournament } = await adminSupabase
       .from('tournaments')
       .select('id, name, slug, creator_id, collaborator_id, discord_announcement_channel_id, discord_url')
       .eq('id', team.tournament_id)
@@ -54,7 +54,7 @@ export async function approveRegistrationRequest(teamId: string): Promise<{ succ
     if (updateErr) return { error: updateErr.message }
 
     // 4. Fetch team captain to send notification email
-    const { data: captain } = await supabase
+    const { data: captain } = await adminSupabase
       .from('participants')
       .select('display_name, user_id, profiles!participants_user_id_fkey(email)')
       .eq('team_id', teamId)
@@ -177,7 +177,7 @@ export async function confirmPaymentRegistration(teamId: string): Promise<{ succ
     const adminSupabase = await createAdminClient()
 
     // 1. Fetch team
-    const { data: team, error: teamErr } = await supabase
+    const { data: team, error: teamErr } = await adminSupabase
       .from('teams')
       .select('id, name, tournament_id, registration_status, avatar_url, stream_url')
       .eq('id', teamId)
@@ -186,7 +186,7 @@ export async function confirmPaymentRegistration(teamId: string): Promise<{ succ
     if (teamErr || !team) return { error: 'No se encontró el equipo.' }
 
     // 2. Fetch tournament to verify permissions
-    const { data: tournament } = await supabase
+    const { data: tournament } = await adminSupabase
       .from('tournaments')
       .select('id, name, creator_id, collaborator_id, discord_url, discord_announcement_channel_id')
       .eq('id', team.tournament_id)
@@ -289,7 +289,7 @@ export async function confirmPaymentRegistration(teamId: string): Promise<{ succ
     }
 
     // 5. Send registration confirmed email to captain
-    const { data: captain } = await supabase
+    const { data: captain } = await adminSupabase
       .from('participants')
       .select('display_name, user_id, profiles!participants_user_id_fkey(email)')
       .eq('team_id', teamId)
@@ -334,7 +334,7 @@ export async function rejectRegistrationRequest(
     const adminSupabase = await createAdminClient()
 
     // 1. Fetch team
-    const { data: team, error: teamErr } = await supabase
+    const { data: team, error: teamErr } = await adminSupabase
       .from('teams')
       .select('id, name, tournament_id, registration_status')
       .eq('id', teamId)
@@ -343,7 +343,7 @@ export async function rejectRegistrationRequest(
     if (teamErr || !team) return { error: 'No se encontró el equipo.' }
 
     // 2. Fetch tournament
-    const { data: tournament } = await supabase
+    const { data: tournament } = await adminSupabase
       .from('tournaments')
       .select('id, name, slug, creator_id, collaborator_id')
       .eq('id', team.tournament_id)
@@ -381,7 +381,7 @@ export async function rejectRegistrationRequest(
       if (updateErr) return { error: updateErr.message }
 
       // Optionally notify captain by email that payment was rejected
-      const { data: captain } = await supabase
+      const { data: captain } = await adminSupabase
         .from('participants')
         .select('display_name, user_id, profiles!participants_user_id_fkey(email)')
         .eq('team_id', teamId)

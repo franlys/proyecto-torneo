@@ -141,12 +141,7 @@ export async function registerTournament(
       }
     }
 
-    // 1.7. Validar contraseña para torneos privados
-    if (tournament.is_private && tournament.registration_password) {
-      if (!formData.password || formData.password.trim() !== tournament.registration_password.trim()) {
-        return { error: 'La contraseña de inscripción es incorrecta. Verifica con el organizador.' }
-      }
-    }
+    // 1.7. Torneos privados: validación se realiza mediante API o flujo de aprobación previa del organizador
 
     // 1.8. Validar si el que se registra o algún compañero es staff/creador/colaborador
     const forbiddenIds = new Set<string>()

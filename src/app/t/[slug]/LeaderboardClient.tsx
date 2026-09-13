@@ -3689,24 +3689,16 @@ export function LeaderboardClient({
                     })}
                   </div>
 
-                  {/* Password for private tournaments */}
+                  {/* Notice for private tournaments */}
                   {isPrivate && (
-                    <div className="rounded-xl border border-neon-purple/30 bg-neon-purple/5 p-4 space-y-2">
+                    <div className="rounded-xl border border-neon-purple/30 bg-neon-purple/5 p-4 space-y-1">
                       <div className="flex items-center gap-2 text-neon-purple">
                         <span>🔒</span>
                         <span className="text-[10px] font-black uppercase tracking-widest">Torneo Privado</span>
                       </div>
-                      <label className="block text-[10px] text-white/60 uppercase tracking-widest font-bold mb-1 ml-1">
-                        Contraseña de Inscripción <span className="text-red-400">*</span>
-                      </label>
-                      <input
-                        required
-                        type="password"
-                        value={regPassword}
-                        onChange={e => setRegPassword(e.target.value)}
-                        placeholder="Contraseña proporcionada por el organizador"
-                        className="w-full bg-black/40 border border-neon-purple/30 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-neon-purple/60 focus:ring-1 focus:ring-neon-purple/30 transition-all"
-                      />
+                      <p className="text-xs text-white/60">
+                        Este torneo es privado. Tu inscripción será validada automáticamente por API o requerirá aprobación previa del organizador.
+                      </p>
                     </div>
                   )}
 
