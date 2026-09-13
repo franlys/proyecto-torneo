@@ -202,54 +202,62 @@ export async function createTournament(
   }
   const targetKickBroadcasterId = kickAuth.kickBroadcasterId
 
+  const insertPayload: Record<string, any> = {
+    creator_id: user.id,
+    name: input.name,
+    description: input.description ?? null,
+    rules_text: input.rulesText ?? null,
+    slug,
+    mode: input.mode,
+    format: input.format,
+    level: input.level,
+    status: 'draft',
+    total_matches: input.totalMatches,
+    kill_rate_enabled: input.killRateEnabled,
+    pot_top_enabled: input.potTopEnabled,
+    vip_enabled: input.vipEnabled,
+    tiebreaker_match_enabled: input.tiebreakerMatchEnabled,
+    kill_race_time_limit_minutes: input.killRaceTimeLimitMinutes ?? null,
+    default_rounds_per_match: input.defaultRoundsPerMatch,
+    start_date: input.startDate || null,
+    end_date: input.endDate || null,
+    is_private: input.isPrivate || false,
+    registration_password: null,
+    max_teams: input.maxTeams || null,
+    registration_start_date: input.registrationStartDate || new Date().toISOString(),
+    registration_end_date: input.registrationEndDate || null,
+    hide_logo_in_leaderboard: input.hideLogoInLeaderboard || false,
+    clash_royale_tag: input.clashRoyaleTag || null,
+    discipline: input.discipline || 'warzone',
+    badge_url: input.badgeUrl || null,
+    stream_url: input.streamUrl || null,
+    max_points_limit: input.maxPointsLimit || null,
+    collaborator_id: collaboratorId,
+    discord_url: input.discordUrl || null,
+    // Finance Model
+    entry_fee: input.entryFee || 0,
+    prize_1st: input.prize1st || 0,
+    prize_2nd: input.prize2nd || 0,
+    prize_3rd: input.prize3rd || 0,
+    prize_mvp: input.prizeMvp || 0,
+    organizer_split: organizerSplit,
+    streamer_split: streamerSplit,
+    // Arena Betting
+    arena_betting_enabled: arenaBettingEnabled,
+    arena_betting_status: 'closed',
+  }
+
+  if (targetKickBroadcasterId) {
+    insertPayload.kick_broadcaster_id = targetKickBroadcasterId
+    if (input.kickSubsType) {
+      insertPayload.kick_subs_type = input.kickSubsType
+    }
+  }
+
   // Insert tournament
   const { data: tournament, error: tErr } = await supabase
     .from('tournaments')
-    .insert({
-      creator_id: user.id,
-      name: input.name,
-      description: input.description ?? null,
-      rules_text: input.rulesText ?? null,
-      slug,
-      mode: input.mode,
-      format: input.format,
-      level: input.level,
-      status: 'draft',
-      total_matches: input.totalMatches,
-      kill_rate_enabled: input.killRateEnabled,
-      pot_top_enabled: input.potTopEnabled,
-      vip_enabled: input.vipEnabled,
-      tiebreaker_match_enabled: input.tiebreakerMatchEnabled,
-      kill_race_time_limit_minutes: input.killRaceTimeLimitMinutes ?? null,
-      default_rounds_per_match: input.defaultRoundsPerMatch,
-      start_date: input.startDate || null,
-      end_date: input.endDate || null,
-      is_private: input.isPrivate || false,
-      registration_password: null,
-      max_teams: input.maxTeams || null,
-      registration_start_date: input.registrationStartDate || new Date().toISOString(),
-      registration_end_date: input.registrationEndDate || null,
-      hide_logo_in_leaderboard: input.hideLogoInLeaderboard || false,
-      clash_royale_tag: input.clashRoyaleTag || null,
-      discipline: input.discipline || 'warzone',
-      badge_url: input.badgeUrl || null,
-      stream_url: input.streamUrl || null,
-      max_points_limit: input.maxPointsLimit || null,
-      collaborator_id: collaboratorId,
-      discord_url: input.discordUrl || null,
-      kick_broadcaster_id: targetKickBroadcasterId,
-      // Finance Model
-      entry_fee: input.entryFee || 0,
-      prize_1st: input.prize1st || 0,
-      prize_2nd: input.prize2nd || 0,
-      prize_3rd: input.prize3rd || 0,
-      prize_mvp: input.prizeMvp || 0,
-      organizer_split: organizerSplit,
-      streamer_split: streamerSplit,
-      // Arena Betting
-      arena_betting_enabled: arenaBettingEnabled,
-      arena_betting_status: 'closed',
-    })
+    .insert(insertPayload)
     .select()
     .single()
 
@@ -408,6 +416,9 @@ export async function updateTournament(
       return { error: kickAuth.error || 'No estás autorizado' }
     }
     updatePayload.kick_broadcaster_id = kickAuth.kickBroadcasterId
+    if (input.kickSubsType !== undefined) {
+      updatePayload.kick_subs_type = input.kickSubsType
+    }
   }
 
   // Finance Model

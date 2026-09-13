@@ -32,6 +32,7 @@ import {
 export interface CheckKickEligibilityInput {
   userId: string
   broadcasterKickUserId: string
+  subsType?: 'direct' | 'all' | null
 }
 
 export type KickEligibilityReason =
@@ -118,8 +119,9 @@ export async function checkKickTournamentEligibility(
     }
   }
 
-  // 4. Regla de Tipo de Suscripción: 'gifted' -> DENY (gifted_subscription_ineligible)
-  if (row.subscription_type === 'gifted') {
+  // 4. Regla de Tipo de Suscripción: Si el torneo requiere 'direct' y la suscripción es 'gifted' -> DENY
+  const requiredSubsType = input.subsType || 'direct'
+  if (requiredSubsType === 'direct' && row.subscription_type === 'gifted') {
     return {
       eligible: false,
       reason: 'gifted_subscription_ineligible',

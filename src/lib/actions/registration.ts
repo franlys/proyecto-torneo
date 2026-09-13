@@ -25,7 +25,7 @@ export async function registerTournament(
     // 1. Obtener detalles del torneo
     const { data: tournament, error: tourneyErr } = await adminSupabase
       .from('tournaments')
-      .select('id, name, slug, mode, status, is_private, registration_password, max_teams, creator_id, collaborator_id, created_at, registration_start_date, registration_end_date, entry_fee, discipline, start_date, kick_broadcaster_id')
+      .select('id, name, slug, mode, status, is_private, registration_password, max_teams, creator_id, collaborator_id, created_at, registration_start_date, registration_end_date, entry_fee, discipline, start_date, kick_broadcaster_id, kick_subs_type')
       .eq('id', tournamentId)
       .single()
 
@@ -42,6 +42,7 @@ export async function registerTournament(
       const kickEligibility = await checkKickTournamentEligibility(adminSupabase, {
         userId: user.id,
         broadcasterKickUserId: tournament.kick_broadcaster_id,
+        subsType: (tournament as any).kick_subs_type,
       })
 
       if (!kickEligibility.eligible) {
